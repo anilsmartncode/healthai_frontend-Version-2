@@ -36,10 +36,7 @@ export default function RootLayout() {
                 name="interactions"
                 options={{ headerShown: true, title: "Interactions" }}
               />
-              <Stack.Screen
-                name="family"
-                options={{ headerShown: true, title: "Care Hub" }}
-              />
+
               <Stack.Screen
                 name="notifications"
                 options={{ headerShown: true, title: "Notifications" }}

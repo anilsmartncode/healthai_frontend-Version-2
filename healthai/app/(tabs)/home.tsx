@@ -1,98 +1,111 @@
-import { ScrollView, View, Text, StyleSheet, Pressable } from "react-native";
+import { View, ScrollView, StyleSheet } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { HealthScore } from "@/components/common/HealthScore";
-import { ReportItem } from "@/components/common/ReportItem";
-import { Card } from "@/components/ui/Card";
+import { Colors, Radius } from "@/constants/Colors";
 import { Button } from "@/components/ui/Button";
-import { Colors } from "@/constants/Colors";
 import { useReports } from "@/hooks/useReports";
 
+import { HomeHeader }      from "@/components/home/HomeHeader";
+import { HealthScoreCard } from "@/components/home/Healthscorecard";
+import { FamilyHealthCard } from "@/components/home/Familyhealthcard";
+import { RecentReports }   from "@/components/home/RecentReports";
+
+// ── MOCK data — delete entire block when real API is ready ────────────────────
+// 🔴 REAL: remove MOCK_SCORE; derive all values from reports[0] (see REAL block below)
+const MOCK_SCORE = {
+  score:            82,
+  label:            "Good",
+  normalCount:      16,
+  attentionCount:   2,
+  lastUpdated:      "Just now",
+  stableOverReports: 6,
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function Home() {
-  const { data: reports } = useReports();
+  // 🔴 REAL: delete these two lines and uncomment the REAL block below
+  const { data: reports = [] } = useReports();
+  const hasReports = reports.length > 0;  // 🟢 MOCK: empty until upload adds to list
+
+  // 🔴 REAL: uncomment this block when API is ready
+  /*
+  const { data: reports = [] } = useReports();
+  const latest     = reports[0];
+  const hasReports = reports.length > 0;
+
+  const score             = latest?.score            ?? 0;
+  const label             = latest?.label            ?? "";
+  const normalCount       = latest?.normalCount      ?? 0;
+  const attentionCount    = latest?.attentionCount   ?? 0;
+  const lastUpdated       = latest?.lastUpdated      ?? "";
+  const stableOverReports = reports.length;
+  */
+
+  // 🟢 MOCK — these come from MOCK_SCORE; replace with real vars above when API ready
+  const score             = MOCK_SCORE.score;
+  const label             = MOCK_SCORE.label;
+  const normalCount       = MOCK_SCORE.normalCount;
+  const attentionCount    = MOCK_SCORE.attentionCount;
+  const lastUpdated       = MOCK_SCORE.lastUpdated;
+  const stableOverReports = MOCK_SCORE.stableOverReports;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.bg }}>
-      <ScrollView contentContainerStyle={styles.c}>
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.greet}>Good Morning, Anil 👋</Text>
-            <Text style={styles.sub}>Here's your health summary</Text>
-          </View>
-          <Pressable onPress={() => router.push("/notifications")}>
-            <Ionicons
-              name="notifications-outline"
-              size={26}
-              color={Colors.text}
-            />
-          </Pressable>
-        </View>
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.header}>
+        <HomeHeader attentionCount={hasReports ? attentionCount : 0} />
+      </View>
 
-        <Card style={{ alignItems: "center", gap: 12 }}>
-          <HealthScore score={82} />
-          <Text style={styles.summaryTitle}>AI Summary</Text>
-          <Text style={styles.summaryItem}>• 2 values need attention</Text>
-          <Text style={styles.summaryItem}>• 1 value is low</Text>
-          <Text style={styles.summaryItem}>• All other values are normal</Text>
-        </Card>
-
-        <Button
-          title="+  Upload New Report"
-          onPress={() => router.push("/upload")}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+        overScrollMode="never"
+      >
+        <HealthScoreCard
+          hasReports={hasReports}
+          score={score}
+          label={label}
+          normalCount={normalCount}
+          reportsAnalyzed={reports.length || stableOverReports}
+          lastUpdated={lastUpdated}
+          attentionCount={attentionCount}
+          stableOverReports={stableOverReports}
         />
 
-        <Pressable onPress={() => router.push("/family")}>
-          <Card style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <Ionicons name="people-outline" size={28} color={Colors.primary} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: "700", color: Colors.text }}>
-                Family Health
-              </Text>
-              <Text style={{ color: Colors.textMuted, fontSize: 12 }}>
-                Care Hub: meds, members & trends
-              </Text>
-            </View>
-            <Ionicons
-              name="chevron-forward"
-              size={18}
-              color={Colors.textMuted}
-            />
-          </Card>
-        </Pressable>
+        <Button
+          title="+ Upload New Report"
+          onPress={() => router.push("/upload")}
+          style={styles.uploadBtn}
+        />
 
-        <View style={styles.row}>
-          <Text style={styles.section}>Recent Reports</Text>
-          <Pressable onPress={() => router.push("/(tabs)/reports")}>
-            <Text style={{ color: Colors.primary }}>View All</Text>
-          </Pressable>
-        </View>
+        <FamilyHealthCard />
 
-        {reports.map((r) => (
-          <Pressable key={r.id} onPress={() => router.push("/analysis")}>
-            <ReportItem report={r} />
-          </Pressable>
-        ))}
+        <RecentReports reports={reports} />
       </ScrollView>
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
-  c: { padding: 16, gap: 16 },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  safe: {
+    flex: 1,
+    backgroundColor: Colors.bg,
   },
-  greet: { fontSize: 20, fontWeight: "700", color: Colors.text },
-  sub: { color: Colors.textMuted },
-  summaryTitle: { fontWeight: "700", color: Colors.text, marginTop: 8 },
-  summaryItem: { color: Colors.textMuted, alignSelf: "flex-start" },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
-  section: { fontSize: 16, fontWeight: "700", color: Colors.text },
+  scroll: { flex: 1 },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 32,
+    gap: 14,
+    flexGrow: 1,
+  },
+  uploadBtn: {
+    borderRadius: Radius.lg,
+    paddingVertical: 16,
+  },
 });

@@ -1,71 +1,144 @@
-import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable } from 'react-native';
-import { router } from 'expo-router';
+/**
+ * app/(tabs)/medicines.tsx  (REPLACE the existing file)
+ *
+ * Main Medicines tab with 4 sub-screens:
+ *  – Browse All Medicines
+ *  – Medicine Scanner
+ *  – Reminders
+ *  – Check Interactions
+ */
+
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
-import { Colors, Radius } from '@/constants/Colors';
-import { medicinesService } from '@/services/medicines';
-import type { Medicine } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors, Radius, Spacing } from '@/constants/Colors';
 
-export default function Medicines() {
-  const [meds, setMeds] = useState<Medicine[]>([]);
-  const [q, setQ] = useState('');
-  useEffect(() => {
-    medicinesService.list().then(setMeds);
-  }, []);
+import BrowseAllMedicines from '@/components/medicine/BrowseAllMedicines';
+import MedicineScanner from '@/components/medicine/MedicineScanner';
+import MedicineReminder from '@/components/medicine/MedicineReminder';
+import CheckInteraction from '@/components/medicine/CheckInteraction';
 
-  const filtered = meds.filter((m) => m.name.toLowerCase().includes(q.toLowerCase()));
+// ─── Sub-tab definition ───────────────────────────────────────
+type TabKey = 'browse' | 'scanner' | 'reminder' | 'interaction';
+
+const TABS: { key: TabKey; label: string; icon: string; activeIcon: string }[] = [
+  { key: 'browse', label: 'Browse', icon: 'grid-outline', activeIcon: 'grid' },
+  { key: 'scanner', label: 'Scanner', icon: 'scan-outline', activeIcon: 'scan' },
+  { key: 'reminder', label: 'Reminder', icon: 'alarm-outline', activeIcon: 'alarm' },
+  { key: 'interaction', label: 'Interactions', icon: 'git-compare-outline', activeIcon: 'git-compare' },
+];
+
+// ─── Header titles ────────────────────────────────────────────
+const HEADER: Record<TabKey, { title: string; sub: string }> = {
+  browse: { title: 'All Medicines', sub: 'Search, browse, and save medicines' },
+  scanner: { title: 'Medicine Scanner', sub: 'Scan or upload a medicine image' },
+  reminder: { title: 'Reminders', sub: "Never miss today's dose" },
+  interaction: { title: 'Interaction Checker', sub: 'Check medicine combinations' },
+};
+
+// ═══════════════════════════════════════════════════════════════
+export default function MedicinesTab() {
+  const [activeTab, setActiveTab] = useState<TabKey>('browse');
+  const hdr = HEADER[activeTab];
+
+  const renderScreen = () => {
+    switch (activeTab) {
+      case 'browse':      return <BrowseAllMedicines />;
+      case 'scanner':     return <MedicineScanner />;
+      case 'reminder':    return <MedicineReminder />;
+      case 'interaction': return <CheckInteraction />;
+    }
+  };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.bg }}>
-      <View style={{ padding: 16, gap: 10 }}>
-        <Text style={styles.title}>Medicines</Text>
-        <Text style={styles.sub}>Manage your medicines & reminders</Text>
-        <Input placeholder="Search medicine" value={q} onChangeText={setQ} />
-
-        <View style={styles.actions}>
-          <Pressable style={styles.action} onPress={() => router.push('/interactions')}>
-            <Ionicons name="git-compare-outline" size={22} color={Colors.primary} />
-            <Text style={styles.actionLabel}>Check Interactions</Text>
-          </Pressable>
-          <Pressable style={styles.action} onPress={() => {}}>
-            <Ionicons name="alarm-outline" size={22} color={Colors.primary} />
-            <Text style={styles.actionLabel}>Medicine Reminder</Text>
-          </Pressable>
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.title}>{hdr.title}</Text>
+          <Text style={styles.sub}>{hdr.sub}</Text>
+        </View>
+        <View style={styles.headerIcon}>
+          <Ionicons name="medkit-outline" size={22} color={Colors.primary} />
         </View>
       </View>
 
-      <FlatList
-        data={filtered}
-        keyExtractor={(i) => i.id}
-        contentContainerStyle={{ padding: 16, gap: 10 }}
-        renderItem={({ item }) => (
-          <Pressable onPress={() => router.push(`/medicine/${item.id}`)}>
-            <Card style={styles.row}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.name}>{item.name}</Text>
-                <Text style={styles.meta}>{item.dose}</Text>
-              </View>
-              <Text style={styles.time}>{item.time}</Text>
-              <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-            </Card>
-          </Pressable>
-        )}
-      />
+      {/* Sub-tab bar */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabBar}
+      >
+        {TABS.map((t) => {
+          const active = activeTab === t.key;
+          return (
+            <Pressable
+              key={t.key}
+              onPress={() => setActiveTab(t.key)}
+              style={[styles.tab, active && styles.tabActive]}
+            >
+              <Ionicons
+                name={(active ? t.activeIcon : t.icon) as any}
+                size={16}
+                color={active ? '#fff' : Colors.textMuted}
+              />
+              <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>
+                {t.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      {/* Screen content */}
+      <View style={{ flex: 1 }}>{renderScreen()}</View>
     </SafeAreaView>
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  title: { fontSize: 22, fontWeight: '700', color: Colors.text },
-  sub: { color: Colors.textMuted },
-  actions: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  action: { flex: 1, padding: 12, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', gap: 4, backgroundColor: Colors.surface },
-  actionLabel: { fontSize: 12, color: Colors.text, fontWeight: '600' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  name: { fontSize: 16, fontWeight: '600', color: Colors.text },
-  meta: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-  time: { fontSize: 14, fontWeight: '600', color: Colors.primary },
+  safe: { flex: 1, backgroundColor: Colors.bg },
+
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.xs,
+  },
+  title: { fontSize: 22, fontWeight: '800', color: Colors.text },
+  sub: { fontSize: 13, color: Colors.textMuted, marginTop: 2 },
+  headerIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  tabBar: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    gap: 8,
+  },
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  tabActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  tabLabel: { fontSize: 13, fontWeight: '600', color: Colors.textMuted },
+  tabLabelActive: { color: '#fff' },
 });

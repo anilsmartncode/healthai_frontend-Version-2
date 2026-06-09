@@ -1,0 +1,688 @@
+/**
+ * services/medicinesApi.ts
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Medicine Tab — API service layer
+ *
+ * HOW TO USE:
+ *   • Every function has TWO blocks — 🔴 REAL and 🟢 MOCK
+ *   • Currently MOCK is active (real block is commented out)
+ *   • When backend is ready: uncomment 🔴 REAL, comment out 🟢 MOCK
+ *   • The BASE_URL constant is the only thing you need to change globally
+ *
+ * COVERS:
+ *   • Browse All Medicines  (7 APIs)
+ *   • Medicine Reminders    (8 APIs)
+ *   • Medicine Scanner      (5 APIs)
+ *   • Interaction Checker   (7 APIs)
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+// ─── Config ───────────────────────────────────────────────────────────────────
+const BASE_URL = 'https://your-api-base-url.com'; // ← change this when backend is ready
+
+// Helper: fake network delay so mock feels realistic
+const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
+// ─── Shared types ─────────────────────────────────────────────────────────────
+
+export interface Category {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  bg: string;
+}
+
+export interface Medicine {
+  id: string;
+  name: string;
+  form: string;         // "Tablet" | "Capsule" | "Syrup" etc.
+  category: string;
+  rx: boolean;          // true = Prescription Required
+  uses?: string;
+  dosage?: string;
+  sideEffects?: string[];
+}
+
+export interface Reminder {
+  id: string;
+  medicineId: string;
+  medicineName: string;
+  time: string;         // "08:00 AM"
+  frequency: 'daily' | 'weekly' | 'monthly' | 'custom';
+  whenToTake: 'before_food' | 'after_food' | 'with_food' | 'bedtime';
+  enabled: boolean;
+  status: 'upcoming' | 'taken' | 'missed' | 'cancelled';
+}
+
+export interface ScanResult {
+  scanId: string;
+  medicineId: string;
+  name: string;
+  form: string;
+  confidence: number;   // 0–100
+}
+
+export interface ScanHistoryItem {
+  id: string;
+  name: string;
+  form: string;
+  scannedAt: string;
+  confidence: number;
+}
+
+export type Severity = 'none' | 'low' | 'moderate' | 'high';
+
+export interface MedicineSearchResult {
+  id: string;
+  name: string;
+  form: string;
+  rx: boolean;
+}
+
+export interface InteractionResult {
+  severity: Severity;
+  medicines: string[];
+  summary: string;
+  recommendation: string;
+  description: string;
+  symptoms: string[];
+  recommendations: string[];
+}
+
+export interface InteractionHistoryItem {
+  id: string;
+  medicines: string[];
+  severity: Severity;
+  date: string;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// MOCK DATA
+// (delete this entire section once real APIs are integrated)
+// ═════════════════════════════════════════════════════════════════════════════
+
+export const MOCK_CATEGORIES: Category[] = [
+  { id: 'c1', name: 'Diabetes',       icon: 'water-outline',       color: '#2563EB', bg: '#EFF6FF' },
+  { id: 'c2', name: 'Blood Pressure', icon: 'pulse-outline',        color: '#E11D48', bg: '#FFF1F2' },
+  { id: 'c3', name: 'Vitamins',       icon: 'nutrition-outline',    color: '#16A34A', bg: '#F0FDF4' },
+  { id: 'c4', name: 'Heart Care',     icon: 'heart-outline',        color: '#EA580C', bg: '#FFF7ED' },
+  { id: 'c5', name: 'Thyroid',        icon: 'stats-chart-outline',  color: '#7C3AED', bg: '#F5F3FF' },
+  { id: 'c6', name: 'Pain Relief',    icon: 'bandage-outline',      color: '#E11D48', bg: '#FFF1F2' },
+];
+
+export const MOCK_MEDICINES: Medicine[] = [
+  { id: 'm1',  name: 'Metformin 500mg',    form: 'Tablet',  category: 'Diabetes',       rx: true,  uses: 'Controls blood sugar in type 2 diabetes.',         dosage: 'As prescribed by doctor',     sideEffects: ['Nausea', 'Stomach discomfort'] },
+  { id: 'm2',  name: 'Glimepiride 1mg',    form: 'Tablet',  category: 'Diabetes',       rx: true,  uses: 'Stimulates insulin release.',                       dosage: 'Once daily before breakfast',  sideEffects: ['Hypoglycemia', 'Weight gain'] },
+  { id: 'm3',  name: 'Gliclazide 80mg',    form: 'Tablet',  category: 'Diabetes',       rx: true,  uses: 'Lowers blood glucose levels.',                      dosage: 'As prescribed by doctor',     sideEffects: ['Nausea', 'Dizziness'] },
+  { id: 'm4',  name: 'Voglibose 0.2mg',    form: 'Tablet',  category: 'Diabetes',       rx: true,  uses: 'Reduces post-meal blood sugar spikes.',             dosage: 'With meals',                  sideEffects: ['Flatulence', 'Diarrhea'] },
+  { id: 'm5',  name: 'Sitagliptin 50mg',   form: 'Tablet',  category: 'Diabetes',       rx: true,  uses: 'Helps pancreas make more insulin when needed.',     dosage: 'Once daily',                  sideEffects: ['Runny nose', 'Headache'] },
+  { id: 'm6',  name: 'Dapagliflozin 10mg', form: 'Tablet',  category: 'Diabetes',       rx: true,  uses: 'Removes excess sugar through urine.',               dosage: 'Once daily in the morning',   sideEffects: ['Urinary tract infections', 'Thirst'] },
+  { id: 'm7',  name: 'Amlodipine 5mg',     form: 'Tablet',  category: 'Blood Pressure', rx: true,  uses: 'Lowers high blood pressure, treats angina.',        dosage: '5mg once daily',              sideEffects: ['Flushing', 'Ankle swelling'] },
+  { id: 'm8',  name: 'Aspirin 75mg',        form: 'Tablet',  category: 'Heart Care',     rx: false, uses: 'Blood thinner, reduces heart attack risk.',         dosage: '75mg once daily after food',  sideEffects: ['Stomach upset', 'Heartburn'] },
+  { id: 'm9',  name: 'Vitamin D3',          form: 'Capsule', category: 'Vitamins',       rx: false, uses: 'Maintains bone health and immune system.',          dosage: '1 capsule daily',             sideEffects: ['Nausea if overdosed'] },
+  { id: 'm10', name: 'Paracetamol 500mg',   form: 'Tablet',  category: 'Pain Relief',    rx: false, uses: 'Relieves mild to moderate pain and fever.',        dosage: '500mg every 4–6 hours',       sideEffects: ['Rare liver issues if overdosed'] },
+];
+
+export const MOCK_REMINDERS: Reminder[] = [
+  { id: 'r1', medicineId: 'm1',  medicineName: 'Metformin 500mg', time: '08:00 AM', frequency: 'daily', whenToTake: 'after_food', enabled: true, status: 'upcoming' },
+  { id: 'r2', medicineId: 'm9',  medicineName: 'Vitamin D3',      time: '08:00 PM', frequency: 'daily', whenToTake: 'after_food', enabled: true, status: 'upcoming' },
+];
+
+export const MOCK_REMINDER_HISTORY: Reminder[] = [
+  { id: 'h1', medicineId: 'm1', medicineName: 'Metformin 500mg', time: '08:00 AM', frequency: 'daily', whenToTake: 'after_food', enabled: true, status: 'taken'  },
+  { id: 'h2', medicineId: 'm9', medicineName: 'Vitamin D3',      time: '08:00 PM', frequency: 'daily', whenToTake: 'after_food', enabled: true, status: 'missed' },
+  { id: 'h3', medicineId: 'm1', medicineName: 'Metformin 500mg', time: '08:00 AM', frequency: 'daily', whenToTake: 'after_food', enabled: true, status: 'taken'  },
+];
+
+export const MOCK_SCAN_RESULT: ScanResult = {
+  scanId: '101',
+  medicineId: 'm1',
+  name: 'Metformin 500mg',
+  form: 'Tablet',
+  confidence: 98,
+};
+
+export const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
+  { id: 's1', name: 'Metformin 500mg',   form: 'Tablet', scannedAt: '02 Jun 2026, 10:30 AM', confidence: 98 },
+  { id: 's2', name: 'Aspirin 75mg',      form: 'Tablet', scannedAt: '01 Jun 2026, 08:15 PM', confidence: 94 },
+  { id: 's3', name: 'Paracetamol 500mg', form: 'Tablet', scannedAt: '30 May 2026, 07:45 PM', confidence: 91 },
+];
+
+export const MOCK_SEARCH_RESULTS: MedicineSearchResult[] = [
+  { id: 'm1',  name: 'Metformin 500mg',    form: 'Tablet',  rx: true  },
+  { id: 'm2',  name: 'Metformin 850mg',    form: 'Tablet',  rx: true  },
+  { id: 'm11', name: 'Metoprolol 25mg',    form: 'Tablet',  rx: true  },
+  { id: 'm12', name: 'Methotrexate 2.5mg', form: 'Tablet',  rx: true  },
+  { id: 'm8',  name: 'Aspirin 75mg',       form: 'Tablet',  rx: false },
+  { id: 'm13', name: 'Aspirin 150mg',      form: 'Tablet',  rx: false },
+  { id: 'm14', name: 'Ibuprofen 400mg',    form: 'Tablet',  rx: false },
+  { id: 'm10', name: 'Paracetamol 500mg',  form: 'Tablet',  rx: false },
+  { id: 'm15', name: 'Amoxicillin 500mg',  form: 'Capsule', rx: true  },
+];
+
+export const MOCK_INTERACTION_HISTORY: InteractionHistoryItem[] = [
+  { id: 'i1', medicines: ['Metformin 500mg', 'Aspirin 75mg'],      severity: 'moderate', date: '02 Jun 2026, 10:30 AM' },
+  { id: 'i2', medicines: ['Paracetamol 500mg', 'Ibuprofen 400mg'], severity: 'low',      date: '30 May 2026, 07:45 PM' },
+  { id: 'i3', medicines: ['Amoxicillin 500mg'],                    severity: 'high',     date: '28 May 2026, 08:20 AM' },
+];
+
+// ═════════════════════════════════════════════════════════════════════════════
+// BROWSE ALL MEDICINES APIs
+// Total: 7 APIs  |  Avg total time: ~2.5 – 4.0 sec
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * API 1 — Get Categories
+ * Triggered: when user opens Browse Medicines screen
+ * Expected:  ~0.3 – 0.6 sec
+ */
+export async function getCategories(): Promise<Category[]> {
+  // 🔴 REAL — uncomment when backend is ready
+  // const res = await fetch(`${BASE_URL}/api/medicines/categories`);
+  // return res.json();
+
+  // 🟢 MOCK
+  await delay(400);
+  return MOCK_CATEGORIES;
+}
+
+/**
+ * API 2 — Search Medicines
+ * Triggered: when user types in the search box
+ * Expected:  ~0.4 – 0.8 sec
+ * Params:    q (string), page (number), limit (number)
+ */
+export async function searchMedicines(q: string, page = 1, limit = 20): Promise<Medicine[]> {
+  // 🔴 REAL
+  // const res = await fetch(`${BASE_URL}/api/medicines/search?q=${encodeURIComponent(q)}&page=${page}&limit=${limit}`);
+  // return res.json();
+
+  // 🟢 MOCK
+  await delay(500);
+  const query = q.toLowerCase();
+  return MOCK_MEDICINES.filter(
+    (m) => m.name.toLowerCase().includes(query) || m.category.toLowerCase().includes(query),
+  ).slice((page - 1) * limit, page * limit);
+}
+
+/**
+ * API 3 — Get Medicines by Category
+ * Triggered: when user selects a category chip
+ * Expected:  ~0.5 – 1.0 sec
+ * Params:    category_id (string), page (number), limit (number)
+ */
+export async function getMedicinesByCategory(categoryId: string, page = 1, limit = 20): Promise<Medicine[]> {
+  // 🔴 REAL
+  // const res = await fetch(`${BASE_URL}/api/medicines?category_id=${categoryId}&page=${page}&limit=${limit}`);
+  // return res.json();
+
+  // 🟢 MOCK
+  await delay(600);
+  const cat = MOCK_CATEGORIES.find((c) => c.id === categoryId);
+  return MOCK_MEDICINES.filter((m) => m.category === cat?.name).slice((page - 1) * limit, page * limit);
+}
+
+/**
+ * API 4 — Get Medicine Details
+ * Triggered: when user clicks a medicine to view full details
+ * Expected:  ~0.6 – 1.2 sec
+ * Params:    medicine_id (string)
+ */
+export async function getMedicineDetails(medicineId: string): Promise<Medicine | null> {
+  // 🔴 REAL
+  // const res = await fetch(`${BASE_URL}/api/medicines/${medicineId}`);
+  // if (!res.ok) return null;
+  // return res.json();
+
+  // 🟢 MOCK
+  await delay(700);
+  return MOCK_MEDICINES.find((m) => m.id === medicineId) ?? null;
+}
+
+/**
+ * API 5 — Save Medicine
+ * Triggered: when user taps "Save Medicine" on details screen
+ * Expected:  ~0.3 – 0.6 sec
+ * Body:      { medicine_id: string }
+ */
+export async function saveMedicine(medicineId: string): Promise<{ success: boolean; message: string }> {
+  // 🔴 REAL
+  // const res = await fetch(`${BASE_URL}/api/user/medicines`, {
+  //   method: 'POST',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify({ medicine_id: medicineId }),
+  // });
+  // return res.json();
+
+  // 🟢 MOCK
+  await delay(400);
+  return { success: true, message: 'Saved' };
+}
+
+/**
+ * API 6 — Get Recently Viewed
+ * Triggered: when user opens the Recently Viewed section
+ * Expected:  ~0.3 – 0.6 sec
+ * Params:    page (number), limit (number)
+ */
+export async function getRecentlyViewed(page = 1, limit = 10): Promise<Medicine[]> {
+  // 🔴 REAL
+  // const res = await fetch(`${BASE_URL}/api/medicines/recent?page=${page}&limit=${limit}`);
+  // return res.json();
+
+  // 🟢 MOCK
+  await delay(400);
+  return MOCK_MEDICINES.slice(0, limit);
+}
+
+/**
+ * API 7 — Get Popular Medicines (optional)
+ * Triggered: when user opens Browse screen (home state)
+ * Expected:  ~0.3 – 0.6 sec
+ * Params:    limit (number)
+ */
+export async function getPopularMedicines(limit = 6): Promise<Medicine[]> {
+  // 🔴 REAL
+  // const res = await fetch(`${BASE_URL}/api/medicines/popular?limit=${limit}`);
+  // return res.json();
+
+  // 🟢 MOCK
+  await delay(400);
+  return MOCK_MEDICINES.slice(0, limit);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// MEDICINE REMINDERS APIs
+// Total: 8 APIs  |  Avg total time: ~3.0 – 4.5 sec
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * API 1 — Get User's Saved Medicines (for reminder picker)
+ * Triggered: when My Medicines screen opens
+ * Expected:  ~0.5 – 1.0 sec
+ */
+export async function getUserMedicines(): Promise<Medicine[]> {
+  // 🔴 REAL
+  // const res = await fetch(`${BASE_URL}/api/user/medicines`);
+  // return res.json();
+
+  // 🟢 MOCK
+  await delay(600);
+  return MOCK_MEDICINES.slice(0, 5);
+}
+
+/**
+ * API 2 — Create Reminder
+ * Triggered: when user taps "Save Reminder"
+ * Expected:  ~0.8 – 1.2 sec
+ * Body:      { medicine_id, time, frequency, when_to_take }
+ */
+export async function createReminder(payload: {
+  medicineId: string;
+  time: string;
+  frequency: Reminder['frequency'];
+  whenToTake: Reminder['whenToTake'];
+}): Promise<{ success: boolean; message: string; reminderId: string }> {
+  // 🔴 REAL
+  // const res = await fetch(`${BASE_URL}/api/reminders`, {
+  //   method: 'POST',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify({
+  //     medicine_id: payload.medicineId,
+  //     time: payload.time,
+  //     frequency: payload.frequency,
+  //     when_to_take: payload.whenToTake,
+  //   }),
+  // });
+  // return res.json();
+
+  // 🟢 MOCK
+  await delay(900);
+  return { success: true, message: 'Reminder created', reminderId: `r_${Date.now()}` };
+}
+
+/**
+ * API 3 — Get Today's Reminders
+ * Triggered: when Today's Reminders screen opens
+ * Expected:  ~0.5 – 1.0 sec
+ */
+export async function getTodaysReminders(): Promise<Reminder[]> {
+  // 🔴 REAL
+  // const res = await fetch(`${BASE_URL}/api/reminders/today`);
+  // return res.json();
+
+  // 🟢 MOCK
+  await delay(600);
+  return MOCK_REMINDERS;
+}
+
+/**
+ * API 4 — Mark Reminder as Taken
+ * Triggered: when user taps "Taken"
+ * Expected:  ~0.3 – 0.6 sec
+ * Body:      { taken_at: ISO string }
+ */
+export async function markReminderTaken(reminderId: string): Promise<{ success: boolean; status: string }> {
+  // 🔴 REAL
+  // const res = await fetch(`${BASE_URL}/api/reminders/${reminderId}/taken`, {
+  //   method: 'POST',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify({ taken_at: new Date().toISOString() }),
+  // });
+  // return res.json();
+
+  // 🟢 MOCK
+  await delay(350);
+  return { success: true, status: 'taken' };
+}
+
+/**
+ * API 5 — Mark Reminder as Missed
+ * Triggered: when user taps "Missed"
+ * Expected:  ~0.3 – 0.6 sec
+ * Body:      { missed_at: ISO string }
+ */
+export async function markReminderMissed(reminderId: string): Promise<{ success: boolean; status: string }> {
+  // 🔴 REAL
+  // const res = await fetch(`${BASE_URL}/api/reminders/${reminderId}/missed`, {
+  //   method: 'POST',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify({ missed_at: new Date().toISOString() }),
+  // });
+  // return res.json();
+
+  // 🟢 MOCK
+  await delay(350);
+  return { success: true, status: 'missed' };
+}
+
+/**
+ * API 6 — Get Reminder History
+ * Triggered: when History tab opens
+ * Expected:  ~0.5 – 1.0 sec
+ */
+export async function getReminderHistory(): Promise<Reminder[]> {
+  // 🔴 REAL
+  // const res = await fetch(`${BASE_URL}/api/reminders/history`);
+  // return res.json();
+
+  // 🟢 MOCK
+  await delay(600);
+  return MOCK_REMINDER_HISTORY;
+}
+
+/**
+ * API 7 — Update Reminder
+ * Triggered: when user taps "Update Reminder" in edit sheet
+ * Expected:  ~0.3 – 0.6 sec
+ * Body:      { time, frequency, when_to_take }
+ */
+export async function updateReminder(
+  reminderId: string,
+  payload: Pick<Reminder, 'time' | 'frequency' | 'whenToTake'>,
+): Promise<{ success: boolean; message: string }> {
+  // 🔴 REAL
+  // const res = await fetch(`${BASE_URL}/api/reminders/${reminderId}`, {
+  //   method: 'PUT',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify({ time: payload.time, frequency: payload.frequency, when_to_take: payload.whenToTake }),
+  // });
+  // return res.json();
+
+  // 🟢 MOCK
+  await delay(400);
+  return { success: true, message: 'Reminder updated' };
+}
+
+/**
+ * API 8 — Delete Reminder
+ * Triggered: when user taps "Delete Reminder" in edit sheet
+ * Expected:  ~0.3 – 0.6 sec
+ */
+export async function deleteReminder(reminderId: string): Promise<{ success: boolean; message: string }> {
+  // 🔴 REAL
+  // const res = await fetch(`${BASE_URL}/api/reminders/${reminderId}`, { method: 'DELETE' });
+  // return res.json();
+
+  // 🟢 MOCK
+  await delay(350);
+  return { success: true, message: 'Reminder deleted' };
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// MEDICINE SCANNER APIs
+// Total: 5 APIs  |  Avg total time: ~3.0 – 4.5 sec
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * API 1 — Upload Medicine Image
+ * Triggered: after user captures/selects an image
+ * Expected:  ~1.0 – 1.5 sec
+ * Body:      { image: file (multipart/form-data) }
+ * Response:  { scan_id, status: "processing" }
+ */
+export async function uploadMedicineImage(imageUri: string): Promise<{ scanId: string; status: string }> {
+  // 🔴 REAL
+  // const formData = new FormData();
+  // formData.append('image', { uri: imageUri, name: 'scan.jpg', type: 'image/jpeg' } as any);
+  // const res = await fetch(`${BASE_URL}/api/medicine-scanner/upload`, {
+  //   method: 'POST',
+  //   body: formData,
+  // });
+  // const data = await res.json();
+  // return { scanId: data.scan_id, status: data.status };
+
+  // 🟢 MOCK
+  await delay(1200);
+  return { scanId: '101', status: 'processing' };
+}
+
+/**
+ * API 2 — Get Scan Result
+ * Triggered: after image is uploaded (poll until medicine_found = true)
+ * Expected:  ~0.8 – 1.2 sec
+ * Params:    scan_id (string)
+ */
+export async function getScanResult(scanId: string): Promise<ScanResult> {
+  // 🔴 REAL
+  // const res = await fetch(`${BASE_URL}/api/medicine-scanner/result/${scanId}`);
+  // const data = await res.json();
+  // return {
+  //   scanId: data.scan_id,
+  //   medicineId: data.medicine_id,
+  //   name: data.medicine_name,
+  //   form: data.form ?? 'Tablet',
+  //   confidence: data.confidence,
+  // };
+
+  // 🟢 MOCK
+  await delay(900);
+  return MOCK_SCAN_RESULT;
+}
+
+/**
+ * API 3 — Get Medicine Details after scan
+ * Same endpoint as Browse API 4 — reused here
+ * Triggered: after medicine is identified, auto-fetches full info
+ * Expected:  ~0.8 – 1.2 sec
+ */
+export { getMedicineDetails as getScanMedicineDetails };
+
+/**
+ * API 4 — Save Scanned Medicine (optional)
+ * Triggered: when user taps "Save Medicine" from scanner actions
+ * Expected:  ~0.3 – 1.2 sec
+ * Same endpoint as Browse API 5 — reused here
+ */
+export { saveMedicine as saveScannedMedicine };
+
+/**
+ * API 5 — Get Scan History
+ * Triggered: when user taps the history icon in scanner header
+ * Expected:  ~0.5 – 1.0 sec
+ * Params:    page (number), limit (number)
+ */
+export async function getScanHistory(page = 1, limit = 10): Promise<ScanHistoryItem[]> {
+  // 🔴 REAL
+  // const res = await fetch(`${BASE_URL}/api/medicine-scanner/history?page=${page}&limit=${limit}`);
+  // return res.json();
+
+  // 🟢 MOCK
+  await delay(600);
+  return MOCK_SCAN_HISTORY.slice((page - 1) * limit, page * limit);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// INTERACTION CHECKER APIs
+// Total: 7 APIs  |  Avg total time: varies (~300ms – 1.5s per call)
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * API 1 — Search Medicines for Interaction Checker
+ * Triggered: on each keystroke in medicine search box (~300ms debounce)
+ * Expected:  ~300ms
+ * Same endpoint as Browse API 2 — reused with a different return type
+ */
+export async function searchMedicinesForInteraction(q: string): Promise<MedicineSearchResult[]> {
+  // 🔴 REAL
+  // const res = await fetch(`${BASE_URL}/api/medicines/search?q=${encodeURIComponent(q)}`);
+  // return res.json();
+
+  // 🟢 MOCK
+  await delay(300);
+  const query = q.toLowerCase();
+  return MOCK_SEARCH_RESULTS.filter((m) => m.name.toLowerCase().includes(query));
+}
+
+/**
+ * API 2 — Check Interactions
+ * Triggered: when user taps "Analyze Interactions"
+ * Expected:  ~1.5 sec  (processing + analysis)
+ * Body:      { medicine_ids: string[] }
+ */
+export async function checkInteractions(medicineIds: string[]): Promise<InteractionResult> {
+  // 🔴 REAL
+  // const res = await fetch(`${BASE_URL}/api/interactions/check`, {
+  //   method: 'POST',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify({ medicine_ids: medicineIds }),
+  // });
+  // return res.json();
+
+  // 🟢 MOCK
+  await delay(1500);
+  const names = medicineIds.map((id) => MOCK_SEARCH_RESULTS.find((m) => m.id === id)?.name ?? id);
+  return {
+    severity: 'moderate',
+    medicines: names,
+    summary: `${names[0]} may increase the risk of stomach irritation when combined with ${names[1] ?? 'the other medicine'}.`,
+    recommendation: 'Use with caution and take after food. Consult your doctor.',
+    description:
+      'Taking these medicines together may increase the risk of gastrointestinal discomfort. The combination can irritate the stomach lining and amplify this effect.',
+    symptoms: ['Stomach pain', 'Acid reflux', 'Nausea'],
+    recommendations: ['Take after food', 'Drink plenty of water', 'Consult doctor if symptoms persist'],
+  };
+}
+
+/**
+ * API 3 — Get Interaction Details
+ * Triggered: when user taps "View Details" from results screen
+ * Expected:  ~400ms
+ * Params:    interaction_id (string)
+ */
+export async function getInteractionDetails(interactionId: string): Promise<InteractionResult | null> {
+  // 🔴 REAL
+  // const res = await fetch(`${BASE_URL}/api/interactions/${interactionId}`);
+  // if (!res.ok) return null;
+  // return res.json();
+
+  // 🟢 MOCK
+  await delay(400);
+  return {
+    severity: 'moderate',
+    medicines: ['Metformin 500mg', 'Aspirin 75mg'],
+    summary: 'Aspirin may increase the risk of stomach irritation when combined with Metformin.',
+    recommendation: 'Use with caution and take after food. Consult your doctor.',
+    description:
+      'Taking these medicines together may increase the risk of gastrointestinal discomfort. Aspirin can irritate the stomach lining, and combining it with Metformin may amplify this effect.',
+    symptoms: ['Stomach pain', 'Acid reflux', 'Nausea'],
+    recommendations: ['Take after food', 'Drink plenty of water', 'Consult doctor if symptoms persist'],
+  };
+}
+
+/**
+ * API 4 — Save Interaction Report
+ * Triggered: when user taps "Save This Check"
+ * Expected:  ~300ms
+ * Body:      { medicine_ids: string[] }
+ */
+export async function saveInteractionReport(
+  medicineIds: string[],
+): Promise<{ success: boolean; message: string }> {
+  // 🔴 REAL
+  // const res = await fetch(`${BASE_URL}/api/interactions/save`, {
+  //   method: 'POST',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify({ medicine_ids: medicineIds }),
+  // });
+  // return res.json();
+
+  // 🟢 MOCK
+  await delay(350);
+  return { success: true, message: 'Interaction report saved' };
+}
+
+/**
+ * API 5 — Get Interaction History
+ * Triggered: when user opens the history modal
+ * Expected:  ~400ms
+ */
+export async function getInteractionHistory(): Promise<InteractionHistoryItem[]> {
+  // 🔴 REAL
+  // const res = await fetch(`${BASE_URL}/api/interactions/history`);
+  // return res.json();
+
+  // 🟢 MOCK
+  await delay(400);
+  return MOCK_INTERACTION_HISTORY;
+}
+
+/**
+ * API 6 — Delete Interaction Report
+ * Triggered: when user deletes a history item
+ * Expected:  ~300ms
+ * Params:    report_id (string)
+ */
+export async function deleteInteractionReport(reportId: string): Promise<{ success: boolean; message: string }> {
+  // 🔴 REAL
+  // const res = await fetch(`${BASE_URL}/api/interactions/history/${reportId}`, { method: 'DELETE' });
+  // return res.json();
+
+  // 🟢 MOCK
+  await delay(300);
+  return { success: true, message: 'Report deleted' };
+}
+
+/**
+ * API 7 — AI Interaction Summary (optional)
+ * Triggered: optionally when user requests an AI explanation
+ * Expected:  ~1 sec
+ * Body:      { medicine_ids: string[] }
+ */
+export async function getAiInteractionSummary(medicineIds: string[]): Promise<{ summary: string }> {
+  // 🔴 REAL
+  // const res = await fetch(`${BASE_URL}/api/interactions/ai-summary`, {
+  //   method: 'POST',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify({ medicine_ids: medicineIds }),
+  // });
+  // return res.json();
+
+  // 🟢 MOCK
+  await delay(1000);
+  return {
+    summary:
+      'Based on the selected medicines, there is a moderate risk of gastrointestinal discomfort. It is advisable to take these medicines after food and monitor for any unusual symptoms. Consult your physician before making any changes.',
+  };
+}

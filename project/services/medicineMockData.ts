@@ -1,0 +1,207 @@
+/**
+ * medicineMockData.ts
+ * ─────────────────────────────────────────────────────
+ * Centralized mock data used by medicineTabApi.ts
+ * Replace / remove once real APIs are integrated.
+ * ─────────────────────────────────────────────────────
+ */
+
+import type {
+  Category,
+  Medicine,
+  Reminder,
+  ScanHistoryItem,
+  InteractionResult,
+} from './medicineTabApi';
+
+export const MOCK_CATEGORIES: Category[] = [
+  { id: 'diabetes', name: 'Diabetes', icon: 'fitness-outline', color: '#3B82F6' },
+  { id: 'blood_pressure', name: 'Blood Pressure', icon: 'heart-outline', color: '#EF4444' },
+  { id: 'vitamins', name: 'Vitamins', icon: 'sunny-outline', color: '#F59E0B' },
+  { id: 'heart_care', name: 'Heart Care', icon: 'pulse-outline', color: '#EC4899' },
+  { id: 'thyroid', name: 'Thyroid', icon: 'body-outline', color: '#8B5CF6' },
+  { id: 'pain_relief', name: 'Pain Relief', icon: 'bandage-outline', color: '#10B981' },
+];
+
+export const MOCK_MEDICINES: Medicine[] = [
+  {
+    id: '1',
+    name: 'Metformin 500mg',
+    type: 'Tablet',
+    category: 'Diabetes',
+    uses: 'Used to control high blood sugar in type 2 diabetes.',
+    dosage: 'As prescribed by doctor',
+    sideEffects: ['Nausea', 'Stomach discomfort', 'Diarrhea'],
+    prescriptionType: 'Prescription',
+    isSaved: false,
+  },
+  {
+    id: '2',
+    name: 'Metformin 850mg',
+    type: 'Tablet',
+    category: 'Diabetes',
+    uses: 'Higher dose for type 2 diabetes management.',
+    dosage: 'As prescribed by doctor',
+    sideEffects: ['Nausea', 'Loss of appetite'],
+    prescriptionType: 'Prescription',
+    isSaved: false,
+  },
+  {
+    id: '3',
+    name: 'Aspirin 75mg',
+    type: 'Tablet',
+    category: 'Heart Care',
+    uses: 'Blood thinner, reduces risk of heart attack and stroke.',
+    dosage: '75mg once daily',
+    sideEffects: ['Stomach upset', 'Heartburn'],
+    prescriptionType: 'OTC',
+    isSaved: true,
+  },
+  {
+    id: '4',
+    name: 'Vitamin D3',
+    type: 'Tablet',
+    category: 'Vitamins',
+    uses: 'Maintains bone health and immune system.',
+    dosage: '1 tablet daily',
+    sideEffects: ['Nausea (if overdosed)'],
+    prescriptionType: 'OTC',
+    isSaved: false,
+  },
+  {
+    id: '5',
+    name: 'Paracetamol 500mg',
+    type: 'Tablet',
+    category: 'Pain Relief',
+    uses: 'Relieves mild to moderate pain and fever.',
+    dosage: '500mg every 4–6 hours as needed',
+    sideEffects: ['Rare liver issues if overdosed'],
+    prescriptionType: 'OTC',
+    isSaved: false,
+  },
+  {
+    id: '6',
+    name: 'Glimepiride 1mg',
+    type: 'Tablet',
+    category: 'Diabetes',
+    uses: 'Stimulates insulin release in type 2 diabetes.',
+    dosage: 'As prescribed',
+    sideEffects: ['Hypoglycaemia', 'Weight gain'],
+    prescriptionType: 'Prescription',
+    isSaved: false,
+  },
+  {
+    id: '7',
+    name: 'Amlodipine 5mg',
+    type: 'Tablet',
+    category: 'Blood Pressure',
+    uses: 'Lowers high blood pressure and treats angina.',
+    dosage: '5mg once daily',
+    sideEffects: ['Flushing', 'Swelling in ankles'],
+    prescriptionType: 'Prescription',
+    isSaved: false,
+  },
+  {
+    id: '8',
+    name: 'Levothyroxine 50mcg',
+    type: 'Tablet',
+    category: 'Thyroid',
+    uses: 'Treats hypothyroidism.',
+    dosage: 'Once daily on empty stomach',
+    sideEffects: ['Palpitations', 'Weight loss if overdosed'],
+    prescriptionType: 'Prescription',
+    isSaved: false,
+  },
+];
+
+export const MOCK_REMINDERS: Reminder[] = [
+  {
+    id: 'rem1',
+    medicineId: '1',
+    medicineName: 'Metformin 500mg',
+    medicineType: 'Tablet',
+    time: '08:00 AM',
+    frequency: 'daily',
+    whenToTake: 'after_food',
+    status: 'upcoming',
+    createdAt: '2026-06-01T08:00:00Z',
+  },
+  {
+    id: 'rem2',
+    medicineId: '4',
+    medicineName: 'Vitamin D3',
+    medicineType: 'Tablet',
+    time: '08:00 PM',
+    frequency: 'daily',
+    whenToTake: 'after_food',
+    status: 'upcoming',
+    createdAt: '2026-06-01T08:00:00Z',
+  },
+  {
+    id: 'rem3',
+    medicineId: '3',
+    medicineName: 'Aspirin 75mg',
+    medicineType: 'Tablet',
+    time: '09:00 AM',
+    frequency: 'daily',
+    whenToTake: 'after_food',
+    status: 'taken',
+    createdAt: '2026-06-01T09:00:00Z',
+  },
+  {
+    id: 'rem4',
+    medicineId: '5',
+    medicineName: 'Paracetamol 500mg',
+    medicineType: 'Tablet',
+    time: '02:00 PM',
+    frequency: 'daily',
+    whenToTake: 'with_food',
+    status: 'missed',
+    createdAt: '2026-06-01T14:00:00Z',
+  },
+];
+
+export const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
+  { scanId: '101', medicineName: 'Metformin 500mg', medicineType: 'Tablet', scannedAt: '2026-06-02T10:30:00Z' },
+  { scanId: '102', medicineName: 'Aspirin 75mg', medicineType: 'Tablet', scannedAt: '2026-06-01T20:15:00Z' },
+  { scanId: '103', medicineName: 'Paracetamol 500mg', medicineType: 'Tablet', scannedAt: '2026-05-30T07:45:00Z' },
+];
+
+export const MOCK_INTERACTIONS: InteractionResult[] = [
+  {
+    interactionId: 'int_101',
+    medicines: [
+      { id: '1', name: 'Metformin 500mg', type: 'Tablet' },
+      { id: '3', name: 'Aspirin 75mg', type: 'Tablet' },
+    ],
+    severity: 'moderate',
+    summary: 'Aspirin may increase risk of stomach irritation when combined with Metformin.',
+    recommendation: 'Use with caution and take after food. Consult your doctor.',
+    symptoms: ['Stomach pain', 'Acid reflux', 'Nausea'],
+    checkedAt: '2026-06-02T10:30:00Z',
+  },
+  {
+    interactionId: 'int_102',
+    medicines: [
+      { id: '5', name: 'Paracetamol 500mg', type: 'Tablet' },
+      { id: '6', name: 'Ibuprofen 400mg', type: 'Tablet' },
+    ],
+    severity: 'low',
+    summary: 'Minor risk of liver strain when both are taken together.',
+    recommendation: 'Avoid prolonged combined use.',
+    symptoms: ['Mild nausea'],
+    checkedAt: '2026-05-30T19:45:00Z',
+  },
+  {
+    interactionId: 'int_103',
+    medicines: [
+      { id: '7', name: 'Amoxicillin 500mg', type: 'Capsule' },
+      { id: '4', name: 'Vitamin D3', type: 'Tablet' },
+    ],
+    severity: 'none',
+    summary: 'No significant interaction found between these medicines.',
+    recommendation: 'Safe to take together. Follow prescribed dosages.',
+    symptoms: [],
+    checkedAt: '2026-05-28T08:20:00Z',
+  },
+];
