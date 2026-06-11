@@ -406,3 +406,27 @@ export async function getAiInteractionSummary(medicineIds: string[]): Promise<{ 
       'Based on the selected medicines, there is a moderate risk of gastrointestinal discomfort. It is recommended to take these medicines after food and consult your physician before continuing.',
   };
 }
+
+// ═══════════════════════════════════════════════════════════════
+// MY MEDICINES (SAVED) APIS
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * API – Get Saved Medicines
+ * GET /api/user/medicines
+ * Expected time: ~0.5 – 1.0 s
+ */
+export async function getSavedMedicines(): Promise<Medicine[]> {
+  await delay(600);
+  return MOCK_MEDICINES.filter((m) => m.isSaved || ['3', '1'].includes(m.id));
+}
+
+/**
+ * API – Remove Saved Medicine
+ * DELETE /api/user/medicines/{medicine_id}
+ * Expected time: ~0.3 – 0.6 s
+ */
+export async function removeSavedMedicine(medicineId: string): Promise<{ success: boolean }> {
+  await delay(400);
+  return { success: true };
+}

@@ -9,6 +9,7 @@ import { HomeHeader }      from "@/components/home/HomeHeader";
 import { HealthScoreCard } from "@/components/home/Healthscorecard";
 import { FamilyHealthCard } from "@/components/home/Familyhealthcard";
 import { RecentReports }   from "@/components/home/RecentReports";
+import { AskAIButton } from "@/components/ai/AskAIButton";
 
 // ── MOCK data — delete entire block when real API is ready ────────────────────
 // 🔴 REAL: remove MOCK_SCORE; derive all values from reports[0] (see REAL block below)
@@ -24,12 +25,12 @@ const MOCK_SCORE = {
 
 export default function Home() {
   // 🔴 REAL: delete these two lines and uncomment the REAL block below
-  const { data: reports = [] } = useReports();
+  const { reports } = useReports();
   const hasReports = reports.length > 0;  // 🟢 MOCK: empty until upload adds to list
 
   // 🔴 REAL: uncomment this block when API is ready
   /*
-  const { data: reports = [] } = useReports();
+  const { reports } = useReports();
   const latest     = reports[0];
   const hasReports = reports.length > 0;
 
@@ -75,7 +76,7 @@ export default function Home() {
 
         <Button
           title="+ Upload New Report"
-          onPress={() => router.push("/upload")}
+          onPress={() => router.push('/upload')}
           style={styles.uploadBtn}
         />
 

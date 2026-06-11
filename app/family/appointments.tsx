@@ -63,7 +63,7 @@ export default function MemberAppointmentsScreen() {
         title="Appointments"
         onBack={() => router.back()}
         rightIcon="add-circle-outline"
-        onRight={() => Alert.alert('Book Appointment', 'Booking flow coming soon')}
+        onRight={() => router.push({ pathname: '/family/appointments/book', params: { id, name } } as any)}
       />
 
       {/* ── Tabs ───────────────────────────────────────── */}
@@ -97,7 +97,7 @@ export default function MemberAppointmentsScreen() {
             {tab === 'Upcoming' && (
               <Pressable
                 style={styles.bookBtn}
-                onPress={() => Alert.alert('Book Appointment', 'Booking flow coming soon')}
+                onPress={() => router.push({ pathname: '/family/appointments/book', params: { id, name } } as any)}
               >
                 <Text style={styles.bookTxt}>+ Book Appointment</Text>
               </Pressable>
@@ -150,7 +150,7 @@ export default function MemberAppointmentsScreen() {
                 <View style={styles.actionRow}>
                   <Pressable
                     style={styles.actionBtn}
-                    onPress={() => Alert.alert('Reschedule', 'Reschedule flow coming soon')}
+                    onPress={() => router.push({ pathname: '/family/appointments/book', params: { id, name } } as any)}
                   >
                     <Ionicons name="calendar-outline" size={14} color={Colors.primary} />
                     <Text style={styles.actionTxt}>Reschedule</Text>
@@ -180,7 +180,7 @@ export default function MemberAppointmentsScreen() {
         {tab === 'Upcoming' && shown.length > 0 && (
           <Pressable
             style={styles.addRow}
-            onPress={() => Alert.alert('Book Appointment', 'Booking flow coming soon')}
+            onPress={() => router.push({ pathname: '/family/appointments/book', params: { id, name } } as any)}
           >
             <Ionicons name="add-circle-outline" size={18} color={Colors.primary} />
             <Text style={styles.addTxt}>Book new appointment</Text>

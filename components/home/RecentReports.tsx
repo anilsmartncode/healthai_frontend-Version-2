@@ -3,14 +3,10 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Radius } from "@/constants/Colors";
 import { useLang } from "@/context/Languagecontext";
-import type { Report } from "@/types";
+import type { ReportListItem } from "@/services/reportsApi";
 
-// ── mock ReportItem inline so the file is self-contained ──
-// Replace with your real <ReportItem /> import when ready
-function ReportRow({ report }: { report: Report }) {
-  const statusColor =
-    (report as any).status === "normal" ? "#16a34a" :
-    (report as any).status === "attention" ? "#F97316" : "#6B7280";
+function ReportRow({ report }: { report: ReportListItem }) {
+  const statusColor = report.status === "good" ? "#16a34a" : "#F97316";
 
   return (
     <View style={reportStyles.row}>
@@ -18,12 +14,12 @@ function ReportRow({ report }: { report: Report }) {
         <Ionicons name="document-text-outline" size={20} color="#7C3AED" />
       </View>
       <View style={reportStyles.info}>
-        <Text style={reportStyles.name} numberOfLines={1}>{(report as any).name ?? "Report"}</Text>
-        <Text style={reportStyles.date} numberOfLines={1}>{(report as any).date ?? ""}</Text>
+        <Text style={reportStyles.name} numberOfLines={1}>{report.title}</Text>
+        <Text style={reportStyles.date} numberOfLines={1}>{report.date}</Text>
       </View>
       <View style={[reportStyles.badge, { backgroundColor: statusColor + "18" }]}>
         <Text style={[reportStyles.badgeText, { color: statusColor }]}>
-          {(report as any).status ?? "—"}
+          {report.healthLabel}
         </Text>
       </View>
     </View>
@@ -108,7 +104,7 @@ const emptyStyles = StyleSheet.create({
 
 // ── Main export ──────────────────────────────────────
 interface Props {
-  reports: Report[];
+  reports: ReportListItem[];
 }
 
 export function RecentReports({ reports }: Props) {
@@ -139,7 +135,7 @@ export function RecentReports({ reports }: Props) {
         reports.slice(0, 3).map((r) => (
           <Pressable
             key={r.id}
-            onPress={() => router.push("/analysis")}
+            onPress={() => router.push({ pathname: '/report-detail', params: { id: r.id } })}
             style={({ pressed }) => pressed && styles.pressed}
           >
             <ReportRow report={r} />

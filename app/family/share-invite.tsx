@@ -16,6 +16,7 @@ export default function ShareInviteScreen() {
 
   const [inviteUrl,  setInviteUrl]  = useState('');
   const [inviteCode, setInviteCode] = useState('');
+  const [inviteId,   setInviteId]   = useState('');   // ← fix: store so permissions gets right member
   const [loading,    setLoading]    = useState(true);
   const [copied,     setCopied]     = useState(false);
 
@@ -24,8 +25,11 @@ export default function ShareInviteScreen() {
       relationship:  params.relationship  ?? 'Family',
       full_name:     params.full_name     ?? '',
       date_of_birth: params.date_of_birth ?? '',
-    }).then((r) => { setInviteUrl(r.invite_url); setInviteCode(r.invite_code); })
-      .finally(() => setLoading(false));
+    }).then((r) => {
+      setInviteUrl(r.invite_url);
+      setInviteCode(r.invite_code);
+      setInviteId(r.invite_id);   // ← fix: capture invite_id from API response
+    }).finally(() => setLoading(false));
   }, []);
 
   const handleCopy = () => {
@@ -73,7 +77,7 @@ export default function ShareInviteScreen() {
               ))}
             </View>
 
-            <Pressable onPress={() => router.push('/family/permissions')} style={styles.nextLink}>
+            <Pressable onPress={() => router.push({ pathname: '/family/permissions', params: { member_id: inviteId, name: params.full_name ?? 'Member' } })} style={styles.nextLink}>
               <Text style={styles.nextTxt}>Next: Set Permissions →</Text>
             </Pressable>
           </>

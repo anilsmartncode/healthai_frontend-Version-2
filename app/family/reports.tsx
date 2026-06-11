@@ -97,7 +97,7 @@ export default function MemberReportsScreen() {
         title="Reports"
         onBack={() => router.back()}
         rightIcon="cloud-upload-outline"
-        onRight={() => Alert.alert('Upload', 'Upload report feature coming soon')}
+        onRight={() => router.push({ pathname: '/upload', params: { context: 'family', memberId: id, memberName: name } } as any)}
       />
 
       {/* ── Filter chips ───────────────────────────────────── */}
@@ -205,7 +205,7 @@ export default function MemberReportsScreen() {
 
               <Pressable
                 style={styles.downloadBtn}
-                onPress={() => Alert.alert('Download', 'Download feature coming soon')}
+                onPress={() => { /* ← plug in your API: GET /api/reports/:id/download */ Alert.alert('Download', `Downloading ${selected?.title ?? 'report'}…`); }}
               >
                 <Ionicons name="download-outline" size={18} color="#fff" />
                 <Text style={styles.downloadTxt}>Download Report</Text>

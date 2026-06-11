@@ -119,6 +119,22 @@ export default function CheckInteractionsScreen() {
   const [isChecking, setIsChecking] = useState(false);
   const [result, setResult] = useState<InteractionResult | null>(null);
   const [historyVisible, setHistoryVisible] = useState(false);
+  const [selectedHistoryItem, setSelectedHistoryItem] = useState<HistoryItem | null>(null);
+
+  const handleSelectHistoryItem = (item: HistoryItem) => {
+    setSelectedHistoryItem(item);
+    // Show history detail as a result
+    setResult({
+      severity: item.severity,
+      medicines: item.medicines,
+      summary: `Previous check for ${item.medicines.join(' + ')}`,
+      recommendation: 'Refer to the original interaction check for full details.',
+      description: `This interaction was checked on ${item.date}.`,
+      symptoms: [],
+      recommendations: ['Consult your doctor for the latest guidance.'],
+    });
+    setCurrentView('result');
+  };
 
   // Filter search results based on query
   // ← plug in your API: replace with real search debounce + API call
@@ -183,7 +199,7 @@ export default function CheckInteractionsScreen() {
             <Text style={styles.ghostBtnText}>Check Another</Text>
           </Pressable>
         </View>
-        <HistoryModal visible={historyVisible} onClose={() => setHistoryVisible(false)} />
+        <HistoryModal visible={historyVisible} onClose={() => setHistoryVisible(false)} onSelectItem={handleSelectHistoryItem} />
       </SafeAreaView>
     );
   }
@@ -240,11 +256,16 @@ export default function CheckInteractionsScreen() {
               <Text style={styles.primaryBtnText}>Save This Check</Text>
             </Pressable>
           </View>
+          <AskAIButton
+            variant="banner"
+            label="Ask AI about these interactions"
+            prefill={`My medicines have ${result?.severity ?? 'some'} interactions. Can you explain what I should watch for and whether I need to talk to my doctor?`}
+          />
           <Text style={styles.disclaimer}>
             ⚠ Always consult your healthcare provider before making changes to your medication.
           </Text>
         </ScrollView>
-        <HistoryModal visible={historyVisible} onClose={() => setHistoryVisible(false)} />
+        <HistoryModal visible={historyVisible} onClose={() => setHistoryVisible(false)} onSelectItem={handleSelectHistoryItem} />
       </SafeAreaView>
     );
   }
@@ -290,11 +311,16 @@ export default function CheckInteractionsScreen() {
             </Pressable>
           </View>
 
+          <AskAIButton
+            variant="banner"
+            label="Ask AI about these interactions"
+            prefill={`My medicines have ${result?.severity ?? 'some'} interactions. Can you explain what I should watch for and whether I need to talk to my doctor?`}
+          />
           <Text style={styles.disclaimer}>
             ⚠ Always consult your healthcare provider before making changes to your medication.
           </Text>
         </ScrollView>
-        <HistoryModal visible={historyVisible} onClose={() => setHistoryVisible(false)} />
+        <HistoryModal visible={historyVisible} onClose={() => setHistoryVisible(false)} onSelectItem={handleSelectHistoryItem} />
       </SafeAreaView>
     );
   }
@@ -450,7 +476,7 @@ export default function CheckInteractionsScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <HistoryModal visible={historyVisible} onClose={() => setHistoryVisible(false)} />
+      <HistoryModal visible={historyVisible} onClose={() => setHistoryVisible(false)} onSelectItem={handleSelectHistoryItem} />
     </SafeAreaView>
   );
 }
@@ -479,7 +505,7 @@ function Header({
 }
 
 // ─── HISTORY MODAL ────────────────────────────────────────────────────────────
-function HistoryModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+function HistoryModal({ visible, onClose, onSelectItem }: { visible: boolean; onClose: () => void; onSelectItem: (item: HistoryItem) => void }) {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }} edges={['top', 'bottom']}>
@@ -501,7 +527,7 @@ function HistoryModal({ visible, onClose }: { visible: boolean; onClose: () => v
             return (
               <Pressable
                 style={styles.historyItem}
-                onPress={() => Alert.alert('History', `View detail for ${item.medicines.join(' + ')}`)}
+                onPress={() => { onClose(); onSelectItem(item); }}
               >
                 <View style={{ flex: 1, gap: 3 }}>
                   <Text style={styles.historyMeds} numberOfLines={1}>

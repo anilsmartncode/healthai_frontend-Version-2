@@ -31,6 +31,13 @@ export interface MedicalTerm {
   simple_meaning: string;
 }
 
+/** A medicine detected in the AI analysis of a report */
+export interface DetectedMedicine {
+  name: string;
+  reason: string; // e.g. "Recommended for high LDL"
+  type: 'recommended' | 'mentioned' | 'avoid';
+}
+
 export interface ApiSummary {
   // Original fields
   overall_health?: string;
@@ -72,6 +79,8 @@ export interface ApiSummary {
   general_medicine_guidance?: string[];
   emergency_warning_signs?: string[];
   medical_terms_translated?: MedicalTerm[];
+  /** Medicines the AI detected / recommended — new field */
+  detected_medicines?: DetectedMedicine[];
 }
 
 export interface ApiAnalyzeResponse {
@@ -114,6 +123,18 @@ export interface Report {
   status: 'good' | 'attention';
 }
 
+/** Canonical category slugs used across reports module */
+export type ReportCategory =
+  | 'Blood Test'
+  | 'CBC'
+  | 'Thyroid'
+  | 'Lipid'
+  | 'Diabetes'
+  | 'Vitamins'
+  | 'Liver'
+  | 'Kidney'
+  | 'Others';
+
 // Map API response → internal LabValue[]
 export function mapApiLabValues(raw: ApiLabValue[]): LabValue[] {
   return raw.map((item) => ({
@@ -138,4 +159,18 @@ export function mapApiLabValues(raw: ApiLabValue[]): LabValue[] {
     medicineGuidance: item['Medicine Guidance'],
     doctorAdvice: item['Doctor Advice'],
   }));
+}
+
+/** Derive a ReportCategory from the raw report_type string */
+export function deriveCategory(reportType: string): ReportCategory {
+  const t = reportType.toLowerCase();
+  if (t.includes('cbc') || t.includes('blood count')) return 'CBC';
+  if (t.includes('thyroid') || t.includes('tsh') || t.includes('t3') || t.includes('t4')) return 'Thyroid';
+  if (t.includes('lipid') || t.includes('cholesterol') || t.includes('ldl') || t.includes('hdl')) return 'Lipid';
+  if (t.includes('hba1c') || t.includes('glucose') || t.includes('diabetes') || t.includes('sugar')) return 'Diabetes';
+  if (t.includes('vitamin') || t.includes('vit')) return 'Vitamins';
+  if (t.includes('liver') || t.includes('sgpt') || t.includes('sgot') || t.includes('alt') || t.includes('ast')) return 'Liver';
+  if (t.includes('kidney') || t.includes('creatinine') || t.includes('urea') || t.includes('renal')) return 'Kidney';
+  if (t.includes('blood')) return 'Blood Test';
+  return 'Others';
 }

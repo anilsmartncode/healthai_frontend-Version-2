@@ -9,5 +9,7 @@ export const ENDPOINTS = {
   verifyOtp:     `${BASE_URL}/auth/verify-otp`,
 
   // Reports
-  analyzeReport: `${BASE_URL}/analyze-report`,
+  analyzeReport:    `${BASE_URL}/analyze-report`,
+  listReports:      `${BASE_URL}/reports`,
+  scorecardReport:  `${BASE_URL}/reports/scorecard`,
 };

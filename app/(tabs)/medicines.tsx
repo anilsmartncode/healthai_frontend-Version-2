@@ -24,6 +24,7 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,6 +41,15 @@ import {
   type Medicine,
   type Reminder,
 } from '@/services/Medicinesapi';
+
+// ─── LAYOUT CONSTANTS ────────────────────────────────────────────────────────
+const SCREEN_WIDTH   = Dimensions.get('window').width;
+const H_PADDING      = 16;  // horizontal page padding
+const CAT_COLUMNS    = 3;
+const CAT_GAP        = 10;
+// card width = available width divided evenly, minus gaps between columns
+const CAT_CARD_WIDTH =
+  (SCREEN_WIDTH - H_PADDING * 2 - CAT_GAP * (CAT_COLUMNS - 1)) / CAT_COLUMNS;
 
 // ─── LOCAL TYPES ─────────────────────────────────────────────────────────────
 interface TodayBanner {
@@ -88,8 +98,8 @@ function MedicineRow({
         <Ionicons name="medical-outline" size={18} color={Colors.primary} />
       </View>
       <View style={styles.medInfo}>
-        <Text style={styles.medName}>{med.name}</Text>
-        <Text style={styles.medSub}>
+        <Text style={styles.medName} numberOfLines={1}>{med.name}</Text>
+        <Text style={styles.medSub} numberOfLines={1}>
           {med.form} · {med.category}
         </Text>
       </View>
@@ -164,28 +174,16 @@ export default function Medicines() {
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleCategoryPress = (cat: Category) => {
-    // Navigate to browse screen with category pre-selected
     router.push({
       pathname: '/medicines/browse',
       params: { categoryId: cat.id, categoryName: cat.name },
     });
   };
 
-  const handleViewReminder = () => {
-    router.push('/medicines/reminders');
-  };
-
-  const handleScanMedicine = () => {
-    router.push('/medicines/scanner');
-  };
-
-  const handleCheckInteractions = () => {
-    router.push('/medicines/check-interactions');
-  };
-
-  const handleBrowseAll = () => {
-    router.push('/medicines/browse');
-  };
+  const handleViewReminder     = () => router.push('/medicines/reminders');
+  const handleScanMedicine     = () => router.push('/medicines/scanner');
+  const handleCheckInteractions = () => router.push('/medicines/check-interactions');
+  const handleBrowseAll        = () => router.push('/medicines/browse');
 
   const handleSearch = () => {
     if (searchQ.trim()) {
@@ -197,7 +195,6 @@ export default function Medicines() {
   };
 
   const handleMedicinePress = (med: Medicine) => {
-    // Opens browse screen with the medicine pre-selected
     router.push({
       pathname: '/medicines/browse',
       params: { medicineId: med.id },
@@ -214,9 +211,7 @@ export default function Medicines() {
         <View style={styles.topBarRow}>
           <Text style={styles.topBarTitle}>All Medicines</Text>
           <View style={styles.topBarIcons}>
-            <Pressable
-              onPress={() => Alert.alert('Notifications', 'Open notifications')}
-            >
+            <Pressable onPress={() => router.push('/notifications')}>
               <Ionicons name="notifications-outline" size={24} color="#64748B" />
             </Pressable>
             <Pressable onPress={handleScanMedicine}>
@@ -262,14 +257,30 @@ export default function Medicines() {
                 <Text style={styles.viewAll}>View All</Text>
               </Pressable>
             </View>
+            {/* Row-based grid — avoids flexWrap % width collision */}
             <View style={styles.catGrid}>
-              {categories.map((cat) => (
-                <CategoryCard
-                  key={cat.id}
-                  item={cat}
-                  onPress={() => handleCategoryPress(cat)}
-                />
-              ))}
+              {Array.from(
+                { length: Math.ceil(categories.length / CAT_COLUMNS) },
+                (_, rowIdx) => (
+                  <View key={rowIdx} style={styles.catRow}>
+                    {categories
+                      .slice(rowIdx * CAT_COLUMNS, rowIdx * CAT_COLUMNS + CAT_COLUMNS)
+                      .map((cat) => (
+                        <CategoryCard
+                          key={cat.id}
+                          item={cat}
+                          onPress={() => handleCategoryPress(cat)}
+                        />
+                      ))}
+                    {/* Fill empty slots in last row so cards don't stretch */}
+                    {categories.slice(rowIdx * CAT_COLUMNS, rowIdx * CAT_COLUMNS + CAT_COLUMNS).length < CAT_COLUMNS &&
+                      Array.from(
+                        { length: CAT_COLUMNS - categories.slice(rowIdx * CAT_COLUMNS, rowIdx * CAT_COLUMNS + CAT_COLUMNS).length },
+                        (_, i) => <View key={`placeholder-${i}`} style={styles.catItemPlaceholder} />,
+                      )}
+                  </View>
+                ),
+              )}
             </View>
           </View>
 
@@ -308,16 +319,9 @@ export default function Medicines() {
               </Text>
             </Pressable>
 
-            <Pressable
-              style={styles.quickCard}
-              onPress={handleCheckInteractions}
-            >
+            <Pressable style={styles.quickCard} onPress={handleCheckInteractions}>
               <View style={[styles.quickIcon, { backgroundColor: '#FFF7ED' }]}>
-                <Ionicons
-                  name="git-compare-outline"
-                  size={20}
-                  color="#EA580C"
-                />
+                <Ionicons name="git-compare-outline" size={20} color="#EA580C" />
               </View>
               <Text style={styles.quickTitle}>Check Interactions</Text>
               <Text style={styles.quickSub}>
@@ -325,6 +329,21 @@ export default function Medicines() {
               </Text>
             </Pressable>
           </View>
+
+          {/* ── My Medicines shortcut ── */}
+          <Pressable
+            style={styles.myMedsBanner}
+            onPress={() => router.push('/medicines/my-medicines')}
+          >
+            <View style={styles.myMedsIcon}>
+              <Ionicons name="bookmark-outline" size={18} color="#2563EB" />
+            </View>
+            <View style={styles.myMedsText}>
+              <Text style={styles.myMedsTitle}>My Medicines</Text>
+              <Text style={styles.myMedsSub}>View all your saved medicines</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+          </Pressable>
 
           {/* ── Recently Viewed ── */}
           {recentlyViewed.length > 0 && (
@@ -356,12 +375,13 @@ export default function Medicines() {
 
 // ─── STYLES ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fff' },
+  safe:        { flex: 1, backgroundColor: '#fff' },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
+  // ── Top bar ──────────────────────────────────────────────────────────────
   topBar: {
     backgroundColor: '#fff',
-    paddingHorizontal: 16,
+    paddingHorizontal: H_PADDING,
     paddingTop: 10,
     paddingBottom: 12,
     borderBottomWidth: 0.5,
@@ -388,10 +408,12 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, fontSize: 13, color: '#0F172A', padding: 0 },
 
-  scroll: { flex: 1, backgroundColor: '#F8FAFC' },
+  // ── Scroll ───────────────────────────────────────────────────────────────
+  scroll:        { flex: 1, backgroundColor: '#F8FAFC' },
   scrollContent: { paddingTop: 16, paddingBottom: 16 },
 
-  section: { paddingHorizontal: 16 },
+  // ── Section wrapper ──────────────────────────────────────────────────────
+  section: { paddingHorizontal: H_PADDING },
   secHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -399,11 +421,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   secTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
-  viewAll: { fontSize: 13, fontWeight: '600', color: Colors.primary },
+  viewAll:  { fontSize: 13, fontWeight: '600', color: Colors.primary },
 
-  catGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  // ── Category grid — explicit row layout ──────────────────────────────────
+  catGrid: { gap: CAT_GAP },
+  catRow: {
+    flexDirection: 'row',
+    gap: CAT_GAP,
+  },
   catItem: {
-    width: '30.5%',
+    width: CAT_CARD_WIDTH,
     alignItems: 'center',
     gap: 6,
     backgroundColor: '#fff',
@@ -412,6 +439,10 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
     paddingVertical: 12,
     paddingHorizontal: 4,
+  },
+  // Invisible placeholder keeps last row cards left-aligned at correct width
+  catItemPlaceholder: {
+    width: CAT_CARD_WIDTH,
   },
   catIcon: {
     width: 44,
@@ -428,8 +459,9 @@ const styles = StyleSheet.create({
     lineHeight: 15,
   },
 
+  // ── Reminder banner ──────────────────────────────────────────────────────
   reminderBanner: {
-    marginHorizontal: 16,
+    marginHorizontal: H_PADDING,
     marginTop: 18,
     backgroundColor: Colors.primary,
     borderRadius: 16,
@@ -438,7 +470,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  reminderLeft: { flex: 1 },
+  reminderLeft:    { flex: 1, paddingRight: 12 },
   reminderEyebrow: {
     fontSize: 10,
     color: 'rgba(255,255,255,0.75)',
@@ -457,26 +489,23 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
     marginBottom: 10,
   },
-  dotRow: { flexDirection: 'row', gap: 5 },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.35)',
-  },
-  dotActive: { width: 18, backgroundColor: '#fff' },
+  dotRow:   { flexDirection: 'row', gap: 5 },
+  dot:      { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.35)' },
+  dotActive:{ width: 18, backgroundColor: '#fff' },
   reminderBtn: {
     backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 9,
+    flexShrink: 0,
   },
   reminderBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
+  // ── Quick action cards ────────────────────────────────────────────────────
   quickRow: {
     flexDirection: 'row',
     gap: 10,
-    marginHorizontal: 16,
+    marginHorizontal: H_PADDING,
     marginTop: 18,
   },
   quickCard: {
@@ -496,8 +525,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   quickTitle: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
-  quickSub: { fontSize: 11, color: '#94A3B8', lineHeight: 16 },
+  quickSub:   { fontSize: 11, color: '#94A3B8', lineHeight: 16 },
 
+  // ── My Medicines banner ───────────────────────────────────────────────────
+  myMedsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: 0.5,
+    borderColor: '#E2E8F0',
+    padding: 13,
+    marginHorizontal: H_PADDING,  // consistent with rest of page
+    marginTop: 10,
+  },
+  myMedsIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  myMedsText:  { flex: 1 },
+  myMedsTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  myMedsSub:   { fontSize: 12, color: '#94A3B8', marginTop: 1 },
+
+  // ── Recently viewed ───────────────────────────────────────────────────────
   medList: { gap: 8 },
   medRow: {
     flexDirection: 'row',
@@ -517,10 +573,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  medInfo: { flex: 1 },
-  medName: { fontSize: 14, fontWeight: '600', color: '#0F172A' },
-  medSub: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
-  medRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  medInfo:  { flex: 1, minWidth: 0 },   // minWidth:0 lets flex child truncate text
+  medName:  { fontSize: 14, fontWeight: '600', color: '#0F172A' },
+  medSub:   { fontSize: 12, color: '#94A3B8', marginTop: 2 },
+  medRight: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 0 },
   rxPill: {
     backgroundColor: '#FEE2E2',
     borderRadius: 99,

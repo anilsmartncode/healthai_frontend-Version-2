@@ -11,6 +11,7 @@ import { Colors } from '@/constants/Colors';
 import { FamilyTopBar }       from '@/components/family/FamilyTopBar';
 import { MemberProfileCard }  from '@/components/family/MemberProfileCard';
 import { useMemberProfile }   from '@/hooks/useFamily';
+import { AskAIButton } from '@/components/ai/AskAIButton';
 
 type SectionIcon = keyof typeof Ionicons.glyphMap;
 

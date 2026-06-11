@@ -114,7 +114,14 @@ function MedicineDetailModal({
       await saveMedicine(med.id);
       setSaved(true);
       onSave(med);
-      Alert.alert('Medicine Saved Successfully!', `${med.name} added to My Medicines.`);
+      Alert.alert(
+        '✓ Saved',
+        `${med.name} added to My Medicines.`,
+        [
+          { text: 'View My Medicines', onPress: () => router.push('/medicines/my-medicines') },
+          { text: 'OK', style: 'cancel' },
+        ],
+      );
     } catch {
       Alert.alert('Error', 'Could not save medicine. Please try again.');
     } finally {
@@ -197,7 +204,7 @@ function MedicineDetailModal({
             </View>
           )}
 
-          <Pressable onPress={() => Alert.alert('Full Info', 'View complete medicine information')}>
+          <Pressable onPress={() => { onClose(); router.push(`/medicine/${med.id}` as any); }}>
             <Text style={styles.viewMore}>View More</Text>
           </Pressable>
 
@@ -237,7 +244,7 @@ function MedicineDetailModal({
               {
                 icon: 'sparkles-outline',
                 label: 'Ask AI About Medicine',
-                onPress: () => Alert.alert('Ask AI', `Ask AI about ${med.name}`),
+                onPress: () => { onClose(); router.push('/(tabs)/ai'); },
               },
               {
                 icon: 'bookmark-outline',

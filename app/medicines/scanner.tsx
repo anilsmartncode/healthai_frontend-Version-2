@@ -127,13 +127,24 @@ export default function MedicineScannerScreen() {
   };
 
   const handleSaveMedicine = async () => {
+    if (!scanResult) return;
     // ← plug in your API: POST /api/user/medicines { medicine_id: scanResult.medicineId }
-    Alert.alert('Saved!', `${scanResult?.name} added to My Medicines.`);
+    await new Promise((r) => setTimeout(r, 400));
+    Alert.alert(
+      '✓ Saved',
+      `${scanResult.name} added to My Medicines.`,
+      [
+        { text: 'View My Medicines', onPress: () => router.push('/medicines/my-medicines') },
+        { text: 'OK', style: 'cancel' },
+      ],
+    );
   };
 
   const handleSetReminder = () => {
-    // ← plug in your API: router.push(`/medicines/reminders/new?id=${scanResult?.medicineId}`)
-    Alert.alert('Set Reminder', `Set a reminder for ${scanResult?.name}`);
+    router.push({
+      pathname: '/medicines/reminders/new',
+      params: { medicineId: scanResult?.medicineId, medicineName: scanResult?.name },
+    });
   };
 
   const handleCheckInteractions = () => {
@@ -141,8 +152,7 @@ export default function MedicineScannerScreen() {
   };
 
   const handleAskAI = () => {
-    // ← plug in your API: router.push(`/ai?context=medicine&id=${scanResult?.medicineId}`)
-    Alert.alert('Ask AI', `Ask AI about ${scanResult?.name}`);
+    router.push('/(tabs)/ai');
   };
 
   const handleReset = () => {
@@ -252,7 +262,7 @@ export default function MedicineScannerScreen() {
       </View>
 
       {/* View More */}
-      <Pressable onPress={() => Alert.alert('Full Info', 'Load full medicine information')}>
+      <Pressable onPress={() => detail && router.push(`/medicine/${detail.id}` as any)}>
         <Text style={styles.viewMore}>View More</Text>
       </Pressable>
 
@@ -346,7 +356,7 @@ export default function MedicineScannerScreen() {
             contentContainerStyle={{ padding: 16, gap: 10 }}
             ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
             renderItem={({ item }) => (
-              <Pressable style={styles.historyItem} onPress={() => { setHistoryVisible(false); Alert.alert(item.name, `View detail for ${item.name}`); }}>
+              <Pressable style={styles.historyItem} onPress={() => { setHistoryVisible(false); router.push(`/medicines/browse` as any); }}>
                 <View style={styles.historyIconWrap}>
                   <Ionicons name="medical-outline" size={18} color={Colors.primary} />
                 </View>

@@ -11,13 +11,13 @@ export default function Profile() {
   const { t } = useLang();
 
   const items = [
-    { icon: 'person-outline', label: t('account_info'), href: '/account' },
-    { icon: 'notifications-outline', label: t('notifications'), href: '/notifications' },
-    { icon: 'language-outline', label: t('language_pref'), href: '/(auth)/language' },
-    { icon: 'people-outline', label: t('family_health'), href: '/family' },
-    { icon: 'shield-checkmark-outline', label: t('legal_privacy'), href: '/account' },
-    { icon: 'help-circle-outline', label: t('help_support'), href: '/account' },
-    { icon: 'star-outline', label: t('rate_app'), href: '/account' },
+    { icon: 'person-outline',           label: t('account_info'),  href: '/account'          },
+    { icon: 'notifications-outline',    label: t('notifications'), href: '/notifications'    },
+    { icon: 'language-outline',         label: t('language_pref'), href: '/(auth)/language'  },
+    { icon: 'people-outline',           label: t('family_health'), href: '/family'           },
+    { icon: 'shield-checkmark-outline', label: t('legal_privacy'), href: '/account'          },
+    { icon: 'help-circle-outline',      label: t('help_support'),  href: '/account'          },
+    { icon: 'star-outline',             label: t('rate_app'),      href: '/account'          },
   ] as const;
 
   return (

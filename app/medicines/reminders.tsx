@@ -153,7 +153,10 @@ function EditReminderModal({ reminder, onSave, onDelete, onClose }: { reminder: 
           </View>
           <View style={styles.editRow}>
             <Text style={styles.editLabel}>Time</Text>
-            <Pressable style={styles.editPicker} onPress={() => Alert.alert('Time', 'Open time picker')}>
+            <Pressable style={styles.editPicker} onPress={() => {
+              // Time picker: integrate @react-native-community/datetimepicker
+              // For now shows current value; replace with DateTimePicker component
+            }}>
               <Ionicons name="time-outline" size={16} color={Colors.primary} />
               <Text style={styles.editPickerText}>{reminder.time}</Text>
             </Pressable>
@@ -234,7 +237,7 @@ export default function RemindersScreen() {
           <Ionicons name="chevron-back" size={22} color="#0F172A" />
         </Pressable>
         <Text style={styles.headerTitle}>Medicine Reminders</Text>
-        <Pressable onPress={() => Alert.alert('Add Reminder', 'Open add reminder flow')} hitSlop={8}>
+        <Pressable onPress={() => router.push('/medicines/reminders/new')} hitSlop={8}>
           <Ionicons name="add" size={26} color={Colors.primary} />
         </Pressable>
       </View>
@@ -282,7 +285,7 @@ export default function RemindersScreen() {
               </View>
             );
           })}
-          <Pressable style={styles.addReminderRow} onPress={() => Alert.alert('Add Reminder', 'Open add reminder')}>
+          <Pressable style={styles.addReminderRow} onPress={() => router.push('/medicines/reminders/new')}>
             <Ionicons name="add-circle-outline" size={20} color={Colors.primary} />
             <Text style={styles.addReminderText}>+ Add Reminder</Text>
           </Pressable>
