@@ -14,7 +14,6 @@ const OPTIONS = [
   { icon: 'mail-outline'           as const, label: 'Invite via Email',          sub: 'Send invitation on email',  bg: '#E8F0FF', color: '#007AFF', channel: 'email' },
   { icon: 'link-outline'           as const, label: 'Share Invite Link',         sub: 'Share link via any app',    bg: '#F0EAFF', color: '#8B5CF6', channel: 'link' },
   { icon: 'qr-code-outline'        as const, label: 'Share QR Code',             sub: 'Generate and share QR',    bg: '#FEF9E8', color: '#F59E0B', channel: 'qr' },
-  { icon: 'person-add-outline'     as const, label: 'Add Dependent Directly',    sub: 'Add member without invite', bg: '#FFE8E8', color: Colors.danger, channel: 'direct' },
 ];
 
 export default function InviteOptionsScreen() {
@@ -22,11 +21,7 @@ export default function InviteOptionsScreen() {
   const params = useLocalSearchParams();
 
   const handleOption = (channel: string) => {
-    if (channel === 'direct') {
-      router.push({ pathname: '/family/add-member' });
-    } else {
-      router.push({ pathname: '/family/share-invite', params: { ...params, channel } });
-    }
+    router.push({ pathname: '/family/share-invite', params: { ...params, channel } });
   };
 
   return (

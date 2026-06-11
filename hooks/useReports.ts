@@ -75,13 +75,32 @@ export function useReports() {
     return counts;
   }, [allReports]);
 
+  // Group filtered reports by month for SectionList ("June 2026", "May 2026"...)
+  const sections = useMemo(() => {
+    const groups = new Map<string, ReportListItem[]>();
+    filtered.forEach(r => {
+      const d = new Date(r.analyzedAt);
+      const title = isNaN(d.getTime())
+        ? 'Unknown'
+        : d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      if (!groups.has(title)) groups.set(title, []);
+      groups.get(title)!.push(r);
+    });
+    return Array.from(groups.entries()).map(([title, data]) => ({ title, data }));
+  }, [filtered]);
+
   const deleteReport = useCallback(async (id: string) => {
     await reportsApi.delete(id);
     setAllReports(prev => prev.filter(r => r.id !== id));
   }, []);
 
+  const [groupByMonth, setGroupByMonth] = useState(false);
+
   return {
     reports: filtered,
+    sections,
+    groupByMonth,
+    setGroupByMonth,
     allReports,
     loading,
     refreshing,

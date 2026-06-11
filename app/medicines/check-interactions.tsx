@@ -34,6 +34,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors, Radius, Spacing } from '@/constants/Colors';
+import { AskAIButton } from '@/components/ai/AskAIButton';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 type Severity = 'none' | 'low' | 'moderate' | 'high';

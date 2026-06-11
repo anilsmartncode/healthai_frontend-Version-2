@@ -47,7 +47,9 @@ export default function FamilyScreen() {
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       {/* Top bar */}
       <View style={styles.topBar}>
-        <View style={{ width: 32 }} />
+        <Pressable style={styles.iconBtn} onPress={() => router.back()}>
+          <Ionicons name="chevron-back" size={22} color={Colors.text} />
+        </Pressable>
         <Text style={styles.topTitle}>Family</Text>
         <Pressable style={styles.iconBtn} onPress={() => router.push('/notifications')}>
           <Ionicons name="notifications-outline" size={22} color={Colors.text} />

@@ -190,7 +190,7 @@ function FilledHealthScore({
           <Text style={styles.overallSub}>Based on all uploaded reports</Text>
           <View style={styles.stablePill}>
             <Ionicons name="pulse" size={13} color={Colors.primary} />
-            <Text style={styles.stableText}>Stable over {stableOverReports} reports</Text>
+            <Text style={styles.stableText}>{stableOverReports > 1 ? `Stable over ${stableOverReports} reports` : stableOverReports === 1 ? "Based on 1 report" : "First report"}</Text>
           </View>
         </View>
       </View>
@@ -256,13 +256,13 @@ function FilledHealthScore({
 
 // ── Exported wrapper — picks empty vs filled ──────────
 export function HealthScoreCard({
-  score = 82,
-  label = "Good",
-  normalCount = 16,
-  reportsAnalyzed = 6,
-  lastUpdated = "2 mins ago",
-  attentionCount = 2,
-  stableOverReports = 6,
+  score = 0,
+  label = "—",
+  normalCount = 0,
+  reportsAnalyzed = 0,
+  lastUpdated = "—",
+  attentionCount = 0,
+  stableOverReports = 0,
   hasReports = false,
 }: Props) {
   if (!hasReports) {

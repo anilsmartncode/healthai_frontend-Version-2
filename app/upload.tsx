@@ -23,7 +23,7 @@ import { useLang } from '@/context/Languagecontext';
 import { reportsApi } from '@/services/reportsApi';
 import { generateReportNarrative } from '@/services/aiService';
 
-type PickedFile = { uri: string; name: string; mimeType: string; size?: number };
+type PickedFile = { uri: string; name: string; mimeType: string; size?: number; lastModified?: number };
 
 function formatBytes(bytes?: number): string {
   if (!bytes) return '';
@@ -113,7 +113,7 @@ export default function Upload() {
     const r = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'image/*'] });
     if (!r.canceled && r.assets?.[0]) {
       const a = r.assets[0];
-      setFile({ uri: a.uri, name: a.name, mimeType: a.mimeType ?? 'application/pdf', size: a.size });
+      setFile({ uri: a.uri, name: a.name, mimeType: a.mimeType ?? 'application/pdf', size: a.size, lastModified: (a as any).lastModified });
     }
   };
 
@@ -121,7 +121,7 @@ export default function Upload() {
     const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images });
     if (!r.canceled && r.assets?.[0]) {
       const a = r.assets[0];
-      setFile({ uri: a.uri, name: a.fileName ?? 'report.jpg', mimeType: a.mimeType ?? 'image/jpeg' });
+      setFile({ uri: a.uri, name: a.fileName ?? 'report.jpg', mimeType: a.mimeType ?? 'image/jpeg', size: (a as any).fileSize });
     }
   };
 
@@ -131,7 +131,7 @@ export default function Upload() {
     const r = await ImagePicker.launchCameraAsync();
     if (!r.canceled && r.assets?.[0]) {
       const a = r.assets[0];
-      setFile({ uri: a.uri, name: a.fileName ?? 'photo.jpg', mimeType: a.mimeType ?? 'image/jpeg' });
+      setFile({ uri: a.uri, name: a.fileName ?? 'photo.jpg', mimeType: a.mimeType ?? 'image/jpeg', size: (a as any).fileSize });
     }
   };
 
@@ -150,7 +150,17 @@ export default function Upload() {
       const formData = new FormData();
       formData.append('file', { uri: file.uri, name: file.name, type: file.mimeType } as any);
 
-      const result = await reportsApi.analyze(formData, file.name);
+      const result = await reportsApi.analyze(formData, file.name, {
+        size: file.size,
+        lastModified: file.lastModified,
+      });
+
+      if (result.duplicate) {
+        Alert.alert(
+          'Already Uploaded',
+          'This report was already uploaded and analyzed previously. Showing the existing analysis.'
+        );
+      }
 
       // Generate plain-English narrative (shown above tab bar on analysis screen)
       let parsedSummary: any = null;

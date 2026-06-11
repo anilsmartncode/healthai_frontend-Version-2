@@ -34,11 +34,7 @@ export default function MedicineActionsScreen() {
     { icon: 'scan-outline',               label: 'Medicine Scanner', onPress: () => router.push('/medicines/scanner') },
   ];
 
-  const followUpActions: ActionItem[] = [
-    { icon: 'calendar-outline',    label: 'Book Doctor',      onPress: () => {} },
-    { icon: 'refresh-circle-outline', label: 'Schedule Retest', onPress: () => {} },
-    { icon: 'bulb-outline',        label: 'Health Tips',      onPress: () => router.push('/(tabs)/ai') },
-  ];
+
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -79,24 +75,6 @@ export default function MedicineActionsScreen() {
             >
               <View style={styles.actionIconWrap}>
                 <Ionicons name={a.icon} size={20} color={Colors.primary} />
-              </View>
-              <Text style={styles.actionLabel}>{a.label}</Text>
-              <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
-            </Pressable>
-          ))}
-        </View>
-
-        {/* Follow-up Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Follow-up Actions</Text>
-          {followUpActions.map((a, i) => (
-            <Pressable
-              key={i}
-              style={({ pressed }) => [styles.actionRow, pressed && { opacity: 0.7 }]}
-              onPress={a.onPress}
-            >
-              <View style={[styles.actionIconWrap, { backgroundColor: Colors.accent + '20' }]}>
-                <Ionicons name={a.icon} size={20} color={Colors.accent} />
               </View>
               <Text style={styles.actionLabel}>{a.label}</Text>
               <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />

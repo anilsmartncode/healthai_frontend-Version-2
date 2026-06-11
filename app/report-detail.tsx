@@ -13,7 +13,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { Colors, Radius } from '@/constants/Colors';
-import { reportsApi, type ReportListItem } from '@/services/reportsApi';
+import { reportsApi, type ReportListItem, type AnalyzeResult } from '@/services/reportsApi';
 import { AskAIButton } from '@/components/ai/AskAIButton';
 
 function ScoreBadge({ score, label }: { score: number; label: string }) {
@@ -35,7 +35,7 @@ const badge = StyleSheet.create({
 
 export default function ReportDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [report, setReport] = useState<ReportListItem | null>(null);
+  const [report, setReport] = useState<(ReportListItem & Partial<AnalyzeResult>) | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -152,7 +152,19 @@ export default function ReportDetailScreen() {
         <Pressable
           style={styles.primaryBtn}
           onPress={() =>
-            router.push({ pathname: '/scorecard', params: { id: report.id } })
+            report.values
+              ? router.push({
+                  pathname: '/analysis',
+                  params: {
+                    reportId: String(report.reportId ?? ''),
+                    patientName: report.patientName ?? '',
+                    hospitalName: report.hospitalName ?? report.labName,
+                    summary: report.summary ?? '',
+                    values: JSON.stringify(report.values ?? []),
+                    detectedMedicines: JSON.stringify(report.detectedMedicines ?? []),
+                  },
+                })
+              : router.push({ pathname: '/scorecard', params: { id: report.id } })
           }
         >
           <Text style={styles.primaryBtnText}>View Full Analysis</Text>
@@ -163,7 +175,7 @@ export default function ReportDetailScreen() {
         <AskAIButton
           variant="banner"
           label="Ask AI about this report"
-          prefill={`My ${report.title} report (score: ${report.health_score ?? '?'}/100) has ${report.abnormal_count ?? 0} abnormal values. What should I know about this?`}
+          prefill={`My ${report.title} report (score: ${report.healthScore ?? '?'}/100) has ${report.abnormalCount ?? 0} abnormal values. What should I know about this?`}
         />
       </ScrollView>
     </SafeAreaView>

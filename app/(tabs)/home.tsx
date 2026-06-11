@@ -11,44 +11,29 @@ import { FamilyHealthCard } from "@/components/home/Familyhealthcard";
 import { RecentReports }   from "@/components/home/RecentReports";
 import { AskAIButton } from "@/components/ai/AskAIButton";
 
-// ── MOCK data — delete entire block when real API is ready ────────────────────
-// 🔴 REAL: remove MOCK_SCORE; derive all values from reports[0] (see REAL block below)
-const MOCK_SCORE = {
-  score:            82,
-  label:            "Good",
-  normalCount:      16,
-  attentionCount:   2,
-  lastUpdated:      "Just now",
-  stableOverReports: 6,
-};
-// ─────────────────────────────────────────────────────────────────────────────
-
 export default function Home() {
-  // 🔴 REAL: delete these two lines and uncomment the REAL block below
   const { reports } = useReports();
-  const hasReports = reports.length > 0;  // 🟢 MOCK: empty until upload adds to list
 
-  // 🔴 REAL: uncomment this block when API is ready
-  /*
-  const { reports } = useReports();
-  const latest     = reports[0];
-  const hasReports = reports.length > 0;
+  const hasReports    = reports.length > 0;
+  const latest        = reports[0];  // sorted newest-first by reportsApi
 
-  const score             = latest?.score            ?? 0;
-  const label             = latest?.label            ?? "";
-  const normalCount       = latest?.normalCount      ?? 0;
-  const attentionCount    = latest?.attentionCount   ?? 0;
-  const lastUpdated       = latest?.lastUpdated      ?? "";
-  const stableOverReports = reports.length;
-  */
-
-  // 🟢 MOCK — these come from MOCK_SCORE; replace with real vars above when API ready
-  const score             = MOCK_SCORE.score;
-  const label             = MOCK_SCORE.label;
-  const normalCount       = MOCK_SCORE.normalCount;
-  const attentionCount    = MOCK_SCORE.attentionCount;
-  const lastUpdated       = MOCK_SCORE.lastUpdated;
-  const stableOverReports = MOCK_SCORE.stableOverReports;
+  // ── Derive all card values from real report data ──────────────────────────
+  const score          = latest?.healthScore ?? 0;
+  const label          = score >= 80 ? 'Good' : score >= 60 ? 'Fair' : 'Poor';
+  const normalCount    = latest
+    ? Math.max(0, (latest.totalValues ?? 0) - (latest.abnormalCount ?? 0) - (latest.borderlineCount ?? 0))
+    : 0;
+  const attentionCount = latest?.abnormalCount ?? 0;
+  const lastUpdated    = latest?.date ?? '';
+  // "Stable over N reports" = how many consecutive reports have healthScore >= 60
+  const stableCount = (() => {
+    let n = 0;
+    for (const r of reports) {
+      if (r.healthScore >= 60) n++;
+      else break;
+    }
+    return n;
+  })();
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -68,10 +53,10 @@ export default function Home() {
           score={score}
           label={label}
           normalCount={normalCount}
-          reportsAnalyzed={reports.length || stableOverReports}
+          reportsAnalyzed={reports.length}
           lastUpdated={lastUpdated}
           attentionCount={attentionCount}
-          stableOverReports={stableOverReports}
+          stableOverReports={stableCount}
         />
 
         <Button
@@ -87,6 +72,7 @@ export default function Home() {
     </SafeAreaView>
   );
 }
+
 const styles = StyleSheet.create({
   safe: {
     flex: 1,

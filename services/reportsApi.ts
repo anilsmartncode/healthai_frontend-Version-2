@@ -30,6 +30,7 @@ const USE_MOCK = true; // 🟢 MOCK active | 🔴 set false when backend is read
 // ──────────────────────────────────────────────────────────────────────────────
 
 const STORAGE_KEY = 'healthai_reports';
+const DETAILS_STORAGE_KEY = 'healthai_report_details';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  TYPES
@@ -52,6 +53,7 @@ export interface ReportListItem {
   status: 'good' | 'attention';
   thumbnailUri: string | null;
   analyzedAt: string;         // ISO date — for sorting
+  fileHash?: string;          // ← NEW: hash of name+size+lastModified, for dedup
 }
 
 export interface AnalyzeResult {
@@ -304,6 +306,51 @@ async function saveReports(reports: ReportListItem[]): Promise<void> {
   }
 }
 
+// ─── Detail storage (full AnalyzeResult per report id) ────────────────────────
+async function loadStoredDetails(): Promise<Record<string, AnalyzeResult>> {
+  try {
+    const raw = await AsyncStorage.getItem(DETAILS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+async function saveDetail(id: string, detail: AnalyzeResult): Promise<void> {
+  try {
+    const all = await loadStoredDetails();
+    all[id] = detail;
+    await AsyncStorage.setItem(DETAILS_STORAGE_KEY, JSON.stringify(all));
+  } catch (e) {
+    console.warn('[reportsApi] AsyncStorage detail save failed', e);
+  }
+}
+
+async function deleteDetail(id: string): Promise<void> {
+  try {
+    const all = await loadStoredDetails();
+    delete all[id];
+    await AsyncStorage.setItem(DETAILS_STORAGE_KEY, JSON.stringify(all));
+  } catch (e) {
+    console.warn('[reportsApi] AsyncStorage detail delete failed', e);
+  }
+}
+
+/**
+ * Simple, fast, dependency-free string hash (djb2).
+ * Used to fingerprint an uploaded file by name + size + lastModified date,
+ * so re-uploading the exact same file doesn't create a duplicate entry.
+ */
+function hashFileMeta(name: string, size?: number, modifiedAt?: number | string): string {
+  const input = `${name}|${size ?? 0}|${modifiedAt ?? 0}`;
+  let hash = 5381;
+  for (let i = 0; i < input.length; i++) {
+    hash = ((hash << 5) + hash) + input.charCodeAt(i);
+    hash = hash & 0xffffffff; // keep 32-bit
+  }
+  return `f_${(hash >>> 0).toString(36)}`;
+}
+
 function scoreToLabel(score: number): string {
   if (score >= 85) return 'Good';
   if (score >= 70) return 'Moderate Risk';
@@ -425,18 +472,50 @@ export const reportsApi = {
    * ───────────────
    * MOCK  → 1.5s delay + MOCK_ANALYZE_RESPONSE + saves to AsyncStorage list
    * REAL  → POST /analyze-report  (multipart/form-data, field name: "file")
+   *
+   * fileMeta: used to compute a hash (name + size + lastModified) so that
+   * re-uploading the exact same file is detected and skipped (no duplicate
+   * entry is created — the existing report is returned instead).
    */
-  analyze: async (formData: FormData, fileName?: string): Promise<AnalyzeResult> => {
+  analyze: async (
+    formData: FormData,
+    fileName?: string,
+    fileMeta?: { size?: number; lastModified?: number | string }
+  ): Promise<AnalyzeResult & { duplicate?: boolean }> => {
     if (USE_MOCK) {
       console.log('[reportsApi.analyze] 🟢 MOCK — simulating 1.5s delay');
+
+      // ── Duplicate detection ──────────────────────────────────────────────
+      const fileHash = fileName
+        ? hashFileMeta(fileName, fileMeta?.size, fileMeta?.lastModified)
+        : undefined;
+
+      if (fileHash) {
+        const stored = await loadStoredReports();
+        const existing = stored.find(r => r.fileHash === fileHash);
+        if (existing) {
+          console.log('[reportsApi.analyze] 🟡 Duplicate file detected — skipping save');
+          const details = await loadStoredDetails();
+          const existingDetail = details[existing.id];
+          if (existingDetail) {
+            return { ...existingDetail, duplicate: true };
+          }
+          // Fall back: no stored detail (shouldn't normally happen) — re-analyze
+          // but still mark as duplicate so caller can warn the user.
+          const fallback = apiToAnalyzeResult(MOCK_ANALYZE_RESPONSE);
+          return { ...fallback, duplicate: true };
+        }
+      }
+
       await new Promise(res => setTimeout(res, 1500));
 
       const result = apiToAnalyzeResult(MOCK_ANALYZE_RESPONSE);
 
       // Persist to AsyncStorage so it shows in list
       const stored = await loadStoredReports();
+      const newId = `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       const newItem: ReportListItem = {
-        id:            `local_${Date.now()}`,
+        id:            newId,
         title:         (fileName?.replace(/\.[^.]+$/, '') ?? result.reportTypeFull) || 'Report',
         reportType:    result.reportType,
         reportTypeFull: result.reportTypeFull,
@@ -452,10 +531,14 @@ export const reportsApi = {
         status:        result.abnormalCount > 2 ? 'attention' : 'good',
         thumbnailUri:  null,
         analyzedAt:    new Date().toISOString(),
+        fileHash,
       };
       await saveReports([newItem, ...stored]);
 
-      return result;
+      // Persist full result (values, summary, medicines) keyed by id
+      await saveDetail(newId, { ...result, reportId: result.reportId });
+
+      return { ...result, reportId: Number(newId.replace(/\D/g, '')) || result.reportId };
     }
 
     // 🔴 REAL
@@ -466,11 +549,21 @@ export const reportsApi = {
   /**
    * GET REPORT DETAIL
    * ──────────────────
+   * Returns the list item merged with the full AnalyzeResult (values,
+   * summary, detected medicines) if it was stored at analyze-time.
    */
-  getById: async (id: string): Promise<ReportListItem | null> => {
+  getById: async (id: string): Promise<(ReportListItem & Partial<AnalyzeResult>) | null> => {
     if (USE_MOCK) {
       const all = await reportsApi.list();
-      return all.find(r => r.id === id) ?? null;
+      const item = all.find(r => r.id === id) ?? null;
+      if (!item) return null;
+
+      const details = await loadStoredDetails();
+      const detail = details[id];
+      if (detail) {
+        return { ...item, ...detail, id: item.id };
+      }
+      return item;
     }
     return null;
   },
@@ -483,6 +576,7 @@ export const reportsApi = {
     if (USE_MOCK) {
       const stored = await loadStoredReports();
       await saveReports(stored.filter(r => r.id !== id));
+      await deleteDetail(id);
       return;
     }
   },

@@ -7,16 +7,71 @@
  *  - FAB + empty state CTA both go to upload
  */
 
+import React from 'react';
 import {
-  View, Text, StyleSheet, FlatList, Pressable,
-  TextInput, RefreshControl, ActivityIndicator, ScrollView,
+  View, Text, StyleSheet, FlatList, SectionList, Pressable,
+  TextInput, RefreshControl, ActivityIndicator, ScrollView, Animated, Alert,
 } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius } from '@/constants/Colors';
 import { useReports, type FilterType } from '@/hooks/useReports';
 import type { ReportListItem } from '@/services/reportsApi';
+
+// ── Swipe-to-delete wrapper ───────────────────────────────────────────────────
+function DeleteAction({
+  progress, onPress,
+}: { progress: Animated.AnimatedInterpolation<number>; onPress: () => void }) {
+  const scale = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.6, 1],
+    extrapolate: 'clamp',
+  });
+  return (
+    <Pressable style={styles.deleteAction} onPress={onPress}>
+      <Animated.View style={{ transform: [{ scale }] }}>
+        <Ionicons name="trash-outline" size={22} color="#fff" />
+        <Text style={styles.deleteActionText}>Delete</Text>
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+function SwipeableReportCard({ item, onDelete }: { item: ReportListItem; onDelete: (id: string) => void }) {
+  const swipeRef = React.useRef<Swipeable>(null);
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Report',
+      `Remove "${item.title}" from your reports?`,
+      [
+        { text: 'Cancel', style: 'cancel', onPress: () => swipeRef.current?.close() },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            swipeRef.current?.close();
+            onDelete(item.id);
+          },
+        },
+      ]
+    );
+  };
+
+  return (
+    <Swipeable
+      ref={swipeRef}
+      renderRightActions={(progress) => (
+        <DeleteAction progress={progress} onPress={handleDelete} />
+      )}
+      overshootRight={false}
+    >
+      <ReportCard item={item} />
+    </Swipeable>
+  );
+}
 
 // ── Report card ────────────────────────────────────────────────────────────────
 function ReportCard({ item }: { item: ReportListItem }) {
@@ -45,16 +100,16 @@ function ReportCard({ item }: { item: ReportListItem }) {
         <Text style={styles.cardMeta}>{item.date} · {item.labName}</Text>
         <View style={styles.cardStats}>
           {/* Category badge */}
-          <View key="cat" style={[styles.statChip, { backgroundColor: Colors.primary + '15' }]}>
+          <View style={[styles.statChip, { backgroundColor: Colors.primary + '15' }]}>
             <Text style={[styles.statChipText, { color: Colors.primary }]}>{item.category}</Text>
           </View>
           {item.abnormalCount > 0 && (
-            <View key="abn" style={styles.statChipDanger}>
+            <View style={styles.statChipDanger}>
               <Text style={styles.statChipDangerText}>{item.abnormalCount} Abnormal</Text>
             </View>
           )}
           {item.borderlineCount > 0 && (
-            <View key="brd" style={[styles.statChip, { backgroundColor: '#FEF3C7' }]}>
+            <View style={[styles.statChip, { backgroundColor: '#FEF3C7' }]}>
               <Text style={[styles.statChipText, { color: Colors.warning }]}>
                 {item.borderlineCount} Borderline
               </Text>
@@ -92,16 +147,76 @@ function FilterChip({
   );
 }
 
+// ChipBar — renders filter chips inside a ScrollView without inline .map()
+// Uses a helper that builds children imperatively to avoid reconciler key warnings
+function ChipBar({
+  filters, activeFilter, categoryCounts, onSelect,
+}: {
+  filters: string[];
+  activeFilter: string;
+  categoryCounts: Record<string, number>;
+  onSelect: (f: string) => void;
+}) {
+  const children: React.ReactNode[] = [];
+  for (let i = 0; i < filters.length; i++) {
+    const f = filters[i];
+    children.push(
+      <FilterChip
+        key={f}
+        label={f}
+        active={activeFilter === f}
+        count={categoryCounts[f] ?? 0}
+        onPress={() => onSelect(f)}
+      />
+    );
+  }
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.filtersRow}
+      style={styles.filtersScroll}
+    >
+      {children}
+    </ScrollView>
+  );
+}
+
 function ReportSeparator() { return <View style={{ height: 10 }} />; }
 function ReportListFooter() { return <View style={{ height: 20 }} />; }
+
+function EmptyState({ searchQuery, activeFilter }: { searchQuery: string; activeFilter: string }) {
+  return (
+    <View style={styles.emptyState}>
+      <Ionicons name="folder-open-outline" size={48} color="#D1D5DB" />
+      <Text style={styles.emptyTitle}>No reports found</Text>
+      <Text style={styles.emptySub}>
+        {searchQuery
+          ? 'Try a different search term'
+          : activeFilter !== 'All'
+            ? `No ${activeFilter} reports yet`
+            : 'Upload a report to get started'}
+      </Text>
+      {!searchQuery && (
+        <Pressable
+          style={styles.uploadEmptyBtn}
+          onPress={() => router.push('/upload')}
+        >
+          <Text style={styles.uploadEmptyText}>+ Upload Report</Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
 
 // ── Main screen ────────────────────────────────────────────────────────────────
 export default function ReportsScreen() {
   const {
-    reports, loading, refreshing, refresh,
+    reports, sections, groupByMonth, setGroupByMonth, loading, refreshing, refresh,
     searchQuery, setSearchQuery,
     activeFilter, setActiveFilter,
     availableFilters, categoryCounts,
+    deleteReport,
   } = useReports();
 
   return (
@@ -109,12 +224,24 @@ export default function ReportsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Reports</Text>
-        <Pressable
-          style={styles.bellBtn}
-          onPress={() => router.push('/notifications')}
-        >
-          <Ionicons name="notifications-outline" size={22} color={Colors.text} />
-        </Pressable>
+        <View style={{ flexDirection: 'row', gap: 4 }}>
+          <Pressable
+            style={styles.bellBtn}
+            onPress={() => setGroupByMonth(g => !g)}
+          >
+            <Ionicons
+              name={groupByMonth ? 'list' : 'calendar-outline'}
+              size={22}
+              color={Colors.text}
+            />
+          </Pressable>
+          <Pressable
+            style={styles.bellBtn}
+            onPress={() => router.push('/notifications')}
+          >
+            <Ionicons name="notifications-outline" size={22} color={Colors.text} />
+          </Pressable>
+        </View>
       </View>
 
       {/* Search */}
@@ -135,28 +262,35 @@ export default function ReportsScreen() {
         )}
       </View>
 
-      {/* Dynamic filter chips — derived from actual categories in reports */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filtersRow}
-        style={styles.filtersScroll}
-      >
-        {availableFilters.map(f => (
-          <FilterChip
-            key={f}
-            label={f}
-            active={activeFilter === f}
-            count={categoryCounts[f] ?? 0}
-            onPress={() => setActiveFilter(f as FilterType)}
-          />
-        ))}
-      </ScrollView>
+      {/* Dynamic filter chips */}
+      <ChipBar
+        filters={availableFilters}
+        activeFilter={activeFilter}
+        categoryCounts={categoryCounts}
+        onSelect={(f) => setActiveFilter(f as FilterType)}
+      />
 
       {/* List */}
       <View style={styles.listContainer}>
       {loading ? (
         <ActivityIndicator style={{ marginTop: 48 }} size="large" color={Colors.primary} />
+      ) : groupByMonth ? (
+        <SectionList
+          sections={sections}
+          keyExtractor={r => r.id}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={Colors.primary} />
+          }
+          ItemSeparatorComponent={ReportSeparator}
+          ListEmptyComponent={<EmptyState searchQuery={searchQuery} activeFilter={activeFilter} />}
+          renderItem={({ item }) => <SwipeableReportCard item={item} onDelete={deleteReport} />}
+          renderSectionHeader={({ section }) => (
+            <Text style={styles.sectionHeader}>{section.title}</Text>
+          )}
+          ListFooterComponent={ReportListFooter}
+          stickySectionHeadersEnabled
+        />
       ) : (
         <FlatList
           data={reports}
@@ -166,28 +300,8 @@ export default function ReportsScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={Colors.primary} />
           }
           ItemSeparatorComponent={ReportSeparator}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Ionicons name="folder-open-outline" size={48} color="#D1D5DB" />
-              <Text style={styles.emptyTitle}>No reports found</Text>
-              <Text style={styles.emptySub}>
-                {searchQuery
-                  ? 'Try a different search term'
-                  : activeFilter !== 'All'
-                    ? `No ${activeFilter} reports yet`
-                    : 'Upload a report to get started'}
-              </Text>
-              {!searchQuery && (
-                <Pressable
-                  style={styles.uploadEmptyBtn}
-                  onPress={() => router.push('/upload')}
-                >
-                  <Text style={styles.uploadEmptyText}>+ Upload Report</Text>
-                </Pressable>
-              )}
-            </View>
-          }
-          renderItem={({ item }) => <ReportCard item={item} />}
+          ListEmptyComponent={<EmptyState searchQuery={searchQuery} activeFilter={activeFilter} />}
+          renderItem={({ item }) => <SwipeableReportCard item={item} onDelete={deleteReport} />}
           ListFooterComponent={ReportListFooter}
         />
       )}
@@ -248,4 +362,7 @@ const styles = StyleSheet.create({
   listContainer:        { flex: 1 },
   fab:                { position: 'absolute', bottom: 20, left: 16, right: 16, backgroundColor: Colors.primary, borderRadius: Radius.pill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, gap: 8, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
   fabText:            { color: '#fff', fontSize: 15, fontWeight: '700' },
+  sectionHeader:      { fontSize: 13, fontWeight: '700', color: Colors.textMuted, backgroundColor: Colors.bg, paddingVertical: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
+  deleteAction:       { backgroundColor: Colors.danger, justifyContent: 'center', alignItems: 'center', width: 76, borderRadius: Radius.md, marginLeft: 8 },
+  deleteActionText:   { color: '#fff', fontSize: 12, fontWeight: '700', marginTop: 4, textAlign: 'center' },
 });
