@@ -4,10 +4,9 @@
  * Medicine Tab — API service layer
  *
  * HOW TO USE:
- *   • Every function has TWO blocks — 🔴 REAL and 🟢 MOCK
- *   • Currently MOCK is active (real block is commented out)
- *   • When backend is ready: uncomment 🔴 REAL, comment out 🟢 MOCK
- *   • The BASE_URL constant is the only thing you need to change globally
+ *   • Every function has TWO blocks — 🔴 REAL (active) and 🟢 MOCK (commented)
+ *   • 🔴 REAL is active, calling https://healthai.smartncode.com/api/...
+ *   • If backend paths differ, update ENDPOINTS in constants/api.ts
  *
  * COVERS:
  *   • Browse All Medicines  (7 APIs)
@@ -17,11 +16,29 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
+import { ENDPOINTS } from '@/constants/api';
+import { medicineApiCall } from './Medicineapiclient';
+import { Colors } from '@/constants/Colors';
+
 // ─── Config ───────────────────────────────────────────────────────────────────
-const BASE_URL = 'https://your-api-base-url.com'; // ← change this when backend is ready
+// 🔴 REAL endpoints come from ENDPOINTS (constants/api.ts) — BASE_URL below is
+// kept only so the 🟢 MOCK comment blocks below remain visually consistent.
+const BASE_URL = 'https://your-api-base-url.com'; // unused now that REAL is active
 
 // Helper: fake network delay so mock feels realistic
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
+// Helper: unwrap paginated list responses.
+// Backend wraps arrays as { medicines: [...] } or { data: [...] } rather than
+// returning a bare array.  This extracts the array safely, falling back to []
+// so callers never receive undefined and crash on .map().
+function unwrapList<T>(raw: any, ...keys: string[]): T[] {
+  if (Array.isArray(raw)) return raw as T[];
+  for (const key of keys) {
+    if (Array.isArray(raw?.[key])) return raw[key] as T[];
+  }
+  return [];
+}
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
 
@@ -177,14 +194,76 @@ export const MOCK_INTERACTION_HISTORY: InteractionHistoryItem[] = [
  * Triggered: when user opens Browse Medicines screen
  * Expected:  ~0.3 – 0.6 sec
  */
+// Maps backend category slugs/names → valid Ionicons names
+const CAT_ICON_MAP: Record<string, string> = {
+  // pain / fever
+  pain:          'bandage-outline',
+  fever:         'thermometer-outline',
+  painkiller:    'bandage-outline',
+  // allergy
+  allergy:       'alert-circle-outline',
+  allergies:     'alert-circle-outline',
+  antihistamine: 'alert-circle-outline',
+  // cough / cold / respiratory
+  cough:         'mic-off-outline',
+  cold:          'snow-outline',
+  respiratory:   'fitness-outline',
+  // stomach / digestive / gastro
+  stomach:       'nutrition-outline',
+  digestive:     'nutrition-outline',
+  gastro:        'nutrition-outline',
+  antacid:       'nutrition-outline',
+  // vitamin / supplement
+  vitamin:       'leaf-outline',
+  supplement:    'leaf-outline',
+  // skin / derma
+  skin:          'color-palette-outline',
+  derma:         'color-palette-outline',
+  topical:       'color-palette-outline',
+  // diabetes / blood sugar
+  diabetes:      'pulse-outline',
+  blood:         'pulse-outline',
+  cardiac:       'heart-outline',
+  heart:         'heart-outline',
+  // sleep / anxiety / mental
+  sleep:         'moon-outline',
+  anxiety:       'happy-outline',
+  mental:        'brain',
+  // antibiotic / infection
+  antibiotic:    'shield-checkmark-outline',
+  infection:     'shield-checkmark-outline',
+  // eye / ear / ent
+  eye:           'eye-outline',
+  ear:           'ear-outline',
+  // default
+  general:       'medical-outline',
+};
+
+function resolveCatIcon(raw: string | undefined): string {
+  if (!raw) return 'medical-outline';
+  const key = raw.toLowerCase().replace(/[^a-z]/g, '');
+  // exact match
+  if (CAT_ICON_MAP[key]) return CAT_ICON_MAP[key];
+  // partial match
+  for (const k of Object.keys(CAT_ICON_MAP)) {
+    if (key.includes(k) || k.includes(key)) return CAT_ICON_MAP[k];
+  }
+  return 'medical-outline';
+}
+
 export async function getCategories(): Promise<Category[]> {
-  // 🔴 REAL — uncomment when backend is ready
-  // const res = await fetch(`${BASE_URL}/api/medicines/categories`);
-  // return res.json();
+  // 🔴 REAL — active
+  const raw = await medicineApiCall<any>(ENDPOINTS.medicineCategories);
+  const list = unwrapList<any>(raw, 'categories', 'data', 'results');
+  return list.map((c: any) => ({
+    ...c,
+    icon: resolveCatIcon(c.icon ?? c.name ?? c.slug ?? ''),
+    color: c.color ?? Colors.primary,
+  }));
 
   // 🟢 MOCK
-  await delay(400);
-  return MOCK_CATEGORIES;
+  // await delay(400);
+  // return MOCK_CATEGORIES;
 }
 
 /**
@@ -194,16 +273,17 @@ export async function getCategories(): Promise<Category[]> {
  * Params:    q (string), page (number), limit (number)
  */
 export async function searchMedicines(q: string, page = 1, limit = 20): Promise<Medicine[]> {
-  // 🔴 REAL
-  // const res = await fetch(`${BASE_URL}/api/medicines/search?q=${encodeURIComponent(q)}&page=${page}&limit=${limit}`);
-  // return res.json();
+  // 🔴 REAL — active
+  const url = `${ENDPOINTS.medicineSearch}?q=${encodeURIComponent(q)}&page=${page}&limit=${limit}`;
+  const raw = await medicineApiCall<any>(url);
+  return unwrapList<Medicine>(raw, 'medicines', 'data', 'results');
 
   // 🟢 MOCK
-  await delay(500);
-  const query = q.toLowerCase();
-  return MOCK_MEDICINES.filter(
-    (m) => m.name.toLowerCase().includes(query) || m.category.toLowerCase().includes(query),
-  ).slice((page - 1) * limit, page * limit);
+  // await delay(500);
+  // const query = q.toLowerCase();
+  // return MOCK_MEDICINES.filter(
+  //   (m) => m.name.toLowerCase().includes(query) || m.category.toLowerCase().includes(query),
+  // ).slice((page - 1) * limit, page * limit);
 }
 
 /**
@@ -213,14 +293,15 @@ export async function searchMedicines(q: string, page = 1, limit = 20): Promise<
  * Params:    category_id (string), page (number), limit (number)
  */
 export async function getMedicinesByCategory(categoryId: string, page = 1, limit = 20): Promise<Medicine[]> {
-  // 🔴 REAL
-  // const res = await fetch(`${BASE_URL}/api/medicines?category_id=${categoryId}&page=${page}&limit=${limit}`);
-  // return res.json();
+  // 🔴 REAL — active
+  const url = `${ENDPOINTS.medicinesByCategory}?category_id=${categoryId}&page=${page}&limit=${limit}`;
+  const raw = await medicineApiCall<any>(url);
+  return unwrapList<Medicine>(raw, 'medicines', 'data', 'results');
 
   // 🟢 MOCK
-  await delay(600);
-  const cat = MOCK_CATEGORIES.find((c) => c.id === categoryId);
-  return MOCK_MEDICINES.filter((m) => m.category === cat?.name).slice((page - 1) * limit, page * limit);
+  // await delay(600);
+  // const cat = MOCK_CATEGORIES.find((c) => c.id === categoryId);
+  // return MOCK_MEDICINES.filter((m) => m.category === cat?.name).slice((page - 1) * limit, page * limit);
 }
 
 /**
@@ -230,14 +311,16 @@ export async function getMedicinesByCategory(categoryId: string, page = 1, limit
  * Params:    medicine_id (string)
  */
 export async function getMedicineDetails(medicineId: string): Promise<Medicine | null> {
-  // 🔴 REAL
-  // const res = await fetch(`${BASE_URL}/api/medicines/${medicineId}`);
-  // if (!res.ok) return null;
-  // return res.json();
+  // 🔴 REAL — active
+  try {
+    return await medicineApiCall<Medicine>(ENDPOINTS.medicineDetails(medicineId));
+  } catch {
+    return null;
+  }
 
   // 🟢 MOCK
-  await delay(700);
-  return MOCK_MEDICINES.find((m) => m.id === medicineId) ?? null;
+  // await delay(700);
+  // return MOCK_MEDICINES.find((m) => m.id === medicineId) ?? null;
 }
 
 /**
@@ -247,17 +330,15 @@ export async function getMedicineDetails(medicineId: string): Promise<Medicine |
  * Body:      { medicine_id: string }
  */
 export async function saveMedicine(medicineId: string): Promise<{ success: boolean; message: string }> {
-  // 🔴 REAL
-  // const res = await fetch(`${BASE_URL}/api/user/medicines`, {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ medicine_id: medicineId }),
-  // });
-  // return res.json();
+  // 🔴 REAL — active
+  return medicineApiCall(ENDPOINTS.userMedicines, {
+    method: 'POST',
+    body: { medicine_id: medicineId },
+  });
 
   // 🟢 MOCK
-  await delay(400);
-  return { success: true, message: 'Saved' };
+  // await delay(400);
+  // return { success: true, message: 'Saved' };
 }
 
 /**
@@ -267,13 +348,14 @@ export async function saveMedicine(medicineId: string): Promise<{ success: boole
  * Params:    page (number), limit (number)
  */
 export async function getRecentlyViewed(page = 1, limit = 10): Promise<Medicine[]> {
-  // 🔴 REAL
-  // const res = await fetch(`${BASE_URL}/api/medicines/recent?page=${page}&limit=${limit}`);
-  // return res.json();
+  // 🔴 REAL — active
+  const url = `${ENDPOINTS.medicineRecent}?page=${page}&limit=${limit}`;
+  const raw = await medicineApiCall<any>(url);
+  return unwrapList<Medicine>(raw, 'medicines', 'data', 'results');
 
   // 🟢 MOCK
-  await delay(400);
-  return MOCK_MEDICINES.slice(0, limit);
+  // await delay(400);
+  // return MOCK_MEDICINES.slice(0, limit);
 }
 
 /**
@@ -283,13 +365,14 @@ export async function getRecentlyViewed(page = 1, limit = 10): Promise<Medicine[
  * Params:    limit (number)
  */
 export async function getPopularMedicines(limit = 6): Promise<Medicine[]> {
-  // 🔴 REAL
-  // const res = await fetch(`${BASE_URL}/api/medicines/popular?limit=${limit}`);
-  // return res.json();
+  // 🔴 REAL — active
+  const url = `${ENDPOINTS.medicinePopular}?limit=${limit}`;
+  const raw = await medicineApiCall<any>(url);
+  return unwrapList<Medicine>(raw, 'medicines', 'data', 'results');
 
   // 🟢 MOCK
-  await delay(400);
-  return MOCK_MEDICINES.slice(0, limit);
+  // await delay(400);
+  // return MOCK_MEDICINES.slice(0, limit);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -303,13 +386,13 @@ export async function getPopularMedicines(limit = 6): Promise<Medicine[]> {
  * Expected:  ~0.5 – 1.0 sec
  */
 export async function getUserMedicines(): Promise<Medicine[]> {
-  // 🔴 REAL
-  // const res = await fetch(`${BASE_URL}/api/user/medicines`);
-  // return res.json();
+  // 🔴 REAL — active
+  const raw = await medicineApiCall<any>(ENDPOINTS.userMedicines);
+  return unwrapList<Medicine>(raw, 'medicines', 'data', 'results');
 
   // 🟢 MOCK
-  await delay(600);
-  return MOCK_MEDICINES.slice(0, 5);
+  // await delay(600);
+  // return MOCK_MEDICINES.slice(0, 5);
 }
 
 /**
@@ -324,22 +407,20 @@ export async function createReminder(payload: {
   frequency: Reminder['frequency'];
   whenToTake: Reminder['whenToTake'];
 }): Promise<{ success: boolean; message: string; reminderId: string }> {
-  // 🔴 REAL
-  // const res = await fetch(`${BASE_URL}/api/reminders`, {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({
-  //     medicine_id: payload.medicineId,
-  //     time: payload.time,
-  //     frequency: payload.frequency,
-  //     when_to_take: payload.whenToTake,
-  //   }),
-  // });
-  // return res.json();
+  // 🔴 REAL — active
+  return medicineApiCall(ENDPOINTS.reminders, {
+    method: 'POST',
+    body: {
+      medicine_id: payload.medicineId,
+      time: payload.time,
+      frequency: payload.frequency,
+      when_to_take: payload.whenToTake,
+    },
+  });
 
   // 🟢 MOCK
-  await delay(900);
-  return { success: true, message: 'Reminder created', reminderId: `r_${Date.now()}` };
+  // await delay(900);
+  // return { success: true, message: 'Reminder created', reminderId: `r_${Date.now()}` };
 }
 
 /**
@@ -348,13 +429,13 @@ export async function createReminder(payload: {
  * Expected:  ~0.5 – 1.0 sec
  */
 export async function getTodaysReminders(): Promise<Reminder[]> {
-  // 🔴 REAL
-  // const res = await fetch(`${BASE_URL}/api/reminders/today`);
-  // return res.json();
+  // 🔴 REAL — active
+  const raw = await medicineApiCall<any>(ENDPOINTS.remindersToday);
+  return unwrapList<Reminder>(raw, 'reminders', 'data', 'results');
 
   // 🟢 MOCK
-  await delay(600);
-  return MOCK_REMINDERS;
+  // await delay(600);
+  // return MOCK_REMINDERS;
 }
 
 /**
@@ -364,17 +445,15 @@ export async function getTodaysReminders(): Promise<Reminder[]> {
  * Body:      { taken_at: ISO string }
  */
 export async function markReminderTaken(reminderId: string): Promise<{ success: boolean; status: string }> {
-  // 🔴 REAL
-  // const res = await fetch(`${BASE_URL}/api/reminders/${reminderId}/taken`, {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ taken_at: new Date().toISOString() }),
-  // });
-  // return res.json();
+  // 🔴 REAL — active
+  return medicineApiCall(ENDPOINTS.reminderTaken(reminderId), {
+    method: 'POST',
+    body: { taken_at: new Date().toISOString() },
+  });
 
   // 🟢 MOCK
-  await delay(350);
-  return { success: true, status: 'taken' };
+  // await delay(350);
+  // return { success: true, status: 'taken' };
 }
 
 /**
@@ -384,17 +463,15 @@ export async function markReminderTaken(reminderId: string): Promise<{ success: 
  * Body:      { missed_at: ISO string }
  */
 export async function markReminderMissed(reminderId: string): Promise<{ success: boolean; status: string }> {
-  // 🔴 REAL
-  // const res = await fetch(`${BASE_URL}/api/reminders/${reminderId}/missed`, {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ missed_at: new Date().toISOString() }),
-  // });
-  // return res.json();
+  // 🔴 REAL — active
+  return medicineApiCall(ENDPOINTS.reminderMissed(reminderId), {
+    method: 'POST',
+    body: { missed_at: new Date().toISOString() },
+  });
 
   // 🟢 MOCK
-  await delay(350);
-  return { success: true, status: 'missed' };
+  // await delay(350);
+  // return { success: true, status: 'missed' };
 }
 
 /**
@@ -403,13 +480,13 @@ export async function markReminderMissed(reminderId: string): Promise<{ success:
  * Expected:  ~0.5 – 1.0 sec
  */
 export async function getReminderHistory(): Promise<Reminder[]> {
-  // 🔴 REAL
-  // const res = await fetch(`${BASE_URL}/api/reminders/history`);
-  // return res.json();
+  // 🔴 REAL — active
+  const raw = await medicineApiCall<any>(ENDPOINTS.reminderHistory);
+  return unwrapList<Reminder>(raw, 'reminders', 'data', 'results');
 
   // 🟢 MOCK
-  await delay(600);
-  return MOCK_REMINDER_HISTORY;
+  // await delay(600);
+  // return MOCK_REMINDER_HISTORY;
 }
 
 /**
@@ -422,17 +499,15 @@ export async function updateReminder(
   reminderId: string,
   payload: Pick<Reminder, 'time' | 'frequency' | 'whenToTake'>,
 ): Promise<{ success: boolean; message: string }> {
-  // 🔴 REAL
-  // const res = await fetch(`${BASE_URL}/api/reminders/${reminderId}`, {
-  //   method: 'PUT',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ time: payload.time, frequency: payload.frequency, when_to_take: payload.whenToTake }),
-  // });
-  // return res.json();
+  // 🔴 REAL — active
+  return medicineApiCall(ENDPOINTS.reminderUpdate(reminderId), {
+    method: 'PUT',
+    body: { time: payload.time, frequency: payload.frequency, when_to_take: payload.whenToTake },
+  });
 
   // 🟢 MOCK
-  await delay(400);
-  return { success: true, message: 'Reminder updated' };
+  // await delay(400);
+  // return { success: true, message: 'Reminder updated' };
 }
 
 /**
@@ -441,13 +516,12 @@ export async function updateReminder(
  * Expected:  ~0.3 – 0.6 sec
  */
 export async function deleteReminder(reminderId: string): Promise<{ success: boolean; message: string }> {
-  // 🔴 REAL
-  // const res = await fetch(`${BASE_URL}/api/reminders/${reminderId}`, { method: 'DELETE' });
-  // return res.json();
+  // 🔴 REAL — active
+  return medicineApiCall(ENDPOINTS.reminderDelete(reminderId), { method: 'DELETE' });
 
   // 🟢 MOCK
-  await delay(350);
-  return { success: true, message: 'Reminder deleted' };
+  // await delay(350);
+  // return { success: true, message: 'Reminder deleted' };
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -463,19 +537,19 @@ export async function deleteReminder(reminderId: string): Promise<{ success: boo
  * Response:  { scan_id, status: "processing" }
  */
 export async function uploadMedicineImage(imageUri: string): Promise<{ scanId: string; status: string }> {
-  // 🔴 REAL
-  // const formData = new FormData();
-  // formData.append('image', { uri: imageUri, name: 'scan.jpg', type: 'image/jpeg' } as any);
-  // const res = await fetch(`${BASE_URL}/api/medicine-scanner/upload`, {
-  //   method: 'POST',
-  //   body: formData,
-  // });
-  // const data = await res.json();
-  // return { scanId: data.scan_id, status: data.status };
+  // 🔴 REAL — active
+  const formData = new FormData();
+  formData.append('image', { uri: imageUri, name: 'scan.jpg', type: 'image/jpeg' } as any);
+  const data = await medicineApiCall<{ scan_id: string; status: string }>(ENDPOINTS.scannerUpload, {
+    method: 'POST',
+    body: formData,
+    isFormData: true,
+  });
+  return { scanId: data.scan_id, status: data.status };
 
   // 🟢 MOCK
-  await delay(1200);
-  return { scanId: '101', status: 'processing' };
+  // await delay(1200);
+  // return { scanId: '101', status: 'processing' };
 }
 
 /**
@@ -485,20 +559,19 @@ export async function uploadMedicineImage(imageUri: string): Promise<{ scanId: s
  * Params:    scan_id (string)
  */
 export async function getScanResult(scanId: string): Promise<ScanResult> {
-  // 🔴 REAL
-  // const res = await fetch(`${BASE_URL}/api/medicine-scanner/result/${scanId}`);
-  // const data = await res.json();
-  // return {
-  //   scanId: data.scan_id,
-  //   medicineId: data.medicine_id,
-  //   name: data.medicine_name,
-  //   form: data.form ?? 'Tablet',
-  //   confidence: data.confidence,
-  // };
+  // 🔴 REAL — active
+  const data = await medicineApiCall<any>(ENDPOINTS.scannerResult(scanId));
+  return {
+    scanId: data.scan_id,
+    medicineId: data.medicine_id,
+    name: data.medicine_name,
+    form: data.form ?? 'Tablet',
+    confidence: data.confidence,
+  };
 
   // 🟢 MOCK
-  await delay(900);
-  return MOCK_SCAN_RESULT;
+  // await delay(900);
+  // return MOCK_SCAN_RESULT;
 }
 
 /**
@@ -524,13 +597,14 @@ export { saveMedicine as saveScannedMedicine };
  * Params:    page (number), limit (number)
  */
 export async function getScanHistory(page = 1, limit = 10): Promise<ScanHistoryItem[]> {
-  // 🔴 REAL
-  // const res = await fetch(`${BASE_URL}/api/medicine-scanner/history?page=${page}&limit=${limit}`);
-  // return res.json();
+  // 🔴 REAL — active
+  const url = `${ENDPOINTS.scannerHistory}?page=${page}&limit=${limit}`;
+  const raw = await medicineApiCall<any>(url);
+  return unwrapList<ScanHistoryItem>(raw, 'history', 'scans', 'data', 'results');
 
   // 🟢 MOCK
-  await delay(600);
-  return MOCK_SCAN_HISTORY.slice((page - 1) * limit, page * limit);
+  // await delay(600);
+  // return MOCK_SCAN_HISTORY.slice((page - 1) * limit, page * limit);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -545,14 +619,15 @@ export async function getScanHistory(page = 1, limit = 10): Promise<ScanHistoryI
  * Same endpoint as Browse API 2 — reused with a different return type
  */
 export async function searchMedicinesForInteraction(q: string): Promise<MedicineSearchResult[]> {
-  // 🔴 REAL
-  // const res = await fetch(`${BASE_URL}/api/medicines/search?q=${encodeURIComponent(q)}`);
-  // return res.json();
+  // 🔴 REAL — active
+  const url = `${ENDPOINTS.medicineSearch}?q=${encodeURIComponent(q)}`;
+  const raw = await medicineApiCall<any>(url);
+  return unwrapList<MedicineSearchResult>(raw, 'medicines', 'data', 'results');
 
   // 🟢 MOCK
-  await delay(300);
-  const query = q.toLowerCase();
-  return MOCK_SEARCH_RESULTS.filter((m) => m.name.toLowerCase().includes(query));
+  // await delay(300);
+  // const query = q.toLowerCase();
+  // return MOCK_SEARCH_RESULTS.filter((m) => m.name.toLowerCase().includes(query));
 }
 
 /**
@@ -562,27 +637,25 @@ export async function searchMedicinesForInteraction(q: string): Promise<Medicine
  * Body:      { medicine_ids: string[] }
  */
 export async function checkInteractions(medicineIds: string[]): Promise<InteractionResult> {
-  // 🔴 REAL
-  // const res = await fetch(`${BASE_URL}/api/interactions/check`, {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ medicine_ids: medicineIds }),
-  // });
-  // return res.json();
+  // 🔴 REAL — active
+  return medicineApiCall<InteractionResult>(ENDPOINTS.interactionsCheck, {
+    method: 'POST',
+    body: { medicine_ids: medicineIds },
+  });
 
   // 🟢 MOCK
-  await delay(1500);
-  const names = medicineIds.map((id) => MOCK_SEARCH_RESULTS.find((m) => m.id === id)?.name ?? id);
-  return {
-    severity: 'moderate',
-    medicines: names,
-    summary: `${names[0]} may increase the risk of stomach irritation when combined with ${names[1] ?? 'the other medicine'}.`,
-    recommendation: 'Use with caution and take after food. Consult your doctor.',
-    description:
-      'Taking these medicines together may increase the risk of gastrointestinal discomfort. The combination can irritate the stomach lining and amplify this effect.',
-    symptoms: ['Stomach pain', 'Acid reflux', 'Nausea'],
-    recommendations: ['Take after food', 'Drink plenty of water', 'Consult doctor if symptoms persist'],
-  };
+  // await delay(1500);
+  // const names = medicineIds.map((id) => MOCK_SEARCH_RESULTS.find((m) => m.id === id)?.name ?? id);
+  // return {
+  //   severity: 'moderate',
+  //   medicines: names,
+  //   summary: `${names[0]} may increase the risk of stomach irritation when combined with ${names[1] ?? 'the other medicine'}.`,
+  //   recommendation: 'Use with caution and take after food. Consult your doctor.',
+  //   description:
+  //     'Taking these medicines together may increase the risk of gastrointestinal discomfort. The combination can irritate the stomach lining and amplify this effect.',
+  //   symptoms: ['Stomach pain', 'Acid reflux', 'Nausea'],
+  //   recommendations: ['Take after food', 'Drink plenty of water', 'Consult doctor if symptoms persist'],
+  // };
 }
 
 /**
@@ -592,23 +665,25 @@ export async function checkInteractions(medicineIds: string[]): Promise<Interact
  * Params:    interaction_id (string)
  */
 export async function getInteractionDetails(interactionId: string): Promise<InteractionResult | null> {
-  // 🔴 REAL
-  // const res = await fetch(`${BASE_URL}/api/interactions/${interactionId}`);
-  // if (!res.ok) return null;
-  // return res.json();
+  // 🔴 REAL — active
+  try {
+    return await medicineApiCall<InteractionResult>(ENDPOINTS.interactionDetails(interactionId));
+  } catch {
+    return null;
+  }
 
   // 🟢 MOCK
-  await delay(400);
-  return {
-    severity: 'moderate',
-    medicines: ['Metformin 500mg', 'Aspirin 75mg'],
-    summary: 'Aspirin may increase the risk of stomach irritation when combined with Metformin.',
-    recommendation: 'Use with caution and take after food. Consult your doctor.',
-    description:
-      'Taking these medicines together may increase the risk of gastrointestinal discomfort. Aspirin can irritate the stomach lining, and combining it with Metformin may amplify this effect.',
-    symptoms: ['Stomach pain', 'Acid reflux', 'Nausea'],
-    recommendations: ['Take after food', 'Drink plenty of water', 'Consult doctor if symptoms persist'],
-  };
+  // await delay(400);
+  // return {
+  //   severity: 'moderate',
+  //   medicines: ['Metformin 500mg', 'Aspirin 75mg'],
+  //   summary: 'Aspirin may increase the risk of stomach irritation when combined with Metformin.',
+  //   recommendation: 'Use with caution and take after food. Consult your doctor.',
+  //   description:
+  //     'Taking these medicines together may increase the risk of gastrointestinal discomfort. Aspirin can irritate the stomach lining, and combining it with Metformin may amplify this effect.',
+  //   symptoms: ['Stomach pain', 'Acid reflux', 'Nausea'],
+  //   recommendations: ['Take after food', 'Drink plenty of water', 'Consult doctor if symptoms persist'],
+  // };
 }
 
 /**
@@ -620,17 +695,15 @@ export async function getInteractionDetails(interactionId: string): Promise<Inte
 export async function saveInteractionReport(
   medicineIds: string[],
 ): Promise<{ success: boolean; message: string }> {
-  // 🔴 REAL
-  // const res = await fetch(`${BASE_URL}/api/interactions/save`, {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ medicine_ids: medicineIds }),
-  // });
-  // return res.json();
+  // 🔴 REAL — active
+  return medicineApiCall(ENDPOINTS.interactionsSave, {
+    method: 'POST',
+    body: { medicine_ids: medicineIds },
+  });
 
   // 🟢 MOCK
-  await delay(350);
-  return { success: true, message: 'Interaction report saved' };
+  // await delay(350);
+  // return { success: true, message: 'Interaction report saved' };
 }
 
 /**
@@ -639,13 +712,13 @@ export async function saveInteractionReport(
  * Expected:  ~400ms
  */
 export async function getInteractionHistory(): Promise<InteractionHistoryItem[]> {
-  // 🔴 REAL
-  // const res = await fetch(`${BASE_URL}/api/interactions/history`);
-  // return res.json();
+  // 🔴 REAL — active
+  const raw = await medicineApiCall<any>(ENDPOINTS.interactionsHistory);
+  return unwrapList<InteractionHistoryItem>(raw, 'interactions', 'history', 'data', 'results');
 
   // 🟢 MOCK
-  await delay(400);
-  return MOCK_INTERACTION_HISTORY;
+  // await delay(400);
+  // return MOCK_INTERACTION_HISTORY;
 }
 
 /**
@@ -655,13 +728,12 @@ export async function getInteractionHistory(): Promise<InteractionHistoryItem[]>
  * Params:    report_id (string)
  */
 export async function deleteInteractionReport(reportId: string): Promise<{ success: boolean; message: string }> {
-  // 🔴 REAL
-  // const res = await fetch(`${BASE_URL}/api/interactions/history/${reportId}`, { method: 'DELETE' });
-  // return res.json();
+  // 🔴 REAL — active
+  return medicineApiCall(ENDPOINTS.interactionHistoryDelete(reportId), { method: 'DELETE' });
 
   // 🟢 MOCK
-  await delay(300);
-  return { success: true, message: 'Report deleted' };
+  // await delay(300);
+  // return { success: true, message: 'Report deleted' };
 }
 
 /**
@@ -671,18 +743,16 @@ export async function deleteInteractionReport(reportId: string): Promise<{ succe
  * Body:      { medicine_ids: string[] }
  */
 export async function getAiInteractionSummary(medicineIds: string[]): Promise<{ summary: string }> {
-  // 🔴 REAL
-  // const res = await fetch(`${BASE_URL}/api/interactions/ai-summary`, {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ medicine_ids: medicineIds }),
-  // });
-  // return res.json();
+  // 🔴 REAL — active
+  return medicineApiCall(ENDPOINTS.interactionsAiSummary, {
+    method: 'POST',
+    body: { medicine_ids: medicineIds },
+  });
 
   // 🟢 MOCK
-  await delay(1000);
-  return {
-    summary:
-      'Based on the selected medicines, there is a moderate risk of gastrointestinal discomfort. It is advisable to take these medicines after food and monitor for any unusual symptoms. Consult your physician before making any changes.',
-  };
+  // await delay(1000);
+  // return {
+  //   summary:
+  //     'Based on the selected medicines, there is a moderate risk of gastrointestinal discomfort. It is advisable to take these medicines after food and monitor for any unusual symptoms. Consult your physician before making any changes.',
+  // };
 }

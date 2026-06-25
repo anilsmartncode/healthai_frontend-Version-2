@@ -7,72 +7,131 @@
  * Flow:
  *   signup / Phonesignup  →  PersonOnboardingScreen  →  /(tabs)/home
  *
+ * Rebuilt to match account.tsx visual language:
+ *   - Light background, card-based sections
+ *   - Single scroll form (no step wizard)
+ *   - Fields: Name, Gender, DOB, Blood group, Height, Weight
+ *   - "Skip for now" always available
+ *
  * Guard: on mount reads AsyncStorage key "onboarding_done".
  * If already "1" (returning user somehow landed here), bounces to home instantly.
+ *
+ * MOCK-FIRST PATTERN
+ * ───────────────────
+ *  🟢 MOCK  → saves profile to AsyncStorage only
+ *  🔴 REAL  → swap the body of `saveProfile()` for an API call
+ *             (kept as a single function so this is the ONLY place to change)
  */
 
 import {
+  ScrollView,
   View,
   Text,
-  TextInput,
-  Pressable,
   StyleSheet,
+  Pressable,
+  Alert,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  useWindowDimensions,
-  ScrollView,
-} from "react-native";
-import { router } from "expo-router";
-import { useRef, useState, useEffect } from "react";
-import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Colors, Radius, Spacing } from '@/constants/Colors';
+import { Input } from '@/components/ui/Input';
+import { DatePickerField } from '@/components/ui/DatePickerField';
+import { DropdownField } from '@/components/ui/DropdownField';
+import { useAuth } from '@/context/AuthContext';
+import { saveOnboardingApi } from '@/services/authapi/apiService';
 
-const TEAL = "#2D9C8E";
-const DARK  = "#0F172A";
+const BLOOD_GROUPS = ['A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−', "I don't know"];
+const GENDERS      = ['Male', 'Female', 'Other', 'Prefer not to say'];
+
+// ─── Toggle ─────────────────────────────────────────────────────────────────
+const USE_MOCK = false; // 🔴 REAL active | set true to roll back to 🟢 MOCK
+// ────────────────────────────────────────────────────────────────────────────
 
 export default function PersonOnboardingScreen() {
-  const { width: W, height: H } = useWindowDimensions();
-  const rs = (n: number) => (W / 390) * n;
-  const vs = (n: number) => (H / 844) * n;
-  const ms = (n: number, f = 0.45) => n + (rs(n) - n) * f;
+  const { token } = useAuth();
+  const [name,       setName]       = useState('');
+  const [gender,     setGender]     = useState<string | null>(null);
+  const [dob,        setDob]        = useState<Date | null>(null);
+  const [bloodGroup, setBloodGroup] = useState<string | null>(null);
+  const [height,     setHeight]     = useState('');
+  const [weight,     setWeight]     = useState('');
 
-  const inputRef = useRef<TextInput>(null);
-  const [name,    setName]    = useState("");
-  const [error,   setError]   = useState("");
+  const [error,   setError]   = useState('');
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
 
   // ── Guard: skip if already onboarded ──
   useEffect(() => {
-    AsyncStorage.getItem("onboarding_done").then((val) => {
-      if (val === "1") router.replace("/(tabs)/home");
+    AsyncStorage.getItem('onboarding_done').then((val) => {
+      if (val === '1') {
+        router.replace('/(tabs)/home');
+      } else {
+        setChecking(false);
+      }
     });
   }, []);
 
-  // ── Auto-focus name input ──
-  useEffect(() => {
-    const t = setTimeout(() => inputRef.current?.focus(), 350);
-    return () => clearTimeout(t);
-  }, []);
-
-  const trimmed = name.trim();
-  const isReady = trimmed.length >= 2;
-
-  // ── Save name & mark onboarding done ──
-  const handleContinue = async () => {
-    if (!isReady) {
-      setError("Please enter at least 2 characters");
+  // ── Save profile ──
+  const saveProfile = async (payload: {
+    name: string;
+    gender: string | null;
+    dob: Date | null;
+    bloodGroup: string | null;
+    height: string;
+    weight: string;
+  }) => {
+    if (USE_MOCK) {
+      // 🟢 MOCK: persist locally only
+      await AsyncStorage.setItem('healthai_onboarding_profile', JSON.stringify({
+        ...payload,
+        dob: payload.dob ? payload.dob.toISOString().split('T')[0] : null,
+      }));
+      await new Promise((r) => setTimeout(r, 700));
       return;
     }
+
+    // 🔴 REAL: POST /api/auth/onboarding
+    // "I don't know" is a valid UI choice but not a real blood type — send
+    // null rather than the literal string so the backend doesn't try to
+    // store it as a blood_type value.
+    const bloodType = payload.bloodGroup && payload.bloodGroup !== "I don't know"
+      ? payload.bloodGroup
+      : null;
+    const heightNum = payload.height.trim() ? Number(payload.height) : undefined;
+    const weightNum = payload.weight.trim() ? Number(payload.weight) : undefined;
+
+    if (!token) {
+      throw new Error('You need to be signed in to save your profile.');
+    }
+
+    await saveOnboardingApi(token, {
+      full_name: payload.name,
+      date_of_birth: payload.dob ? payload.dob.toISOString().split('T')[0] : null,
+      gender: payload.gender,
+      blood_type: bloodType,
+      height_cm: Number.isFinite(heightNum) ? heightNum : undefined,
+      weight_kg: Number.isFinite(weightNum) ? weightNum : undefined,
+    });
+  };
+
+  const handleContinue = async () => {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setError('Please enter your name to continue');
+      return;
+    }
+    setError('');
+    setLoading(true);
     try {
-      setLoading(true);
-      // TODO: replace stub with your real API call:
-      // await updateProfileApi({ name: trimmed });
-      await new Promise<void>((r) => setTimeout(r, 600));
-      await AsyncStorage.setItem("onboarding_done", "1");
-      router.replace("/(tabs)/home");
+      await saveProfile({ name: trimmedName, gender, dob, bloodGroup, height, weight });
+      await AsyncStorage.setItem('onboarding_done', '1');
+      router.replace('/(tabs)/home');
     } catch (e: any) {
-      setError(e?.message || "Something went wrong. Please try again.");
+      Alert.alert('Error', e?.message || 'Could not save your profile. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -80,1350 +139,183 @@ export default function PersonOnboardingScreen() {
 
   // ── Skip (still marks done so screen never reappears) ──
   const handleSkip = async () => {
-    await AsyncStorage.setItem("onboarding_done", "1");
-    router.replace("/(tabs)/home");
+    await AsyncStorage.setItem('onboarding_done', '1');
+    router.replace('/(tabs)/home');
   };
 
-  const s = makeStyles(rs, vs, ms);
+  if (checking) {
+    return (
+      <SafeAreaView style={[styles.safe, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <KeyboardAvoidingView
-      style={s.root}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      {/* ── decorative blobs ── */}
-      <View style={s.blob1} />
-      <View style={s.blob2} />
-      <View style={s.blob3} />
+    <SafeAreaView style={styles.safe}>
+      {/* ── Header ── */}
+      <View style={styles.header}>
+        <View style={{ width: 34 }} />
+        <Text style={styles.headerTitle}>Complete Your Profile</Text>
+        <Pressable onPress={handleSkip} disabled={loading}>
+          <Text style={styles.skipLink}>Skip for now</Text>
+        </Pressable>
+      </View>
 
       <ScrollView
-        contentContainerStyle={s.scroll}
-        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.body}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* ── step dots ── */}
-        <View style={s.stepRow}>
-          <View style={[s.stepDot, s.stepDotDone]} />
-          <View style={[s.stepDot, s.stepDotActive]} />
-          <View style={s.stepDot} />
-        </View>
-
-        {/* ── avatar illustration ── */}
-        <View style={s.avatarWrap}>
-          <View style={s.pulseRing2} />
-          <View style={s.pulseRing1} />
-          <View style={s.avatarRing}>
-            <View style={s.avatarInner}>
-              <Ionicons name="person" size={rs(48)} color={TEAL} />
-            </View>
-          </View>
-          <View style={s.shieldBadge}>
-            <Ionicons name="shield-checkmark" size={rs(14)} color={TEAL} />
-          </View>
-        </View>
-
-        {/* ── heading ── */}
-        <Text style={s.heading}>What's your name?</Text>
-        <Text style={s.subheading}>
-          You're almost in! Just tell us what to call you.
-        </Text>
-
-        {/* ── input card ── */}
-        <View style={s.card}>
-          <View style={s.chip}>
-            <Ionicons name="sparkles" size={ms(13)} color={TEAL} />
-            <Text style={s.chipText}>Personalise your experience</Text>
-          </View>
-
-          <Text style={s.inputLabel}>Your Name</Text>
-
-          <View style={[
-            s.inputRow,
-            isReady  && s.inputRowReady,
-            !!error  && s.inputRowError,
-          ]}>
-            <Ionicons
-              name="person-outline"
-              size={ms(18)}
-              color={isReady ? TEAL : "#9BB5B5"}
-              style={{ marginRight: rs(8) }}
-            />
-            <TextInput
-              ref={inputRef}
-              style={s.input}
-              placeholder="Enter your full name"
-              placeholderTextColor="#B0CCCC"
-              value={name}
-              onChangeText={(v) => { setName(v); setError(""); }}
-              autoCapitalize="words"
-              autoCorrect={false}
-              returnKeyType="done"
-              onSubmitEditing={handleContinue}
-              maxLength={60}
-            />
-            {isReady && (
-              <Ionicons name="checkmark-circle" size={ms(20)} color={TEAL} />
+        {/* Avatar */}
+        <View style={styles.avatarWrap}>
+          <View style={styles.avatar}>
+            {name.trim() ? (
+              <Text style={styles.avatarInitial}>
+                {name.trim()[0].toUpperCase()}
+              </Text>
+            ) : (
+              <Ionicons name="person" size={34} color="#fff" />
             )}
           </View>
-
-          {!!error && (
-            <View style={s.errorRow}>
-              <Ionicons name="alert-circle-outline" size={ms(13)} color="#EF4444" />
-              <Text style={s.errorText}>{error}</Text>
-            </View>
-          )}
-
-          <Text style={s.charHint}>
-            {trimmed.length === 0
-              ? "e.g. Priya Sharma"
-              : trimmed.length < 2
-              ? "Keep going…"
-              : `Hi ${trimmed.split(" ")[0]} 👋`}
+          <Text style={styles.avatarHint}>
+            Tell us a bit about yourself to personalize your health insights
           </Text>
         </View>
 
-        {/* ── info strip ── */}
-        <View style={s.infoCard}>
-          <Ionicons name="information-circle-outline" size={ms(15)} color={TEAL} style={{ marginTop: 1 }} />
-          <Text style={s.infoText}>
-            Your name personalises your health dashboard. We never share it with third parties.
-          </Text>
-        </View>
-
-        {/* ── Continue button ── */}
-        <Pressable
-          style={({ pressed }) => [
-            s.btn,
-            !isReady && s.btnDisabled,
-            pressed && isReady && { opacity: 0.88 },
-          ]}
-          onPress={handleContinue}
-          disabled={loading || !isReady}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Text style={s.btnText}>Continue</Text>
-              <View style={s.btnArrow}>
-                <Ionicons name="arrow-forward" size={ms(15)} color={TEAL} />
-              </View>
-            </>
-          )}
-        </Pressable>
-
-        {/* ── Skip ── */}
-        <Pressable style={s.skipBtn} onPress={handleSkip} disabled={loading}>
-          <Text style={s.skipText}>Skip for now</Text>
-        </Pressable>
-
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
-}
-
-const makeStyles = (
-  rs: (n: number) => number,
-  vs: (n: number) => number,
-  ms: (n: number) => number,
-) =>
-  StyleSheet.create({
-  root: { flex: 1, backgroundColor: DARK },
-
-  blob1: {
-    position: "absolute", top: -vs(60), right: -rs(70),
-    width: rs(260), height: rs(260), borderRadius: rs(130),
-    backgroundColor: "rgba(45,156,142,0.13)",
-  },
-  blob2: {
-    position: "absolute", top: vs(200), left: -rs(50),
-    width: rs(160), height: rs(160), borderRadius: rs(80),
-    backgroundColor: "rgba(45,156,142,0.07)",
-  },
-  blob3: {
-    position: "absolute", bottom: vs(60), right: -rs(40),
-    width: rs(120), height: rs(120), borderRadius: rs(60),
-    backgroundColor: "rgba(45,156,142,0.06)",
-  },
-
-  scroll: {
-    flexGrow: 1,
-    paddingHorizontal: rs(24),
-    paddingTop: vs(56),
-    paddingBottom: vs(32),
-  },
-
-  // step dots
-  stepRow: {
-    flexDirection: "row",
-    gap: rs(6),
-    justifyContent: "center",
-    marginBottom: vs(32),
-  },
-  stepDot: {
-    width: rs(8), height: rs(8),
-    borderRadius: rs(4),
-    backgroundColor: "rgba(255,255,255,0.15)",
-  },
-  stepDotDone: { backgroundColor: "rgba(45,156,142,0.45)" },
-  stepDotActive: { width: rs(24), borderRadius: rs(4), backgroundColor: TEAL },
-
-  // avatar
-  avatarWrap: {
-    alignSelf: "center",
-    width: rs(120), height: rs(120),
-    justifyContent: "center", alignItems: "center",
-    marginBottom: vs(28),
-    position: "relative",
-  },
-  pulseRing1: {
-    position: "absolute",
-    width: rs(118), height: rs(118), borderRadius: rs(59),
-    borderWidth: 1.5, borderColor: "rgba(45,156,142,0.22)",
-  },
-  pulseRing2: {
-    position: "absolute",
-    width: rs(98), height: rs(98), borderRadius: rs(49),
-    borderWidth: 1.5, borderColor: "rgba(45,156,142,0.15)",
-  },
-  avatarRing: {
-    width: rs(82), height: rs(82), borderRadius: rs(41),
-    backgroundColor: "rgba(45,156,142,0.18)",
-    justifyContent: "center", alignItems: "center",
-  },
-  avatarInner: {
-    width: rs(66), height: rs(66), borderRadius: rs(33),
-    backgroundColor: "rgba(45,156,142,0.22)",
-    justifyContent: "center", alignItems: "center",
-  },
-  shieldBadge: {
-    position: "absolute", bottom: rs(2), right: rs(2),
-    width: rs(26), height: rs(26), borderRadius: rs(13),
-    backgroundColor: DARK,
-    borderWidth: 2, borderColor: "rgba(45,156,142,0.4)",
-    justifyContent: "center", alignItems: "center",
-  },
-
-  // heading
-  heading: {
-    fontSize: ms(28), fontWeight: "800", color: "#fff",
-    textAlign: "center", letterSpacing: -0.6, marginBottom: vs(8),
-  },
-  subheading: {
-    fontSize: ms(14), color: "rgba(255,255,255,0.5)",
-    textAlign: "center", lineHeight: ms(21), fontWeight: "400",
-    marginBottom: vs(28), paddingHorizontal: rs(8),
-  },
-
-  // card
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: rs(20),
-    padding: rs(20),
-    marginBottom: vs(14),
-    shadowColor: "#000",
-    shadowOpacity: 0.12, shadowRadius: 16, elevation: 6,
-  },
-  chip: {
-    flexDirection: "row", alignItems: "center", gap: rs(6),
-    alignSelf: "flex-start",
-    backgroundColor: "#F0FAF9",
-    borderRadius: rs(20),
-    paddingHorizontal: rs(12), paddingVertical: vs(5),
-    marginBottom: vs(16),
-    borderWidth: 1, borderColor: "rgba(45,156,142,0.2)",
-  },
-  chipText: { fontSize: ms(11), fontWeight: "700", color: TEAL, letterSpacing: 0.2 },
-  inputLabel: {
-    fontSize: ms(11), fontWeight: "700", color: "#4a6b6b",
-    textTransform: "uppercase", letterSpacing: 0.8, marginBottom: vs(8),
-  },
-  inputRow: {
-    flexDirection: "row", alignItems: "center",
-    backgroundColor: "#F4F9F9",
-    borderWidth: 1.5, borderColor: "#E2ECEC",
-    borderRadius: rs(14),
-    paddingHorizontal: rs(14), paddingVertical: vs(14),
-  },
-  inputRowReady: { borderColor: TEAL, backgroundColor: "rgba(45,156,142,0.04)" },
-  inputRowError: { borderColor: "#EF4444" },
-  input: {
-    flex: 1, fontSize: ms(16), fontWeight: "600",
-    color: "#1a2e35", paddingVertical: 0,
-  },
-  charHint: {
-    fontSize: ms(12), color: "#9BB5B5",
-    fontWeight: "500", marginTop: vs(8), textAlign: "right",
-  },
-  errorRow: {
-    flexDirection: "row", alignItems: "center",
-    gap: rs(5), marginTop: vs(6),
-  },
-  errorText: { fontSize: ms(11), color: "#EF4444", fontWeight: "500", flex: 1 },
-
-  // info
-  infoCard: {
-    flexDirection: "row", alignItems: "flex-start",
-    gap: rs(10),
-    backgroundColor: "rgba(45,156,142,0.08)",
-    borderRadius: rs(14), padding: rs(14),
-    borderWidth: 1, borderColor: "rgba(45,156,142,0.2)",
-    marginBottom: vs(24),
-  },
-  infoText: {
-    flex: 1, fontSize: ms(12),
-    color: "rgba(255,255,255,0.6)",
-    lineHeight: ms(18), fontWeight: "400",
-  },
-
-  // button
-  btn: {
-    backgroundColor: TEAL,
-    borderRadius: rs(16), paddingVertical: vs(16),
-    alignItems: "center", justifyContent: "center",
-    flexDirection: "row",
-    shadowColor: TEAL, shadowOpacity: 0.45, shadowRadius: 14, elevation: 6,
-    marginBottom: vs(12),
-  },
-  btnDisabled: { backgroundColor: "rgba(45,156,142,0.3)", shadowOpacity: 0, elevation: 0 },
-  btnText: { color: "#fff", fontSize: ms(16), fontWeight: "800", letterSpacing: 0.3 },
-  btnArrow: {
-    position: "absolute", right: rs(16),
-    width: rs(30), height: rs(30), borderRadius: rs(9),
-    backgroundColor: "rgba(255,255,255,0.28)",
-    justifyContent: "center", alignItems: "center",
-  },
-
-  // skip
-  skipBtn: { alignItems: "center", paddingVertical: vs(8) },
-  skipText: { fontSize: ms(13), color: "rgba(255,255,255,0.35)", fontWeight: "500" },
-});
-{/*
-import { useState, useRef, useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  TextInput,
-  ScrollView,
-  ActivityIndicator,
-  Dimensions,
-  FlatList,
-  Modal,
-} from "react-native";
-import { router } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import Svg, { Path, G, ClipPath, Rect, Defs } from "react-native-svg";
-import { Colors, Radius } from "@/constants/Colors";
-import { sendOtpApi, verifyOtpApi } from "@/services/authapi/apiService";
-import { useAuth } from "@/context/AuthContext";
-
-const { width: SW, height: SH } = Dimensions.get("window");
-const rs = (size: number) => (SW / 390) * size;
-const vs = (size: number) => (SH / 844) * size;
-const ms = (size: number, f = 0.5) => size + (rs(size) - size) * f;
-
-// ── Types ─────────────────────────────────────────────
-type Step = "phone" | "otp";
-
-interface Country {
-  name: string;
-  code: string;
-  dial: string;
-  flag: string;
-}
-
-// ── Country list ──────────────────────────────────────
-const COUNTRIES: Country[] = [
-  { name: "India",          code: "IN", dial: "+91", flag: "🇮🇳" },
-  { name: "United States",  code: "US", dial: "+1",  flag: "🇺🇸" },
-  { name: "United Kingdom", code: "GB", dial: "+44", flag: "🇬🇧" },
-  { name: "Australia",      code: "AU", dial: "+61", flag: "🇦🇺" },
-  { name: "Canada",         code: "CA", dial: "+1",  flag: "🇨🇦" },
-  { name: "Germany",        code: "DE", dial: "+49", flag: "🇩🇪" },
-  { name: "France",         code: "FR", dial: "+33", flag: "🇫🇷" },
-  { name: "UAE",            code: "AE", dial: "+971", flag: "🇦🇪" },
-  { name: "Singapore",      code: "SG", dial: "+65", flag: "🇸🇬" },
-  { name: "Japan",          code: "JP", dial: "+81", flag: "🇯🇵" },
-  { name: "Brazil",         code: "BR", dial: "+55", flag: "🇧🇷" },
-  { name: "South Africa",   code: "ZA", dial: "+27", flag: "🇿🇦" },
-  { name: "Nigeria",        code: "NG", dial: "+234", flag: "🇳🇬" },
-  { name: "Pakistan",       code: "PK", dial: "+92", flag: "🇵🇰" },
-  { name: "Bangladesh",     code: "BD", dial: "+880", flag: "🇧🇩" },
-  { name: "Indonesia",      code: "ID", dial: "+62", flag: "🇮🇩" },
-  { name: "Philippines",    code: "PH", dial: "+63", flag: "🇵🇭" },
-  { name: "Malaysia",       code: "MY", dial: "+60", flag: "🇲🇾" },
-  { name: "Kenya",          code: "KE", dial: "+254", flag: "🇰🇪" },
-  { name: "Mexico",         code: "MX", dial: "+52", flag: "🇲🇽" },
-];
-
-// ── Google SVG ────────────────────────────────────────
-function GoogleIcon() {
-  return (
-    <Svg width={ms(20)} height={ms(20)} viewBox="0 0 48 48">
-      <Defs>
-        <ClipPath id="clip">
-          <Rect width={48} height={48} />
-        </ClipPath>
-      </Defs>
-      <G clipPath="url(#clip)">
-        <Path fill="#4285F4" d="M47.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h13.2c-.6 3-2.3 5.5-4.9 7.2v6h7.9c4.6-4.3 7.3-10.6 7.3-17.2z" />
-        <Path fill="#34A853" d="M24 48c6.5 0 12-2.2 16-5.8l-7.9-6c-2.2 1.5-5 2.3-8.1 2.3-6.2 0-11.5-4.2-13.4-9.9H2.5v6.2C6.5 42.7 14.7 48 24 48z" />
-        <Path fill="#FBBC05" d="M10.6 28.6c-.5-1.5-.8-3-.8-4.6s.3-3.1.8-4.6v-6.2H2.5C.9 16.5 0 20.1 0 24s.9 7.5 2.5 10.8l8.1-6.2z" />
-        <Path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.5l6.8-6.8C35.9 2.2 30.4 0 24 0 14.7 0 6.5 5.3 2.5 13.2l8.1 6.2C12.5 13.7 17.8 9.5 24 9.5z" />
-      </G>
-    </Svg>
-  );
-}
-
-function AppleIcon() {
-  return (
-    <Svg width={ms(20)} height={ms(20)} viewBox="0 0 814 1000">
-      <Path
-        fill="#1a1a1a"
-        d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76.5 0-103.7 40.8-165.9 40.8s-105.6-57.8-155.5-127.4C46 690.7 0 601.1 0 514.4c0-162.7 106.4-248.8 210.3-248.8 55.4 0 101.5 36.7 136.5 36.7 33.5 0 85.3-38.8 147.8-38.8 23.5 0 108.2 2.6 168.4 90.6zm-56.4-190.5c26.3-30.8 45-72.7 45-114.6 0-5.8-.6-11.6-1.3-17.4-42.8 1.9-93.4 28.5-124.1 63.9-23.5 26.3-46.4 68.2-46.4 110.7 0 6.4.6 12.9 1.3 15.1 2.6.6 6.4 1.3 10.3 1.3 38.8 0 87.5-25.7 115.2-59z"
-      />
-    </Svg>
-  );
-}
-
-// ── OTP Input ─────────────────────────────────────────
-function OtpInput({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  const inputs = useRef<(TextInput | null)[]>([]);
-  const OTP_LENGTH = 4;
-  const digits = value.padEnd(OTP_LENGTH, "").split("").slice(0, OTP_LENGTH);
-
-  const handleChange = (text: string, idx: number) => {
-    const cleaned = text.replace(/[^0-9]/g, "").slice(-1);
-    const next = digits.map((d, i) => (i === idx ? cleaned : d)).join("");
-    onChange(next.slice(0, OTP_LENGTH));
-    if (cleaned && idx < OTP_LENGTH - 1) inputs.current[idx + 1]?.focus();
-  };
-
-  const handleKeyPress = (key: string, idx: number) => {
-    if (key === "Backspace" && !digits[idx] && idx > 0) {
-      inputs.current[idx - 1]?.focus();
-      const next = digits.map((d, i) => (i === idx - 1 ? "" : d)).join("");
-      onChange(next);
-    }
-  };
-
-  return (
-    <View style={otpStyles.row}>
-      {digits.map((d, i) => (
-        <TextInput
-          key={i}
-          ref={(r) => { inputs.current[i] = r; }}
-          style={[otpStyles.box, !!d && otpStyles.boxFilled]}
-          value={d}
-          onChangeText={(t) => handleChange(t, i)}
-          onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, i)}
-          keyboardType="number-pad"
-          maxLength={1}
-          textAlign="center"
-          selectTextOnFocus
-        />
-      ))}
-    </View>
-  );
-}
-
-const otpStyles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    gap: rs(10),
-    justifyContent: "center",
-  },
-  box: {
-    width: rs(46),
-    height: rs(52),
-    borderRadius: rs(12),
-    borderWidth: 1.5,
-    borderColor: "#E2ECEC",
-    backgroundColor: "#F7FAFA",
-    fontSize: ms(20),
-    fontWeight: "700",
-    color: "#1a2e35",
-  },
-  boxFilled: {
-    borderColor: "#2D9C8E",
-    backgroundColor: "rgba(45,156,142,0.06)",
-  },
-});
-
-// ── Country Picker Modal ───────────────────────────────
-function CountryPicker({
-  visible,
-  selected,
-  onSelect,
-  onClose,
-}: {
-  visible: boolean;
-  selected: Country;
-  onSelect: (c: Country) => void;
-  onClose: () => void;
-}) {
-  const [search, setSearch] = useState("");
-  const filtered = COUNTRIES.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.dial.includes(search)
-  );
-
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={onClose}
-    >
-      <Pressable style={pickerStyles.overlay} onPress={onClose} />
-      <View style={pickerStyles.sheet}>
-       
-       /* <View style={pickerStyles.handle} />
-
-        <Text style={pickerStyles.title}>Select Country</Text>
-
-        
-        <View style={pickerStyles.searchRow}>
-          <Ionicons name="search-outline" size={ms(16)} color="#aab" />
-          <TextInput
-            style={pickerStyles.searchInput}
-            placeholder="Search country or code..."
-            placeholderTextColor="#b0bec5"
-            value={search}
-            onChangeText={setSearch}
-            autoCorrect={false}
+        {/* Basic info */}
+        <Text style={styles.sectionLabel}>Basic information</Text>
+        <View style={styles.card}>
+          <Input
+            label="Full name"
+            value={name}
+            onChangeText={(v) => { setName(v); setError(''); }}
+            placeholder="Enter your full name"
+            autoCapitalize="words"
           />
-          {!!search && (
-            <Pressable onPress={() => setSearch("")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="close-circle" size={ms(16)} color="#aab" />
-            </Pressable>
+          {!!error && (
+            <View style={styles.errorRow}>
+              <Ionicons name="alert-circle-outline" size={14} color={Colors.danger} />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
           )}
+
+          <DropdownField
+            label="Gender"
+            value={gender}
+            options={GENDERS}
+            onChange={setGender}
+            placeholder="Select gender"
+          />
+
+          <DatePickerField
+            label="Date of birth"
+            value={dob}
+            onChange={setDob}
+            maximumDate={new Date()}
+          />
         </View>
 
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => item.code}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          renderItem={({ item }) => (
-            <Pressable
-              style={[
-                pickerStyles.countryRow,
-                item.code === selected.code && pickerStyles.countryRowActive,
-              ]}
-              onPress={() => { onSelect(item); onClose(); setSearch(""); }}
-            >
-              <Text style={pickerStyles.flag}>{item.flag}</Text>
-              <Text style={pickerStyles.countryName}>{item.name}</Text>
-              <Text style={pickerStyles.countryDial}>{item.dial}</Text>
-              {item.code === selected.code && (
-                <Ionicons name="checkmark-circle" size={ms(16)} color="#2D9C8E" />
-              )}
-            </Pressable>
-          )}
-          ItemSeparatorComponent={() => <View style={pickerStyles.sep} />}
-          ListEmptyComponent={
-            <View style={pickerStyles.emptyWrap}>
-              <Text style={pickerStyles.emptyText}>No countries found</Text>
-            </View>
-          }
-        />
-      </View>
-    </Modal>
-  );
-}
+        {/* Health info */}
+        <Text style={styles.sectionLabel}>Health details</Text>
+        <View style={styles.card}>
+          <DropdownField
+            label="Blood group"
+            value={bloodGroup}
+            options={BLOOD_GROUPS}
+            onChange={setBloodGroup}
+            placeholder="Select blood group"
+          />
 
-const pickerStyles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
-  },
-  sheet: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "#fff",
-    borderTopLeftRadius: rs(24),
-    borderTopRightRadius: rs(24),
-    maxHeight: SH * 0.72,
-    paddingHorizontal: rs(20),
-    paddingBottom: vs(32),
-  },
-  handle: {
-    width: rs(36),
-    height: vs(4),
-    backgroundColor: "#E2ECEC",
-    borderRadius: rs(2),
-    alignSelf: "center",
-    marginTop: vs(10),
-    marginBottom: vs(14),
-  },
-  title: {
-    fontSize: ms(16),
-    fontWeight: "800",
-    color: "#1a2e35",
-    marginBottom: vs(12),
-    letterSpacing: -0.3,
-  },
-  searchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F7FAFA",
-    borderWidth: 1.5,
-    borderColor: "#E2ECEC",
-    borderRadius: rs(12),
-    paddingHorizontal: rs(12),
-    paddingVertical: vs(10),
-    gap: rs(8),
-    marginBottom: vs(10),
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: ms(13),
-    color: "#1a2e35",
-    fontWeight: "500",
-  },
-  countryRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(12),
-    paddingVertical: vs(11),
-    paddingHorizontal: rs(4),
-    borderRadius: rs(10),
-  },
-  countryRowActive: {
-    backgroundColor: "rgba(45,156,142,0.06)",
-  },
-  flag: { fontSize: ms(22) },
-  countryName: { flex: 1, fontSize: ms(13), fontWeight: "600", color: "#1a2e35" },
-  countryDial: { fontSize: ms(13), fontWeight: "600", color: "#2D9C8E" },
-  sep: { height: 1, backgroundColor: "#F0F7F6" },
-  emptyWrap: { paddingVertical: vs(24), alignItems: "center" },
-  emptyText: { fontSize: ms(13), color: "#8aabab", fontWeight: "500" },
-});
-
-// ── Main Component ────────────────────────────────────
-export default function Phonelogin() {
-  const { signIn } = useAuth();
-
-  const [step, setStep] = useState<Step>("phone");
-  const [country, setCountry] = useState<Country>(COUNTRIES[0]); // default India
-  const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [pickerVisible, setPickerVisible] = useState(false);
-  const [resendTimer, setResendTimer] = useState(0);
-  const [errors, setErrors] = useState<{ phone?: string; otp?: string }>({});
-
-  // Resend countdown
-  useEffect(() => {
-    if (resendTimer <= 0) return;
-    const t = setTimeout(() => setResendTimer((s) => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [resendTimer]);
-
-  const clearError = (field: string) =>
-    setErrors((prev) => ({ ...prev, [field]: undefined }));
-
-  const fullNumber = `${country.dial}${phone}`;
-
-  // ── Step 1: Send OTP ──
-  const handleSendOtp = async () => {
-    if (!phone.trim() || phone.replace(/\D/g, "").length < 7) {
-      setErrors({ phone: "Enter a valid phone number" });
-      return;
-    }
-    try {
-      setLoading(true);
-      console.log("[PhoneLogin] Sending OTP to:", fullNumber);
-      await sendOtpApi(fullNumber);
-      console.log("[PhoneLogin] OTP sent successfully");
-      setResendTimer(60);
-      setStep("otp");
-    } catch (e: any) {
-      console.log("[PhoneLogin] Send OTP error:", e.message);
-      setErrors({ phone: e.message || "Failed to send OTP" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ── Step 2: Verify OTP ──
-  const handleVerifyOtp = async () => {
-    if (otp.length < 4) {
-      setErrors({ otp: "Enter the 4-digit code" });
-      return;
-    }
-    try {
-      setLoading(true);
-      console.log("[PhoneLogin] Verifying OTP for:", fullNumber);
-      const data = await verifyOtpApi(fullNumber, otp);
-      console.log("[PhoneLogin] Verify response:", JSON.stringify(data));
-      if (data?.token) {
-        await signIn(data.token, fullNumber);
-        router.replace("/(tabs)/home");
-      } else {
-        setErrors({ otp: data?.message || "Verification failed" });
-      }
-    } catch (e: any) {
-      console.log("[PhoneLogin] Verify OTP error:", e.message);
-      setErrors({ otp: e.message || "Invalid or expired code" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <>
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-       
-        <View style={styles.hero}>
-        
-          <View style={styles.logoRow}>
-            <View style={styles.logoBox}>
-              <Ionicons name="heart" size={ms(22)} color="#2D9C8E" />
+          <View style={styles.rowFields}>
+            <View style={{ flex: 1 }}>
+              <Input
+                label="Height (cm)"
+                value={height}
+                onChangeText={setHeight}
+                keyboardType="numeric"
+                placeholder="e.g. 172"
+              />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.logoText}>
-                Health <Text style={styles.logoAccent}>AI</Text>
-              </Text>
-              <Text style={styles.logoSub}>Your Health, Smarter</Text>
+              <Input
+                label="Weight (kg)"
+                value={weight}
+                onChangeText={setWeight}
+                keyboardType="numeric"
+                placeholder="e.g. 68"
+              />
             </View>
-            <View style={styles.statsBadge}>
-              <Ionicons name="trending-up" size={ms(16)} color="#2D9C8E" />
-            </View>
-          </View>
-
-          <View style={styles.heroBody}>
-            <View style={styles.welcomeWrap}>
-              <Text style={styles.welcomeTitle}>
-                {step === "otp" ? "Verify Number 📲" : "Welcome Back 👋"}
-              </Text>
-              <Text style={styles.welcomeSub}>
-                {step === "otp"
-                  ? `We sent a 4-digit code to\n${country.flag} ${fullNumber}`
-                  : "Sign in with your phone number to access your health insights."}
-              </Text>
-            </View>
-
-            <View style={styles.decorWrap}>
-              <View style={styles.phoneCircle}>
-                <Ionicons
-                  name={step === "otp" ? "chatbubble-ellipses" : "phone-portrait"}
-                  size={ms(48)}
-                  color="#2D9C8E"
-                />
-              </View>
-              <View style={styles.heartBadge}>
-                <Ionicons name="heart" size={ms(15)} color="#2D9C8E" />
-              </View>
-              <View style={styles.docBadge}>
-                <Ionicons name="pulse-outline" size={ms(14)} color="#2D9C8E" />
-              </View>
-            </View>
-          </View>
-
-        
-          <View style={styles.stepDots}>
-            <View style={[styles.dot, step === "phone" && styles.dotActive]} />
-            <View style={[styles.dot, step === "otp" && styles.dotActive]} />
           </View>
         </View>
 
-        
-        <View style={styles.card}>
+        {/* Continue button */}
+        <Pressable
+          style={[styles.saveBtn, loading && { opacity: 0.6 }]}
+          onPress={handleContinue}
+          disabled={loading}
+        >
+          {loading
+            ? <ActivityIndicator color="#fff" />
+            : <Text style={styles.saveBtnText}>Continue</Text>}
+        </Pressable>
 
-          
-          {step === "phone" && (
-            <>
-              <View style={styles.fieldWrap}>
-                <Text style={styles.fieldLabel}>Phone Number</Text>
-
-               
-                <View style={[styles.phoneRow, !!errors.phone && styles.inputError]}>
-                  
-                  <Pressable
-                    style={styles.dialPicker}
-                    onPress={() => setPickerVisible(true)}
-                  >
-                    <Text style={styles.flagText}>{country.flag}</Text>
-                    <Text style={styles.dialText}>{country.dial}</Text>
-                    <Ionicons name="chevron-down" size={ms(12)} color="#aab" />
-                  </Pressable>
-
-                  
-                  <View style={styles.phoneDivider} />
-
-                 
-                  <TextInput
-                    style={styles.phoneInput}
-                    placeholder="Enter phone number"
-                    placeholderTextColor="#b0bec5"
-                    value={phone}
-                    onChangeText={(v) => {
-                      setPhone(v.replace(/[^0-9]/g, ""));
-                      clearError("phone");
-                    }}
-                    keyboardType="phone-pad"
-                    maxLength={13}
-                  />
-                </View>
-
-                {!!errors.phone && (
-                  <View style={styles.errorRow}>
-                    <Ionicons name="alert-circle-outline" size={ms(13)} color="#EF4444" />
-                    <Text style={styles.errorText}>{errors.phone}</Text>
-                  </View>
-                )}
-
-               
-                <Pressable
-                  style={styles.switchRow}
-                  onPress={() => router.replace("/(auth)/login")}
-                >
-                  <Text style={styles.switchText}>Use email instead</Text>
-                  <Ionicons name="chevron-forward" size={ms(13)} color="#2D9C8E" />
-                </Pressable>
-              </View>
-
-              
-              <View style={styles.infoBox}>
-                <Ionicons name="information-circle-outline" size={ms(16)} color="#2D9C8E" />
-                <Text style={styles.infoText}>
-                  We'll send a one-time verification code to this number.
-                </Text>
-              </View>
-
-            
-              <Pressable
-                style={({ pressed }) => [
-                  styles.primaryBtn,
-                  pressed && !loading && { opacity: 0.9 },
-                  loading && { opacity: 0.75 },
-                ]}
-                onPress={handleSendOtp}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <>
-                    <Text style={styles.primaryBtnText}>Send OTP</Text>
-                    <View style={styles.btnArrow}>
-                      <Ionicons name="arrow-forward" size={ms(15)} color="#2D9C8E" />
-                    </View>
-                  </>
-                )}
-              </Pressable>
-
-             
-              <View style={styles.orRow}>
-                <View style={styles.orLine} />
-                <Text style={styles.orText}>or continue with</Text>
-                <View style={styles.orLine} />
-              </View>
-
-             
-              <Pressable style={styles.socialBtn}>
-                <GoogleIcon />
-                <Text style={styles.socialText}>Continue with Google</Text>
-              </Pressable>
-
-              <Pressable style={styles.socialBtn}>
-                <AppleIcon />
-                <Text style={styles.socialText}>Continue with Apple</Text>
-              </Pressable>
-
-              
-              <View style={styles.signupRow}>
-                <Text style={styles.signupText}>Don't have an account? </Text>
-                <Pressable onPress={() => router.push("/(auth)/signup")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Text style={styles.signupLink}>Sign Up</Text>
-                </Pressable>
-              </View>
-            </>
-          )}
-
-          
-          {step === "otp" && (
-            <>
-             
-              <View style={styles.phoneInfoRow}>
-                <Text style={styles.phoneInfoFlag}>{country.flag}</Text>
-                <Text style={styles.phoneInfoNumber}>{fullNumber}</Text>
-                <Pressable
-                  onPress={() => { setStep("phone"); setOtp(""); }}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Text style={styles.changeText}>Change</Text>
-                </Pressable>
-              </View>
-
-              <View style={styles.fieldWrap}>
-                <Text style={styles.fieldLabel}>Verification Code</Text>
-                <Text style={styles.fieldHint}>Enter the 4-digit code sent via SMS</Text>
-                <View style={{ marginTop: vs(12) }}>
-                  <OtpInput
-                    value={otp}
-                    onChange={(v) => { setOtp(v); clearError("otp"); }}
-                  />
-                </View>
-                {!!errors.otp && (
-                  <View style={[styles.errorRow, { justifyContent: "center", marginTop: vs(8) }]}>
-                    <Ionicons name="alert-circle-outline" size={ms(13)} color="#EF4444" />
-                    <Text style={styles.errorText}>{errors.otp}</Text>
-                  </View>
-                )}
-              </View>
-
-              
-              <Pressable
-                style={({ pressed }) => [
-                  styles.primaryBtn,
-                  pressed && !loading && { opacity: 0.9 },
-                  loading && { opacity: 0.75 },
-                ]}
-                onPress={handleVerifyOtp}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <>
-                    <Text style={styles.primaryBtnText}>Verify & Login</Text>
-                    <View style={styles.btnArrow}>
-                      <Ionicons name="arrow-forward" size={ms(15)} color="#2D9C8E" />
-                    </View>
-                  </>
-                )}
-              </Pressable>
-
-              
-              <View style={styles.resendRow}>
-                <Text style={styles.resendText}>Didn't receive the code? </Text>
-                {resendTimer > 0 ? (
-                  <Text style={styles.resendTimer}>Resend in {resendTimer}s</Text>
-                ) : (
-                  <Pressable
-                    onPress={async () => {
-                      setOtp("");
-                      clearError("otp");
-                      try {
-                        setLoading(true);
-                        console.log("[PhoneLogin] Resending OTP to:", fullNumber);
-                        await sendOtpApi(fullNumber);
-                        setResendTimer(60);
-                      } catch (e: any) {
-                        console.log("[PhoneLogin] Resend OTP error:", e.message);
-                        setErrors({ otp: e.message || "Failed to resend OTP" });
-                      } finally {
-                        setLoading(false);
-                      }
-                    }}
-                  >
-                    <Text style={styles.resendLink}>Resend OTP</Text>
-                  </Pressable>
-                )}
-              </View>
-
-            
-              <View style={styles.securityRow}>
-                <View style={styles.securityIcon}>
-                  <Ionicons name="shield-checkmark-outline" size={ms(18)} color="#2D9C8E" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.securityTitle}>Your data is encrypted and secure</Text>
-                  <Text style={styles.securitySub}>We follow industry-leading security standards</Text>
-                </View>
-              </View>
-
-          
-              <Pressable
-                style={styles.backRow}
-                onPress={() => { setStep("phone"); setOtp(""); }}
-              >
-                <Ionicons name="arrow-back" size={ms(14)} color="#2D9C8E" />
-                <Text style={styles.backText}>Back to phone entry</Text>
-              </Pressable>
-            </>
-          )}
+        <View style={styles.privacyNote}>
+          <Ionicons name="shield-checkmark-outline" size={14} color={Colors.primary} />
+          <Text style={styles.privacyText}>
+            Your data is encrypted and never shared with third parties.
+          </Text>
         </View>
       </ScrollView>
-
-      
-      <CountryPicker
-        visible={pickerVisible}
-        selected={country}
-        onSelect={setCountry}
-        onClose={() => setPickerVisible(false)}
-      />
-    </>
+    </SafeAreaView>
   );
 }
 
-// ── Styles ────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#EAF6F5" },
-  scrollContent: { flexGrow: 1 },
+  safe: { flex: 1, backgroundColor: Colors.bg },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+    paddingHorizontal: 16, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  headerTitle:  { fontSize: 17, fontWeight: '600', color: Colors.text, flex: 1, textAlign: 'center' },
+  skipLink:     { fontSize: 14, fontWeight: '600', color: Colors.primary },
+  body:         { padding: Spacing.lg, gap: Spacing.md, paddingBottom: 40 },
 
-  // ── Hero ──
-  hero: {
-    backgroundColor: "#EAF6F5",
-    paddingHorizontal: rs(20),
-    paddingTop: vs(52),
-    paddingBottom: vs(20),
+  avatarWrap:    { alignItems: 'center', gap: 10, paddingVertical: 8 },
+  avatar: {
+    width: 78, height: 78, borderRadius: 39,
+    backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center',
+    borderWidth: 2, borderColor: '#5DCAA5',
   },
-  logoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(10),
-    marginBottom: vs(18),
-  },
-  logoBox: {
-    width: rs(44),
-    height: rs(44),
-    borderRadius: rs(14),
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#2D9C8E",
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  logoText: { fontSize: ms(17), fontWeight: "800", color: "#1a2e35", letterSpacing: -0.3 },
-  logoAccent: { color: "#2D9C8E" },
-  logoSub: { fontSize: ms(11), color: "#7a9a9a", fontWeight: "500" },
-  statsBadge: {
-    width: rs(36),
-    height: rs(36),
-    borderRadius: rs(10),
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.07,
-    shadowRadius: 4,
-    elevation: 2,
-  },
+  avatarInitial: { fontSize: 30, fontWeight: '700', color: '#fff' },
+  avatarHint:    { fontSize: 13, color: Colors.textMuted, textAlign: 'center', paddingHorizontal: 24, lineHeight: 19 },
 
-  heroBody: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(8),
+  sectionLabel: {
+    fontSize: 12, fontWeight: '600', color: Colors.textMuted,
+    textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4,
   },
-  welcomeWrap: { flex: 1 },
-  welcomeTitle: {
-    fontSize: ms(22),
-    fontWeight: "800",
-    color: "#1a2e35",
-    marginBottom: vs(6),
-    letterSpacing: -0.5,
-  },
-  welcomeSub: {
-    fontSize: ms(12),
-    color: "#6b8f8f",
-    lineHeight: ms(18),
-    fontWeight: "400",
-  },
-  decorWrap: {
-    width: rs(110),
-    height: rs(110),
-    position: "relative",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  phoneCircle: {
-    width: rs(100),
-    height: rs(100),
-    borderRadius: rs(50),
-    backgroundColor: "rgba(45,156,142,0.1)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  heartBadge: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    width: rs(30),
-    height: rs(30),
-    borderRadius: rs(9),
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  docBadge: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: rs(30),
-    height: rs(30),
-    borderRadius: rs(9),
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-
-  // Step dots
-  stepDots: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: rs(6),
-    marginTop: vs(14),
-  },
-  dot: {
-    width: rs(6),
-    height: rs(6),
-    borderRadius: rs(3),
-    backgroundColor: "rgba(45,156,142,0.25)",
-  },
-  dotActive: {
-    width: rs(18),
-    backgroundColor: "#2D9C8E",
-    borderRadius: rs(3),
-  },
-
-  // ── Card ──
   card: {
-    flex: 1,
-    backgroundColor: "#fff",
-    borderTopLeftRadius: rs(28),
-    borderTopRightRadius: rs(28),
-    paddingHorizontal: rs(20),
-    paddingTop: vs(26),
-    paddingBottom: vs(36),
-    gap: vs(14),
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 5,
+    backgroundColor: Colors.card, borderRadius: Radius.lg,
+    padding: Spacing.lg, borderWidth: 1, borderColor: Colors.border, gap: Spacing.md,
   },
+  fieldLabel: { fontSize: 14, fontWeight: '500', color: Colors.text, marginBottom: 6 },
 
-  // ── Fields ──
-  fieldWrap: { gap: vs(4) },
-  fieldLabel: {
-    fontSize: ms(13),
-    fontWeight: "600",
-    color: "#1a2e35",
-    marginBottom: vs(4),
-  },
-  fieldHint: { fontSize: ms(12), color: "#8aabab" },
+  errorRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -4 },
+  errorText: { fontSize: 12, color: Colors.danger, fontWeight: '500' },
 
-  // ── Phone input ──
-  phoneRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F7FAFA",
-    borderWidth: 1.5,
-    borderColor: "#E2ECEC",
-    borderRadius: rs(14),
-    overflow: "hidden",
-  },
-  inputError: { borderColor: "#EF4444" },
-  dialPicker: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: rs(12),
-    paddingVertical: vs(12),
-    gap: rs(5),
-  },
-  flagText: { fontSize: ms(18) },
-  dialText: { fontSize: ms(13), fontWeight: "700", color: "#1a2e35" },
-  phoneDivider: {
-    width: 1,
-    height: vs(22),
-    backgroundColor: "#E2ECEC",
-  },
-  phoneInput: {
-    flex: 1,
-    fontSize: ms(14),
-    fontWeight: "500",
-    color: "#1a2e35",
-    paddingHorizontal: rs(12),
-    paddingVertical: vs(12),
-  },
+  rowFields: { flexDirection: 'row', gap: Spacing.md },
 
-  errorRow: { flexDirection: "row", alignItems: "center", gap: rs(4), marginTop: vs(3) },
-  errorText: { fontSize: ms(11), color: "#EF4444", fontWeight: "500", flex: 1 },
+  saveBtn: {
+    backgroundColor: Colors.primary, paddingVertical: 14,
+    borderRadius: Radius.md, alignItems: 'center', marginTop: 4,
+  },
+  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 
-  switchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    gap: rs(2),
-    marginTop: vs(6),
+  privacyNote: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+    backgroundColor: '#ECFDF5', borderRadius: Radius.md,
+    padding: 12, borderWidth: 1, borderColor: '#A7F3D0',
   },
-  switchText: { fontSize: ms(12), fontWeight: "600", color: "#2D9C8E" },
-
-  // ── Info box ──
-  infoBox: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: rs(8),
-    backgroundColor: "rgba(45,156,142,0.06)",
-    borderRadius: rs(12),
-    padding: rs(12),
-    borderWidth: 1,
-    borderColor: "#C8E8E5",
-  },
-  infoText: {
-    flex: 1,
-    fontSize: ms(12),
-    color: "#4a7a7a",
-    lineHeight: ms(17),
-    fontWeight: "500",
-  },
-
-  // ── Primary button ──
-  primaryBtn: {
-    backgroundColor: "#2D9C8E",
-    borderRadius: rs(14),
-    paddingVertical: vs(14),
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    shadowColor: "#2D9C8E",
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  primaryBtnText: { color: "#fff", fontSize: ms(15), fontWeight: "700", letterSpacing: 0.3 },
-  btnArrow: {
-    position: "absolute",
-    right: rs(14),
-    width: rs(28),
-    height: rs(28),
-    borderRadius: rs(8),
-    backgroundColor: "rgba(255,255,255,0.25)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  // ── Divider ──
-  orRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(8),
-    marginVertical: vs(2),
-  },
-  orLine: { flex: 1, height: 1, backgroundColor: "#E8F0F0" },
-  orText: { fontSize: ms(11), color: "#8aabab", fontWeight: "500" },
-
-  // ── Social ──
-  socialBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(12),
-    backgroundColor: "#F7FAFA",
-    borderWidth: 1.5,
-    borderColor: "#E2ECEC",
-    borderRadius: rs(14),
-    paddingVertical: vs(12),
-    paddingHorizontal: rs(16),
-  },
-  socialText: { fontSize: ms(13), fontWeight: "600", color: "#1a2e35" },
-
-  // ── Signup ──
-  signupRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: vs(4),
-  },
-  signupText: { fontSize: ms(13), color: "#8aabab", fontWeight: "500" },
-  signupLink: { fontSize: ms(13), color: "#2D9C8E", fontWeight: "700" },
-
-  // ── Phone info strip (OTP step) ──
-  phoneInfoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(8),
-    backgroundColor: "#F0FAF9",
-    borderRadius: rs(12),
-    padding: rs(12),
-    borderWidth: 1,
-    borderColor: "#C8E8E5",
-  },
-  phoneInfoFlag: { fontSize: ms(18) },
-  phoneInfoNumber: { flex: 1, fontSize: ms(13), fontWeight: "600", color: "#1a2e35" },
-  changeText: { fontSize: ms(12), color: "#2D9C8E", fontWeight: "700" },
-
-  // ── Resend ──
-  resendRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  resendText: { fontSize: ms(13), color: "#8aabab", fontWeight: "500" },
-  resendLink: { fontSize: ms(13), color: "#2D9C8E", fontWeight: "700" },
-  resendTimer: { fontSize: ms(13), color: "#aab", fontWeight: "600" },
-
-  // ── Security ──
-  securityRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(12),
-    backgroundColor: "#F0FAF9",
-    borderRadius: rs(14),
-    padding: rs(14),
-    borderWidth: 1,
-    borderColor: "#C8E8E5",
-  },
-  securityIcon: {
-    width: rs(34),
-    height: rs(34),
-    borderRadius: rs(10),
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  securityTitle: { fontSize: ms(12), fontWeight: "600", color: "#1a2e35" },
-  securitySub: { fontSize: ms(10), color: "#7a9a9a", marginTop: vs(1) },
-
-  // ── Back row ──
-  backRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: rs(6),
-    paddingVertical: vs(2),
-  },
-  backText: { fontSize: ms(13), fontWeight: "600", color: "#2D9C8E" },
+  privacyText: { flex: 1, fontSize: 12, color: Colors.primary, lineHeight: 18 },
 });
-*/}
-
-// ─────────────────────────────────────────────────────────────
-// MOCK DATA  (for UI testing — remove when wiring real APIs)
-// ─────────────────────────────────────────────────────────────
-//
-// handleContinue  ─────────────────────────────────────────────
-//   // const updateProfileMock = async (name: string) => {
-//   //   await new Promise<void>((r) => setTimeout(r, 600));
-//   //   console.log("[MOCK] Profile name saved:", name);
-//   // };
-//   // await updateProfileMock(trimmed);
-//
-// ─────────────────────────────────────────────────────────────

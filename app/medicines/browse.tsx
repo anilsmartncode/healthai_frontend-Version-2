@@ -22,7 +22,7 @@
  *   • medicineId                 — opens the detail modal directly
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -33,6 +33,7 @@ import {
   Modal,
   Alert,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -208,34 +209,6 @@ function MedicineDetailModal({
             <Text style={styles.viewMore}>View More</Text>
           </Pressable>
 
-          {/* Action buttons */}
-          <View style={styles.detailBtns}>
-            <Pressable
-              style={[styles.primaryBtn, saved && { backgroundColor: '#16A34A' }]}
-              onPress={handleSave}
-              disabled={saving || saved}
-            >
-              {saving ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <>
-                  <Ionicons
-                    name={saved ? 'checkmark' : 'bookmark-outline'}
-                    size={16}
-                    color="#fff"
-                  />
-                  <Text style={styles.primaryBtnText}>
-                    {saved ? 'Saved!' : 'Save Medicine'}
-                  </Text>
-                </>
-              )}
-            </Pressable>
-            <Pressable style={styles.outlineBtn} onPress={handleSetReminder}>
-              <Ionicons name="alarm-outline" size={16} color={Colors.primary} />
-              <Text style={styles.outlineBtnText}>Set Reminder</Text>
-            </Pressable>
-          </View>
-
           {/* Extra actions */}
           <View style={styles.extraActions}>
             {[
@@ -244,28 +217,149 @@ function MedicineDetailModal({
               {
                 icon: 'sparkles-outline',
                 label: 'Ask AI About Medicine',
-                onPress: () => { onClose(); router.push('/(tabs)/ai'); },
+                onPress: () => { onClose(); router.push('/ai-chat'); },
               },
               {
-                icon: 'bookmark-outline',
-                label: 'Add to My Medicines',
+                icon: saved ? 'bookmark' : 'bookmark-outline',
+                label: saved ? 'Saved to My Medicines' : 'Add to My Medicines',
                 onPress: handleSave,
+                disabled: saving || saved,
+                saved,
               },
             ].map((a) => (
               <Pressable
                 key={a.label}
                 style={({ pressed }) => [styles.extraActionRow, pressed && { opacity: 0.7 }]}
                 onPress={a.onPress}
+                disabled={a.disabled}
               >
-                <Ionicons name={a.icon as any} size={18} color={Colors.primary} />
-                <Text style={styles.extraActionLabel}>{a.label}</Text>
-                <Ionicons name="chevron-forward" size={15} color="#CBD5E1" />
+                {a.label === 'Add to My Medicines' && saving ? (
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                ) : (
+                  <Ionicons
+                    name={a.icon as any}
+                    size={18}
+                    color={a.saved ? '#16A34A' : Colors.primary}
+                  />
+                )}
+                <Text style={[styles.extraActionLabel, a.saved && { color: '#16A34A' }]}>
+                  {a.label}
+                </Text>
+                {!(a.label === 'Add to My Medicines' && saving) && (
+                  <Ionicons name="chevron-forward" size={15} color="#CBD5E1" />
+                )}
               </Pressable>
             ))}
           </View>
         </ScrollView>
       </SafeAreaView>
     </Modal>
+  );
+}
+
+// ─── CATEGORY GRID ───────────────────────────────────────────────────────────
+const COLS = 3;
+const ROWS = 2;
+const PER_PAGE = COLS * ROWS;
+const SCREEN_W = Dimensions.get('window').width;
+
+function CategoryGrid({
+  categories,
+  selectedCategory,
+  onSelect,
+}: {
+  categories: Category[];
+  selectedCategory: Category | null;
+  onSelect: (cat: Category) => void;
+}) {
+  const [page, setPage] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+  const pageW = SCREEN_W;
+
+  // Split into pages of 6
+  const pages: Category[][] = [];
+  for (let i = 0; i < categories.length; i += PER_PAGE) {
+    pages.push(categories.slice(i, i + PER_PAGE));
+  }
+
+  const handleScroll = (e: any) => {
+    const newPage = Math.round(e.nativeEvent.contentOffset.x / pageW);
+    setPage(newPage);
+  };
+
+  return (
+    <View style={styles.catGridWrapper}>
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={handleScroll}
+        decelerationRate="fast"
+      >
+        {pages.map((pageCats, pi) => {
+          // Pad to full grid so last page aligns
+          const padded = [...pageCats];
+          while (padded.length < PER_PAGE) padded.push(null as any);
+          const rows: (Category | null)[][] = [];
+          for (let r = 0; r < ROWS; r++) {
+            rows.push(padded.slice(r * COLS, r * COLS + COLS));
+          }
+          return (
+            <View key={pi} style={[styles.catPage, { width: pageW }]}>
+              {rows.map((row, ri) => (
+                <View key={ri} style={styles.catRow2}>
+                  {row.map((cat, ci) =>
+                    cat ? (
+                      <Pressable
+                        key={cat.id}
+                        style={[
+                          styles.catCard,
+                          selectedCategory?.id === cat.id && {
+                            backgroundColor: cat.color + '18',
+                            borderColor: cat.color,
+                            borderWidth: 1.5,
+                          },
+                        ]}
+                        onPress={() => onSelect(cat)}
+                      >
+                        <View style={[styles.catIconBox, { backgroundColor: cat.color + '18' }]}>
+                          <Ionicons
+                            name={cat.icon as any}
+                            size={18}
+                            color={cat.color ?? Colors.primary}
+                          />
+                        </View>
+                        <Text style={[styles.catCardText, selectedCategory?.id === cat.id && { color: cat.color }]} numberOfLines={2}>
+                          {cat.name}
+                        </Text>
+                      </Pressable>
+                    ) : (
+                      <View key={`empty-${ci}`} style={[styles.catCard, { backgroundColor: 'transparent', borderColor: 'transparent' }]} />
+                    )
+                  )}
+                </View>
+              ))}
+            </View>
+          );
+        })}
+      </ScrollView>
+
+      {/* Pagination dots */}
+      {pages.length > 1 && (
+        <View style={styles.catDots}>
+          {pages.map((_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.catDot,
+                { backgroundColor: i === page ? Colors.primary : '#CBD5E1', width: i === page ? 16 : 6 },
+              ]}
+            />
+          ))}
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -342,6 +436,9 @@ export default function BrowseMedicinesScreen() {
         // API 2 — GET /api/medicines/search?q=searchQ
         const results = await searchMedicines(searchQ, 1, 20);
         if (!cancelled) setMedicines(results);
+      } catch (e) {
+        console.error('[Browse] search error', e);
+        if (!cancelled) setMedicines([]);
       } finally {
         if (!cancelled) setListLoading(false);
       }
@@ -359,6 +456,9 @@ export default function BrowseMedicinesScreen() {
         // API 3 — GET /api/medicines?category_id=
         const results = await getMedicinesByCategory(selectedCategory.id, 1, 20);
         if (!cancelled) setMedicines(results);
+      } catch (e) {
+        console.error('[Browse] category load error', e);
+        if (!cancelled) setMedicines([]);
       } finally {
         if (!cancelled) setListLoading(false);
       }
@@ -462,50 +562,15 @@ export default function BrowseMedicinesScreen() {
       ) : (
         <ScrollView showsVerticalScrollIndicator={false}>
 
-          {/* ── Category filter chips ── */}
-          {!isSearching && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.catRow}
-            >
-              {categories.map((cat) => (
-                <Pressable
-                  key={cat.id}
-                  style={[
-                    styles.catChip,
-                    selectedCategory?.id === cat.id && {
-                      backgroundColor: cat.color + '20',
-                      borderColor: cat.color,
-                    },
-                  ]}
-                  onPress={() =>
-                    setSelectedCategory(
-                      selectedCategory?.id === cat.id ? null : cat,
-                    )
-                  }
-                >
-                  <Ionicons
-                    name={cat.icon as any}
-                    size={14}
-                    color={
-                      selectedCategory?.id === cat.id ? cat.color : '#64748B'
-                    }
-                  />
-                  <Text
-                    style={[
-                      styles.catChipText,
-                      selectedCategory?.id === cat.id && {
-                        color: cat.color,
-                        fontWeight: '700',
-                      },
-                    ]}
-                  >
-                    {cat.name}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
+          {/* ── Category grid with paging ── */}
+          {!isSearching && categories.length > 0 && (
+            <CategoryGrid
+              categories={categories}
+              selectedCategory={selectedCategory}
+              onSelect={(cat) =>
+                setSelectedCategory(selectedCategory?.id === cat.id ? null : cat)
+              }
+            />
           )}
 
           {listLoading && (
@@ -681,19 +746,43 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, fontSize: 14, color: '#0F172A', padding: 0 },
 
-  catRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
-  catChip: {
-    flexDirection: 'row',
+  catGridWrapper: { paddingVertical: 12 },
+  catPage: { flexDirection: 'column', gap: 10, paddingHorizontal: 16 },
+  catRow2: { flexDirection: 'row', gap: 10 },
+  catCard: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
     backgroundColor: '#fff',
     borderWidth: 0.5,
     borderColor: '#E2E8F0',
-    borderRadius: 99,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
   },
-  catChipText: { fontSize: 13, color: '#64748B', fontWeight: '500' },
+  catIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  catCardText: {
+    fontSize: 11,
+    color: '#475569',
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 14,
+  },
+  catDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 6,
+  },
+  catDot: { width: 6, height: 6, borderRadius: 3 },
 
   section: { padding: 16 },
   secHeader: {
@@ -821,29 +910,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  detailBtns: { gap: 10 },
-  primaryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: Colors.primary,
-    borderRadius: 14,
-    paddingVertical: 14,
-  },
-  primaryBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  outlineBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: Colors.primary,
-    borderRadius: 14,
-    paddingVertical: 14,
-  },
-  outlineBtnText: { color: Colors.primary, fontSize: 15, fontWeight: '700' },
   extraActions: {
     backgroundColor: '#fff',
     borderRadius: 14,

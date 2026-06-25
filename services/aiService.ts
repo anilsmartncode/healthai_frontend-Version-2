@@ -15,16 +15,48 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ChatMessage } from '@/types';
 
 // ─── Toggle ────────────────────────────────────────────────
-const USE_MOCK = true; // 🟢 MOCK | 🔴 set false when backend ready
+const USE_MOCK = false; // 🟢 MOCK | 🔴 set false when backend ready
 // ──────────────────────────────────────────────────────────
 
-const STORAGE_KEYS = {
-  REPORTS:        'healthai_reports',
-  MEDICINES:      'healthai_medicines',
-  FAMILY:         'healthai_family',
-  AI_MEMORY:      'healthai_ai_memory',
-  CONVERSATION:   'healthai_ai_conversation',
-};
+// Storage keys — scoped to logged-in user's phone number
+// Pass phone from useAuth() so different users never see each other's data
+export function STORAGE_KEYS(phone: string | null = null) {
+  const user = phone ? phone.replace(/\D/g, '') : 'guest';
+  return {
+    REPORTS:      `healthai_reports_${user}`,
+    MEDICINES:    `healthai_medicines_${user}`,
+    FAMILY:       'healthai_family',
+    AI_MEMORY:    `healthai_ai_memory_${user}`,
+    CONVERSATION: `healthai_ai_conversation_${user}`,
+    SESSIONS:     `healthai_ai_sessions_${user}`,
+    SESSION_PREFIX: `healthai_ai_session_${user}_`,
+  };
+}
+
+// ─── Chat history / sessions ──────────────────────────────
+
+/**
+ * A saved chat session — one row in the History tab.
+ * `messages` holds the full conversation for that session.
+ */
+export interface ChatSession {
+  id: string;
+  title: string;       // derived from first user message
+  preview: string;      // short preview of last message
+  messages: ChatMessage[];
+  createdAt: string;    // ISO date
+  updatedAt: string;    // ISO date
+}
+
+/** Lightweight summary used to render the History list without loading full messages */
+export interface ChatSessionSummary {
+  id: string;
+  title: string;
+  preview: string;
+  messageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
 
 // ─── Types ─────────────────────────────────────────────────
 
@@ -55,13 +87,14 @@ export interface AIHealthContext {
 
 // ─── Build context from AsyncStorage ──────────────────────
 
-export async function buildAIContext(): Promise<AIHealthContext> {
+export async function buildAIContext(phone: string | null = null): Promise<AIHealthContext> {
   try {
+    const keys = STORAGE_KEYS(phone);
     const [reportsRaw, medicinesRaw, familyRaw, aiMemoryRaw] = await Promise.all([
-      AsyncStorage.getItem(STORAGE_KEYS.REPORTS),
-      AsyncStorage.getItem(STORAGE_KEYS.MEDICINES),
-      AsyncStorage.getItem(STORAGE_KEYS.FAMILY),
-      AsyncStorage.getItem(STORAGE_KEYS.AI_MEMORY),
+      AsyncStorage.getItem(keys.REPORTS),
+      AsyncStorage.getItem(keys.MEDICINES),
+      AsyncStorage.getItem(keys.FAMILY),
+      AsyncStorage.getItem(keys.AI_MEMORY),
     ]);
 
     const reports: AIContextReport[]   = reportsRaw   ? JSON.parse(reportsRaw).slice(0, 5)   : [];
@@ -145,6 +178,7 @@ export async function askAI(
   question: string,
   conversationHistory: ChatMessage[],
   prefillContext?: string,
+  phone: string | null = null,
 ): Promise<ChatMessage> {
 
   if (USE_MOCK) {
@@ -159,7 +193,7 @@ export async function askAI(
   }
 
   // 🔴 REAL — uncomment when backend ready
-  // const ctx = await buildAIContext();
+  // const ctx = await buildAIContext(phone);
   // const systemPrompt = buildSystemPrompt(ctx, prefillContext);
   // const res = await fetch(ENDPOINTS.aiChat, {
   //   method: 'POST',
@@ -202,8 +236,8 @@ export async function generateReportNarrative(
 
 // ─── Generate dynamic suggested prompts ───────────────────
 
-export async function generateSuggestedPrompts(): Promise<string[]> {
-  const ctx = await buildAIContext();
+export async function generateSuggestedPrompts(phone: string | null = null): Promise<string[]> {
+  const ctx = await buildAIContext(phone);
   const prompts: string[] = [];
 
   const latest = ctx.reports[0];
@@ -228,13 +262,13 @@ export async function generateSuggestedPrompts(): Promise<string[]> {
 
 // ─── Save AI memory after session ─────────────────────────
 
-export async function saveAIMemory(conversationHistory: ChatMessage[]): Promise<void> {
+export async function saveAIMemory(conversationHistory: ChatMessage[], phone: string | null = null): Promise<void> {
   if (conversationHistory.length < 2) return;
   // In real mode this would call AI to summarise; here we store last assistant reply
   const lastAI = [...conversationHistory].reverse().find(m => m.role === 'ai');
   if (lastAI) {
     const summary = `Last session (${new Date().toLocaleDateString()}): ${lastAI.text.slice(0, 200)}`;
-    await AsyncStorage.setItem(STORAGE_KEYS.AI_MEMORY, JSON.stringify(summary));
+    await AsyncStorage.setItem(STORAGE_KEYS(phone).AI_MEMORY, JSON.stringify(summary));
   }
 }
 
@@ -247,9 +281,9 @@ export interface HealthAlert {
   severity: 'warning' | 'info';
 }
 
-export async function checkHealthAlerts(): Promise<HealthAlert | null> {
+export async function checkHealthAlerts(phone: string | null = null): Promise<HealthAlert | null> {
   try {
-    const reportsRaw = await AsyncStorage.getItem(STORAGE_KEYS.REPORTS);
+    const reportsRaw = await AsyncStorage.getItem(STORAGE_KEYS(phone).REPORTS);
     if (!reportsRaw) return null;
     const reports: AIContextReport[] = JSON.parse(reportsRaw);
     if (reports.length === 0) return null;
@@ -277,4 +311,176 @@ export async function checkHealthAlerts(): Promise<HealthAlert | null> {
   } catch {
     return null;
   }
+}
+
+// ─── Chat History API ──────────────────────────────────────
+// All functions below are scoped per-user via `phone`.
+// HOW TO SWITCH TO REAL API:
+//   1. Set USE_MOCK = false
+//   2. Implement the corresponding ENDPOINTS.* calls in constants/api.ts
+//      GET    /ai/sessions               -> list session summaries
+//      GET    /ai/sessions/:id           -> get one session (full messages)
+//      PUT    /ai/sessions/:id           -> upsert session (title + messages)
+//      DELETE /ai/sessions/:id           -> delete a session
+//      DELETE /ai/sessions               -> clear all sessions
+// ─────────────────────────────────────────────────────────
+
+function deriveSessionTitle(messages: ChatMessage[]): string {
+  const firstUser = messages.find(m => m.role === 'user');
+  if (!firstUser) return 'New conversation';
+  const text = firstUser.text.trim();
+  return text.length > 48 ? `${text.slice(0, 48)}…` : text;
+}
+
+function deriveSessionPreview(messages: ChatMessage[]): string {
+  const last = messages[messages.length - 1];
+  if (!last) return '';
+  const text = last.text.trim().replace(/\s+/g, ' ');
+  return text.length > 80 ? `${text.slice(0, 80)}…` : text;
+}
+
+/** List all saved chat sessions for this user, most recently updated first */
+export async function listChatSessions(phone: string | null = null): Promise<ChatSessionSummary[]> {
+  if (USE_MOCK) {
+    // 🟢 MOCK
+    try {
+      const raw = await AsyncStorage.getItem(STORAGE_KEYS(phone).SESSIONS);
+      const list: ChatSessionSummary[] = raw ? JSON.parse(raw) : [];
+      return list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    } catch {
+      return [];
+    }
+  }
+
+  // 🔴 REAL
+  // const res = await fetch(ENDPOINTS.aiSessions, {
+  //   headers: { Authorization: `Bearer ${await getToken()}` },
+  // });
+  // const data = await res.json();
+  // return data.sessions;
+  throw new Error('Real chat history API not configured yet.');
+}
+
+/** Load the full message list for a saved session */
+export async function getChatSession(sessionId: string, phone: string | null = null): Promise<ChatSession | null> {
+  if (USE_MOCK) {
+    // 🟢 MOCK
+    try {
+      const raw = await AsyncStorage.getItem(`${STORAGE_KEYS(phone).SESSION_PREFIX}${sessionId}`);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  // 🔴 REAL
+  // const res = await fetch(`${ENDPOINTS.aiSessions}/${sessionId}`, {
+  //   headers: { Authorization: `Bearer ${await getToken()}` },
+  // });
+  // const data = await res.json();
+  // return data.session;
+  throw new Error('Real chat history API not configured yet.');
+}
+
+/**
+ * Save (create or update) a chat session.
+ * Called whenever a conversation has at least one user message —
+ * keeps the session row + its messages in sync as the chat grows.
+ */
+export async function saveChatSession(
+  sessionId: string,
+  messages: ChatMessage[],
+  phone: string | null = null,
+): Promise<void> {
+  // Don't save empty/greeting-only sessions
+  if (!messages.some(m => m.role === 'user')) return;
+
+  const now = new Date().toISOString();
+
+  if (USE_MOCK) {
+    // 🟢 MOCK
+    const keys = STORAGE_KEYS(phone);
+    const existingRaw = await AsyncStorage.getItem(`${keys.SESSION_PREFIX}${sessionId}`);
+    const existing: ChatSession | null = existingRaw ? JSON.parse(existingRaw) : null;
+
+    const session: ChatSession = {
+      id: sessionId,
+      title: existing?.title ?? deriveSessionTitle(messages),
+      preview: deriveSessionPreview(messages),
+      messages,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    };
+
+    await AsyncStorage.setItem(`${keys.SESSION_PREFIX}${sessionId}`, JSON.stringify(session));
+
+    // Update the lightweight summary index
+    const listRaw = await AsyncStorage.getItem(keys.SESSIONS);
+    const list: ChatSessionSummary[] = listRaw ? JSON.parse(listRaw) : [];
+    const summary: ChatSessionSummary = {
+      id: session.id,
+      title: session.title,
+      preview: session.preview,
+      messageCount: session.messages.length,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+    };
+    const idx = list.findIndex(s => s.id === sessionId);
+    if (idx >= 0) list[idx] = summary; else list.unshift(summary);
+    await AsyncStorage.setItem(keys.SESSIONS, JSON.stringify(list));
+    return;
+  }
+
+  // 🔴 REAL
+  // await fetch(`${ENDPOINTS.aiSessions}/${sessionId}`, {
+  //   method: 'PUT',
+  //   headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await getToken()}` },
+  //   body: JSON.stringify({ messages }),
+  // });
+  throw new Error('Real chat history API not configured yet.');
+}
+
+/** Delete a single saved session */
+export async function deleteChatSession(sessionId: string, phone: string | null = null): Promise<void> {
+  if (USE_MOCK) {
+    // 🟢 MOCK
+    const keys = STORAGE_KEYS(phone);
+    await AsyncStorage.removeItem(`${keys.SESSION_PREFIX}${sessionId}`);
+    const listRaw = await AsyncStorage.getItem(keys.SESSIONS);
+    const list: ChatSessionSummary[] = listRaw ? JSON.parse(listRaw) : [];
+    await AsyncStorage.setItem(keys.SESSIONS, JSON.stringify(list.filter(s => s.id !== sessionId)));
+    return;
+  }
+
+  // 🔴 REAL
+  // await fetch(`${ENDPOINTS.aiSessions}/${sessionId}`, {
+  //   method: 'DELETE',
+  //   headers: { Authorization: `Bearer ${await getToken()}` },
+  // });
+  throw new Error('Real chat history API not configured yet.');
+}
+
+/** Delete all saved sessions for this user */
+export async function clearAllChatSessions(phone: string | null = null): Promise<void> {
+  if (USE_MOCK) {
+    // 🟢 MOCK
+    const keys = STORAGE_KEYS(phone);
+    const listRaw = await AsyncStorage.getItem(keys.SESSIONS);
+    const list: ChatSessionSummary[] = listRaw ? JSON.parse(listRaw) : [];
+    await Promise.all(list.map(s => AsyncStorage.removeItem(`${keys.SESSION_PREFIX}${s.id}`)));
+    await AsyncStorage.removeItem(keys.SESSIONS);
+    return;
+  }
+
+  // 🔴 REAL
+  // await fetch(ENDPOINTS.aiSessions, {
+  //   method: 'DELETE',
+  //   headers: { Authorization: `Bearer ${await getToken()}` },
+  // });
+  throw new Error('Real chat history API not configured yet.');
+}
+
+/** Generate a fresh session id for a new conversation */
+export function newSessionId(): string {
+  return `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }

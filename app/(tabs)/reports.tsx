@@ -170,15 +170,15 @@ function ChipBar({
       />
     );
   }
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.filtersRow}
-      style={styles.filtersScroll}
-    >
-      {children}
-    </ScrollView>
+  return React.createElement(
+    ScrollView,
+    {
+      horizontal: true,
+      showsHorizontalScrollIndicator: false,
+      contentContainerStyle: styles.filtersRow,
+      style: styles.filtersScroll,
+    },
+    ...children
   );
 }
 
@@ -197,14 +197,6 @@ function EmptyState({ searchQuery, activeFilter }: { searchQuery: string; active
             ? `No ${activeFilter} reports yet`
             : 'Upload a report to get started'}
       </Text>
-      {!searchQuery && (
-        <Pressable
-          style={styles.uploadEmptyBtn}
-          onPress={() => router.push('/upload')}
-        >
-          <Text style={styles.uploadEmptyText}>+ Upload Report</Text>
-        </Pressable>
-      )}
     </View>
   );
 }
@@ -357,8 +349,6 @@ const styles = StyleSheet.create({
   emptyState:         { alignItems: 'center', paddingVertical: 60, gap: 8 },
   emptyTitle:         { fontSize: 16, fontWeight: '700', color: Colors.text },
   emptySub:           { fontSize: 13, color: Colors.textMuted, textAlign: 'center' },
-  uploadEmptyBtn:     { marginTop: 12, backgroundColor: Colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: Radius.pill },
-  uploadEmptyText:    { color: '#fff', fontWeight: '600', fontSize: 14 },
   listContainer:        { flex: 1 },
   fab:                { position: 'absolute', bottom: 20, left: 16, right: 16, backgroundColor: Colors.primary, borderRadius: Radius.pill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, gap: 8, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
   fabText:            { color: '#fff', fontSize: 15, fontWeight: '700' },

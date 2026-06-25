@@ -3,6 +3,8 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AuthProvider } from "@/context/AuthContext";
+import { OfflineBanner } from "@/components/common/OfflineBanner";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { useEffect, useState } from "react";
 import { checkHealthAlerts, type HealthAlert } from "@/services/aiService";
 import { View, Text, Pressable, StyleSheet } from "react-native";
@@ -10,15 +12,17 @@ import { router } from "expo-router";
 import { Colors, Radius } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import { LanguageProvider } from "@/context/Languagecontext";
+import { useAuth } from "@/context/AuthContext";
 
 function AlertOverlay() {
+  const { phone } = useAuth();
   const [alert, setAlert] = useState<HealthAlert | null>(null);
   useEffect(() => {
     const timer = setTimeout(() => {
-      checkHealthAlerts().then(a => { if (a) setAlert(a); });
+      checkHealthAlerts(phone).then(a => { if (a) setAlert(a); });
     }, 2500); // check 2.5s after launch
     return () => clearTimeout(timer);
-  }, []);
+  }, [phone]);
 
   if (!alert) return null;
   return (
@@ -26,7 +30,7 @@ function AlertOverlay() {
       style={overlay.banner}
       onPress={() => {
         setAlert(null);
-        router.push({ pathname: '/(tabs)/ai', params: { prefill: alert.prefill } });
+        router.push({ pathname: '/ai-chat', params: { prefill: alert.prefill } });
       }}
     >
       <Ionicons name="sparkles" size={16} color="#fff" style={{ flexShrink: 0 }} />
@@ -59,77 +63,169 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <LanguageProvider>
           <AuthProvider>
-            <StatusBar style="dark" />
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="index" />
-              <Stack.Screen name="(auth)" />
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen
-                name="upload"
-                options={{ headerShown: true, title: "Upload Report" }}
-              />
-              <Stack.Screen
-                name="analyzing"
-                options={{ headerShown: true, title: "Analyzing" }}
-              />
-              <Stack.Screen
-                name="analysis"
-                options={{ headerShown: true, title: "Report Analysis" }}
-              />
-              <Stack.Screen
-                name="all-values"
-                options={{ headerShown: true, title: "All Values" }}
-              />
-              <Stack.Screen
-                name="interactions"
-                options={{ headerShown: true, title: "Interactions" }}
-              />
-
-              <Stack.Screen
-                name="notifications"
-                options={{ headerShown: true, title: "Notifications" }}
-              />
-              <Stack.Screen
-                name="account"
-                options={{ headerShown: true, title: "Account" }}
-              />
-              <Stack.Screen
-                name="medicine/[id]"
-                options={{ headerShown: true, title: 'Medicine Details' }}
-              />
-              <Stack.Screen name="report-detail"    options={{ headerShown: false }} />
-              <Stack.Screen name="scorecard"         options={{ headerShown: false }} />
-              <Stack.Screen name="ai-summary"        options={{ headerShown: false }} />
-              <Stack.Screen name="medicine-actions"  options={{ headerShown: false }} />
-              <Stack.Screen
-                name="medicines/my-medicines"
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen
-                name="medicines/reminders/new"
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen
-                name="family/appointments/book"
-                options={{ headerShown: false }}
-              />
-              {/* Son-side invite flow — deep link: healthai://family/invite/[code] */}
-              <Stack.Screen
-                name="family/invite/[code]"
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen
-                name="family/invite-otp"
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen
-                name="family/invite-success"
-                options={{ headerShown: false, gestureEnabled: false }}
-              />
-            </Stack>
+            <ErrorBoundary>
+              <StatusBar style="dark" />
+              <OfflineBanner />
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="index" />
+                <Stack.Screen name="(auth)" />
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen
+                  name="upload"
+                  options={{ headerShown: true, title: "Upload Report" }}
+                />
+                <Stack.Screen
+                  name="analyzing"
+                  options={{ headerShown: true, title: "Analyzing" }}
+                />
+                <Stack.Screen
+                  name="analysis"
+                  options={{ headerShown: true, title: "Report Analysis" }}
+                />
+                <Stack.Screen
+                  name="all-values"
+                  options={{ headerShown: true, title: "All Values" }}
+                />
+                <Stack.Screen
+                  name="interactions"
+                  options={{ headerShown: true, title: "Interactions" }}
+                />
+                <Stack.Screen
+                  name="notifications"
+                  options={{ headerShown: true, title: "Notifications" }}
+                />
+                <Stack.Screen
+                  name="account"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="medicine/[id]"
+                  options={{ headerShown: true, title: 'Medicine Details' }}
+                />
+                <Stack.Screen name="ai-chat"          options={{ headerShown: false }} />
+                <Stack.Screen name="ai-history"       options={{ headerShown: false }} />
+                <Stack.Screen name="report-detail"   options={{ headerShown: false }} />
+                <Stack.Screen name="scorecard"        options={{ headerShown: false }} />
+                <Stack.Screen name="ai-summary"       options={{ headerShown: false }} />
+                <Stack.Screen name="medicine-actions" options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="medicines/my-medicines"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="medicines/reminders/new"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="medicines/browse"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="medicines/check-interactions"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="medicines/reminders"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="medicines/scanner"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="family"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="family/add-member"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="family/ai-assistant"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="family/ai-insights"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="family/appointments"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="family/emergency"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="family/health-summary"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="family/invitations"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="family/invite-options"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="family/medications"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="family/member-profile"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="family/permissions"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="family/reports"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="family/share-invite"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="family/tree"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="family/appointments/book"
+                  options={{ headerShown: false }}
+                />
+                {/* Son-side invite flow — deep link: healthai://family/invite/[code] */}
+                <Stack.Screen
+                  name="family/invite/[code]"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="family/invite-otp"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="family/invite-success"
+                  options={{ headerShown: false, gestureEnabled: false }}
+                />
+                <Stack.Screen
+                  name="legal-privacy"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="help-support"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="rate-app"
+                  options={{ headerShown: false }}
+                />
+              </Stack>
+              <AlertOverlay />
+            </ErrorBoundary>
           </AuthProvider>
         </LanguageProvider>
-        <AlertOverlay />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

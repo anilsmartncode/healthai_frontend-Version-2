@@ -444,8 +444,7 @@ export default function PhoneSignup() {
   const fullNumber = `${country.dial}${phone}`;
 
   // ── Step 1: Validate phone & send OTP ──
-  // 🔴 REAL — uncomment this and comment out MOCK below when API is ready
-  /*
+  // 🔴 REAL — active
   const handleSendOtp = async () => {
     const next: typeof errors = {};
     if (!phone.trim() || phone.replace(/\D/g, "").length < 7)
@@ -462,9 +461,9 @@ export default function PhoneSignup() {
       setLoading(false);
     }
   };
-  */
 
-  // 🟢 MOCK — comment out this and uncomment REAL above when API is ready
+  // 🟢 MOCK — uncomment this and comment out REAL above to use mock
+  /*
   const handleSendOtp = async () => {
     const next: typeof errors = {};
     if (!phone.trim() || phone.replace(/\D/g, "").length < 7)
@@ -482,10 +481,10 @@ export default function PhoneSignup() {
       setLoading(false);
     }
   };
+  */
 
   // ── Step 2: Verify OTP ── (called automatically when 4 digits filled)
-  // 🔴 REAL — uncomment this and comment out MOCK below when API is ready
-  /*
+  // 🔴 REAL — active
   const handleVerifyOtp = async (otpValue?: string) => {
     const code = otpValue ?? otp;
     if (code.replace(/\s/g, "").length < 4) {
@@ -496,10 +495,11 @@ export default function PhoneSignup() {
       setLoading(true);
       const verifyData = await verifyOtpApi(fullNumber, code.trim());
       if (verifyData?.token) {
-        await signIn(verifyData.token, fullNumber);
-        router.replace("/(auth)/onboarding");
+        await signIn(verifyData.token, fullNumber, verifyData.member_id ?? verifyData.user_id ?? null, verifyData.refresh_token ?? null);
+        router.replace("/(auth)/PersonOnboardingScreen");
       } else if (verifyData?.verified === true) {
-        router.replace("/(auth)/onboarding");
+        await signIn("verified-" + fullNumber, fullNumber);
+        router.replace("/(auth)/PersonOnboardingScreen");
       } else {
         setErrors({ otp: verifyData?.message || "Verification failed" });
       }
@@ -509,9 +509,9 @@ export default function PhoneSignup() {
       setLoading(false);
     }
   };
-  */
 
-  // 🟢 MOCK — comment out this and uncomment REAL above when API is ready
+  // 🟢 MOCK — uncomment this and comment out REAL above to use mock
+  /*
   const handleVerifyOtp = async (otpValue?: string) => {
     const code = otpValue ?? otp;
     if (code.replace(/\s/g, "").length < 4) { setErrors({ otp: "Enter the 4-digit code" }); return; }
@@ -527,6 +527,7 @@ export default function PhoneSignup() {
       setLoading(false);
     }
   };
+  */
 
   // 🟢 MOCK — Google Sign-In: shows fake account picker
   // 🔴 REAL: delete handleGoogleSignIn entirely and replace onPress with your SDK call
@@ -571,8 +572,7 @@ export default function PhoneSignup() {
   };
 
   // ── Resend OTP ──
-  // 🔴 REAL — uncomment this and comment out MOCK below when API is ready
-  /*
+  // 🔴 REAL — active
   const handleResend = async () => {
     setOtp("");
     clearError("otp");
@@ -586,9 +586,9 @@ export default function PhoneSignup() {
       setLoading(false);
     }
   };
-  */
 
-  // 🟢 MOCK — comment out this and uncomment REAL above when API is ready
+  // 🟢 MOCK — uncomment this and comment out REAL above to use mock
+  /*
   const handleResend = async () => {
     setOtp(""); clearError("otp");
     try {
@@ -602,6 +602,7 @@ export default function PhoneSignup() {
       setLoading(false);
     }
   };
+  */
 
   const styles = makeStyles(rs, vs, ms);
 

@@ -19,12 +19,10 @@ import { loginApi } from "@/services/authapi/apiService";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
-// Responsive scale helpers
-const rs = (size: number) => (SW / 390) * size;   // scale by width  (390 = iPhone 14 base)
-const vs = (size: number) => (SH / 844) * size;   // scale by height (844 = iPhone 14 base)
-const ms = (size: number, f = 0.5) => size + (rs(size) - size) * f; // moderate scale
+const rs = (size: number) => (SW / 390) * size;
+const vs = (size: number) => (SH / 844) * size;
+const ms = (size: number, f = 0.5) => size + (rs(size) - size) * f;
 
-// ── Google SVG ────────────────────────────────────────
 function GoogleIcon() {
   return (
     <Svg width={ms(20)} height={ms(20)} viewBox="0 0 48 48">
@@ -54,7 +52,6 @@ function AppleIcon() {
   );
 }
 
-
 export default function Login() {
   const { t } = useLang();
   const { signIn } = useAuth();
@@ -63,6 +60,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   const clearError = (field: string) =>
@@ -82,7 +80,7 @@ export default function Login() {
       setLoading(true);
       const data = await loginApi(email, password);
       if (data?.token) {
-        await signIn(data.token, email);
+        await signIn(data.token, email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
         router.replace("/(tabs)/home");
       } else {
         setErrors({ email: data?.message || "Login failed" });
@@ -105,7 +103,7 @@ export default function Login() {
   //   if (Object.keys(next).length > 0) return;
   //   try {
   //     setLoading(true);
-  //     await new Promise((r) => setTimeout(r, 900));        // fake network delay
+  //     await new Promise((r) => setTimeout(r, 900));
   //     if (password !== "password123") throw new Error("Use password: password123");
   //     await signIn("mock-token-login", email);
   //     router.replace("/(tabs)/home");
@@ -125,7 +123,6 @@ export default function Login() {
     >
       {/* ── Hero ── */}
       <View style={styles.hero}>
-        {/* Logo row */}
         <View style={styles.logoRow}>
           <View style={styles.logoBox}>
             <Ionicons name="heart" size={ms(22)} color="#2D9C8E" />
@@ -141,22 +138,17 @@ export default function Login() {
           </View>
         </View>
 
-        {/* Welcome + decor in a row so neither overlaps */}
         <View style={styles.heroBody}>
-          {/* Left: text — takes remaining space */}
           <View style={styles.welcomeWrap}>
             <Text style={styles.welcomeTitle}>Welcome Back 👋</Text>
             <Text style={styles.welcomeSub}>
               Sign in to access your health insights, reports and personalized recommendations.
             </Text>
           </View>
-
-          {/* Right: decoration — fixed width so text never gets squeezed off-screen */}
           <View style={styles.decorWrap}>
             <View style={styles.shieldCircle}>
               <Ionicons name="shield-checkmark" size={ms(52)} color="#2D9C8E" />
             </View>
-            {/* Small floating badges anchored to the circle */}
             <View style={styles.heartBadge}>
               <Ionicons name="heart" size={ms(15)} color="#2D9C8E" />
             </View>
@@ -169,17 +161,64 @@ export default function Login() {
 
       {/* ── Form Card ── */}
       <View style={styles.card}>
-        {/* Email */}
+
+        {/* ── "Sign in with" label ── */}
+        <Text style={styles.sectionLabel}>Sign in with</Text>
+
+        {/* ── 3-column social row (same layout as signup) ── */}
+        <View style={styles.socialRow}>
+          {/* Google */}
+          <Pressable
+            style={({ pressed }) => [styles.socialBtn, pressed && { opacity: 0.82 }]}
+            disabled={loading}
+          >
+            <GoogleIcon />
+            <Text style={styles.socialText}>Google</Text>
+          </Pressable>
+
+          {/* Apple */}
+          <Pressable
+            style={({ pressed }) => [styles.socialBtn, pressed && { opacity: 0.82 }]}
+            disabled={loading}
+          >
+            <AppleIcon />
+            <Text style={styles.socialText}>Apple</Text>
+          </Pressable>
+
+          {/* Phone OTP */}
+          <Pressable
+            style={styles.socialBtn}
+            onPress={() => router.replace("/(auth)/Phonelogin")}
+          >
+            <Ionicons name="phone-portrait-outline" size={ms(20)} color="#2D9C8E" />
+            <Text style={[styles.socialText, { color: "#2D9C8E" }]}>Phone OTP</Text>
+          </Pressable>
+        </View>
+
+        {/* ── Divider ── */}
+        <View style={styles.orRow}>
+          <View style={styles.orLine} />
+          <Text style={styles.orText}>or sign in with</Text>
+          <View style={styles.orLine} />
+        </View>
+
+        {/* ── Email Address ── */}
         <View style={styles.fieldWrap}>
           <Text style={styles.fieldLabel}>Email Address</Text>
-          <View style={[styles.inputRow, !!errors.email && styles.inputError]}>
-            <Ionicons name="mail-outline" size={ms(18)} color="#aab" />
+          <View style={[
+            styles.inputRow,
+            !!errors.email && styles.inputError,
+            focusedField === "email" && styles.inputFocused,
+          ]}>
+            <Ionicons name="mail-outline" size={ms(18)} color={focusedField === "email" ? "#2D9C8E" : "#9BB5B5"} />
             <TextInput
               style={styles.inputField}
               placeholder="Enter your email address"
-              placeholderTextColor="#b0bec5"
+              placeholderTextColor="#B0CCCC"
               value={email}
               onChangeText={(v) => { setEmail(v); clearError("email"); }}
+              onFocus={() => setFocusedField("email")}
+              onBlur={() => setFocusedField(null)}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
@@ -200,17 +239,23 @@ export default function Login() {
           </Pressable>
         </View>
 
-        {/* Password */}
+        {/* ── Password ── */}
         <View style={styles.fieldWrap}>
           <Text style={styles.fieldLabel}>Password</Text>
-          <View style={[styles.inputRow, !!errors.password && styles.inputError]}>
-            <Ionicons name="lock-closed-outline" size={ms(18)} color="#aab" />
+          <View style={[
+            styles.inputRow,
+            !!errors.password && styles.inputError,
+            focusedField === "password" && styles.inputFocused,
+          ]}>
+            <Ionicons name="lock-closed-outline" size={ms(18)} color={focusedField === "password" ? "#2D9C8E" : "#9BB5B5"} />
             <TextInput
               style={styles.inputField}
               placeholder="Enter your password"
-              placeholderTextColor="#b0bec5"
+              placeholderTextColor="#B0CCCC"
               value={password}
               onChangeText={(v) => { setPassword(v); clearError("password"); }}
+              onFocus={() => setFocusedField("password")}
+              onBlur={() => setFocusedField(null)}
               secureTextEntry={!showPassword}
               autoCapitalize="none"
             />
@@ -218,7 +263,7 @@ export default function Login() {
               <Ionicons
                 name={showPassword ? "eye-off-outline" : "eye-outline"}
                 size={ms(18)}
-                color="#aab"
+                color="#9BB5B5"
               />
             </Pressable>
           </View>
@@ -233,7 +278,7 @@ export default function Login() {
           </Pressable>
         </View>
 
-        {/* Login Button */}
+        {/* ── Login Button ── */}
         <Pressable
           style={({ pressed }) => [
             styles.loginBtn,
@@ -255,27 +300,8 @@ export default function Login() {
           )}
         </Pressable>
 
-        {/* Divider */}
-        <View style={styles.orRow}>
-          <View style={styles.orLine} />
-          <Text style={styles.orText}>or continue with</Text>
-          <View style={styles.orLine} />
-        </View>
-
-        {/* Social Buttons */}
-        <Pressable style={styles.socialBtn}>
-          <GoogleIcon />
-          <Text style={styles.socialText}>Continue with Google</Text>
-        </Pressable>
-
-        <Pressable style={styles.socialBtn}>
-          <AppleIcon />
-          <Text style={styles.socialText}>Continue with Apple</Text>
-        </Pressable>
-
-
-        {/* Security Note */}
-        <Pressable style={styles.securityRow}>
+        {/* ── Security Note ── */}
+        <View style={styles.securityRow}>
           <View style={styles.securityIcon}>
             <Ionicons name="shield-checkmark-outline" size={ms(18)} color="#2D9C8E" />
           </View>
@@ -283,10 +309,9 @@ export default function Login() {
             <Text style={styles.securityTitle}>Your data is encrypted and secure</Text>
             <Text style={styles.securitySub}>We follow industry-leading security standards</Text>
           </View>
-          <Ionicons name="chevron-forward" size={ms(14)} color="#aab" />
-        </Pressable>
+        </View>
 
-        {/* Sign Up */}
+        {/* ── Sign Up ── */}
         <View style={styles.signupRow}>
           <Text style={styles.signupText}>Don't have an account? </Text>
           <Pressable onPress={() => router.push("/(auth)/signup")} hitSlop={8}>
@@ -299,21 +324,14 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#EAF6F5",
-  },
-  // flexGrow:1 ensures card fills remaining height on tall screens
-  // but also allows scroll on short/small screens
-  scrollContent: {
-    flexGrow: 1,
-  },
+  container:     { flex: 1, backgroundColor: "#EAF6F5" },
+  scrollContent: { flexGrow: 1 },
 
   // ── Hero ──
   hero: {
     backgroundColor: "#EAF6F5",
     paddingHorizontal: rs(20),
-    paddingTop: vs(52),       // safe-area-friendly top padding, scales with height
+    paddingTop: vs(52),
     paddingBottom: vs(24),
   },
   logoRow: {
@@ -323,256 +341,151 @@ const styles = StyleSheet.create({
     marginBottom: vs(18),
   },
   logoBox: {
-    width: rs(44),
-    height: rs(44),
-    borderRadius: rs(14),
+    width: rs(44), height: rs(44), borderRadius: rs(14),
     backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#2D9C8E",
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    justifyContent: "center", alignItems: "center",
+    shadowColor: "#2D9C8E", shadowOpacity: 0.15, shadowRadius: 8, elevation: 4,
   },
-  logoText: {
-    fontSize: ms(17),
-    fontWeight: "800",
-    color: "#1a2e35",
-    letterSpacing: -0.3,
-  },
+  logoText:   { fontSize: ms(17), fontWeight: "800", color: "#1a2e35", letterSpacing: -0.3 },
   logoAccent: { color: "#2D9C8E" },
-  logoSub: { fontSize: ms(11), color: "#7a9a9a", fontWeight: "500" },
+  logoSub:    { fontSize: ms(11), color: "#7a9a9a", fontWeight: "500" },
   statsBadge: {
-    width: rs(36),
-    height: rs(36),
-    borderRadius: rs(10),
+    width: rs(36), height: rs(36), borderRadius: rs(10),
     backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.07,
-    shadowRadius: 4,
-    elevation: 2,
+    justifyContent: "center", alignItems: "center",
+    shadowColor: "#000", shadowOpacity: 0.07, shadowRadius: 4, elevation: 2,
   },
 
-  // Row: text (flex:1) + decor (fixed width) — no absolute positioning
-  heroBody: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(8),
-  },
-  welcomeWrap: {
-    flex: 1,                  // takes all remaining width, never clips
-  },
-  welcomeTitle: {
-    fontSize: ms(22),
-    fontWeight: "800",
-    color: "#1a2e35",
-    marginBottom: vs(6),
-    letterSpacing: -0.5,
-  },
-  welcomeSub: {
-    fontSize: ms(12),
-    color: "#6b8f8f",
-    lineHeight: ms(18),
-    fontWeight: "400",
-  },
+  heroBody:    { flexDirection: "row", alignItems: "center", gap: rs(8) },
+  welcomeWrap: { flex: 1 },
+  welcomeTitle: { fontSize: ms(22), fontWeight: "800", color: "#1a2e35", marginBottom: vs(6), letterSpacing: -0.5 },
+  welcomeSub:   { fontSize: ms(12), color: "#6b8f8f", lineHeight: ms(18), fontWeight: "400" },
 
-  // Decor: fixed width so text always has room
   decorWrap: {
-    width: rs(110),
-    height: rs(110),
-    position: "relative",     // only children are relative — no viewport absolute
-    justifyContent: "center",
-    alignItems: "center",
+    width: rs(110), height: rs(110),
+    position: "relative",
+    justifyContent: "center", alignItems: "center",
   },
   shieldCircle: {
-    width: rs(100),
-    height: rs(100),
-    borderRadius: rs(50),
+    width: rs(100), height: rs(100), borderRadius: rs(50),
     backgroundColor: "rgba(45,156,142,0.12)",
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: "center", alignItems: "center",
   },
   heartBadge: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    width: rs(30),
-    height: rs(30),
-    borderRadius: rs(9),
+    position: "absolute", bottom: 0, left: 0,
+    width: rs(30), height: rs(30), borderRadius: rs(9),
     backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    justifyContent: "center", alignItems: "center",
+    shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
   },
   docBadge: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: rs(30),
-    height: rs(30),
-    borderRadius: rs(9),
+    position: "absolute", bottom: 0, right: 0,
+    width: rs(30), height: rs(30), borderRadius: rs(9),
     backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    justifyContent: "center", alignItems: "center",
+    shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
   },
 
   // ── Card ──
   card: {
-    flex: 1,                  // fills leftover screen height
+    flex: 1,
     backgroundColor: "#fff",
-    borderTopLeftRadius: rs(28),
-    borderTopRightRadius: rs(28),
-    paddingHorizontal: rs(20),
-    paddingTop: vs(26),
+    borderTopLeftRadius: rs(28), borderTopRightRadius: rs(28),
+    paddingHorizontal: rs(16),
+    paddingTop: vs(20),
     paddingBottom: vs(36),
     gap: vs(12),
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 5,
+    shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 12, elevation: 5,
   },
 
-  // ── Fields ──
-  fieldWrap: { gap: vs(4) },
-  fieldLabel: {
-    fontSize: ms(13),
-    fontWeight: "600",
+  // ── "Sign in with" label (matches signup sectionLabel) ──
+  sectionLabel: {
+    fontSize: ms(14),
+    fontWeight: "700",
     color: "#1a2e35",
-    marginBottom: vs(4),
+    textAlign: "center",
+    marginBottom: vs(2),
   },
-  inputRow: {
-    flexDirection: "row",
+
+  // ── Social row (same 3-column as signup) ──
+  socialRow: { flexDirection: "row", gap: rs(8) },
+  socialBtn: {
+    flex: 1,
+    flexDirection: "column",
     alignItems: "center",
-    backgroundColor: "#F7FAFA",
-    borderWidth: 1.5,
-    borderColor: "#E2ECEC",
+    justifyContent: "center",
+    gap: vs(6),
+    backgroundColor: "#fff",
+    borderWidth: 1.5, borderColor: "#E2ECEC",
     borderRadius: rs(14),
-    paddingHorizontal: rs(14),
-    paddingVertical: vs(12),
+    paddingVertical: vs(14),
+    shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
+  },
+  socialText: { fontSize: ms(12), fontWeight: "700", color: "#1a2e35" },
+
+  // ── Divider ──
+  orRow: { flexDirection: "row", alignItems: "center", gap: rs(8), marginVertical: vs(2) },
+  orLine: { flex: 1, height: 1, backgroundColor: "#E2ECEC" },
+  orText: { fontSize: ms(11), color: "#9BB5B5", fontWeight: "600" },
+
+  // ── Fields ──
+  fieldWrap:  { gap: vs(4) },
+  fieldLabel: { fontSize: ms(13), fontWeight: "700", color: "#1a2e35", marginBottom: vs(2) },
+  inputRow: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "#fff",
+    borderWidth: 1.5, borderColor: "#E2ECEC",
+    borderRadius: rs(14),
+    paddingHorizontal: rs(14), paddingVertical: vs(13),
     gap: rs(10),
+    shadowColor: "#2D9C8E", shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
   },
-  inputError: { borderColor: "#EF4444" },
-  inputField: {
-    flex: 1,                  // stretches to fill row, never overflows
-    fontSize: ms(13),
-    fontWeight: "500",
-    color: "#1a2e35",
-  },
-  errorRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(4),
-    marginTop: vs(3),
-  },
+  inputError:   { borderColor: "#EF4444" },
+  inputFocused: { borderColor: "#2D9C8E", shadowOpacity: 0.12, shadowRadius: 6, elevation: 2 },
+  inputField:   { flex: 1, fontSize: ms(14), fontWeight: "500", color: "#1a2e35", paddingVertical: 0 },
+
+  errorRow: { flexDirection: "row", alignItems: "center", gap: rs(4), marginTop: vs(3) },
   errorText: { fontSize: ms(11), color: "#EF4444", fontWeight: "500", flex: 1 },
+
   usePhoneRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    gap: rs(2),
-    marginTop: vs(5),
+    flexDirection: "row", alignItems: "center", justifyContent: "flex-end",
+    gap: rs(2), marginTop: vs(5),
   },
   usePhoneText: { fontSize: ms(12), fontWeight: "600", color: "#2D9C8E" },
-  forgotText: {
-    fontSize: ms(12),
-    fontWeight: "600",
-    color: "#2D9C8E",
-    marginTop: vs(5),
-  },
+  forgotText:   { fontSize: ms(12), fontWeight: "600", color: "#2D9C8E", marginTop: vs(5) },
 
   // ── Login Button ──
   loginBtn: {
     backgroundColor: "#2D9C8E",
-    borderRadius: rs(14),
-    paddingVertical: vs(14),
-    alignItems: "center",
-    justifyContent: "center",
+    borderRadius: rs(14), paddingVertical: vs(14),
+    alignItems: "center", justifyContent: "center",
     flexDirection: "row",
-    marginTop: vs(2),
-    shadowColor: "#2D9C8E",
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowColor: "#2D9C8E", shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
   },
-  loginBtnText: {
-    color: "#fff",
-    fontSize: ms(15),
-    fontWeight: "700",
-    letterSpacing: 0.3,
-  },
+  loginBtnText: { color: "#fff", fontSize: ms(15), fontWeight: "800", letterSpacing: 0.2 },
   loginArrow: {
-    position: "absolute",
-    right: rs(14),
-    width: rs(28),
-    height: rs(28),
-    borderRadius: rs(8),
+    position: "absolute", right: rs(14),
+    width: rs(28), height: rs(28), borderRadius: rs(8),
     backgroundColor: "rgba(255,255,255,0.25)",
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: "center", alignItems: "center",
   },
-
-  // ── Divider ──
-  orRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(8),
-    marginVertical: vs(2),
-  },
-  orLine: { flex: 1, height: 1, backgroundColor: "#E8F0F0" },
-  orText: { fontSize: ms(11), color: "#8aabab", fontWeight: "500" },
-
-  // ── Social ──
-  socialBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(12),
-    backgroundColor: "#F7FAFA",
-    borderWidth: 1.5,
-    borderColor: "#E2ECEC",
-    borderRadius: rs(14),
-    paddingVertical: vs(12),
-    paddingHorizontal: rs(16),
-  },
-  socialText: { fontSize: ms(13), fontWeight: "600", color: "#1a2e35" },
 
   // ── Security ──
   securityRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(12),
-    backgroundColor: "#F0FAF9",
-    borderRadius: rs(14),
-    padding: rs(14),
-    borderWidth: 1,
-    borderColor: "#C8E8E5",
+    flexDirection: "row", alignItems: "center", gap: rs(12),
+    backgroundColor: "#F0FAF9", borderRadius: rs(14), padding: rs(14),
+    borderWidth: 1, borderColor: "#C8E8E5",
   },
   securityIcon: {
-    width: rs(34),
-    height: rs(34),
-    borderRadius: rs(10),
+    width: rs(34), height: rs(34), borderRadius: rs(10),
     backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: "center", alignItems: "center",
   },
   securityTitle: { fontSize: ms(12), fontWeight: "600", color: "#1a2e35" },
-  securitySub: { fontSize: ms(10), color: "#7a9a9a", marginTop: vs(1) },
+  securitySub:   { fontSize: ms(10), color: "#7a9a9a", marginTop: vs(1) },
 
   // ── Sign Up ──
-  signupRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: vs(4),
-  },
-  signupText: { fontSize: ms(13), color: "#8aabab", fontWeight: "500" },
+  signupRow: { flexDirection: "row", justifyContent: "center", alignItems: "center", marginTop: vs(4) },
+  signupText: { fontSize: ms(13), color: "#9BB5B5", fontWeight: "500" },
   signupLink: { fontSize: ms(13), color: "#2D9C8E", fontWeight: "700" },
 });

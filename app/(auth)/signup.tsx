@@ -241,7 +241,7 @@ export default function SignUp() {
       setLoading(true);
       const data = await signupApi("", email, password);
       if (data?.token) {
-        await signIn(data.token, email);
+        await signIn(data.token, email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
         router.replace("/(auth)/PersonOnboardingScreen");
       } else {
         setErrors({ email: data?.message || "Signup failed" });

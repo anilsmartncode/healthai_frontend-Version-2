@@ -140,7 +140,7 @@ function InsightCard({ insight }: { insight: AIInsight }) {
       {insight.action && (
         <Pressable
           style={[styles.actionChip, { borderColor: s.border }]}
-          onPress={() => router.push('/(tabs)/ai')}
+          onPress={() => router.push('/ai-chat')}
         >
           <Text style={[styles.actionChipTxt, { color: s.iconColor }]}>{insight.action}</Text>
           <Ionicons name="chevron-forward" size={11} color={s.iconColor} />

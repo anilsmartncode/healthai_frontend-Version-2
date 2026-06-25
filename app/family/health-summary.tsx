@@ -1,7 +1,7 @@
 /**
  * app/family/health-summary.tsx — Member Health Summary sub-screen
  */
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   View, Text, ScrollView, StyleSheet, ActivityIndicator, Pressable,
 } from 'react-native';
@@ -10,12 +10,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/Colors';
 import { FamilyTopBar } from '@/components/family/FamilyTopBar';
-import {
-  getMemberHealthSummary,
-  type HealthSummaryResponse,
-  type Vital,
-  type ScoreTrend,
-} from '@/services/profileSubScreenApi';
+import { useHealthSummary } from '@/hooks/useProfile';
+import type { Vital, ScoreTrend } from '@/services/profileSubScreenApi';
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -44,16 +40,9 @@ export default function HealthSummaryScreen() {
   const insets  = useSafeAreaInsets();
   const { id = 'mem2', name = 'Member' } = useLocalSearchParams<{ id: string; name: string }>();
 
-  const [data,    setData]    = useState<HealthSummaryResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState<string | null>(null);
-
-  useEffect(() => {
-    getMemberHealthSummary(id)
-      .then(setData)
-      .catch((e) => setError(e?.message ?? 'Failed to load'))
-      .finally(() => setLoading(false));
-  }, [id]);
+  // Data-fetching now lives in useHealthSummary() — same convention as
+  // useReports (home tab) and useFamily (family dashboard).
+  const { data, loading, error } = useHealthSummary(id);
 
   if (loading) {
     return (
@@ -146,22 +135,50 @@ export default function HealthSummaryScreen() {
         </View>
 
         {/* ── Conditions ───────────────────────────────────────── */}
-        <Text style={styles.section}>Conditions</Text>
-        <View style={styles.chipsWrap}>
-          {data.conditions.map((c) => (
-            <View
-              key={c.label}
-              style={[
-                styles.condChip,
-                c.managed ? { backgroundColor: '#E8F5F0' } : { backgroundColor: '#FEF9E8' },
-              ]}
-            >
-              <Text style={[styles.condTxt, { color: c.managed ? '#065F46' : '#92400E' }]}>
-                {c.label}{c.managed ? ' (managed)' : ''}
-              </Text>
+        {data.conditions && data.conditions.length > 0 && (
+          <>
+            <Text style={styles.section}>Conditions</Text>
+            <View style={styles.chipsWrap}>
+              {data.conditions.map((c: any) => (
+                <View
+                  key={c.label}
+                  style={[
+                    styles.condChip,
+                    c.managed ? { backgroundColor: '#E8F5F0' } : { backgroundColor: '#FEF9E8' },
+                  ]}
+                >
+                  <Text style={[styles.condTxt, { color: c.managed ? '#065F46' : '#92400E' }]}>
+                    {c.label}{c.managed ? ' (managed)' : ''}
+                  </Text>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
+          </>
+        )}
+
+        {/* ── AI Insights ───────────────────────────────────────── */}
+        {data.ai_insights && data.ai_insights.length > 0 && (
+          <>
+            <Text style={styles.section}>AI Insights</Text>
+            {data.ai_insights.map((insight: any, i: number) => (
+              <View key={i} style={[styles.card, { borderColor: Colors.primary + '30', borderWidth: 1 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                  <Ionicons name="sparkles" size={16} color={Colors.primary} />
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.text }}>{insight.title}</Text>
+                </View>
+                <Text style={{ fontSize: 13, color: Colors.text, lineHeight: 20, marginBottom: 8 }}>
+                  {insight.description}
+                </Text>
+                {insight.recommendation && (
+                  <View style={{ backgroundColor: '#F1F5F9', padding: 10, borderRadius: 8 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.textMuted, marginBottom: 2 }}>Recommendation</Text>
+                    <Text style={{ fontSize: 12, color: Colors.text }}>{insight.recommendation}</Text>
+                  </View>
+                )}
+              </View>
+            ))}
+          </>
+        )}
 
       </ScrollView>
     </View>

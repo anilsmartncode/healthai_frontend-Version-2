@@ -21,7 +21,7 @@ interface Props {
 export function AskAIButton({ prefill, context, label = 'Ask AI', variant = 'button' }: Props) {
   const handlePress = () => {
     router.push({
-      pathname: '/(tabs)/ai',
+      pathname: '/ai-chat',
       params: { prefill, context: context ?? '' },
     });
   };

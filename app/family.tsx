@@ -101,8 +101,8 @@ export default function FamilyScreen() {
                 <Text style={styles.emptyMembersTxt}>No members yet. Invite someone to get started.</Text>
               </View>
             )
-            : dashboard?.members.map((m) => (
-                <FamilyMemberRow key={m.member_id} member={m} onPress={onMemberPress} />
+            : dashboard?.members.map((m: any, index: number) => (
+                <FamilyMemberRow key={m.member_id || m.id || String(index)} member={m} onPress={onMemberPress} />
               ))
         }
 

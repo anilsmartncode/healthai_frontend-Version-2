@@ -170,7 +170,13 @@ export default function AISummaryScreen() {
         {/* CTA */}
         <Pressable
           style={styles.primaryBtn}
-          onPress={() => router.push({ pathname: '/medicine-actions', params: { id: params.id } })}
+          onPress={() => router.push({
+            pathname: '/medicine-actions',
+            params: {
+              id: params.id,
+              detectedMedicines: params.detectedMedicines ?? '[]',
+            },
+          })}
         >
           <Text style={styles.primaryBtnText}>Medicine & Actions</Text>
           <Ionicons name="arrow-forward" size={18} color="#fff" />

@@ -143,8 +143,19 @@ function SetReminderModal({
     }
     setSaving(true);
     try {
-      await createReminder({ medicineId: selectedMed.id, time, frequency, whenToTake: when });
+      await createReminder({ 
+        medicineId: selectedMed.id, 
+        medicineName: selectedMed.name,
+        medicineType: selectedMed.type,
+        dosage: selectedMed.dosage ?? '',
+        time, 
+        frequency, 
+        whenToTake: when 
+      });
       setSuccess(true);
+    } catch (e) {
+      console.error('[MedicineReminder] createReminder error', e);
+      Alert.alert('Error', 'Could not save reminder. Please try again.');
     } finally {
       setSaving(false);
     }

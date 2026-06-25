@@ -9,3 +9,22 @@ export const storage = {
     AsyncStorage.setItem(key, JSON.stringify(value)),
   remove: (key: string) => AsyncStorage.removeItem(key),
 };
+
+// ── BUG FIX ──────────────────────────────────────────────────────────────
+// utils/authUtils.ts imports { clearAll, getItem, setItem } from this file,
+// but only `storage` (above) was ever exported here. That made every call
+// to storeTokens() / getStoredTokens() throw "setItem is not a function" /
+// "getItem is not a function" at runtime — silently breaking the encrypted
+// auth-token flow (authUtils.ts already encrypts with AES before storing,
+// so plain AsyncStorage underneath is fine — no need for expo-secure-store).
+export const setItem = (key: string, value: string) =>
+  AsyncStorage.setItem(key, value);
+
+export const getItem = (key: string) => AsyncStorage.getItem(key);
+
+export const removeItem = (key: string) => AsyncStorage.removeItem(key);
+
+export const clearAll = async () => {
+  const keys = ['authToken', 'refreshToken', 'userData', 'device_id'];
+  await Promise.allSettled(keys.map((key) => AsyncStorage.removeItem(key)));
+};

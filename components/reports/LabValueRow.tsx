@@ -12,7 +12,7 @@ interface Props {
 
 function goAskAI(name: string, value: string, status: string) {
   router.push({
-    pathname: '/(tabs)/ai',
+    pathname: '/ai-chat',
     params: {
       prefill: `What does ${name} = ${value} mean? It is marked as ${status}.`,
     },

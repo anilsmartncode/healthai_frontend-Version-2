@@ -1,7 +1,8 @@
-import { View, ScrollView, StyleSheet } from "react-native";
+import { View, ScrollView, StyleSheet, Text } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors, Radius } from "@/constants/Colors";
+import { Ionicons } from "@expo/vector-icons";
 import { Button } from "@/components/ui/Button";
 import { useReports } from "@/hooks/useReports";
 
@@ -10,6 +11,28 @@ import { HealthScoreCard } from "@/components/home/Healthscorecard";
 import { FamilyHealthCard } from "@/components/home/Familyhealthcard";
 import { RecentReports }   from "@/components/home/RecentReports";
 import { AskAIButton } from "@/components/ai/AskAIButton";
+
+
+function EmptyState() {
+  return (
+    <View style={emptyStyles.wrap}>
+      <View style={emptyStyles.iconWrap}>
+        <Ionicons name="document-text-outline" size={44} color={Colors.primary} />
+      </View>
+      <Text style={emptyStyles.title}>Welcome to HealthAI</Text>
+      <Text style={emptyStyles.sub}>
+        Upload your first health report to get your personalized health score, AI insights, and medicine analysis.
+      </Text>
+    </View>
+  );
+}
+
+const emptyStyles = StyleSheet.create({
+  wrap:     { alignItems: 'center', paddingVertical: 32, gap: 12, paddingHorizontal: 16 },
+  iconWrap: { width: 80, height: 80, borderRadius: 24, backgroundColor: '#E1F5EE', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#9FE1CB' },
+  title:    { fontSize: 18, fontWeight: '700', color: Colors.text, textAlign: 'center' },
+  sub:      { fontSize: 13, color: Colors.textMuted, textAlign: 'center', lineHeight: 20 },
+});
 
 export default function Home() {
   const { reports } = useReports();
@@ -67,7 +90,7 @@ export default function Home() {
 
         <FamilyHealthCard />
 
-        <RecentReports reports={reports} />
+        {hasReports ? <RecentReports reports={reports} /> : <EmptyState />}
       </ScrollView>
     </SafeAreaView>
   );

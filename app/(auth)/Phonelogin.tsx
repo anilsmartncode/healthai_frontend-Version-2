@@ -398,8 +398,8 @@ export default function Phonelogin() {
   };
 
   // ── Step 1: Send OTP ──
-  // 🔴 REAL — comment out this function when using MOCK below
-{/*  const handleSendOtp = async () => {
+  // 🔴 REAL — active
+  const handleSendOtp = async () => {
     if (!phone.trim() || phone.replace(/\D/g, "").length < 7) {
       setErrors({ phone: "Enter a valid phone number" });
       return;
@@ -417,30 +417,30 @@ export default function Phonelogin() {
     } finally {
       setLoading(false);
     }
-  };*/}
+  };
 
   // 🟢 MOCK — uncomment this function and comment out REAL above to use mock
-   const handleSendOtp = async () => {
-     if (!phone.trim() || phone.replace(/\D/g, "").length < 7) {
-       setErrors({ phone: "Enter a valid phone number" });
-       return;
-     }
-     try {
-       setLoading(true);
-       await new Promise((r) => setTimeout(r, 900));        // fake network delay
-       console.log("[MOCK] OTP sent to", fullNumber, "→ use 1234");
-       setResendTimer(60);
-       setStep("otp");
-     } catch (e: any) {
-       setErrors({ phone: e.message || "Failed to send OTP" });
-     } finally {
-       setLoading(false);
-     }
-   };
+  // const handleSendOtp = async () => {
+  //   if (!phone.trim() || phone.replace(/\D/g, "").length < 7) {
+  //     setErrors({ phone: "Enter a valid phone number" });
+  //     return;
+  //   }
+  //   try {
+  //     setLoading(true);
+  //     await new Promise((r) => setTimeout(r, 900));        // fake network delay
+  //     console.log("[MOCK] OTP sent to", fullNumber, "→ use 1234");
+  //     setResendTimer(60);
+  //     setStep("otp");
+  //   } catch (e: any) {
+  //     setErrors({ phone: e.message || "Failed to send OTP" });
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   // ── Step 2: Verify OTP ──
-  // 🔴 REAL — comment out this function when using MOCK below
- {/* const handleVerifyOtp = async () => {
+  // 🔴 REAL — active
+  const handleVerifyOtp = async () => {
     if (otp.length < 4) {
       setErrors({ otp: "Enter the 4-digit code" });
       return;
@@ -451,7 +451,7 @@ export default function Phonelogin() {
       const data = await verifyOtpApi(fullNumber, otp);
       console.log("[PhoneLogin] Verify response:", JSON.stringify(data));
       if (data?.token) {
-        await signIn(data.token, fullNumber);
+        await signIn(data.token, fullNumber, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
         router.replace("/(tabs)/home");
       } else {
         setErrors({ otp: data?.message || "Verification failed" });
@@ -462,23 +462,23 @@ export default function Phonelogin() {
     } finally {
       setLoading(false);
     }
-  };*/}
+  };
 
   // 🟢 MOCK — uncomment this function and comment out REAL above to use mock
-   const handleVerifyOtp = async () => {
-     if (otp.length < 4) { setErrors({ otp: "Enter the 4-digit code" }); return; }
-     try {
-       setLoading(true);
-       await new Promise((r) => setTimeout(r, 800));        // fake network delay
-       if (otp !== "1234") throw new Error("Invalid OTP. Use: 1234");
-       await signIn("mock-token-phonelogin", fullNumber);
-       router.replace("/(tabs)/home");
-     } catch (e: any) {
-       setErrors({ otp: e.message || "Invalid or expired code" });
-     } finally {
-       setLoading(false);
-     }
-   };
+  // const handleVerifyOtp = async () => {
+  //   if (otp.length < 4) { setErrors({ otp: "Enter the 4-digit code" }); return; }
+  //   try {
+  //     setLoading(true);
+  //     await new Promise((r) => setTimeout(r, 800));        // fake network delay
+  //     if (otp !== "1234") throw new Error("Invalid OTP. Use: 1234");
+  //     await signIn("mock-token-phonelogin", fullNumber);
+  //     router.replace("/(tabs)/home");
+  //   } catch (e: any) {
+  //     setErrors({ otp: e.message || "Invalid or expired code" });
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   return (
     <>

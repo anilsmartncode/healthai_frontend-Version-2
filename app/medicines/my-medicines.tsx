@@ -142,9 +142,18 @@ export default function MyMedicinesScreen() {
           text: 'Remove',
           style: 'destructive',
           onPress: async () => {
-            // ← plug in your API: DELETE /api/user/medicines/:id
-            await removeSavedMedicine(med.id);
-            setMedicines((prev) => prev.filter((m) => m.id !== med.id));
+            const result = await removeSavedMedicine(med.id);
+            if (result.success) {
+              setMedicines((prev) => prev.filter((m) => m.id !== med.id));
+            } else {
+              // Don't remove it from local state if the backend delete
+              // failed — leaving it in the list keeps the UI honest about
+              // what's actually still saved server-side.
+              Alert.alert(
+                'Remove Failed',
+                'Could not remove this medicine. Please check your connection and try again.',
+              );
+            }
           },
         },
       ],

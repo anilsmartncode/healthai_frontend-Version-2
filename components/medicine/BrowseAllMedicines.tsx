@@ -20,6 +20,7 @@ import {
   Modal,
   Alert,
 } from 'react-native';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius, Spacing } from '@/constants/Colors';
 import { Card } from '@/components/ui/Card';
@@ -99,14 +100,20 @@ function MedDetailSheet({
 }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  // Reset local state whenever a new medicine is opened
+  useEffect(() => {
+    setSaved(false);
+    setExpanded(false);
+  }, [medicine?.id]);
 
   const handleSave = async () => {
-    if (!medicine) return;
+    if (!medicine || saved) return;
     setSaving(true);
     try {
       await saveMedicine(medicine.id);
       setSaved(true);
-      Alert.alert('✓ Saved', 'Medicine saved to My Medicines.');
     } finally {
       setSaving(false);
     }
@@ -114,12 +121,15 @@ function MedDetailSheet({
 
   if (!medicine) return null;
 
-  const badgeColor =
+  const rxColor =
     medicine.prescriptionType === 'OTC'
       ? Colors.success
       : medicine.prescriptionType === 'High Risk'
       ? Colors.danger
       : Colors.warning;
+
+  const sideEffects = medicine.sideEffects ?? [];
+  const visibleEffects = expanded ? sideEffects : sideEffects.slice(0, 2);
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -127,58 +137,138 @@ function MedDetailSheet({
       <View style={styles.sheet}>
         <View style={styles.sheetHandle} />
 
-        {/* Header */}
-        <View style={styles.sheetHeader}>
-          <View style={styles.medIconLg}>
-            <Ionicons name="medkit-outline" size={30} color={Colors.primary} />
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Header */}
+          <View style={styles.sheetHeader}>
+            <View style={styles.medIconLg}>
+              <Ionicons name="medkit-outline" size={30} color={Colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sheetTitle}>{medicine.name}</Text>
+              <Text style={styles.sheetSub}>{medicine.type}</Text>
+            </View>
+            <Pressable onPress={onClose}>
+              <Ionicons name="close-circle-outline" size={26} color={Colors.textMuted} />
+            </Pressable>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.sheetTitle}>{medicine.name}</Text>
-            <Text style={styles.sheetSub}>{medicine.type}</Text>
+
+          <View style={[styles.prescBadge, { backgroundColor: rxColor + '20', alignSelf: 'flex-start', marginBottom: 14 }]}>
+            <Text style={[styles.prescText, { color: rxColor }]}>{medicine.prescriptionType}</Text>
           </View>
-          <Pressable onPress={onClose}>
-            <Ionicons name="close-circle-outline" size={26} color={Colors.textMuted} />
+
+          {/* Uses */}
+          {!!medicine.uses && (
+            <View style={styles.infoBlock}>
+              <Text style={styles.infoLabel}>USES</Text>
+              <Text style={styles.infoBody}>{medicine.uses}</Text>
+            </View>
+          )}
+
+          {/* Dosage */}
+          {!!medicine.dosage && (
+            <View style={styles.infoBlock}>
+              <Text style={styles.infoLabel}>DOSAGE</Text>
+              <Text style={styles.infoBody}>{medicine.dosage}</Text>
+            </View>
+          )}
+
+          {/* Side Effects */}
+          {sideEffects.length > 0 && (
+            <View style={styles.infoBlock}>
+              <Text style={styles.infoLabel}>SIDE EFFECTS</Text>
+              {visibleEffects.map((s, i) => (
+                <View key={i} style={styles.bulletRow}>
+                  <Text style={styles.bulletDot}>•</Text>
+                  <Text style={styles.infoBody}>{s}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* View More / View Less */}
+          <Pressable style={styles.viewMoreWrap} onPress={() => setExpanded((v) => !v)}>
+            <Text style={styles.viewMoreText}>{expanded ? 'View Less' : 'View More'}</Text>
           </Pressable>
-        </View>
 
-        {/* Prescription badge */}
-        <View style={[styles.prescBadge, { backgroundColor: badgeColor + '20', alignSelf: 'flex-start', marginBottom: 12 }]}>
-          <Text style={[styles.prescText, { color: badgeColor }]}>{medicine.prescriptionType}</Text>
-        </View>
+          {/* 4 action rows */}
+          <View style={styles.actionList}>
+            <Pressable
+              style={styles.actionRow}
+              onPress={() => {
+                onClose();
+                router.push({
+                  pathname: '/medicines/reminders/new',
+                  params: { medicineId: medicine.id, medicineName: medicine.name },
+                });
+              }}
+            >
+              <View style={styles.actionIconWrap}>
+                <Ionicons name="notifications-outline" size={20} color={Colors.primary} />
+              </View>
+              <Text style={styles.actionLabel}>Set Reminder</Text>
+              <Ionicons name="chevron-forward" size={18} color="#CBD5E1" />
+            </Pressable>
 
-        <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 360 }}>
-          <DetailSection icon="flask-outline" title="Uses" body={medicine.uses} />
-          <DetailSection icon="timer-outline" title="Dosage" body={medicine.dosage} />
-          <DetailSection
-            icon="warning-outline"
-            title="Side Effects"
-            body={medicine.sideEffects.map((s) => `• ${s}`).join('\n')}
-          />
+            <View style={styles.actionDivider} />
+
+            <Pressable
+              style={styles.actionRow}
+              onPress={() => {
+                onClose();
+                router.push('/medicines/check-interactions');
+              }}
+            >
+              <View style={styles.actionIconWrap}>
+                <Ionicons name="git-compare-outline" size={20} color={Colors.primary} />
+              </View>
+              <Text style={styles.actionLabel}>Check Interactions</Text>
+              <Ionicons name="chevron-forward" size={18} color="#CBD5E1" />
+            </Pressable>
+
+            <View style={styles.actionDivider} />
+
+            <Pressable
+              style={styles.actionRow}
+              onPress={() => {
+                onClose();
+                router.push({
+                  pathname: '/ai-chat',
+                  params: {
+                    prefill: `Tell me about ${medicine.name} — its uses, side effects, and any important precautions I should know.`,
+                  },
+                });
+              }}
+            >
+              <View style={styles.actionIconWrap}>
+                <Ionicons name="sparkles-outline" size={20} color={Colors.primary} />
+              </View>
+              <Text style={styles.actionLabel}>Ask AI About Medicine</Text>
+              <Ionicons name="chevron-forward" size={18} color="#CBD5E1" />
+            </Pressable>
+
+            <View style={styles.actionDivider} />
+
+            <Pressable style={styles.actionRow} onPress={handleSave} disabled={saving || saved}>
+              <View style={styles.actionIconWrap}>
+                {saving ? (
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                ) : (
+                  <Ionicons
+                    name={saved ? 'bookmark' : 'bookmark-outline'}
+                    size={20}
+                    color={saved ? Colors.success : Colors.primary}
+                  />
+                )}
+              </View>
+              <Text style={[styles.actionLabel, saved && { color: Colors.success }]}>
+                {saved ? 'Saved to My Medicines' : 'Add to My Medicines'}
+              </Text>
+              {!saving && <Ionicons name="chevron-forward" size={18} color="#CBD5E1" />}
+            </Pressable>
+          </View>
         </ScrollView>
-
-        <View style={styles.sheetActions}>
-          <Button
-            title={saved ? '✓ Saved' : saving ? 'Saving…' : 'Save Medicine'}
-            onPress={handleSave}
-            disabled={saved || saving}
-            style={{ flex: 1 }}
-          />
-          <Button title="Set Reminder" variant="outline" onPress={onClose} style={{ flex: 1 }} />
-        </View>
       </View>
     </Modal>
-  );
-}
-
-function DetailSection({ icon, title, body }: { icon: string; title: string; body: string }) {
-  return (
-    <View style={styles.detailSection}>
-      <View style={styles.detailRow}>
-        <Ionicons name={icon as any} size={16} color={Colors.primary} />
-        <Text style={styles.detailTitle}>{title}</Text>
-      </View>
-      <Text style={styles.detailBody}>{body}</Text>
-    </View>
   );
 }
 
@@ -439,10 +529,56 @@ const styles = StyleSheet.create({
   },
   sheetTitle: { fontSize: 18, fontWeight: '700', color: Colors.text },
   sheetSub: { fontSize: 13, color: Colors.textMuted },
-  sheetActions: { flexDirection: 'row', gap: 10, marginTop: Spacing.md },
 
-  detailSection: { marginBottom: Spacing.md },
-  detailRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-  detailTitle: { fontSize: 14, fontWeight: '700', color: Colors.text },
-  detailBody: { fontSize: 14, color: Colors.text, lineHeight: 20 },
+  // ── Info blocks (Uses / Dosage / Side Effects) ──
+  infoBlock: {
+    backgroundColor: Colors.card,
+    borderRadius: Radius.md,
+    borderWidth: 0.5,
+    borderColor: Colors.border,
+    padding: 14,
+    marginBottom: 10,
+  },
+  infoLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.textMuted,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  infoBody: { fontSize: 14, color: Colors.text, lineHeight: 21, flex: 1 },
+  bulletRow: { flexDirection: 'row', gap: 6 },
+  bulletDot: { fontSize: 14, color: Colors.text, lineHeight: 21 },
+
+  // ── View More ──
+  viewMoreWrap: { alignItems: 'center', paddingVertical: 8, marginBottom: 4 },
+  viewMoreText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+
+  // ── Action rows ──
+  actionList: {
+    backgroundColor: Colors.card,
+    borderRadius: Radius.lg,
+    borderWidth: 0.5,
+    borderColor: Colors.border,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  actionIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: Colors.primary + '12',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: Colors.text },
+  actionDivider: { height: 0.5, backgroundColor: Colors.border, marginLeft: 62 },
 });

@@ -13,6 +13,7 @@ export default function Analyzing() {
     hospitalName?: string;
     summary?: string;
     values?: string;
+    detectedMedicines?: string;
   }>();
 
   useEffect(() => {
@@ -20,11 +21,12 @@ export default function Analyzing() {
       router.replace({
         pathname: "/analysis",
         params: {
-          reportId: params.reportId,
-          patientName: params.patientName,
-          hospitalName: params.hospitalName,
-          summary: params.summary,
-          values: params.values,
+          reportId:          params.reportId,
+          patientName:       params.patientName,
+          hospitalName:      params.hospitalName,
+          summary:           params.summary,
+          values:            params.values,
+          detectedMedicines: params.detectedMedicines,
         },
       });
     }, 2200);

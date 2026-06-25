@@ -2,19 +2,23 @@
  * ============================================================
  * REPORTS API SERVICE  —  reportsApi.ts
  * ============================================================
- * Pattern: MOCK-FIRST  (identical to medicinesApi.ts / familyApi.ts)
+ * Pattern: REAL-FIRST  (identical to medicineTabApi.ts / Medicinesapi.ts)
+ *   • Every function below calls the real backend at
+ *     https://healthai.smartncode.com/... via reportsApiCall() / apiFileCall().
+ *   • The original 🟢 MOCK body (AsyncStorage / static mock data) is kept
+ *     commented directly beneath each 🔴 REAL block as a fallback.
  *
- * HOW TO SWITCH TO REAL API:
- *   1. Set USE_MOCK = false
- *   2. Ensure ENDPOINTS.listReports and ENDPOINTS.analyzeReport are set in constants/api.ts
- *   3. Backend: handle multipart/form-data upload for analyze
- *
+ * TO ROLL BACK TO MOCK (if backend is ever unavailable):
+ *   Set USE_MOCK = true below — every function will fall back to its
+ *   original AsyncStorage-backed mock behavior.
  * ============================================================
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { decryptResponse } from '@/utils/encryption';
 import { ENDPOINTS } from '@/constants/api';
+import { storage } from '@/utils/storage';
+import { fetchWithTimeout } from '@/utils/fetchWithTimeout';
 import type {
   Report,
   ApiAnalyzeResponse,
@@ -26,11 +30,22 @@ import type {
 import { mapApiLabValues, deriveCategory } from '@/types/Report/reportype';
 
 // ─── Toggle ────────────────────────────────────────────────────────────────────
-const USE_MOCK = true; // 🟢 MOCK active | 🔴 set false when backend is ready
+const USE_MOCK = false; // 🔴 REAL active | set true to roll back to 🟢 MOCK fallback
 // ──────────────────────────────────────────────────────────────────────────────
 
-const STORAGE_KEY = 'healthai_reports';
-const DETAILS_STORAGE_KEY = 'healthai_report_details';
+// ─── User-scoped storage keys ─────────────────────────────────────────────────
+// Keys are scoped to the logged-in user's phone number so reports from
+// different users on the same device never mix.
+// The phone number is passed in by the caller (useReports hook / upload screen).
+// Falls back to 'guest' when no user is signed in (should not normally happen).
+export function reportStorageKey(phone: string | null): string {
+  const user = phone ? phone.replace(/\D/g, '') : 'guest';
+  return `healthai_reports_${user}`;
+}
+export function reportDetailsStorageKey(phone: string | null): string {
+  const user = phone ? phone.replace(/\D/g, '') : 'guest';
+  return `healthai_report_details_${user}`;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  TYPES
@@ -52,6 +67,7 @@ export interface ReportListItem {
   borderlineCount: number;
   status: 'good' | 'attention';
   thumbnailUri: string | null;
+  fileUri: string | null;       // local file URI saved at upload time — for viewing
   analyzedAt: string;         // ISO date — for sorting
   fileHash?: string;          // ← NEW: hash of name+size+lastModified, for dedup
 }
@@ -93,6 +109,7 @@ const MOCK_REPORTS: ReportListItem[] = [
     borderlineCount: 1,
     status: 'good',
     thumbnailUri: null,
+    fileUri: null,
     analyzedAt: new Date('2024-05-14T10:30:00').toISOString(),
   },
   {
@@ -111,6 +128,7 @@ const MOCK_REPORTS: ReportListItem[] = [
     borderlineCount: 1,
     status: 'attention',
     thumbnailUri: null,
+    fileUri: null,
     analyzedAt: new Date('2024-05-12T09:00:00').toISOString(),
   },
   {
@@ -129,6 +147,7 @@ const MOCK_REPORTS: ReportListItem[] = [
     borderlineCount: 0,
     status: 'good',
     thumbnailUri: null,
+    fileUri: null,
     analyzedAt: new Date('2024-05-10T11:00:00').toISOString(),
   },
   {
@@ -147,6 +166,7 @@ const MOCK_REPORTS: ReportListItem[] = [
     borderlineCount: 1,
     status: 'attention',
     thumbnailUri: null,
+    fileUri: null,
     analyzedAt: new Date('2024-05-08T14:00:00').toISOString(),
   },
   {
@@ -165,6 +185,7 @@ const MOCK_REPORTS: ReportListItem[] = [
     borderlineCount: 0,
     status: 'attention',
     thumbnailUri: null,
+    fileUri: null,
     analyzedAt: new Date('2024-05-05T08:30:00').toISOString(),
   },
 ];
@@ -289,48 +310,48 @@ const MOCK_ANALYZE_RESPONSE: ApiAnalyzeResponse = {
 //  HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function loadStoredReports(): Promise<ReportListItem[]> {
+async function loadStoredReports(phone: string | null): Promise<ReportListItem[]> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    const raw = await AsyncStorage.getItem(reportStorageKey(phone));
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 }
 
-async function saveReports(reports: ReportListItem[]): Promise<void> {
+async function saveReports(reports: ReportListItem[], phone: string | null): Promise<void> {
   try {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(reports));
+    await AsyncStorage.setItem(reportStorageKey(phone), JSON.stringify(reports));
   } catch (e) {
     console.warn('[reportsApi] AsyncStorage save failed', e);
   }
 }
 
 // ─── Detail storage (full AnalyzeResult per report id) ────────────────────────
-async function loadStoredDetails(): Promise<Record<string, AnalyzeResult>> {
+async function loadStoredDetails(phone: string | null): Promise<Record<string, AnalyzeResult>> {
   try {
-    const raw = await AsyncStorage.getItem(DETAILS_STORAGE_KEY);
+    const raw = await AsyncStorage.getItem(reportDetailsStorageKey(phone));
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
   }
 }
 
-async function saveDetail(id: string, detail: AnalyzeResult): Promise<void> {
+async function saveDetail(id: string, detail: AnalyzeResult, phone: string | null): Promise<void> {
   try {
-    const all = await loadStoredDetails();
+    const all = await loadStoredDetails(phone);
     all[id] = detail;
-    await AsyncStorage.setItem(DETAILS_STORAGE_KEY, JSON.stringify(all));
+    await AsyncStorage.setItem(reportDetailsStorageKey(phone), JSON.stringify(all));
   } catch (e) {
     console.warn('[reportsApi] AsyncStorage detail save failed', e);
   }
 }
 
-async function deleteDetail(id: string): Promise<void> {
+async function deleteDetail(id: string, phone: string | null): Promise<void> {
   try {
-    const all = await loadStoredDetails();
+    const all = await loadStoredDetails(phone);
     delete all[id];
-    await AsyncStorage.setItem(DETAILS_STORAGE_KEY, JSON.stringify(all));
+    await AsyncStorage.setItem(reportDetailsStorageKey(phone), JSON.stringify(all));
   } catch (e) {
     console.warn('[reportsApi] AsyncStorage detail delete failed', e);
   }
@@ -372,19 +393,146 @@ function extractDetectedMedicines(summary?: ApiSummary | string): DetectedMedici
   return s?.detected_medicines ?? [];
 }
 
-// Real API caller
-async function apiFileCall(url: string, formData: FormData): Promise<ApiAnalyzeResponse> {
-  console.log('[reportsApi] POST', url);
-  const response = await fetch(url, { method: 'POST', body: formData });
-  const rawData = await response.json();
+// ─── Shared real-API JSON caller (GET/DELETE) — mirrors medicineApiCall ──────
+async function reportsApiCall<T = any>(
+  url: string,
+  options: { method?: 'GET' | 'POST' | 'PUT' | 'DELETE' } = {},
+): Promise<T> {
+  const { method = 'GET' } = options;
+  const token = await storage.get<string>('token');
 
-  if (rawData?.iv && rawData?.data) {
+  console.log('[reportsApi] REQUEST', method, url);
+
+  let response: Response;
+  try {
+    // 20s ceiling — same reasoning as Medicineapiclient.ts: list/detail/delete
+    // calls should never legitimately take this long, and without a timeout
+    // here a hung request holds a connection slot and queues every other
+    // call to the same host behind it.
+    response = await fetchWithTimeout(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+  } catch (networkErr: any) {
+    console.log('[reportsApi] NETWORK ERROR', networkErr?.message || networkErr);
+    throw new Error(networkErr?.message || 'Network request failed');
+  }
+
+  const rawText = await response.text();
+  console.log('[reportsApi] RESPONSE', response.status, rawText);
+
+  let rawData: any;
+  try {
+    rawData = rawText ? JSON.parse(rawText) : {};
+  } catch {
+    const snippet = rawText?.slice(0, 200) || '(empty response)';
+    throw new Error(`Server returned non-JSON response (status ${response.status}): ${snippet}`);
+  }
+
+  if (rawData?.iv && rawData?.data && !Array.isArray(rawData.data)) {
     const decrypted = decryptResponse(rawData);
-    if (!response.ok) throw new Error(decrypted?.message || 'Request failed');
-    return decrypted as ApiAnalyzeResponse;
+    console.log('=== [reportsApi] DECRYPTED ===');
+    console.log(JSON.stringify(decrypted, null, 2));
+    console.log('===============================');
+    if (!response.ok) throw new Error(decrypted?.message || decrypted?.detail || 'Request failed');
+    return decrypted as T;
   }
 
   if (!response.ok) throw new Error(rawData?.message || rawData?.detail || 'Request failed');
+  return rawData as T;
+}
+
+// Real API caller
+async function apiFileCall(url: string, formData: FormData, externalSignal?: AbortSignal): Promise<ApiAnalyzeResponse> {
+  console.log('[reportsApi] POST', url);
+  // 🔴 REAL: attach auth token so the backend can identify the user
+  const token = await storage.get<string>('token');
+  const t0 = Date.now();
+
+  // Hard timeout so a truly hung backend fails loudly instead of leaving the
+  // "Analyzing Report" overlay spinning forever with no signal.
+  // Raised from 60s → 150s: OCR + AI analysis of an uploaded photo/PDF can
+  // legitimately take well over a minute, especially for larger images —
+  // the previous 60s ceiling was the *client* giving up while the backend
+  // may still have been genuinely processing (no error came back, the
+  // request just went silent until this code aborted it itself).
+  const TIMEOUT_MS = 150000;
+  const controller = new AbortController();
+
+  // If the caller passed an external signal (e.g. user tapped "Stop"),
+  // abort our internal controller the moment it fires.
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      // Already cancelled before the call even started
+      throw new Error('Analysis cancelled');
+    }
+    externalSignal.addEventListener('abort', () => controller.abort(), { once: true });
+  }
+
+  const heartbeat = setInterval(() => {
+    console.log(`[reportsApi] ⏳ still waiting on analyze-report… ${Math.round((Date.now() - t0) / 1000)}s elapsed`);
+  }, 5000);
+  const timeoutId = setTimeout(() => {
+    console.log(`[reportsApi] ⏰ TIMEOUT after ${TIMEOUT_MS}ms — aborting analyze-report request`);
+    controller.abort();
+  }, TIMEOUT_MS);
+
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      signal: controller.signal,
+    });
+  } catch (networkErr: any) {
+    clearInterval(heartbeat);
+    clearTimeout(timeoutId);
+    if (networkErr?.name === 'AbortError') {
+      if (externalSignal?.aborted) {
+        console.log(`[reportsApi] ❌ CANCELLED by user after ${Date.now() - t0}ms`, url);
+        throw new Error('Analysis cancelled');
+      }
+      console.log(`[reportsApi] ❌ ABORTED (timeout) after ${Date.now() - t0}ms`, url);
+      throw new Error(`Analysis timed out after ${TIMEOUT_MS / 1000}s — the server may be taking too long to process this file, or the connection dropped.`);
+    }
+    console.log('[reportsApi] NETWORK ERROR', url, networkErr?.message || networkErr);
+    throw new Error(networkErr?.message || 'Network request failed');
+  }
+  clearInterval(heartbeat);
+  clearTimeout(timeoutId);
+  const t1 = Date.now();
+  console.log(`[reportsApi] ⏱ network round-trip: ${t1 - t0}ms`);
+
+  const rawText = await response.text();
+  console.log('[reportsApi] RESPONSE', response.status, url, '→', rawText.slice(0, 300));
+
+  let rawData: any;
+  try {
+    rawData = rawText ? JSON.parse(rawText) : {};
+  } catch {
+    const snippet = rawText?.slice(0, 200) || '(empty response)';
+    throw new Error(`Server returned non-JSON response (status ${response.status}): ${snippet}`);
+  }
+  const t2 = Date.now();
+  console.log(`[reportsApi] ⏱ read+JSON.parse: ${t2 - t1}ms`);
+
+  if (rawData?.iv && rawData?.data) {
+    const decrypted = decryptResponse(rawData);
+    const t3 = Date.now();
+    console.log(`[reportsApi] ⏱ decrypt: ${t3 - t2}ms  |  ⏱ TOTAL: ${t3 - t0}ms`);
+    console.log('=== [reportsApi] DECRYPTED ===');
+    console.log(JSON.stringify(decrypted, null, 2));
+    console.log('===============================');
+    if (!response.ok) throw new Error(decrypted?.error || decrypted?.message || 'Request failed');
+    return decrypted as ApiAnalyzeResponse;
+  }
+
+  if (!response.ok) throw new Error(rawData?.error || rawData?.message || rawData?.detail || 'Request failed');
   return rawData as ApiAnalyzeResponse;
 }
 
@@ -402,13 +550,13 @@ function apiToAnalyzeResult(result: ApiAnalyzeResponse): AnalyzeResult {
   const category = deriveCategory(result.report_type ?? '');
 
   return {
-    reportId:    result.report_id,
+    reportId: result.report_id,
     patientName: result.data[0]?.['Patient Name'] ?? '',
     hospitalName: result.data[0]?.['Hospital Name'] ?? '',
-    reportType:  result.report_type ?? '',
+    reportType: result.report_type ?? '',
     reportTypeFull: result.report_type_full ?? '',
     category,
-    summary:     summaryStr,
+    summary: summaryStr,
     values,
     healthScore,
     healthLabel: scoreToLabel(healthScore),
@@ -430,10 +578,10 @@ export const reportsApi = {
    * MOCK  → returns MOCK_REPORTS + any locally stored (analyzed) reports
    * REAL  → GET /reports
    */
-  list: async (): Promise<ReportListItem[]> => {
+  list: async (phone: string | null = null): Promise<ReportListItem[]> => {
     if (USE_MOCK) {
-      console.log('[reportsApi.list] 🟢 MOCK');
-      const stored = await loadStoredReports();
+      console.log('[reportsApi.list] 🟢 MOCK — user:', phone ?? 'guest');
+      const stored = await loadStoredReports(phone);
       const storedIds = new Set(stored.map(r => r.id));
       const base = MOCK_REPORTS.filter(r => !storedIds.has(r.id));
       return [...stored, ...base].sort(
@@ -441,30 +589,54 @@ export const reportsApi = {
       );
     }
 
-    // 🔴 REAL — uncomment when backend ready
-    // const res = await fetch(ENDPOINTS.listReports, {
-    //   headers: { Authorization: `Bearer ${await getToken()}` }
-    // });
-    // const data = await res.json();
-    // return data.map((r: any): ReportListItem => ({
-    //   id:            String(r.id),
-    //   title:         r.title,
-    //   reportType:    r.report_type,
-    //   reportTypeFull: r.report_type_full,
-    //   category:      deriveCategory(r.report_type),
-    //   date:          r.date,
-    //   labName:       r.lab_name,
-    //   fileType:      r.file_type,
-    //   healthScore:   r.health_score,
-    //   healthLabel:   scoreToLabel(r.health_score),
-    //   totalValues:   r.total_values,
-    //   abnormalCount: r.abnormal_count,
-    //   borderlineCount: r.borderline_count,
-    //   status:        r.status,
-    //   thumbnailUri:  r.thumbnail_uri ?? null,
-    //   analyzedAt:    r.analyzed_at,
-    // }));
-    return [];
+    // 🔴 REAL — active
+    try {
+      const data: any = await reportsApiCall<any>(ENDPOINTS.listReports);
+      // FIX: backend wraps the list in { success, reports, total } — it is
+      // NOT a bare array. The old code did `Array.isArray(data) ? data : []`,
+      // which was always false for this shape, silently returning an empty
+      // list every time (no error, no log — just nothing rendered in the UI).
+      const list: any[] = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.reports)
+          ? data.reports
+          : [];
+      return list.map((r: any): ReportListItem => ({
+        id: String(r.id ?? r.report_id),
+        title: r.title ?? r.report_type_full ?? r.report_type ?? 'Report',
+        reportType: r.report_type ?? r.reportType ?? '',
+        reportTypeFull: r.report_type_full ?? r.reportTypeFull ?? r.report_type ?? '',
+        category: deriveCategory(r.report_type ?? r.reportType ?? ''),
+        date: r.date ?? (r.analyzed_at ? new Date(r.analyzed_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
+        labName: r.lab_name ?? r.hospital_name ?? r.labName ?? 'Lab',
+        fileType: (r.file_type ?? r.fileType ?? 'PDF') as 'PDF' | 'IMAGE',
+        healthScore: r.health_score ?? r.healthScore ?? 0,
+        healthLabel: r.health_label ?? r.healthLabel ?? scoreToLabel(r.health_score ?? r.healthScore ?? 0),
+        totalValues: r.total_values ?? r.totalValues ?? 0,
+        abnormalCount: r.abnormal_count ?? r.abnormalCount ?? 0,
+        borderlineCount: r.borderline_count ?? r.borderlineCount ?? 0,
+        status: (r.status ?? ((r.abnormal_count ?? 0) > 2 ? 'attention' : 'good')) as 'good' | 'attention',
+        thumbnailUri: r.thumbnail_uri ?? r.thumbnailUri ?? null,
+        fileUri: r.file_uri ?? r.fileUri ?? null,
+        analyzedAt: r.analyzed_at ?? r.analyzedAt ?? new Date().toISOString(),
+      })).sort((a, b) => new Date(b.analyzedAt).getTime() - new Date(a.analyzedAt).getTime());
+    } catch (e) {
+      console.log('[reportsApi.list] 🔴 REAL call failed:', e);
+      // Surface as an empty list rather than throwing — useReports() already
+      // renders a friendly EmptyState, and a thrown error here would leave
+      // the screen stuck on its loading spinner forever (catch in the hook
+      // logs but never sets state). Empty + logged error is the safer default.
+      return [];
+    }
+
+    // 🟢 MOCK
+    // console.log('[reportsApi.list] 🟢 MOCK — user:', phone ?? 'guest');
+    // const stored = await loadStoredReports(phone);
+    // const storedIds = new Set(stored.map(r => r.id));
+    // const base = MOCK_REPORTS.filter(r => !storedIds.has(r.id));
+    // return [...stored, ...base].sort(
+    //   (a, b) => new Date(b.analyzedAt).getTime() - new Date(a.analyzedAt).getTime()
+    // );
   },
 
   /**
@@ -480,10 +652,12 @@ export const reportsApi = {
   analyze: async (
     formData: FormData,
     fileName?: string,
-    fileMeta?: { size?: number; lastModified?: number | string }
+    fileMeta?: { size?: number; lastModified?: number | string; fileUri?: string },
+    phone: string | null = null,
+    signal?: AbortSignal
   ): Promise<AnalyzeResult & { duplicate?: boolean }> => {
     if (USE_MOCK) {
-      console.log('[reportsApi.analyze] 🟢 MOCK — simulating 1.5s delay');
+      console.log('[reportsApi.analyze] 🟢 MOCK — user:', phone ?? 'guest');
 
       // ── Duplicate detection ──────────────────────────────────────────────
       const fileHash = fileName
@@ -491,11 +665,11 @@ export const reportsApi = {
         : undefined;
 
       if (fileHash) {
-        const stored = await loadStoredReports();
+        const stored = await loadStoredReports(phone);
         const existing = stored.find(r => r.fileHash === fileHash);
         if (existing) {
           console.log('[reportsApi.analyze] 🟡 Duplicate file detected — skipping save');
-          const details = await loadStoredDetails();
+          const details = await loadStoredDetails(phone);
           const existingDetail = details[existing.id];
           if (existingDetail) {
             return { ...existingDetail, duplicate: true };
@@ -512,37 +686,38 @@ export const reportsApi = {
       const result = apiToAnalyzeResult(MOCK_ANALYZE_RESPONSE);
 
       // Persist to AsyncStorage so it shows in list
-      const stored = await loadStoredReports();
+      const stored = await loadStoredReports(phone);
       const newId = `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       const newItem: ReportListItem = {
-        id:            newId,
-        title:         (fileName?.replace(/\.[^.]+$/, '') ?? result.reportTypeFull) || 'Report',
-        reportType:    result.reportType,
+        id: newId,
+        title: (fileName?.replace(/\.[^.]+$/, '') ?? result.reportTypeFull) || 'Report',
+        reportType: result.reportType,
         reportTypeFull: result.reportTypeFull,
-        category:      result.category,
-        date:          new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-        labName:       result.hospitalName || 'Lab',
-        fileType:      'PDF',
-        healthScore:   result.healthScore,
-        healthLabel:   result.healthLabel,
-        totalValues:   result.totalValues,
+        category: result.category,
+        date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+        labName: result.hospitalName || 'Lab',
+        fileType: 'PDF',
+        healthScore: result.healthScore,
+        healthLabel: result.healthLabel,
+        totalValues: result.totalValues,
         abnormalCount: result.abnormalCount,
         borderlineCount: 0,
-        status:        result.abnormalCount > 2 ? 'attention' : 'good',
-        thumbnailUri:  null,
-        analyzedAt:    new Date().toISOString(),
+        status: result.abnormalCount > 2 ? 'attention' : 'good',
+        thumbnailUri: null,
+        fileUri: fileMeta?.fileUri ?? null,
+        analyzedAt: new Date().toISOString(),
         fileHash,
       };
-      await saveReports([newItem, ...stored]);
+      await saveReports([newItem, ...stored], phone);
 
       // Persist full result (values, summary, medicines) keyed by id
-      await saveDetail(newId, { ...result, reportId: result.reportId });
+      await saveDetail(newId, { ...result, reportId: result.reportId }, phone);
 
       return { ...result, reportId: Number(newId.replace(/\D/g, '')) || result.reportId };
     }
 
     // 🔴 REAL
-    const apiResult = await apiFileCall(ENDPOINTS.analyzeReport, formData);
+    const apiResult = await apiFileCall(ENDPOINTS.analyzeReport, formData, signal);
     return apiToAnalyzeResult(apiResult);
   },
 
@@ -552,33 +727,184 @@ export const reportsApi = {
    * Returns the list item merged with the full AnalyzeResult (values,
    * summary, detected medicines) if it was stored at analyze-time.
    */
-  getById: async (id: string): Promise<(ReportListItem & Partial<AnalyzeResult>) | null> => {
+  getById: async (id: string, phone: string | null = null): Promise<(ReportListItem & Partial<AnalyzeResult>) | null> => {
     if (USE_MOCK) {
-      const all = await reportsApi.list();
+      const all = await reportsApi.list(phone);
       const item = all.find(r => r.id === id) ?? null;
       if (!item) return null;
 
-      const details = await loadStoredDetails();
+      const details = await loadStoredDetails(phone);
       const detail = details[id];
       if (detail) {
         return { ...item, ...detail, id: item.id };
       }
       return item;
     }
-    return null;
+
+    // 🔴 REAL — active
+    // Wrapped in an outer try/catch: report-detail.tsx calls this with a bare
+    // .then() and no .catch(), so an uncaught rejection here would leave that
+    // screen stuck on its loading spinner forever. This function must resolve
+    // to either a report or null, never reject.
+    try {
+      // Locally-analyzed reports (just uploaded this session) are cached in
+      // AsyncStorage detail store first — avoids an extra round trip and works
+      // even if the backend detail endpoint hasn't synced yet.
+      const cachedDetails = await loadStoredDetails(phone);
+      const cached = cachedDetails[id];
+
+      let item: ReportListItem | null = null;
+      try {
+        const apiResp = await reportsApiCall<any>(ENDPOINTS.reportDetail(id));
+
+        // ── Shape fix ────────────────────────────────────────────────────────
+        // The detail endpoint returns  { success, data: { id, title, values,
+        // summary, ... } }  — the actual report object lives inside
+        // apiResp.data, NOT at the top level.  Previously the code was reading
+        // apiResp.id / apiResp.title / etc., which are all undefined, so the
+        // card rendered blank fields and the "View Full Analysis" button had
+        // nothing to pass to /analysis.
+        // We also need `values` (not `data`) for the lab-value array, and the
+        // healthScore comes from the summary string instead of a top-level field.
+        const raw = (apiResp?.data && typeof apiResp.data === 'object' && !Array.isArray(apiResp.data))
+          ? apiResp.data  // { success, data: { ... } }  ← real shape
+          : apiResp;      // bare object fallback (shouldn't normally happen)
+
+        // Parse health score from the summary object/string when there is no
+        // dedicated top-level health_score field (real API puts it in summary).
+        const parsedHealthScore = parseHealthScore(raw.summary ?? raw.health_score);
+        const finalHealthScore = raw.health_score ?? raw.healthScore ?? parsedHealthScore ?? 0;
+
+        // The API returns `values` as the lab-value array; fall back to `data`
+        // for any legacy shape that still uses the old key name.
+        const labValuesRaw: any[] = Array.isArray(raw.values)
+          ? raw.values
+          : Array.isArray(raw.data)
+            ? raw.data
+            : [];
+
+        // Derive abnormal/borderline counts from the lab values array when the
+        // top-level count fields are missing or zero (real API omits them).
+        const mappedValues = mapApiLabValues(labValuesRaw);
+        const derivedAbnormal = mappedValues.filter(v => v.status === 'high' || v.status === 'low').length;
+        const derivedBorderline = 0; // API doesn't return borderline separately yet
+        const abnormalCount = raw.abnormal_count ?? raw.abnormalCount ?? derivedAbnormal;
+        const borderlineCount = raw.borderline_count ?? raw.borderlineCount ?? derivedBorderline;
+
+        // Parse date — API sends ISO string like "2026-06-18T11:22:15.096471+00:00"
+        const rawDate = raw.date ?? raw.analyzed_at ?? raw.analyzedAt;
+        const displayDate = rawDate
+          ? new Date(rawDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+          : '';
+
+        // Thumbnail / file URI — backend stores a relative path; keep as-is
+        // (the app renders it via a full base URL elsewhere).
+        const thumbnailUri = raw.thumbnail_uri ?? raw.thumbnailUri ?? raw.thumbnailUri ?? null;
+
+        item = {
+          id: String(raw.id ?? raw.report_id ?? id),
+          title: raw.title ?? raw.report_type_full ?? raw.reportTypeFull ?? raw.report_type ?? 'Report',
+          reportType: raw.reportType ?? raw.report_type ?? '',
+          reportTypeFull: raw.reportTypeFull ?? raw.report_type_full ?? raw.report_type ?? '',
+          category: deriveCategory(raw.reportType ?? raw.report_type ?? ''),
+          date: displayDate,
+          labName: raw.labName ?? raw.lab_name ?? raw.hospitalName ?? raw.hospital_name ?? 'Unknown',
+          fileType: (raw.fileType ?? raw.file_type ?? 'IMAGE') as 'PDF' | 'IMAGE',
+          healthScore: finalHealthScore,
+          healthLabel: raw.healthLabel ?? raw.health_label ?? scoreToLabel(finalHealthScore),
+          totalValues: raw.totalValues ?? raw.total_values ?? mappedValues.length,
+          abnormalCount,
+          borderlineCount,
+          status: (raw.status ?? (abnormalCount > 2 ? 'attention' : 'good')) as 'good' | 'attention',
+          thumbnailUri,
+          fileUri: raw.fileUri ?? raw.file_uri ?? null,
+          analyzedAt: rawDate ?? new Date().toISOString(),
+        };
+
+        // Merge full analyze data (values + summary + medicines) when present.
+        if (labValuesRaw.length > 0 || raw.summary) {
+          const summaryStr = typeof raw.summary === 'string'
+            ? raw.summary
+            : raw.summary ? JSON.stringify(raw.summary) : '{}';
+
+          const analyzeResult: AnalyzeResult = {
+            reportId: Number(raw.id ?? raw.report_id) || 0,
+            patientName: raw.patientName ?? raw.patient_name ?? labValuesRaw[0]?.['Patient Name'] ?? 'Unknown',
+            hospitalName: raw.hospitalName ?? raw.hospital_name ?? labValuesRaw[0]?.['Hospital Name'] ?? 'Unknown',
+            reportType: raw.reportType ?? raw.report_type ?? '',
+            reportTypeFull: raw.reportTypeFull ?? raw.report_type_full ?? '',
+            category: deriveCategory(raw.reportType ?? raw.report_type ?? ''),
+            summary: summaryStr,
+            values: mappedValues,
+            healthScore: finalHealthScore,
+            healthLabel: scoreToLabel(finalHealthScore),
+            totalValues: mappedValues.length,
+            abnormalCount,
+            detectedMedicines: extractDetectedMedicines(raw.summary),
+          };
+          console.log('[reportsApi.getById] ✅ mapped report:', item.title, '| values:', mappedValues.length, '| score:', finalHealthScore);
+          return { ...item, ...analyzeResult, id: item.id };
+        }
+      } catch (e) {
+        console.log('[reportsApi.getById] detail endpoint failed, falling back to list + cache', e);
+      }
+
+      // Fall back to list() (covers case where dedicated detail endpoint 404s)
+      if (!item) {
+        const all = await reportsApi.list(phone);
+        item = all.find(r => r.id === id) ?? null;
+        if (!item) return null;
+      }
+
+      if (cached) {
+        return { ...item, ...cached, id: item.id };
+      }
+      return item;
+    } catch (e) {
+      console.log('[reportsApi.getById] 🔴 unexpected error, returning null', e);
+      return null;
+    }
+
+    // 🟢 MOCK
+    // const all = await reportsApi.list(phone);
+    // const item = all.find(r => r.id === id) ?? null;
+    // if (!item) return null;
+    // const details = await loadStoredDetails(phone);
+    // const detail = details[id];
+    // if (detail) {
+    //   return { ...item, ...detail, id: item.id };
+    // }
+    // return item;
   },
 
   /**
    * DELETE REPORT
    * ──────────────
    */
-  delete: async (id: string): Promise<void> => {
+  delete: async (id: string, phone: string | null = null): Promise<void> => {
     if (USE_MOCK) {
-      const stored = await loadStoredReports();
-      await saveReports(stored.filter(r => r.id !== id));
-      await deleteDetail(id);
+      const stored = await loadStoredReports(phone);
+      await saveReports(stored.filter(r => r.id !== id), phone);
+      await deleteDetail(id, phone);
       return;
     }
+
+    // 🔴 REAL — active
+    try {
+      await reportsApiCall(ENDPOINTS.reportDelete(id), { method: 'DELETE' });
+    } finally {
+      // Always clear any locally-cached copy (e.g. from this session's analyze())
+      // regardless of whether the backend call succeeded, so the UI doesn't
+      // keep showing a stale entry the user already asked to remove.
+      const stored = await loadStoredReports(phone);
+      await saveReports(stored.filter(r => r.id !== id), phone);
+      await deleteDetail(id, phone);
+    }
+
+    // 🟢 MOCK
+    // const stored = await loadStoredReports(phone);
+    // await saveReports(stored.filter(r => r.id !== id), phone);
+    // await deleteDetail(id, phone);
   },
 
   /**
@@ -590,18 +916,71 @@ export const reportsApi = {
       const all = await reportsApi.list();
       const latest = all[0];
       return {
-        overallScore:    latest?.healthScore ?? 85,
-        scoreLabel:      latest?.healthLabel ?? 'Good',
-        riskIndicators:  [
-          { label: 'Diabetes',          level: 'low'      as const, disease: 'Diabetes' },
-          { label: 'Heart Disease',     level: 'low'      as const, disease: 'Heart Disease' },
+        overallScore: latest?.healthScore ?? 85,
+        scoreLabel: latest?.healthLabel ?? 'Good',
+        riskIndicators: [
+          { label: 'Diabetes', level: 'low' as const, disease: 'Diabetes' },
+          { label: 'Heart Disease', level: 'low' as const, disease: 'Heart Disease' },
           { label: 'Vitamin D Deficiency', level: 'moderate' as const, disease: 'Vitamin D Deficiency' },
         ],
-        trend:           'stable' as const,
-        lastUpdated:     latest?.date ?? 'Recently',
-        totalReports:    all.length,
+        trend: 'stable' as const,
+        lastUpdated: latest?.date ?? 'Recently',
+        totalReports: all.length,
       };
     }
-    return null;
+
+    // 🔴 REAL — active
+    // scorecard.tsx calls this with a bare .then() and no .catch(), so this
+    // must resolve to a value, never reject.
+    try {
+      try {
+        const raw = await reportsApiCall<any>(ENDPOINTS.scorecardReport);
+        return {
+          overallScore: raw.overall_score ?? raw.overallScore ?? 0,
+          scoreLabel: raw.score_label ?? raw.scoreLabel ?? scoreToLabel(raw.overall_score ?? raw.overallScore ?? 0),
+          riskIndicators: (raw.risk_indicators ?? raw.riskIndicators ?? []).map((r: any) => ({
+            label: r.label,
+            level: r.level as 'low' | 'moderate' | 'high',
+            disease: r.disease ?? r.label,
+          })),
+          trend: (raw.trend ?? 'stable') as 'improving' | 'stable' | 'declining',
+          lastUpdated: raw.last_updated ?? raw.lastUpdated ?? 'Recently',
+          totalReports: raw.total_reports ?? raw.totalReports ?? 0,
+        };
+      } catch (e) {
+        console.log('[reportsApi.getScorecard] backend call failed, falling back to derived scorecard', e);
+        // Backend scorecard endpoint unavailable — derive a best-effort
+        // scorecard from the real reports list instead of failing outright.
+        const all = await reportsApi.list();
+        const latest = all[0];
+        return {
+          overallScore: latest?.healthScore ?? 0,
+          scoreLabel: latest?.healthLabel ?? 'N/A',
+          riskIndicators: [],
+          trend: 'stable' as const,
+          lastUpdated: latest?.date ?? 'Recently',
+          totalReports: all.length,
+        };
+      }
+    } catch (e) {
+      console.log('[reportsApi.getScorecard] 🔴 unexpected error, returning null', e);
+      return null;
+    }
+
+    // 🟢 MOCK
+    // const all = await reportsApi.list();
+    // const latest = all[0];
+    // return {
+    //   overallScore:    latest?.healthScore ?? 85,
+    //   scoreLabel:      latest?.healthLabel ?? 'Good',
+    //   riskIndicators:  [
+    //     { label: 'Diabetes',          level: 'low'      as const, disease: 'Diabetes' },
+    //     { label: 'Heart Disease',     level: 'low'      as const, disease: 'Heart Disease' },
+    //     { label: 'Vitamin D Deficiency', level: 'moderate' as const, disease: 'Vitamin D Deficiency' },
+    //   ],
+    //   trend:           'stable' as const,
+    //   lastUpdated:     latest?.date ?? 'Recently',
+    //   totalReports:    all.length,
+    // };
   },
 };

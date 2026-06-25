@@ -11,6 +11,11 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import {
+  forgotPasswordSendOtpApi,
+  forgotPasswordVerifyOtpApi,
+  forgotPasswordResetApi,
+} from "@/services/authapi/apiService";
 
 
 const { width: SW, height: SH } = Dimensions.get("window");
@@ -96,6 +101,10 @@ export default function ForgotPassword() {
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
+  // Returned by forgot-password/verify-otp — not required in the reset-step
+  // body per the documented contract (email+otp+new_password is enough),
+  // but kept around in case the backend starts requiring it without notice.
+  const [resetToken, setResetToken] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNew, setShowNew] = useState(false);
@@ -120,8 +129,7 @@ export default function ForgotPassword() {
     setErrors((prev) => ({ ...prev, [field]: undefined }));
 
   // ── Step 1: Send OTP ──
-  // 🔴 REAL — uncomment forgotPasswordApi and comment out mock delay to use REAL
-  // 🟢 MOCK — currently active (using mock delay). comment out forgotPasswordApi line to keep mock
+  // 🔴 REAL — active
   const handleSendOtp = async () => {
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setErrors({ email: "Enter a valid email address" });
@@ -129,10 +137,15 @@ export default function ForgotPassword() {
     }
     try {
       setLoading(true);
-      // await forgotPasswordApi(email);              // 🔴 REAL — uncomment this
-      await new Promise((r) => setTimeout(r, 1000)); // 🟢 MOCK — comment this out when using REAL
+      const data = await forgotPasswordSendOtpApi(email.trim());
+      if (data?.success === false) {
+        setErrors({ email: data?.message || "Failed to send OTP" });
+        return;
+      }
       setResendTimer(60);
       setStep("otp");
+      // 🟢 MOCK — previous behavior, kept for quick local testing if needed:
+      // await new Promise((r) => setTimeout(r, 1000));
     } catch (e: any) {
       setErrors({ email: e.message || "Failed to send OTP" });
     } finally {
@@ -141,8 +154,7 @@ export default function ForgotPassword() {
   };
 
   // ── Step 2: Verify OTP ──
-  // 🔴 REAL — uncomment verifyOtpApi and comment out mock delay to use REAL
-  // 🟢 MOCK — currently active (using mock delay). comment out verifyOtpApi line to keep mock
+  // 🔴 REAL — active
   const handleVerifyOtp = async () => {
     if (otp.length < 4) {
       setErrors({ otp: "Enter the 4-digit code" });
@@ -150,9 +162,15 @@ export default function ForgotPassword() {
     }
     try {
       setLoading(true);
-      // await verifyOtpApi(email, otp);            // 🔴 REAL — uncomment this (mock OTP: 1234)
-      await new Promise((r) => setTimeout(r, 800)); // 🟢 MOCK — comment this out when using REAL
+      const data = await forgotPasswordVerifyOtpApi(email.trim(), otp);
+      if (!data?.valid) {
+        setErrors({ otp: data?.message || "Invalid or expired code" });
+        return;
+      }
+      setResetToken(data?.reset_token ?? null);
       setStep("reset");
+      // 🟢 MOCK — previous behavior, kept for quick local testing if needed:
+      // await new Promise((r) => setTimeout(r, 800));
     } catch (e: any) {
       setErrors({ otp: e.message || "Invalid or expired code" });
     } finally {
@@ -161,8 +179,7 @@ export default function ForgotPassword() {
   };
 
   // ── Step 3: Reset Password ──
-  // 🔴 REAL — uncomment resetPasswordApi and comment out mock delay to use REAL
-  // 🟢 MOCK — currently active (using mock delay). comment out resetPasswordApi line to keep mock
+  // 🔴 REAL — active
   const handleResetPassword = async () => {
     const next: typeof errors = {};
     if (!newPassword || newPassword.length < 6)
@@ -174,9 +191,14 @@ export default function ForgotPassword() {
 
     try {
       setLoading(true);
-      // await resetPasswordApi(email, otp, newPassword);  // 🔴 REAL — uncomment this
-      await new Promise((r) => setTimeout(r, 900));        // 🟢 MOCK — comment this out when using REAL
+      const data = await forgotPasswordResetApi(email.trim(), otp, newPassword);
+      if (data?.success === false) {
+        setErrors({ newPassword: data?.message || "Reset failed. Try again." });
+        return;
+      }
       setStep("success");
+      // 🟢 MOCK — previous behavior, kept for quick local testing if needed:
+      // await new Promise((r) => setTimeout(r, 900));
     } catch (e: any) {
       setErrors({ newPassword: e.message || "Reset failed. Try again." });
     } finally {

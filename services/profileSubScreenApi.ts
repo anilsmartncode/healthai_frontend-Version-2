@@ -1,24 +1,39 @@
 /**
- * profileSubScreenApi.ts
+ * services/profileSubScreenApi.ts
  * ─────────────────────────────────────────────────────────────────────
  * All API contracts for the 6 Member Profile sub-screens:
- *   1. Health Summary
- *   2. Reports
- *   3. Medications
- *   4. Appointments
- *   5. AI Insights
- *   6. Emergency Details (contacts + medical info)
+ *   1. Health Summary    → app/family/health-summary.tsx
+ *   2. Reports           → app/family/reports.tsx
+ *   3. Medications       → app/family/medications.tsx
+ *   4. Appointments      → app/family/appointments.tsx
+ *   5. AI Insights       → app/family/ai-insights.tsx
+ *   6. Emergency Details → app/family/emergency.tsx
  *
- * ⚠️  MOCK ONLY – every function returns mock data with a simulated
- *     network delay.  When the backend is ready:
- *       1. Remove the `await delay()` line
- *       2. Uncomment the real fetch() block
- *       3. Delete the mock return statement
+ * HOW TO USE:
+ *   • Every function has TWO blocks — 🔴 REAL (active) and 🟢 MOCK (commented)
+ *   • 🔴 REAL calls the backend via medicineApiCall (auth + decrypt + logging)
+ *   • Endpoint URLs come from ENDPOINTS in constants/api.ts
+ *   • All routes use BASE_URL + /api/api/family/member/{id}/... (double /api)
+ *
+ * ⚠️  If a specific endpoint misbehaves, comment the REAL block and
+ *     uncomment the MOCK block to fall back gracefully.
  * ─────────────────────────────────────────────────────────────────────
  */
 
-// ── Network delay simulator ───────────────────────────────────────────
+import { ENDPOINTS } from '@/constants/api';
+import { medicineApiCall } from './Medicineapiclient';
+
+// ── Network delay simulator (for mock blocks only) ────────────────────
 const delay = (ms = 700) => new Promise((r) => setTimeout(r, ms));
+
+// ── Envelope unwrapper ────────────────────────────────────────────────
+function unwrapList<T>(raw: any, ...keys: string[]): T[] {
+  if (Array.isArray(raw)) return raw as T[];
+  for (const key of keys) {
+    if (Array.isArray(raw?.[key])) return raw[key] as T[];
+  }
+  return [];
+}
 
 // ════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -36,11 +51,11 @@ export type ContactRelationship =
 // ── Health Summary ──────────────────────────────────────────────────────
 
 export interface Vital {
-  label:    string;
-  value:    string;
-  unit:     string;
-  status:   VitalStatus;
-  barPct:   number; // 0–100 for progress bar
+  label: string;
+  value: string;
+  unit: string;
+  status: VitalStatus;
+  barPct: number;
 }
 
 export interface ScoreTrend {
@@ -49,81 +64,80 @@ export interface ScoreTrend {
 }
 
 export interface HealthSummaryResponse {
-  member_id:   string;
+  member_id: string;
   health_score: number;
   health_status: string;
-  bmi:         number;
-  spo2:        number;
-  vitals:      Vital[];
+  bmi: number;
+  spo2: number;
+  vitals: Vital[];
   score_trend: ScoreTrend[];
-  conditions:  { label: string; managed: boolean }[];
+  conditions: { label: string; managed: boolean }[];
+  ai_insights?: any[];
 }
 
 // ── Reports ────────────────────────────────────────────────────────────
 
 export interface ReportItem {
-  report_id:  string;
-  title:      string;
-  date:       string;
-  type:       string;
-  status:     ReportStatus;
-  doctor:     string;
-  hospital:   string;
-  file_name:  string;
+  report_id: string;
+  title: string;
+  date: string;
+  type: string;
+  status: ReportStatus;
+  doctor: string;
+  hospital: string;
+  file_name: string;
   key_values: { label: string; value: string; unit: string; status: VitalStatus }[];
 }
 
 export interface ReportsResponse {
   member_id: string;
-  reports:   ReportItem[];
+  reports: ReportItem[];
 }
 
 // ── Medications ────────────────────────────────────────────────────────
 
 export interface Medication {
-  med_id:      string;
-  name:        string;
-  dose:        string;
-  frequency:   string;
-  timing:      string;
-  schedule:    string[];   // ["8:00 AM", "8:00 PM"]
-  next_dose:   string;
-  status:      MedStatus;
-  color:       string;    // bg colour
-  icon_color:  string;
+  med_id: string;
+  name: string;
+  dose: string;
+  frequency: string;
+  timing: string;
+  schedule: string[];
+  next_dose: string;
+  status: MedStatus;
+  color: string;
+  icon_color: string;
 }
 
 export interface MedicationsResponse {
-  member_id:         string;
-  active_count:      number;
-  medications:       Medication[];
+  member_id: string;
+  active_count: number;
+  medications: Medication[];
 }
 
-// ── New Medication (add) ───────────────────────────────────────────────
-
 export interface AddMedicationPayload {
-  name:      string;
-  dose:      string;
+  name: string;
+  dose: string;
   frequency: string;
-  timing:    string;
-  schedule:  string[];
+  timing: string;
+  schedule: string[];
 }
 
 // ── Appointments ───────────────────────────────────────────────────────
 
 export interface Appointment {
-  appt_id:   string;
-  doctor:    string;
+  appt_id: string;
+  doctor: string;
   specialty: string;
-  hospital:  string;
-  date:      string;
-  time:      string;
-  status:    AppointmentStatus;
-  notes:     string;
+  hospital: string;
+  date: string;
+  time: string;
+  status: AppointmentStatus;
+  notes: string;
 }
 
 export interface AppointmentsResponse {
-  member_id:   string;
+  member_id: string;
   appointments: Appointment[];
 }
 
@@ -131,87 +145,84 @@ export interface AppointmentsResponse {
 
 export interface AIInsight {
   insight_id: string;
-  title:      string;
-  body:       string;
-  severity:   InsightSeverity;
-  date:       string;
-  is_new:     boolean;
-  action?:    string;
+  title: string;
+  body: string;
+  severity: InsightSeverity;
+  date: string;
+  is_new: boolean;
+  action?: string;
 }
 
 export interface AIInsightsResponse {
   member_id: string;
   new_count: number;
-  insights:  AIInsight[];
+  insights: AIInsight[];
 }
 
 // ── Emergency ─────────────────────────────────────────────────────────
 
 export interface EmergencyContact {
-  contact_id:   string;
-  name:         string;
-  phone:        string;
+  contact_id: string;
+  name: string;
+  phone: string;
   relationship: ContactRelationship;
-  note:         string;
-  is_primary:   boolean;
+  note: string;
+  is_primary: boolean;
 }
 
 export interface MedicalInfo {
-  blood_group:      string;
-  weight_kg:        number;
-  height_cm:        number;
-  allergies:        string[];
-  conditions:       string[];
-  emergency_notes:  string;
+  blood_group: string;
+  weight_kg: number;
+  height_cm: number;
+  allergies: string[];
+  conditions: string[];
+  emergency_notes: string;
 }
 
 export interface EmergencyDetailsResponse {
-  member_id:         string;
-  medical_info:      MedicalInfo;
+  member_id: string;
+  medical_info: MedicalInfo;
   emergency_contacts: EmergencyContact[];
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// MOCK DATA
+// MOCK DATA  (kept for fallback — do not delete)
 // ════════════════════════════════════════════════════════════════════════
 
 const MOCK_HEALTH_SUMMARY: HealthSummaryResponse = {
-  member_id:     'mem2',
-  health_score:  78,
+  member_id: 'mem2',
+  health_score: 78,
   health_status: 'Attention',
-  bmi:           23.4,
-  spo2:          98,
+  bmi: 23.4,
+  spo2: 98,
   vitals: [
     { label: 'Blood Pressure', value: '130/85', unit: 'mmHg', status: 'Elevated', barPct: 72 },
-    { label: 'Blood Sugar',    value: '108',    unit: 'mg/dL', status: 'Elevated', barPct: 65 },
-    { label: 'Heart Rate',     value: '74',     unit: 'bpm',   status: 'Normal',   barPct: 55 },
-    { label: 'Cholesterol',    value: '195',    unit: 'mg/dL', status: 'Normal',   barPct: 48 },
+    { label: 'Blood Sugar', value: '108', unit: 'mg/dL', status: 'Elevated', barPct: 65 },
+    { label: 'Heart Rate', value: '74', unit: 'bpm', status: 'Normal', barPct: 55 },
+    { label: 'Cholesterol', value: '195', unit: 'mg/dL', status: 'Normal', barPct: 48 },
   ],
   score_trend: [
-    { month: 'Jan', score: 74 },
-    { month: 'Feb', score: 77 },
-    { month: 'Mar', score: 76 },
-    { month: 'Apr', score: 73 },
-    { month: 'May', score: 70 },
-    { month: 'Jun', score: 78 },
+    { month: 'Jan', score: 74 }, { month: 'Feb', score: 77 },
+    { month: 'Mar', score: 76 }, { month: 'Apr', score: 73 },
+    { month: 'May', score: 70 }, { month: 'Jun', score: 78 },
   ],
   conditions: [
-    { label: 'Hypertension',    managed: false },
-    { label: 'Pre-diabetes',    managed: false },
-    { label: 'Thyroid',         managed: true  },
+    { label: 'Hypertension', managed: false },
+    { label: 'Pre-diabetes', managed: false },
+    { label: 'Thyroid', managed: true },
   ],
 };
 
 const MOCK_REPORTS: ReportItem[] = [
   {
-    report_id: 'rep1', title: 'CBC Report',     date: '05 Jun 2026', type: 'Blood test',
+    report_id: 'rep1', title: 'CBC Report', date: '05 Jun 2026', type: 'Blood test',
     status: 'Normal', doctor: 'Dr. Priya Sharma', hospital: 'Apollo Hospital',
     file_name: 'CBC_Report_Jun2026.pdf',
     key_values: [
-      { label: 'Haemoglobin', value: '13.2', unit: 'g/dL',  status: 'Normal' },
-      { label: 'WBC',         value: '7200', unit: '/µL',   status: 'Normal' },
-      { label: 'Platelets',   value: '2.4L', unit: 'lakh',  status: 'Normal' },
-      { label: 'RBC',         value: '4.6',  unit: 'M/µL',  status: 'Normal' },
+      { label: 'Haemoglobin', value: '13.2', unit: 'g/dL', status: 'Normal' },
+      { label: 'WBC', value: '7200', unit: '/µL', status: 'Normal' },
+      { label: 'Platelets', value: '2.4L', unit: 'lakh', status: 'Normal' },
+      { label: 'RBC', value: '4.6', unit: 'M/µL', status: 'Normal' },
     ],
   },
   {
@@ -219,18 +230,9 @@ const MOCK_REPORTS: ReportItem[] = [
     status: 'Review', doctor: 'Dr. Ramesh K.', hospital: 'Care Hospital',
     file_name: 'Thyroid_May2026.pdf',
     key_values: [
-      { label: 'TSH',   value: '5.8',  unit: 'mIU/L', status: 'Elevated' },
-      { label: 'T3',    value: '1.1',  unit: 'ng/mL', status: 'Normal'   },
-      { label: 'T4',    value: '8.2',  unit: 'µg/dL', status: 'Normal'   },
-    ],
-  },
-  {
-    report_id: 'rep3', title: 'HbA1c Test', date: '12 May 2026', type: 'Diabetes',
-    status: 'Elevated', doctor: 'Dr. Priya Sharma', hospital: 'Apollo Hospital',
-    file_name: 'HbA1c_May2026.pdf',
-    key_values: [
-      { label: 'HbA1c',       value: '6.2', unit: '%',      status: 'Elevated' },
-      { label: 'Avg Glucose', value: '131', unit: 'mg/dL',  status: 'Elevated' },
+      { label: 'TSH', value: '5.8', unit: 'mIU/L', status: 'Elevated' },
+      { label: 'T3', value: '1.1', unit: 'ng/mL', status: 'Normal' },
+      { label: 'T4', value: '8.2', unit: 'µg/dL', status: 'Normal' },
     ],
   },
 ];
@@ -248,12 +250,6 @@ const MOCK_MEDICATIONS: Medication[] = [
     schedule: ['8:00 AM'], next_dose: 'Missed today',
     status: 'Missed', color: '#FEF9E8', icon_color: '#F59E0B',
   },
-  {
-    med_id: 'med3', name: 'Levothyroxine 25mcg', dose: '25mcg',
-    frequency: 'Once daily', timing: 'Empty stomach',
-    schedule: ['6:30 AM'], next_dose: 'Tomorrow 6:30 AM',
-    status: 'Active', color: '#E8F5F0', icon_color: '#0D7B5F',
-  },
 ];
 
 const MOCK_APPOINTMENTS: Appointment[] = [
@@ -267,52 +263,29 @@ const MOCK_APPOINTMENTS: Appointment[] = [
     hospital: 'Care Hospital, Banjara Hills', date: '22 Jun 2026', time: '11:00 AM',
     status: 'Upcoming', notes: 'Thyroid review, bring latest report',
   },
-  {
-    appt_id: 'apt3', doctor: 'Dr. Priya Sharma', specialty: 'General Physician',
-    hospital: 'Apollo Hospital, Jubilee Hills', date: '05 May 2026', time: '10:00 AM',
-    status: 'Completed', notes: 'CBC and routine check-up',
-  },
 ];
 
 const MOCK_AI_INSIGHTS: AIInsight[] = [
   {
-    insight_id: 'ins1', is_new: true,
-    severity: 'warning', date: 'Today',
+    insight_id: 'ins1', is_new: true, severity: 'warning', date: 'Today',
     title: 'Blood pressure trending up',
-    body: 'BP has been above 130/85 for the last 3 readings. Consider scheduling a cardiology consult and reviewing salt intake.',
+    body: 'BP has been above 130/85 for the last 3 readings. Consider scheduling a cardiology consult.',
     action: 'Book Appointment',
   },
   {
-    insight_id: 'ins2', is_new: true,
-    severity: 'warning', date: 'Today',
+    insight_id: 'ins2', is_new: true, severity: 'warning', date: 'Today',
     title: 'Amlodipine missed this morning',
-    body: 'Today\'s Amlodipine dose was not logged. Missing BP medication can cause sudden spikes. Please take it as soon as possible.',
+    body: "Today's Amlodipine dose was not logged. Missing BP medication can cause sudden spikes.",
     action: 'Mark as Taken',
-  },
-  {
-    insight_id: 'ins3', is_new: false,
-    severity: 'info', date: '3 days ago',
-    title: 'HbA1c slightly elevated',
-    body: 'HbA1c is at 6.2% — slightly above the normal range of 5.7%. Maintaining the Metformin schedule and a low-carb diet can help bring this down.',
-    action: undefined,
-  },
-  {
-    insight_id: 'ins4', is_new: false,
-    severity: 'info', date: '1 week ago',
-    title: 'Thyroid TSH above range',
-    body: 'TSH at 5.8 mIU/L is above normal (0.4–4.0). The endocrinology appointment on 22 Jun is well-timed for a dosage review.',
-    action: 'View Appointment',
   },
 ];
 
 const MOCK_EMERGENCY: EmergencyDetailsResponse = {
   member_id: 'mem2',
   medical_info: {
-    blood_group:     'B+',
-    weight_kg:       62,
-    height_cm:       158,
-    allergies:       ['Penicillin', 'Shellfish'],
-    conditions:      ['Hypertension', 'Pre-diabetes'],
+    blood_group: 'B+', weight_kg: 62, height_cm: 158,
+    allergies: ['Penicillin', 'Shellfish'],
+    conditions: ['Hypertension', 'Pre-diabetes'],
     emergency_notes: 'Insulin sensitive — keep glucose tablets nearby',
   },
   emergency_contacts: [
@@ -331,225 +304,211 @@ const MOCK_EMERGENCY: EmergencyDetailsResponse = {
 // 1. HEALTH SUMMARY
 // ════════════════════════════════════════════════════════════════════════
 
-/** GET /api/family/member/{member_id}/health-summary */
+/** GET /api/api/family/member/{member_id}/health-summary */
 export async function getMemberHealthSummary(member_id: string): Promise<HealthSummaryResponse> {
-  await delay(600);
-  console.log(`💓 [profileSubScreenApi] getMemberHealthSummary id=${member_id} — MOCK`);
+  // 🔴 REAL
+  const raw = await medicineApiCall<any>(ENDPOINTS.familyMemberHealthSummary(member_id));
+  const d = raw?.data ?? raw;
 
-  // ── MOCK BLOCK (remove when API is ready) ─────────────────────────
-  return { ...MOCK_HEALTH_SUMMARY, member_id };
-  // ─────────────────────────────────────────────────────────────────
-
-  // ── REAL BLOCK (uncomment when API is ready) ──────────────────────
-  // const res = await fetch(`/api/family/member/${member_id}/health-summary`, {
-  //   headers: { Authorization: `Bearer ${token}` },
-  // });
-  // if (!res.ok) throw new Error('Failed to fetch health summary');
-  // return res.json();
-  // ─────────────────────────────────────────────────────────────────
+  return {
+    member_id: String(d.member_id ?? member_id),
+    health_score: d.overall_score ?? d.health_score ?? 0,
+    health_status: d.overall_status ?? d.health_status ?? 'Unknown',
+    bmi: d.bmi ?? 0,
+    spo2: d.spo2 ?? 0,
+    vitals: d.vitals ?? [],
+    score_trend: d.score_trend ?? [],
+    conditions: d.conditions ?? [],
+    ai_insights: d.ai_insights ?? [],
+  };
 }
 
 // ════════════════════════════════════════════════════════════════════════
 // 2. REPORTS
 // ════════════════════════════════════════════════════════════════════════
 
-/** GET /api/family/member/{member_id}/reports */
+/** GET /api/api/family/member/{member_id}/reports */
 export async function getMemberReports(member_id: string): Promise<ReportsResponse> {
-  await delay(650);
-  console.log(`📋 [profileSubScreenApi] getMemberReports id=${member_id} — MOCK`);
+  // 🔴 REAL
+  const raw = await medicineApiCall<any>(ENDPOINTS.familyMemberReports(member_id));
+  const d = raw?.data ?? raw;
+  const reports = unwrapList<ReportItem>(d, 'reports', 'data');
+  return { member_id: String(d.member_id ?? member_id), reports };
 
-  // ── MOCK BLOCK ────────────────────────────────────────────────────
-  return { member_id, reports: MOCK_REPORTS };
-  // ─────────────────────────────────────────────────────────────────
-
-  // ── REAL BLOCK ────────────────────────────────────────────────────
-  // const res = await fetch(`/api/family/member/${member_id}/reports`, {
-  //   headers: { Authorization: `Bearer ${token}` },
-  // });
-  // if (!res.ok) throw new Error('Failed to fetch reports');
-  // return res.json();
-  // ─────────────────────────────────────────────────────────────────
+  // 🟢 MOCK
+  // await delay(650);
+  // console.log(`📋 [profileSubScreenApi] getMemberReports id=${member_id} — MOCK`);
+  // return { member_id, reports: MOCK_REPORTS };
 }
 
 // ════════════════════════════════════════════════════════════════════════
 // 3. MEDICATIONS
 // ════════════════════════════════════════════════════════════════════════
 
-/** GET /api/family/member/{member_id}/medications */
+/** GET /api/api/family/member/{member_id}/medications */
 export async function getMemberMedications(member_id: string): Promise<MedicationsResponse> {
-  await delay(600);
-  console.log(`💊 [profileSubScreenApi] getMemberMedications id=${member_id} — MOCK`);
+  // 🔴 REAL
+  const raw = await medicineApiCall<any>(ENDPOINTS.familyMemberMedications(member_id));
+  const d = raw?.data ?? raw;
+  const rawMeds = unwrapList<any>(d, 'medications', 'data');
+  const medications: Medication[] = rawMeds.map((m: any) => {
+    const rawStatus = (m.status || 'Active').toLowerCase();
+    let status: MedStatus = 'Active';
+    if (rawStatus === 'missed') status = 'Missed';
+    else if (rawStatus === 'stopped') status = 'Stopped';
+    else if (rawStatus === 'completed') status = 'Completed';
+    // 'upcoming' or 'active' will map to 'Active'
 
-  // ── MOCK BLOCK ────────────────────────────────────────────────────
-  return { member_id, active_count: MOCK_MEDICATIONS.filter(m => m.status === 'Active').length, medications: MOCK_MEDICATIONS };
-  // ─────────────────────────────────────────────────────────────────
+    return {
+      med_id: String(m.med_id ?? m.id ?? ''),
+      name: m.name ?? 'Unknown',
+      dose: m.dose ?? '',
+      frequency: m.frequency ?? '',
+      timing: m.timing ?? '',
+      schedule: Array.isArray(m.schedule) ? m.schedule : (typeof m.schedule === 'string' ? m.schedule.split(',').map((s: string) => s.trim()) : []),
+      next_dose: m.next_dose ?? '',
+      status,
+      color: m.color || (status === 'Active' ? '#E8F5F0' : status === 'Missed' ? '#FFE8E8' : '#F1F5F9'),
+      icon_color: m.icon_color || (status === 'Active' ? '#0D7B5F' : status === 'Missed' ? '#991B1B' : '#64748B'),
+    };
+  });
 
-  // ── REAL BLOCK ────────────────────────────────────────────────────
-  // const res = await fetch(`/api/family/member/${member_id}/medications`, {
-  //   headers: { Authorization: `Bearer ${token}` },
-  // });
-  // if (!res.ok) throw new Error('Failed to fetch medications');
-  // return res.json();
-  // ─────────────────────────────────────────────────────────────────
+  return {
+    member_id: String(d.member_id ?? member_id),
+    active_count: d?.active_count ?? medications.filter((m) => m.status === 'Active').length,
+    medications,
+  };
+
+  // 🟢 MOCK
+  // await delay(600);
+  // console.log(`💊 [profileSubScreenApi] getMemberMedications id=${member_id} — MOCK`);
+  // return { member_id, active_count: MOCK_MEDICATIONS.filter(m => m.status === 'Active').length, medications: MOCK_MEDICATIONS };
 }
 
-/** POST /api/family/member/{member_id}/medications */
+/** POST /api/api/family/member/{member_id}/medications */
 export async function addMemberMedication(
   member_id: string,
   payload: AddMedicationPayload,
 ): Promise<{ success: boolean; med_id: string; message: string }> {
-  await delay(700);
-  console.log(`💊 [profileSubScreenApi] addMemberMedication id=${member_id} — MOCK`);
+  // 🔴 REAL
+  const raw = await medicineApiCall<any>(ENDPOINTS.familyMemberMedications(member_id), {
+    method: 'POST',
+    body: payload,
+  });
+  return (raw?.data ?? raw) as { success: boolean; med_id: string; message: string };
 
-  // ── MOCK BLOCK ────────────────────────────────────────────────────
-  return { success: true, med_id: `med_${Date.now()}`, message: 'Medication added' };
-  // ─────────────────────────────────────────────────────────────────
-
-  // ── REAL BLOCK ────────────────────────────────────────────────────
-  // const res = await fetch(`/api/family/member/${member_id}/medications`, {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-  //   body: JSON.stringify(payload),
-  // });
-  // if (!res.ok) throw new Error('Failed to add medication');
-  // return res.json();
-  // ─────────────────────────────────────────────────────────────────
+  // 🟢 MOCK
+  // await delay(700);
+  // console.log(`💊 [profileSubScreenApi] addMemberMedication id=${member_id} — MOCK`);
+  // return { success: true, med_id: `med_${Date.now()}`, message: 'Medication added' };
 }
 
 // ════════════════════════════════════════════════════════════════════════
 // 4. APPOINTMENTS
 // ════════════════════════════════════════════════════════════════════════
 
-/** GET /api/family/member/{member_id}/appointments */
+/** GET /api/api/family/member/{member_id}/appointments */
 export async function getMemberAppointments(member_id: string): Promise<AppointmentsResponse> {
-  await delay(600);
-  console.log(`📅 [profileSubScreenApi] getMemberAppointments id=${member_id} — MOCK`);
+  // 🔴 REAL
+  const raw = await medicineApiCall<any>(ENDPOINTS.familyMemberAppointments(member_id));
+  const d = raw?.data ?? raw;
+  const appointments = unwrapList<Appointment>(d, 'appointments', 'data');
+  return { member_id: String(d.member_id ?? member_id), appointments };
 
-  // ── MOCK BLOCK ────────────────────────────────────────────────────
-  return { member_id, appointments: MOCK_APPOINTMENTS };
-  // ─────────────────────────────────────────────────────────────────
-
-  // ── REAL BLOCK ────────────────────────────────────────────────────
-  // const res = await fetch(`/api/family/member/${member_id}/appointments`, {
-  //   headers: { Authorization: `Bearer ${token}` },
-  // });
-  // if (!res.ok) throw new Error('Failed to fetch appointments');
-  // return res.json();
-  // ─────────────────────────────────────────────────────────────────
+  // 🟢 MOCK
+  // await delay(600);
+  // console.log(`📅 [profileSubScreenApi] getMemberAppointments id=${member_id} — MOCK`);
+  // return { member_id, appointments: MOCK_APPOINTMENTS };
 }
 
 // ════════════════════════════════════════════════════════════════════════
 // 5. AI INSIGHTS
 // ════════════════════════════════════════════════════════════════════════
 
-/** GET /api/family/member/{member_id}/ai-insights */
+/** GET /api/api/family/member/{member_id}/ai-insights */
 export async function getMemberAIInsights(member_id: string): Promise<AIInsightsResponse> {
-  await delay(700);
-  console.log(`🤖 [profileSubScreenApi] getMemberAIInsights id=${member_id} — MOCK`);
-
-  // ── MOCK BLOCK ────────────────────────────────────────────────────
+  // 🔴 REAL
+  const raw = await medicineApiCall<any>(ENDPOINTS.familyMemberAiInsights(member_id));
+  const d = raw?.data ?? raw;
+  const insights = unwrapList<AIInsight>(d, 'insights', 'data');
   return {
-    member_id,
-    new_count: MOCK_AI_INSIGHTS.filter(i => i.is_new).length,
-    insights: MOCK_AI_INSIGHTS,
+    member_id: String(d.member_id ?? member_id),
+    new_count: d?.new_count ?? insights.filter((i) => i.is_new).length,
+    insights,
   };
-  // ─────────────────────────────────────────────────────────────────
 
-  // ── REAL BLOCK ────────────────────────────────────────────────────
-  // const res = await fetch(`/api/family/member/${member_id}/ai-insights`, {
-  //   headers: { Authorization: `Bearer ${token}` },
-  // });
-  // if (!res.ok) throw new Error('Failed to fetch AI insights');
-  // return res.json();
-  // ─────────────────────────────────────────────────────────────────
+  // 🟢 MOCK
+  // await delay(700);
+  // console.log(`🤖 [profileSubScreenApi] getMemberAIInsights id=${member_id} — MOCK`);
+  // return { member_id, new_count: MOCK_AI_INSIGHTS.filter(i => i.is_new).length, insights: MOCK_AI_INSIGHTS };
 }
 
 // ════════════════════════════════════════════════════════════════════════
 // 6. EMERGENCY DETAILS
 // ════════════════════════════════════════════════════════════════════════
 
-/** GET /api/family/member/{member_id}/emergency */
+/** GET /api/api/family/member/{member_id}/emergency */
 export async function getMemberEmergency(member_id: string): Promise<EmergencyDetailsResponse> {
-  await delay(600);
-  console.log(`🚨 [profileSubScreenApi] getMemberEmergency id=${member_id} — MOCK`);
+  // 🔴 REAL
+  const raw = await medicineApiCall<any>(ENDPOINTS.familyMemberEmergency(member_id));
+  return (raw?.data ?? raw) as EmergencyDetailsResponse;
 
-  // ── MOCK BLOCK ────────────────────────────────────────────────────
-  return { ...MOCK_EMERGENCY, member_id };
-  // ─────────────────────────────────────────────────────────────────
-
-  // ── REAL BLOCK ────────────────────────────────────────────────────
-  // const res = await fetch(`/api/family/member/${member_id}/emergency`, {
-  //   headers: { Authorization: `Bearer ${token}` },
-  // });
-  // if (!res.ok) throw new Error('Failed to fetch emergency details');
-  // return res.json();
-  // ─────────────────────────────────────────────────────────────────
+  // 🟢 MOCK
+  // await delay(600);
+  // console.log(`🚨 [profileSubScreenApi] getMemberEmergency id=${member_id} — MOCK`);
+  // return { ...MOCK_EMERGENCY, member_id };
 }
 
-/** POST /api/family/member/{member_id}/emergency/contacts */
+/** POST /api/api/family/member/{member_id}/emergency/contacts */
 export async function addEmergencyContact(
   member_id: string,
   payload: Omit<EmergencyContact, 'contact_id'>,
 ): Promise<{ success: boolean; contact_id: string; message: string }> {
-  await delay(700);
-  console.log(`🚨 [profileSubScreenApi] addEmergencyContact id=${member_id} — MOCK`);
+  // 🔴 REAL
+  const raw = await medicineApiCall<any>(ENDPOINTS.familyMemberEmergencyContacts(member_id), {
+    method: 'POST',
+    body: payload,
+  });
+  return (raw?.data ?? raw) as { success: boolean; contact_id: string; message: string };
 
-  // ── MOCK BLOCK ────────────────────────────────────────────────────
-  return { success: true, contact_id: `ec_${Date.now()}`, message: 'Contact added' };
-  // ─────────────────────────────────────────────────────────────────
-
-  // ── REAL BLOCK ────────────────────────────────────────────────────
-  // const res = await fetch(`/api/family/member/${member_id}/emergency/contacts`, {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-  //   body: JSON.stringify(payload),
-  // });
-  // if (!res.ok) throw new Error('Failed to add emergency contact');
-  // return res.json();
-  // ─────────────────────────────────────────────────────────────────
+  // 🟢 MOCK
+  // await delay(700);
+  // console.log(`🚨 [profileSubScreenApi] addEmergencyContact id=${member_id} — MOCK`);
+  // return { success: true, contact_id: `ec_${Date.now()}`, message: 'Contact added' };
 }
 
-/** DELETE /api/family/member/{member_id}/emergency/contacts/{contact_id} */
+/** DELETE /api/api/family/member/{member_id}/emergency/contacts/{contact_id} */
 export async function deleteEmergencyContact(
   member_id: string,
   contact_id: string,
 ): Promise<{ success: boolean; message: string }> {
-  await delay(500);
-  console.log(`🚨 [profileSubScreenApi] deleteEmergencyContact id=${member_id} contact=${contact_id} — MOCK`);
+  // 🔴 REAL
+  const raw = await medicineApiCall<any>(
+    ENDPOINTS.familyMemberEmergencyContact(member_id, contact_id),
+    { method: 'DELETE' },
+  );
+  return (raw?.data ?? raw) as { success: boolean; message: string };
 
-  // ── MOCK BLOCK ────────────────────────────────────────────────────
-  return { success: true, message: 'Contact removed' };
-  // ─────────────────────────────────────────────────────────────────
-
-  // ── REAL BLOCK ────────────────────────────────────────────────────
-  // const res = await fetch(
-  //   `/api/family/member/${member_id}/emergency/contacts/${contact_id}`,
-  //   { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } },
-  // );
-  // if (!res.ok) throw new Error('Failed to delete contact');
-  // return res.json();
-  // ─────────────────────────────────────────────────────────────────
+  // 🟢 MOCK
+  // await delay(500);
+  // console.log(`🚨 [profileSubScreenApi] deleteEmergencyContact id=${member_id} contact=${contact_id} — MOCK`);
+  // return { success: true, message: 'Contact removed' };
 }
 
-/** PATCH /api/family/member/{member_id}/emergency/medical-info */
+/** PATCH /api/api/family/member/{member_id}/emergency/medical-info */
 export async function updateMedicalInfo(
   member_id: string,
   payload: Partial<MedicalInfo>,
 ): Promise<{ success: boolean; message: string }> {
-  await delay(700);
-  console.log(`🚨 [profileSubScreenApi] updateMedicalInfo id=${member_id} — MOCK`);
+  // 🔴 REAL
+  const raw = await medicineApiCall<any>(ENDPOINTS.familyMemberMedicalInfo(member_id), {
+    method: 'PATCH' as any,
+    body: payload,
+  });
+  return (raw?.data ?? raw) as { success: boolean; message: string };
 
-  // ── MOCK BLOCK ────────────────────────────────────────────────────
-  return { success: true, message: 'Medical info updated' };
-  // ─────────────────────────────────────────────────────────────────
-
-  // ── REAL BLOCK ────────────────────────────────────────────────────
-  // const res = await fetch(`/api/family/member/${member_id}/emergency/medical-info`, {
-  //   method: 'PATCH',
-  //   headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-  //   body: JSON.stringify(payload),
-  // });
-  // if (!res.ok) throw new Error('Failed to update medical info');
-  // return res.json();
-  // ─────────────────────────────────────────────────────────────────
+  // 🟢 MOCK
+  // await delay(700);
+  // console.log(`🚨 [profileSubScreenApi] updateMedicalInfo id=${member_id} — MOCK`);
+  // return { success: true, message: 'Medical info updated' };
 }

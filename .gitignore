@@ -4,6 +4,9 @@ dist/
 web-build/
 *.log
 .DS_Store
+.agents/
+*.bak
+*.session_bak
 .env
 .env.local
 android/

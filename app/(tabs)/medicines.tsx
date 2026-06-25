@@ -14,12 +14,12 @@
  *   • This screen just calls the service functions; zero raw fetch() here.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  ScrollView, RefreshControl,
   Pressable,
   TextInput,
   Alert,
@@ -28,19 +28,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 
-// ─── API SERVICE ─────────────────────────────────────────────────────────────
-// All API logic lives here. Swap MOCK ↔ REAL by editing medicinesApi.ts only.
-import {
-  getCategories,
-  getRecentlyViewed,
-  getTodaysReminders,
-  type Category,
-  type Medicine,
-  type Reminder,
-} from '@/services/Medicinesapi';
+// ─── DATA LAYER ──────────────────────────────────────────────────────────────
+// Screen no longer calls Medicinesapi directly — all fetching/state lives in
+// the hook, matching the convention used by useReports (home) and useFamily.
+import { useMedicines } from '@/hooks/useMedicines';
+import type { Category, Medicine } from '@/services/Medicinesapi';
 
 // ─── LAYOUT CONSTANTS ────────────────────────────────────────────────────────
 const SCREEN_WIDTH   = Dimensions.get('window').width;
@@ -50,13 +45,6 @@ const CAT_GAP        = 10;
 // card width = available width divided evenly, minus gaps between columns
 const CAT_CARD_WIDTH =
   (SCREEN_WIDTH - H_PADDING * 2 - CAT_GAP * (CAT_COLUMNS - 1)) / CAT_COLUMNS;
-
-// ─── LOCAL TYPES ─────────────────────────────────────────────────────────────
-interface TodayBanner {
-  count: number;
-  nextName: string;
-  nextTime: string;
-}
 
 // ─── SUB-COMPONENTS ──────────────────────────────────────────────────────────
 
@@ -119,57 +107,11 @@ function MedicineRow({
 
 export default function Medicines() {
   const [searchQ, setSearchQ] = useState('');
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [recentlyViewed, setRecentlyViewed] = useState<Medicine[]>([]);
-  const [todayBanner, setTodayBanner] = useState<TodayBanner | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // ── Fetch on focus (refreshes when navigating back) ──────────────────────
-  useFocusEffect(
-    useCallback(() => {
-      let active = true;
-
-      async function load() {
-        setLoading(true);
-        try {
-          // API 1 — GET /api/medicines/categories
-          // API 6 — GET /api/medicines/recent
-          // API 3 (Reminders) — GET /api/reminders/today  (for banner count)
-          const [cats, recent, todayReminders] = await Promise.all([
-            getCategories(),
-            getRecentlyViewed(1, 5),
-            getTodaysReminders(),
-          ]);
-
-          if (!active) return;
-
-          setCategories(cats);
-          setRecentlyViewed(recent);
-
-          // Build today's reminder banner from reminder list
-          if (todayReminders.length > 0) {
-            const upcoming = todayReminders.filter(
-              (r) => r.status === 'upcoming',
-            );
-            setTodayBanner({
-              count: upcoming.length,
-              nextName: upcoming[0]?.medicineName ?? todayReminders[0].medicineName,
-              nextTime: upcoming[0]?.time ?? todayReminders[0].time,
-            });
-          } else {
-            setTodayBanner(null);
-          }
-        } catch (e) {
-          console.error('[Medicines tab] load error', e);
-        } finally {
-          if (active) setLoading(false);
-        }
-      }
-
-      load();
-      return () => { active = false; };
-    }, []),
-  );
+  // All data-fetching (categories, recently viewed, today's reminders)
+  // now lives in useMedicines() — this screen just renders what it returns.
+  const { categories, recentlyViewed, todayBanner, loading, refetch } = useMedicines();
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -244,6 +186,13 @@ export default function Medicines() {
         </View>
       ) : (
         <ScrollView
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => { setRefreshing(true); refetch().finally(() => setRefreshing(false)); }}
+              tintColor='#0F766E'
+            />
+          }
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
