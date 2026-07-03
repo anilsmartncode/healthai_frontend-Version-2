@@ -10,7 +10,9 @@ on:
 
 jobs:
   build-push-deploy:
-    runs-on: self-hosted
+    runs-on:
+      - self-hosted
+      - healthai-frontend
 
     steps:
       - name: Checkout Repository
