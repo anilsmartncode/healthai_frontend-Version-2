@@ -1,4 +1,5 @@
-FROM node:20
+# ---------- Build Stage ----------
+FROM node:20 AS builder
 
 WORKDIR /app
 
@@ -8,11 +9,15 @@ RUN npm install
 
 COPY . .
 
-# Fix expo permissions
-RUN chmod -R 755 /app/node_modules/.bin
+RUN npx expo export --platform web
 
-EXPOSE 8081
+# ---------- Production Stage ----------
+FROM nginx:alpine
 
-# CMD ["npx", "expo", "start", "--tunnel"]
-#CMD ["npx", "expo", "start", "--host", "0.0.0.0"]
-CMD ["npx", "expo", "start", "--host", "lan"]
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+CMD ["nginx","-g","daemon off;"]
