@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -11,12 +11,12 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import {
-  forgotPasswordSendOtpApi,
-  forgotPasswordVerifyOtpApi,
-  forgotPasswordResetApi,
-} from "@/services/authapi/apiService";
 
+// Lazy-load Firebase Auth so the page still opens in Expo Go
+function getAuth() {
+  const mod = require('@react-native-firebase/auth');
+  return (mod.default || mod)();
+}
 
 const { width: SW, height: SH } = Dimensions.get("window");
 const rs = (size: number) => (SW / 390) * size;
@@ -24,199 +24,41 @@ const vs = (size: number) => (SH / 844) * size;
 const ms = (size: number, f = 0.5) => size + (rs(size) - size) * f;
 
 // ── Step types ────────────────────────────────────────
-type Step = "email" | "otp" | "reset" | "success";
-
-// ── OTP Styles (must be defined BEFORE OtpInput) ──────
-const otpStyles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    gap: rs(10),
-    justifyContent: "center",
-  },
-  box: {
-    width: rs(46),
-    height: rs(52),
-    borderRadius: rs(12),
-    borderWidth: 1.5,
-    borderColor: "#E2ECEC",
-    backgroundColor: "#F7FAFA",
-    fontSize: ms(20),
-    fontWeight: "700",
-    color: "#1a2e35",
-    textAlign: "center" as const,
-  },
-  boxFilled: {
-    borderColor: "#2D9C8E",
-    backgroundColor: "rgba(45,156,142,0.06)",
-  },
-});
-
-// ── OTP Input ─────────────────────────────────────────
-function OtpInput({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  const inputs = useRef<(TextInput | null)[]>([]);
-  const digits = value.padEnd(4, " ").split("").slice(0, 4).map((d) => d.trim());
-
-  const handleChange = (text: string, idx: number) => {
-    const cleaned = text.replace(/[^0-9]/g, "").slice(-1);
-    const next = digits.map((d, i) => (i === idx ? cleaned : d)).join("");
-    onChange(next.slice(0, 4));
-    if (cleaned && idx < 3) inputs.current[idx + 1]?.focus();
-  };
-
-  const handleKeyPress = (key: string, idx: number) => {
-    if (key === "Backspace" && !digits[idx] && idx > 0) {
-      inputs.current[idx - 1]?.focus();
-      const next = digits.map((d, i) => (i === idx - 1 ? "" : d)).join("");
-      onChange(next);
-    }
-  };
-
-  return (
-    <View style={otpStyles.row}>
-      {digits.map((d, i) => (
-        <TextInput
-          key={i}
-          ref={(r) => { inputs.current[i] = r; }}
-          style={[otpStyles.box, d ? otpStyles.boxFilled : {}]}
-          value={d}
-          onChangeText={(t) => handleChange(t, i)}
-          onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, i)}
-          keyboardType="number-pad"
-          maxLength={1}
-          selectTextOnFocus
-        />
-      ))}
-    </View>
-  );
-}
+type Step = "email" | "success";
 
 // ── Main Component ────────────────────────────────────
 export default function ForgotPassword() {
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
-  // Returned by forgot-password/verify-otp — not required in the reset-step
-  // body per the documented contract (email+otp+new_password is enough),
-  // but kept around in case the backend starts requiring it without notice.
-  const [resetToken, setResetToken] = useState<string | null>(null);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showNew, setShowNew] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [resendTimer, setResendTimer] = useState(0);
-  const [errors, setErrors] = useState<{
-    email?: string;
-    otp?: string;
-    newPassword?: string;
-    confirmPassword?: string;
-  }>({});
-
-  // Resend countdown
-  useEffect(() => {
-    if (resendTimer <= 0) return;
-    const t = setTimeout(() => setResendTimer((s) => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [resendTimer]);
+  const [errors, setErrors] = useState<{ email?: string }>({});
 
   const clearError = (field: string) =>
     setErrors((prev) => ({ ...prev, [field]: undefined }));
 
-  // ── Step 1: Send OTP ──
-  // 🔴 REAL — active
-  const handleSendOtp = async () => {
+  // ── Step 1: Send Reset Link ──
+  const handleSendResetLink = async () => {
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setErrors({ email: "Enter a valid email address" });
       return;
     }
     try {
       setLoading(true);
-      const data = await forgotPasswordSendOtpApi(email.trim());
-      if (data?.success === false) {
-        setErrors({ email: data?.message || "Failed to send OTP" });
-        return;
-      }
-      setResendTimer(60);
-      setStep("otp");
-      // 🟢 MOCK — previous behavior, kept for quick local testing if needed:
-      // await new Promise((r) => setTimeout(r, 1000));
-    } catch (e: any) {
-      setErrors({ email: e.message || "Failed to send OTP" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ── Step 2: Verify OTP ──
-  // 🔴 REAL — active
-  const handleVerifyOtp = async () => {
-    if (otp.length < 4) {
-      setErrors({ otp: "Enter the 4-digit code" });
-      return;
-    }
-    try {
-      setLoading(true);
-      const data = await forgotPasswordVerifyOtpApi(email.trim(), otp);
-      if (!data?.valid) {
-        setErrors({ otp: data?.message || "Invalid or expired code" });
-        return;
-      }
-      setResetToken(data?.reset_token ?? null);
-      setStep("reset");
-      // 🟢 MOCK — previous behavior, kept for quick local testing if needed:
-      // await new Promise((r) => setTimeout(r, 800));
-    } catch (e: any) {
-      setErrors({ otp: e.message || "Invalid or expired code" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ── Step 3: Reset Password ──
-  // 🔴 REAL — active
-  const handleResetPassword = async () => {
-    const next: typeof errors = {};
-    if (!newPassword || newPassword.length < 6)
-      next.newPassword = "Password must be at least 6 characters";
-    if (newPassword !== confirmPassword)
-      next.confirmPassword = "Passwords do not match";
-    setErrors(next);
-    if (Object.keys(next).length > 0) return;
-
-    try {
-      setLoading(true);
-      const data = await forgotPasswordResetApi(email.trim(), otp, newPassword);
-      if (data?.success === false) {
-        setErrors({ newPassword: data?.message || "Reset failed. Try again." });
-        return;
-      }
+      await getAuth().sendPasswordResetEmail(email.trim());
       setStep("success");
-      // 🟢 MOCK — previous behavior, kept for quick local testing if needed:
-      // await new Promise((r) => setTimeout(r, 900));
     } catch (e: any) {
-      setErrors({ newPassword: e.message || "Reset failed. Try again." });
+      if (e.code === 'auth/user-not-found') {
+        setErrors({ email: "No account found with this email." });
+      } else if (e.code === 'auth/invalid-email') {
+        setErrors({ email: "Enter a valid email address." });
+      } else {
+        setErrors({ email: e.message || "Failed to send reset link." });
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // ── Step config ──
-  const stepConfig = {
-    email: { num: 1, label: "Email" },
-    otp: { num: 2, label: "Verify" },
-    reset: { num: 3, label: "Reset" },
-    success: { num: 3, label: "Reset" },
-  };
-  const steps = ["Email", "Verify", "Reset"];
-  const currentNum = stepConfig[step].num;
-
-  // ── Render ──
   return (
     <ScrollView
       style={styles.container}
@@ -231,8 +73,6 @@ export default function ForgotPassword() {
           style={styles.backBtn}
           onPress={() => {
             if (step === "email") router.back();
-            else if (step === "otp") setStep("email");
-            else if (step === "reset") setStep("otp");
             else router.replace("/(auth)/login");
           }}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -256,15 +96,7 @@ export default function ForgotPassword() {
             <View style={styles.heroIconOuter}>
               <View style={styles.heroIconInner}>
                 <Ionicons
-                  name={
-                    step === "success"
-                      ? "checkmark-circle"
-                      : step === "reset"
-                      ? "lock-closed"
-                      : step === "otp"
-                      ? "keypad"
-                      : "mail"
-                  }
+                  name={step === "success" ? "checkmark-circle" : "mail"}
                   size={ms(34)}
                   color="#2D9C8E"
                 />
@@ -276,72 +108,14 @@ export default function ForgotPassword() {
           </View>
 
           <Text style={styles.heroTitle}>
-            {step === "success"
-              ? "Password Reset! 🎉"
-              : step === "reset"
-              ? "Create New Password"
-              : step === "otp"
-              ? "Check Your Email"
-              : "Forgot Password?"}
+            {step === "success" ? "Check Your Email 📩" : "Forgot Password?"}
           </Text>
           <Text style={styles.heroSub}>
             {step === "success"
-              ? "Your password has been updated.\nYou can now log in with your new password."
-              : step === "reset"
-              ? "Your new password must be different\nfrom previously used passwords."
-              : step === "otp"
-              ? `We sent a 4-digit code to\n${email}`
-              : "No worries! Enter your email and\nwe'll send you a reset code."}
+              ? `We sent a password reset link to\n${email}\n\nClick the link to create a new password.`
+              : "No worries! Enter your email and\nwe'll send you a reset link."}
           </Text>
         </View>
-
-        {/* Progress stepper — hidden on success */}
-        {step !== "success" && (
-          <View style={styles.stepper}>
-            {steps.map((label, i) => {
-              const stepNum = i + 1;
-              const done = stepNum < currentNum;
-              const active = stepNum === currentNum;
-              return (
-                <View key={label} style={styles.stepItem}>
-                  <View
-                    style={[
-                      styles.stepCircle,
-                      done && styles.stepDone,
-                      active && styles.stepActive,
-                    ]}
-                  >
-                    {done ? (
-                      <Ionicons name="checkmark" size={ms(12)} color="#fff" />
-                    ) : (
-                      <Text
-                        style={[
-                          styles.stepNum,
-                          active && styles.stepNumActive,
-                        ]}
-                      >
-                        {stepNum}
-                      </Text>
-                    )}
-                  </View>
-                  <Text
-                    style={[
-                      styles.stepLabel,
-                      active && styles.stepLabelActive,
-                    ]}
-                  >
-                    {label}
-                  </Text>
-                  {i < steps.length - 1 && (
-                    <View
-                      style={[styles.stepLine, done && styles.stepLineDone]}
-                    />
-                  )}
-                </View>
-              );
-            })}
-          </View>
-        )}
       </View>
 
       {/* ── Card ── */}
@@ -378,14 +152,14 @@ export default function ForgotPassword() {
                 pressed && !loading && { opacity: 0.9 },
                 loading && { opacity: 0.75 },
               ]}
-              onPress={handleSendOtp}
+              onPress={handleSendResetLink}
               disabled={loading}
             >
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
                 <>
-                  <Text style={styles.primaryBtnText}>Send Reset Code</Text>
+                  <Text style={styles.primaryBtnText}>Send Reset Link</Text>
                   <View style={styles.btnArrow}>
                     <Ionicons name="arrow-forward" size={ms(15)} color="#2D9C8E" />
                   </View>
@@ -400,179 +174,16 @@ export default function ForgotPassword() {
           </>
         )}
 
-        {/* ── Step 2: OTP ── */}
-        {step === "otp" && (
-          <>
-            <View style={styles.fieldWrap}>
-              <Text style={styles.fieldLabel}>Verification Code</Text>
-              <Text style={styles.fieldHint}>
-                Enter the 4-digit code sent to your email
-              </Text>
-              <View style={{ marginTop: vs(10) }}>
-                <OtpInput value={otp} onChange={(v) => { setOtp(v); clearError("otp"); }} />
-              </View>
-              {!!errors.otp && (
-                <View style={[styles.errorRow, { justifyContent: "center", marginTop: vs(8) }]}>
-                  <Ionicons name="alert-circle-outline" size={ms(13)} color="#EF4444" />
-                  <Text style={styles.errorText}>{errors.otp}</Text>
-                </View>
-              )}
-            </View>
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.primaryBtn,
-                pressed && !loading && { opacity: 0.9 },
-                loading && { opacity: 0.75 },
-              ]}
-              onPress={handleVerifyOtp}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Text style={styles.primaryBtnText}>Verify Code</Text>
-                  <View style={styles.btnArrow}>
-                    <Ionicons name="arrow-forward" size={ms(15)} color="#2D9C8E" />
-                  </View>
-                </>
-              )}
-            </Pressable>
-
-            {/* Resend */}
-            <View style={styles.resendRow}>
-              <Text style={styles.resendText}>Didn't receive the code? </Text>
-              {resendTimer > 0 ? (
-                <Text style={styles.resendTimer}>Resend in {resendTimer}s</Text>
-              ) : (
-                <Pressable
-                  onPress={() => {
-                    setResendTimer(60);
-                    // await resendOtpApi(email)
-                  }}
-                >
-                  <Text style={styles.resendLink}>Resend Code</Text>
-                </Pressable>
-              )}
-            </View>
-
-            {/* Email info row */}
-            <View style={styles.emailInfoRow}>
-              <Ionicons name="mail-outline" size={ms(15)} color="#2D9C8E" />
-              <Text style={styles.emailInfoText} numberOfLines={1}>
-                {email}
-              </Text>
-              <Pressable onPress={() => setStep("email")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Text style={styles.changeText}>Change</Text>
-              </Pressable>
-            </View>
-          </>
-        )}
-
-        {/* ── Step 3: Reset ── */}
-        {step === "reset" && (
-          <>
-            {/* New Password */}
-            <View style={styles.fieldWrap}>
-              <Text style={styles.fieldLabel}>New Password</Text>
-              <View style={[styles.inputRow, !!errors.newPassword && styles.inputError]}>
-                <Ionicons name="lock-closed-outline" size={ms(18)} color="#aab" />
-                <TextInput
-                  style={styles.inputField}
-                  placeholder="Enter new password"
-                  placeholderTextColor="#b0bec5"
-                  value={newPassword}
-                  onChangeText={(v) => { setNewPassword(v); clearError("newPassword"); }}
-                  secureTextEntry={!showNew}
-                  autoCapitalize="none"
-                />
-                <Pressable onPress={() => setShowNew((p) => !p)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Ionicons
-                    name={showNew ? "eye-off-outline" : "eye-outline"}
-                    size={ms(18)}
-                    color="#aab"
-                  />
-                </Pressable>
-              </View>
-              {!!errors.newPassword && (
-                <View style={styles.errorRow}>
-                  <Ionicons name="alert-circle-outline" size={ms(13)} color="#EF4444" />
-                  <Text style={styles.errorText}>{errors.newPassword}</Text>
-                </View>
-              )}
-            </View>
-
-            {/* Confirm Password */}
-            <View style={styles.fieldWrap}>
-              <Text style={styles.fieldLabel}>Confirm Password</Text>
-              <View style={[styles.inputRow, !!errors.confirmPassword && styles.inputError]}>
-                <Ionicons name="lock-closed-outline" size={ms(18)} color="#aab" />
-                <TextInput
-                  style={styles.inputField}
-                  placeholder="Re-enter new password"
-                  placeholderTextColor="#b0bec5"
-                  value={confirmPassword}
-                  onChangeText={(v) => { setConfirmPassword(v); clearError("confirmPassword"); }}
-                  secureTextEntry={!showConfirm}
-                  autoCapitalize="none"
-                />
-                <Pressable onPress={() => setShowConfirm((p) => !p)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Ionicons
-                    name={showConfirm ? "eye-off-outline" : "eye-outline"}
-                    size={ms(18)}
-                    color="#aab"
-                  />
-                </Pressable>
-              </View>
-              {!!errors.confirmPassword && (
-                <View style={styles.errorRow}>
-                  <Ionicons name="alert-circle-outline" size={ms(13)} color="#EF4444" />
-                  <Text style={styles.errorText}>{errors.confirmPassword}</Text>
-                </View>
-              )}
-            </View>
-
-            {/* Password strength hints */}
-            <View style={styles.hintBox}>
-              <PasswordHint met={newPassword.length >= 6} text="At least 6 characters" />
-              <PasswordHint met={/[A-Z]/.test(newPassword)} text="One uppercase letter" />
-              <PasswordHint met={/[0-9]/.test(newPassword)} text="One number" />
-            </View>
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.primaryBtn,
-                pressed && !loading && { opacity: 0.9 },
-                loading && { opacity: 0.75 },
-              ]}
-              onPress={handleResetPassword}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Text style={styles.primaryBtnText}>Reset Password</Text>
-                  <View style={styles.btnArrow}>
-                    <Ionicons name="arrow-forward" size={ms(15)} color="#2D9C8E" />
-                  </View>
-                </>
-              )}
-            </Pressable>
-          </>
-        )}
-
-        {/* ── Step 4: Success ── */}
+        {/* ── Step 2: Success ── */}
         {step === "success" && (
           <>
             <View style={styles.successBox}>
               <View style={styles.successIconWrap}>
                 <Ionicons name="checkmark-circle" size={ms(56)} color="#2D9C8E" />
               </View>
-              <Text style={styles.successTitle}>All Done!</Text>
+              <Text style={styles.successTitle}>Link Sent!</Text>
               <Text style={styles.successMsg}>
-                Your password has been reset successfully. You can now log in with your new credentials.
+                Check your inbox and spam folder. Once you reset your password, you can log in below.
               </Text>
             </View>
 
@@ -602,26 +213,6 @@ export default function ForgotPassword() {
     </ScrollView>
   );
 }
-
-// ── Password Hint Row ─────────────────────────────────
-function PasswordHint({ met, text }: { met: boolean; text: string }) {
-  return (
-    <View style={hintStyles.row}>
-      <Ionicons
-        name={met ? "checkmark-circle" : "ellipse-outline"}
-        size={ms(14)}
-        color={met ? "#2D9C8E" : "#b0bec5"}
-      />
-      <Text style={[hintStyles.text, met && hintStyles.textMet]}>{text}</Text>
-    </View>
-  );
-}
-
-const hintStyles = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", gap: rs(6) },
-  text: { fontSize: ms(12), color: "#b0bec5", fontWeight: "500" },
-  textMet: { color: "#2D9C8E" },
-});
 
 // ── Styles ────────────────────────────────────────────
 const styles = StyleSheet.create({
@@ -720,42 +311,6 @@ const styles = StyleSheet.create({
     fontWeight: "400",
   },
 
-  // ── Stepper ──
-  stepper: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 0,
-  },
-  stepItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(6),
-  },
-  stepCircle: {
-    width: rs(28),
-    height: rs(28),
-    borderRadius: rs(14),
-    borderWidth: 1.5,
-    borderColor: "#C8E8E5",
-    backgroundColor: "#F0FAF9",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  stepDone: { backgroundColor: "#2D9C8E", borderColor: "#2D9C8E" },
-  stepActive: { backgroundColor: "#fff", borderColor: "#2D9C8E" },
-  stepNum: { fontSize: ms(11), fontWeight: "700", color: "#aab" },
-  stepNumActive: { color: "#2D9C8E" },
-  stepLabel: { fontSize: ms(11), color: "#aab", fontWeight: "500" },
-  stepLabelActive: { color: "#2D9C8E", fontWeight: "700" },
-  stepLine: {
-    width: rs(24),
-    height: 1.5,
-    backgroundColor: "#C8E8E5",
-    marginHorizontal: rs(4),
-  },
-  stepLineDone: { backgroundColor: "#2D9C8E" },
-
   // ── Card ──
   card: {
     flex: 1,
@@ -779,11 +334,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#1a2e35",
     marginBottom: vs(4),
-  },
-  fieldHint: {
-    fontSize: ms(12),
-    color: "#8aabab",
-    fontWeight: "400",
   },
   inputRow: {
     flexDirection: "row",
@@ -840,40 +390,6 @@ const styles = StyleSheet.create({
     paddingVertical: vs(4),
   },
   backToLoginText: { fontSize: ms(13), fontWeight: "600", color: "#2D9C8E" },
-
-  // ── Resend ──
-  resendRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  resendText: { fontSize: ms(13), color: "#8aabab", fontWeight: "500" },
-  resendLink: { fontSize: ms(13), color: "#2D9C8E", fontWeight: "700" },
-  resendTimer: { fontSize: ms(13), color: "#aab", fontWeight: "600" },
-
-  // ── Email info ──
-  emailInfoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(8),
-    backgroundColor: "#F0FAF9",
-    borderRadius: rs(12),
-    padding: rs(12),
-    borderWidth: 1,
-    borderColor: "#C8E8E5",
-  },
-  emailInfoText: { flex: 1, fontSize: ms(12), color: "#1a2e35", fontWeight: "500" },
-  changeText: { fontSize: ms(12), color: "#2D9C8E", fontWeight: "700" },
-
-  // ── Hints ──
-  hintBox: {
-    backgroundColor: "#F7FAFA",
-    borderRadius: rs(12),
-    padding: rs(14),
-    gap: vs(8),
-    borderWidth: 1,
-    borderColor: "#E2ECEC",
-  },
 
   // ── Success ──
   successBox: {

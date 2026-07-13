@@ -11,7 +11,7 @@
  *   getInteractionHistory()                 GET /api/interactions/history
  */
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -29,7 +29,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { AskAIButton } from '@/components/ai/AskAIButton';
 import {
@@ -184,6 +184,30 @@ export default function CheckInteractionsScreen() {
   const [detail,             setDetail]             = useState<InteractionResult | null>(null);
   const [detailLoading,      setDetailLoading]      = useState(false);
   const [historyVisible,     setHistoryVisible]     = useState(false);
+
+  const params = useLocalSearchParams<{ medicineId?: string; medicineName?: string }>();
+
+  // Pre-fill from params
+  useEffect(() => {
+    if (params.medicineId && params.medicineName) {
+      setSelectedMedicines((prev) => {
+        if (prev.find((m) => m.id === params.medicineId)) return prev;
+        return [
+          ...prev,
+          {
+            id: params.medicineId!,
+            name: params.medicineName!,
+            type: 'Tablet',
+            category: '',
+            uses: '',
+            dosage: '',
+            sideEffects: [],
+            prescriptionType: 'OTC',
+          },
+        ];
+      });
+    }
+  }, [params.medicineId, params.medicineName]);
 
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 

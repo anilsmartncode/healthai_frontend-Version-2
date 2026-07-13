@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SecureAsyncStorage as AsyncStorage } from '@/utils/storage';
 import { Colors, Radius, Spacing } from '@/constants/Colors';
 import { Input } from '@/components/ui/Input';
 import { DatePickerField } from '@/components/ui/DatePickerField';

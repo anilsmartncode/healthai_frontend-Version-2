@@ -430,7 +430,18 @@ export async function getMemberAIInsights(member_id: string): Promise<AIInsights
   // 🔴 REAL
   const raw = await medicineApiCall<any>(ENDPOINTS.familyMemberAiInsights(member_id));
   const d = raw?.data ?? raw;
-  const insights = unwrapList<AIInsight>(d, 'insights', 'data');
+  const rawInsights = unwrapList<any>(d, 'insights', 'data');
+
+  const insights: AIInsight[] = rawInsights.map((i: any) => ({
+    insight_id: String(i.id ?? i.insight_id ?? ''),
+    title: i.title ?? 'Health Insight',
+    body: i.description ?? i.body ?? '',
+    severity: i.severity === 'high' || i.severity === 'critical' ? 'critical' : i.severity === 'medium' ? 'warning' : 'info',
+    date: i.created_at ? new Date(i.created_at).toLocaleDateString() : (i.date ?? 'Today'),
+    is_new: i.is_new ?? false,
+    action: i.data?.recommendation ?? i.action ?? undefined,
+  }));
+
   return {
     member_id: String(d.member_id ?? member_id),
     new_count: d?.new_count ?? insights.filter((i) => i.is_new).length,
@@ -451,7 +462,20 @@ export async function getMemberAIInsights(member_id: string): Promise<AIInsights
 export async function getMemberEmergency(member_id: string): Promise<EmergencyDetailsResponse> {
   // 🔴 REAL
   const raw = await medicineApiCall<any>(ENDPOINTS.familyMemberEmergency(member_id));
-  return (raw?.data ?? raw) as EmergencyDetailsResponse;
+  const d = raw?.data ?? raw;
+  
+  return {
+    member_id: String(d.member_id ?? member_id),
+    medical_info: {
+      blood_group: d.blood_type ?? d.medical_info?.blood_group ?? 'Unknown',
+      weight_kg: d.weight_kg ?? d.medical_info?.weight_kg ?? 0,
+      height_cm: d.height_cm ?? d.medical_info?.height_cm ?? 0,
+      allergies: d.allergies ?? d.medical_info?.allergies ?? [],
+      conditions: d.conditions ?? d.medical_info?.conditions ?? [],
+      emergency_notes: d.medical_notes ?? d.medical_info?.emergency_notes ?? 'No notes provided',
+    },
+    emergency_contacts: d.emergency_contacts ?? [],
+  };
 
   // 🟢 MOCK
   // await delay(600);

@@ -14,7 +14,7 @@
  * ============================================================
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SecureAsyncStorage as AsyncStorage } from '@/utils/storage';
 import { decryptResponse } from '@/utils/encryption';
 import { ENDPOINTS } from '@/constants/api';
 import { storage } from '@/utils/storage';
@@ -926,6 +926,8 @@ export const reportsApi = {
         trend: 'stable' as const,
         lastUpdated: latest?.date ?? 'Recently',
         totalReports: all.length,
+        aiSummary: '',
+        averageMetrics: [] as any[],
       };
     }
 
@@ -935,17 +937,27 @@ export const reportsApi = {
     try {
       try {
         const raw = await reportsApiCall<any>(ENDPOINTS.scorecardReport);
+        const payload = (raw?.data && typeof raw.data === 'object') ? raw.data : raw;
+
+        const overallScore = payload.health_score ?? payload.overall_score ?? payload.overallScore ?? payload.healthScore ?? 0;
+        const scoreLabel = payload.health_status ?? payload.score_label ?? payload.scoreLabel ?? payload.healthLabel ?? scoreToLabel(overallScore);
+        const totalReports = payload.total_reports ?? payload.totalReports ?? payload.totalReports ?? 0;
+        const trend = payload.trend ?? 'stable';
+        const lastUpdated = payload.last_updated ?? payload.lastUpdated ?? 'Recently';
+
         return {
-          overallScore: raw.overall_score ?? raw.overallScore ?? 0,
-          scoreLabel: raw.score_label ?? raw.scoreLabel ?? scoreToLabel(raw.overall_score ?? raw.overallScore ?? 0),
-          riskIndicators: (raw.risk_indicators ?? raw.riskIndicators ?? []).map((r: any) => ({
+          overallScore,
+          scoreLabel,
+          riskIndicators: (payload.risk_indicators ?? payload.riskIndicators ?? []).map((r: any) => ({
             label: r.label,
             level: r.level as 'low' | 'moderate' | 'high',
             disease: r.disease ?? r.label,
           })),
-          trend: (raw.trend ?? 'stable') as 'improving' | 'stable' | 'declining',
-          lastUpdated: raw.last_updated ?? raw.lastUpdated ?? 'Recently',
-          totalReports: raw.total_reports ?? raw.totalReports ?? 0,
+          trend: trend as 'improving' | 'stable' | 'declining',
+          lastUpdated,
+          totalReports,
+          aiSummary: payload.ai_summary ?? '',
+          averageMetrics: payload.average_metrics ?? [],
         };
       } catch (e) {
         console.log('[reportsApi.getScorecard] backend call failed, falling back to derived scorecard', e);
@@ -960,6 +972,8 @@ export const reportsApi = {
           trend: 'stable' as const,
           lastUpdated: latest?.date ?? 'Recently',
           totalReports: all.length,
+          aiSummary: '',
+          averageMetrics: [] as any[],
         };
       }
     } catch (e) {

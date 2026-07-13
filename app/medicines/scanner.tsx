@@ -52,14 +52,14 @@ type ScanView = 'idle' | 'processing' | 'identified' | 'details' | 'actions';
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 export default function MedicineScannerScreen() {
-  const [view,            setView]            = useState<ScanView>('idle');
-  const [scanResult,      setScanResult]      = useState<ScanResult | null>(null);
-  const [detail,          setDetail]          = useState<Medicine | null>(null);
-  const [progress,        setProgress]        = useState(0);
-  const [historyVisible,  setHistoryVisible]  = useState(false);
-  const [history,         setHistory]         = useState<ScanHistoryItem[]>([]);
-  const [historyLoading,  setHistoryLoading]  = useState(false);
-  const [savingMed,       setSavingMed]       = useState(false);
+  const [view, setView] = useState<ScanView>('idle');
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [detail, setDetail] = useState<Medicine | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [historyVisible, setHistoryVisible] = useState(false);
+  const [history, setHistory] = useState<ScanHistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [savingMed, setSavingMed] = useState(false);
 
   // ── Core scan flow ──────────────────────────────────────────────────────────
   const runScan = useCallback(async (imageUri: string) => {
@@ -116,7 +116,7 @@ export default function MedicineScannerScreen() {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 0.8,
     });
     if (result.canceled) {
@@ -140,7 +140,7 @@ export default function MedicineScannerScreen() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 0.8,
     });
     if (result.canceled) {
@@ -366,10 +366,10 @@ export default function MedicineScannerScreen() {
   const renderActions = () => (
     <View style={styles.actionsWrap}>
       {[
-        { icon: 'bookmark-outline',    label: 'Save Medicine',         sub: 'Add to my medicines',       onPress: handleSaveMedicine },
-        { icon: 'alarm-outline',       label: 'Set Reminder',          sub: 'Never miss your dose',       onPress: handleSetReminder },
-        { icon: 'git-compare-outline', label: 'Check Interactions',    sub: 'Check with other medicines', onPress: handleCheckInteractions },
-        { icon: 'sparkles-outline',    label: 'Ask AI About Medicine', sub: 'Get AI answers',             onPress: handleAskAI },
+        { icon: 'bookmark-outline', label: 'Save Medicine', sub: 'Add to my medicines', onPress: handleSaveMedicine },
+        { icon: 'alarm-outline', label: 'Set Reminder', sub: 'Never miss your dose', onPress: handleSetReminder },
+        { icon: 'git-compare-outline', label: 'Check Interactions', sub: 'Check with other medicines', onPress: handleCheckInteractions },
+        { icon: 'sparkles-outline', label: 'Ask AI About Medicine', sub: 'Get AI answers', onPress: handleAskAI },
       ].map((a) => (
         <Pressable key={a.label} style={({ pressed }) => [styles.actionItem, pressed && { opacity: 0.75 }]} onPress={a.onPress}>
           <Ionicons name={a.icon as any} size={22} color={Colors.primary} />
@@ -400,11 +400,11 @@ export default function MedicineScannerScreen() {
 
       {/* Content */}
       <View style={styles.content}>
-        {view === 'idle'       && renderIdle()}
+        {view === 'idle' && renderIdle()}
         {view === 'processing' && renderProcessing()}
         {view === 'identified' && renderIdentified()}
-        {view === 'details'    && renderDetails()}
-        {view === 'actions'    && renderActions()}
+        {view === 'details' && renderDetails()}
+        {view === 'actions' && renderActions()}
       </View>
 
       {/* Bottom bar when details shown */}
@@ -450,7 +450,9 @@ export default function MedicineScannerScreen() {
                   style={styles.historyItem}
                   onPress={() => {
                     setHistoryVisible(false);
-                    router.push('/medicines/browse' as any);
+                    if (item.medicineId) {
+                      router.push(`/medicine/${item.medicineId}` as any);
+                    }
                   }}
                 >
                   <View style={styles.historyIconWrap}>
@@ -458,7 +460,9 @@ export default function MedicineScannerScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.historyName}>{item.medicineName}</Text>
-                    <Text style={styles.historyMeta}>{item.medicineType} · {item.scannedAt}</Text>
+                    <Text style={styles.historyMeta} numberOfLines={1}>
+                      {new Date(item.createdAt).toLocaleDateString()} · {item.aiSummary || 'Scanned medicine'}
+                    </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
                 </Pressable>

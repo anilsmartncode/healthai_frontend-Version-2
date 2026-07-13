@@ -1,5 +1,5 @@
 
-import apiClient from "@/services/api";
+import { api } from "@/services/api";
 import { decryptAES256, encryptAES256 } from "@/utils/crypto";
 import { getOrCreateDeviceId } from "@/utils/deviceUtils";
 import { clearAll, getItem, setItem } from "@/utils/storage";
@@ -67,13 +67,13 @@ export const getStoredTokens = async (): Promise<{
   accessToken: string | null;
   refreshToken: string | null;
 }> => {
-  
+
   let accessToken: string | null = null;
   let refreshToken: string | null = null;
 
   try {
     const encAccess = await getItem("authToken");
-    
+
     if (encAccess) accessToken = decryptAES256(encAccess, KEY);
   } catch {
     accessToken = null;
@@ -81,7 +81,7 @@ export const getStoredTokens = async (): Promise<{
 
   try {
     const encRefresh = await getItem("refreshToken");
-    
+
     if (encRefresh) refreshToken = decryptAES256(encRefresh, KEY);
   } catch {
     refreshToken = null;
@@ -94,19 +94,20 @@ export const getStoredTokens = async (): Promise<{
 export const refreshAccessToken = async (
   refreshToken: string,
 ): Promise<{ accessToken: string; refreshToken: string }> => {
-  
+
   const encrypted = encryptAES256(JSON.stringify({ refreshToken }), KEY);
 
   const deviceId = await getOrCreateDeviceId();
 
-  const res = await apiClient.post(
+  const res = await api.request<any>(
     "/api/auth/refresh",
-    { value: encrypted },
     {
+      method: "POST",
+      body: JSON.stringify({ value: encrypted }),
       headers: {
         "x-device-id": deviceId,
       },
-    },
+    }
   );
 
   const userRaw = await getItem("userData");
@@ -115,12 +116,7 @@ export const refreshAccessToken = async (
     await clearAll();
     throw new Error("User data missing");
   }
-  if (!res?.data) {
-    await clearAll();
-    throw new Error("Invalid refresh response");
-  }
-
-  const json = res.data;
+  const json = res;
   let decrypted: any = json;
 
   if (json?.value && typeof json.value === "string") {
@@ -141,7 +137,7 @@ export const refreshAccessToken = async (
     throw new Error("Session expired");
   }
 
- 
+
   let parsedUser: any = null;
   try {
     parsedUser = userRaw ? safeParse(userRaw) : null;

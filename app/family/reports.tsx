@@ -24,25 +24,25 @@ const FILTERS: FilterType[] = ['All', 'Blood', 'Scan', 'Hormone', 'Diabetes'];
 
 function statusColor(s: ReportStatus) {
   switch (s) {
-    case 'Normal':   return { bg: '#E8F5F0', text: '#065F46' };
-    case 'Review':   return { bg: '#FEF9E8', text: '#92400E' };
+    case 'Normal': return { bg: '#E8F5F0', text: '#065F46' };
+    case 'Review': return { bg: '#FEF9E8', text: '#92400E' };
     case 'Elevated': return { bg: '#FEF9E8', text: '#92400E' };
     case 'Critical': return { bg: '#FFE8E8', text: '#991B1B' };
-    default:         return { bg: Colors.border, text: Colors.textMuted };
+    default: return { bg: Colors.border, text: Colors.textMuted };
   }
 }
 
 function typeIcon(type: string): keyof typeof Ionicons.glyphMap {
   if (type === 'Blood test') return 'flask-outline';
-  if (type === 'Hormone')    return 'cellular-outline';
-  if (type === 'Diabetes')   return 'nutrition-outline';
+  if (type === 'Hormone') return 'cellular-outline';
+  if (type === 'Diabetes') return 'nutrition-outline';
   return 'document-text-outline';
 }
 
 function typeIconBg(type: string) {
   if (type === 'Blood test') return { bg: '#E8F0FF', color: '#007AFF' };
-  if (type === 'Hormone')    return { bg: '#FEF9E8', color: Colors.warning };
-  if (type === 'Diabetes')   return { bg: '#F0EAFF', color: '#8B5CF6' };
+  if (type === 'Hormone') return { bg: '#FEF9E8', color: Colors.warning };
+  if (type === 'Diabetes') return { bg: '#F0EAFF', color: '#8B5CF6' };
   return { bg: '#E8F0FF', color: '#007AFF' };
 }
 
@@ -64,10 +64,10 @@ export default function MemberReportsScreen() {
   const insets = useSafeAreaInsets();
   const { id = 'mem2', name = 'Member' } = useLocalSearchParams<{ id: string; name: string }>();
 
-  const [reports,  setReports]  = useState<ReportItem[]>([]);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState<string | null>(null);
-  const [filter,   setFilter]   = useState<FilterType>('All');
+  const [reports, setReports] = useState<ReportItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<FilterType>('All');
   const [selected, setSelected] = useState<ReportItem | null>(null);
 
   useEffect(() => {
@@ -189,11 +189,11 @@ export default function MemberReportsScreen() {
                 <View style={styles.kvGrid}>
                   {selected.key_values.map((kv) => {
                     const vc = kv.status === 'Normal' ? Colors.success
-                             : kv.status === 'Elevated' || kv.status === 'High' ? Colors.warning
-                             : Colors.danger;
+                      : kv.status === 'Elevated' || kv.status === 'High' ? Colors.warning
+                        : Colors.danger;
                     return (
-                      <View key={kv.label} style={styles.kvItem}>
-                        <Text style={styles.kvLabel}>{kv.label}</Text>
+                      <View key={kv.label || kv.name || Math.random().toString()} style={styles.kvItem}>
+                        <Text style={styles.kvLabel}>{kv.label || kv.name}</Text>
                         <Text style={[styles.kvVal, { color: vc }]}>
                           {kv.value} <Text style={styles.kvUnit}>{kv.unit}</Text>
                         </Text>
@@ -219,44 +219,44 @@ export default function MemberReportsScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen:    { flex: 1, backgroundColor: '#F4F7F6' },
-  centered:  { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10, minHeight: 160 },
-  emptyTxt:  { fontSize: 14, color: Colors.textMuted, textAlign: 'center' },
+  screen: { flex: 1, backgroundColor: '#F4F7F6' },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10, minHeight: 160 },
+  emptyTxt: { fontSize: 14, color: Colors.textMuted, textAlign: 'center' },
 
-  filterBar:     { backgroundColor: '#fff', borderBottomWidth: 0.5, borderBottomColor: Colors.border, maxHeight: 48, flexShrink: 0 },
+  filterBar: { backgroundColor: '#fff', borderBottomWidth: 0.5, borderBottomColor: Colors.border, maxHeight: 48, flexShrink: 0 },
   filterContent: { paddingHorizontal: 12, paddingVertical: 8, gap: 6, flexDirection: 'row' },
-  filterChip:    { paddingHorizontal: 13, paddingVertical: 5, borderRadius: 20, backgroundColor: '#F1F5F9' },
-  filterChipOn:  { backgroundColor: Colors.primary },
-  filterTxt:     { fontSize: 12, fontWeight: '500', color: Colors.textMuted },
-  filterTxtOn:   { color: '#fff', fontWeight: '600' },
+  filterChip: { paddingHorizontal: 13, paddingVertical: 5, borderRadius: 20, backgroundColor: '#F1F5F9' },
+  filterChipOn: { backgroundColor: Colors.primary },
+  filterTxt: { fontSize: 12, fontWeight: '500', color: Colors.textMuted },
+  filterTxtOn: { color: '#fff', fontWeight: '600' },
 
-  page:    { padding: 12, paddingBottom: 40 },
+  page: { padding: 12, paddingBottom: 40 },
   section: { fontSize: 12, fontWeight: '600', color: Colors.textMuted, marginBottom: 7, marginTop: 6 },
 
-  row:     { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 7, gap: 10 },
+  row: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 7, gap: 10 },
   rowIcon: { width: 38, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  rowTitle:{ fontSize: 13, fontWeight: '600', color: Colors.text },
-  rowSub:  { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
-  badge:   { borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3, flexShrink: 0 },
-  badgeTxt:{ fontSize: 10, fontWeight: '600' },
+  rowTitle: { fontSize: 13, fontWeight: '600', color: Colors.text },
+  rowSub: { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
+  badge: { borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3, flexShrink: 0 },
+  badgeTxt: { fontSize: 10, fontWeight: '600' },
 
   // Modal
-  modal:      { flex: 1, backgroundColor: '#F4F7F6' },
-  modalBar:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
+  modal: { flex: 1, backgroundColor: '#F4F7F6' },
+  modalBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
   modalClose: { width: 32, height: 32, justifyContent: 'center', alignItems: 'center' },
   modalTitle: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '600', color: Colors.text },
-  modalBody:  { padding: 16, paddingBottom: 40 },
+  modalBody: { padding: 16, paddingBottom: 40 },
 
-  fileCard:  { backgroundColor: '#fff', borderRadius: 12, padding: 20, alignItems: 'center', marginBottom: 12 },
-  fileIcon:  { width: 56, height: 68, backgroundColor: '#F1F5F9', borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
-  fileName:  { fontSize: 14, fontWeight: '600', color: Colors.text, textAlign: 'center' },
-  fileSub:   { fontSize: 11, color: Colors.textMuted, marginTop: 4, textAlign: 'center' },
+  fileCard: { backgroundColor: '#fff', borderRadius: 12, padding: 20, alignItems: 'center', marginBottom: 12 },
+  fileIcon: { width: 56, height: 68, backgroundColor: '#F1F5F9', borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
+  fileName: { fontSize: 14, fontWeight: '600', color: Colors.text, textAlign: 'center' },
+  fileSub: { fontSize: 11, color: Colors.textMuted, marginTop: 4, textAlign: 'center' },
 
-  card:   { backgroundColor: '#fff', borderRadius: 12, padding: 13, marginBottom: 12 },
+  card: { backgroundColor: '#fff', borderRadius: 12, padding: 13, marginBottom: 12 },
   kvGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   kvItem: { width: '45%' },
-  kvLabel:{ fontSize: 11, color: Colors.textMuted },
-  kvVal:  { fontSize: 14, fontWeight: '700', marginTop: 2 },
+  kvLabel: { fontSize: 11, color: Colors.textMuted },
+  kvVal: { fontSize: 14, fontWeight: '700', marginTop: 2 },
   kvUnit: { fontSize: 10, fontWeight: '400' },
 
   downloadBtn: { backgroundColor: Colors.primary, borderRadius: 12, padding: 14, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },

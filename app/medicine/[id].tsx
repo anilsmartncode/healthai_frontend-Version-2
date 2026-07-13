@@ -22,10 +22,10 @@ import { getMedicineDetails, saveMedicine, type Medicine } from '@/services/medi
 export default function MedicineDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [medicine, setMedicine] = useState<Medicine | null>(null);
-  const [loading,  setLoading]  = useState(true);
-  const [saved,    setSaved]    = useState(false);
-  const [saving,   setSaving]   = useState(false);
-  const [error,    setError]    = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
@@ -54,7 +54,7 @@ export default function MedicineDetail() {
   };
 
   const rxColor = medicine?.prescriptionType === 'Prescription' ? '#B91C1C' : '#065F46';
-  const rxBg    = medicine?.prescriptionType === 'Prescription' ? '#FEE2E2' : '#D1FAE5';
+  const rxBg = medicine?.prescriptionType === 'Prescription' ? '#FEE2E2' : '#D1FAE5';
 
   if (loading) {
     return (
@@ -145,10 +145,7 @@ export default function MedicineDetail() {
           <Pressable
             style={styles.actionRow}
             onPress={() =>
-              router.push({
-                pathname: '/medicines/reminders/new',
-                params: { medicineId: medicine.id, medicineName: medicine.name },
-              })
+              router.push(`/medicines/reminders/new?medicineId=${medicine.id}&medicineName=${encodeURIComponent(medicine.name)}`)
             }
           >
             <View style={styles.actionIconWrap}>
@@ -225,9 +222,9 @@ export default function MedicineDetail() {
 }
 
 const styles = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: '#F8FAFC' },
+  safe: { flex: 1, backgroundColor: '#F8FAFC' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 },
-  page:   { padding: 16, gap: 14, paddingBottom: 32 },
+  page: { padding: 16, gap: 14, paddingBottom: 32 },
 
   headerCard: {
     backgroundColor: '#fff', borderRadius: 16,
@@ -239,10 +236,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary + '15',
     alignItems: 'center', justifyContent: 'center',
   },
-  title:    { fontSize: 20, fontWeight: '800', color: '#0F172A', textAlign: 'center' },
+  title: { fontSize: 20, fontWeight: '800', color: '#0F172A', textAlign: 'center' },
   subtitle: { fontSize: 14, color: '#64748B' },
-  badge:    { borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4 },
-  badgeText:{ fontSize: 12, fontWeight: '700' },
+  badge: { borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4 },
+  badgeText: { fontSize: 12, fontWeight: '700' },
 
   // ── Info blocks (label above body, no icon) ──
   infoBlock: {
@@ -255,8 +252,8 @@ const styles = StyleSheet.create({
     color: '#94A3B8', letterSpacing: 0.8,
     textTransform: 'uppercase', marginBottom: 2,
   },
-  infoBody:  { fontSize: 14, color: '#334155', lineHeight: 22, flex: 1 },
-  bullet:    { flexDirection: 'row', gap: 6 },
+  infoBody: { fontSize: 14, color: '#334155', lineHeight: 22, flex: 1 },
+  bullet: { flexDirection: 'row', gap: 6 },
   bulletDot: { fontSize: 14, color: '#334155', lineHeight: 22 },
 
   // ── View More ──
@@ -278,10 +275,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary + '12',
     alignItems: 'center', justifyContent: 'center',
   },
-  actionLabel:   { flex: 1, fontSize: 15, fontWeight: '600', color: '#1E293B' },
+  actionLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: '#1E293B' },
   actionDivider: { height: 0.5, backgroundColor: '#F1F5F9', marginLeft: 68 },
 
-  errorText:    { fontSize: 15, color: Colors.danger, textAlign: 'center' },
-  backLink:     { marginTop: 8 },
+  errorText: { fontSize: 15, color: Colors.danger, textAlign: 'center' },
+  backLink: { marginTop: 8 },
   backLinkText: { color: Colors.primary, fontWeight: '600', fontSize: 14 },
 });

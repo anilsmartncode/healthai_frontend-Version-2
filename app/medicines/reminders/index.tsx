@@ -15,7 +15,7 @@
  * All data is mock; replace stubs with real API calls.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -31,6 +31,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors, Radius, Spacing } from '@/constants/Colors';
+import { ENDPOINTS } from '@/constants/api';
+import { medicineApiCall } from '@/services/Medicineapiclient';
+import { requestNotificationPermissions, cancelReminderNotification } from '@/utils/notifications';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 type ReminderTab = 'today' | 'history';
@@ -196,36 +199,103 @@ function EditReminderModal({ reminder, onSave, onDelete, onClose }: { reminder: 
 // ─── MAIN SCREEN ─────────────────────────────────────────────────────────────
 export default function RemindersScreen() {
   const [tab, setTab] = useState<ReminderTab>('today');
-  const [reminders, setReminders] = useState<Reminder[]>(MOCK_TODAY_REMINDERS);
-  const [history, setHistory] = useState<HistoryItem[]>(MOCK_HISTORY);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
   const [markingReminder, setMarkingReminder] = useState<Reminder | null>(null);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchReminders = async () => {
+    setLoading(true);
+    try {
+      if (tab === 'today') {
+        const res = await medicineApiCall<any>(ENDPOINTS.remindersToday);
+        const data = res?.data || res?.reminders || res || [];
+        const list = Array.isArray(data) ? data : [];
+        setReminders(list.map((r: any) => ({
+          id: String(r.id),
+          medicineName: r.medicine_name ?? r.medicineName ?? '',
+          time: r.reminder_time ?? r.time ?? '',
+          frequency: r.frequency ?? 'daily',
+          whenToTake: r.when_to_take ?? r.whenToTake ?? 'after_food',
+          enabled: r.is_active ?? true,
+          status: (r.status === 'active' || !r.status) ? 'upcoming' : r.status.toLowerCase()
+        })));
+      } else {
+        const res = await medicineApiCall<any>(ENDPOINTS.reminderHistory);
+        const data = res?.data || res?.history || res || [];
+        const list = Array.isArray(data) ? data : [];
+        setHistory(list.map((h: any) => {
+          const evtTime = h.event_time || h.created_at;
+          const dt = evtTime ? new Date(evtTime) : null;
+          return {
+            id: String(h.id),
+            date: dt ? dt.toLocaleDateString() : 'Unknown Date',
+            medicineName: h.medicine_name ?? h.medicineName ?? `Reminder #${h.reminder_id || 'Unknown'}`,
+            time: h.reminder_time ?? h.time ?? (dt ? dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''),
+            status: h.event?.toLowerCase() ?? h.status?.toLowerCase() ?? 'taken'
+          };
+        }));
+      }
+    } catch (e: any) {
+      console.error('[Reminders] Fetch error:', e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReminders();
+    requestNotificationPermissions().catch(console.warn);
+  }, [tab]);
 
   const handleMark = (r: Reminder) => setMarkingReminder(r);
 
-  const handleTaken = () => {
+  const handleTaken = async () => {
     if (!markingReminder) return;
-    // ← plug in your API: POST /api/reminders/:id/taken
-    setReminders((prev) => prev.map((r) => r.id === markingReminder.id ? { ...r, status: 'taken' } : r));
+    try {
+      await medicineApiCall(ENDPOINTS.reminderTaken(markingReminder.id), { method: 'POST' });
+      setReminders((prev) => prev.map((r) => r.id === markingReminder.id ? { ...r, status: 'taken' } : r));
+      await cancelReminderNotification(markingReminder.id).catch(console.warn);
+    } catch (e: any) {
+      Alert.alert('Error', 'Failed to mark as taken');
+    }
     setMarkingReminder(null);
   };
 
-  const handleMissed = () => {
+  const handleMissed = async () => {
     if (!markingReminder) return;
-    // ← plug in your API: POST /api/reminders/:id/missed
-    setReminders((prev) => prev.map((r) => r.id === markingReminder.id ? { ...r, status: 'missed' } : r));
+    try {
+      await medicineApiCall(ENDPOINTS.reminderMissed(markingReminder.id), { method: 'POST' });
+      setReminders((prev) => prev.map((r) => r.id === markingReminder.id ? { ...r, status: 'missed' } : r));
+      await cancelReminderNotification(markingReminder.id).catch(console.warn);
+    } catch (e: any) {
+      Alert.alert('Error', 'Failed to mark as missed');
+    }
     setMarkingReminder(null);
   };
 
-  const handleDelete = (id: string) => {
-    // ← plug in your API: DELETE /api/reminders/:id
-    setReminders((prev) => prev.filter((r) => r.id !== id));
-    Alert.alert('Deleted', 'Reminder removed');
+  const handleDelete = async (id: string) => {
+    try {
+      await medicineApiCall(ENDPOINTS.reminderDelete(id), { method: 'DELETE' });
+      setReminders((prev) => prev.filter((r) => r.id !== id));
+      await cancelReminderNotification(id).catch(console.warn);
+      Alert.alert('Deleted', 'Reminder removed');
+    } catch (e: any) {
+      Alert.alert('Error', 'Failed to delete reminder');
+    }
   };
 
-  const handleSave = (r: Reminder) => {
-    // ← plug in your API: PUT /api/reminders/:id
-    setReminders((prev) => prev.map((rem) => rem.id === r.id ? r : rem));
+  const handleSave = async (r: Reminder) => {
+    try {
+      await medicineApiCall(ENDPOINTS.reminderUpdate(r.id), {
+        method: 'PUT',
+        body: r,
+      });
+      setReminders((prev) => prev.map((rem) => rem.id === r.id ? r : rem));
+    } catch (e: any) {
+      Alert.alert('Error', 'Failed to update reminder');
+    }
   };
 
   return (
@@ -266,9 +336,9 @@ export default function RemindersScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.reminderName}>{r.medicineName}</Text>
-                    <Text style={styles.reminderMeta}>{r.time} · {WHEN_LABELS[r.whenToTake]}</Text>
-                    <View style={[styles.statusPill, { backgroundColor: st.bg }]}>
-                      <Text style={[styles.statusText, { color: st.color }]}>{st.label}</Text>
+                    <Text style={styles.reminderMeta}>{r.time} · {WHEN_LABELS[r.whenToTake] ?? r.whenToTake}</Text>
+                    <View style={[styles.statusPill, { backgroundColor: st?.bg ?? '#E2E8F0' }]}>
+                      <Text style={[styles.statusText, { color: st?.color ?? '#475569' }]}>{st?.label ?? r.status}</Text>
                     </View>
                   </View>
                 </View>
@@ -300,7 +370,7 @@ export default function RemindersScreen() {
           contentContainerStyle={styles.listPad}
           ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
           renderItem={({ item }) => {
-            const st = STATUS_CFG[item.status];
+            const st = STATUS_CFG[item.status as keyof typeof STATUS_CFG];
             return (
               <View style={styles.historyCard}>
                 <View style={{ flex: 1 }}>
@@ -308,11 +378,11 @@ export default function RemindersScreen() {
                   <Text style={styles.historyName}>{item.medicineName}</Text>
                   <Text style={styles.historyTime}>{item.time}</Text>
                 </View>
-                <View style={[styles.statusPill, { backgroundColor: st.bg }]}>
+                <View style={[styles.statusPill, { backgroundColor: st?.bg ?? '#E2E8F0' }]}>
                   {item.status === 'taken'
-                    ? <Ionicons name="checkmark-circle" size={13} color={st.color} />
-                    : <Ionicons name="close-circle" size={13} color={st.color} />}
-                  <Text style={[styles.statusText, { color: st.color }]}>{st.label}</Text>
+                    ? <Ionicons name="checkmark-circle" size={13} color={st?.color ?? '#475569'} />
+                    : <Ionicons name="close-circle" size={13} color={st?.color ?? '#475569'} />}
+                  <Text style={[styles.statusText, { color: st?.color ?? '#475569' }]}>{st?.label ?? item.status}</Text>
                 </View>
               </View>
             );

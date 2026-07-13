@@ -84,7 +84,7 @@ export default function AnalysisScreen() {
 
   const values: LabValue[] = params.values ? JSON.parse(params.values) : [];
   const abnormal = values.filter(v => v.status === 'high' || v.status === 'low');
-  const visible  = tab === 'Abnormal' ? abnormal : values;
+  const visible = tab === 'Abnormal' ? abnormal : values;
 
   const detectedMedicines: DetectedMedicine[] = (() => {
     if (!params.detectedMedicines) return [];
@@ -278,12 +278,12 @@ export default function AnalysisScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll:   { flex: 1, backgroundColor: Colors.bg },
-  content:  { padding: 16, gap: 12, paddingBottom: 40 },
-  meta:     { fontSize: 13, color: Colors.textMuted, textAlign: 'center', paddingBottom: 4 },
+  scroll: { flex: 1, backgroundColor: Colors.bg },
+  content: { padding: 16, gap: 12, paddingBottom: 40 },
+  meta: { fontSize: 13, color: Colors.textMuted, textAlign: 'center', paddingBottom: 4 },
   listWrap: { gap: 8 },
-  empty:    { color: Colors.textMuted, textAlign: 'center', paddingVertical: 32, fontSize: 14 },
-  actions:  { gap: 10, marginTop: 4 },
+  empty: { color: Colors.textMuted, textAlign: 'center', paddingVertical: 32, fontSize: 14 },
+  actions: { gap: 10, marginTop: 4 },
   narrativeCard: { backgroundColor: Colors.primary + '0D', borderRadius: 14, borderWidth: 1, borderColor: Colors.primary + '30', padding: 14, gap: 8 },
   narrativeHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   narrativeLabel: { fontSize: 12, fontWeight: '700', color: Colors.primary, textTransform: 'uppercase', letterSpacing: 0.4 },
@@ -291,14 +291,14 @@ const styles = StyleSheet.create({
 });
 
 const section = StyleSheet.create({
-  wrap:  { backgroundColor: Colors.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4 },
+  wrap: { backgroundColor: Colors.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4 },
   title: { fontSize: 15, fontWeight: '700', color: Colors.text, marginBottom: 4 },
 });
 
 const medRow = StyleSheet.create({
-  wrap:   { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, gap: 10 },
+  wrap: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, gap: 10 },
   border: { borderBottomWidth: 1, borderBottomColor: Colors.border },
-  left:   { flex: 1, gap: 3 },
-  name:   { fontSize: 14, fontWeight: '600', color: Colors.text },
+  left: { flex: 1, gap: 3 },
+  name: { fontSize: 14, fontWeight: '600', color: Colors.text },
   reason: { fontSize: 13, color: Colors.textMuted, lineHeight: 19 },
 });

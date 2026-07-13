@@ -2,8 +2,7 @@
  * app/family.tsx — S1: Family Dashboard (main Family tab screen)
  * ─────────────────────────────────────────────────────────────────────
  * Redesigned to match HTML reference (s-dashboard screen).
- * Data flows from useFamilyDashboard() → familyApi → familyMockData.
- * All API calls are mocked until backend is ready.
+ * Data flows from useFamilyDashboard() → familyApi.
  */
 import React, { useState } from 'react';
 import {

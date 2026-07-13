@@ -46,79 +46,79 @@ function unwrapList<T>(raw: any, ...keys: string[]): T[] {
 // TYPES
 // ════════════════════════════════════════════════════════════════════════
 
-export type HealthStatus  = 'Excellent' | 'Good' | 'Attention' | 'Critical';
+export type HealthStatus = 'Excellent' | 'Good' | 'Attention' | 'Critical';
 export type InviteChannel = 'sms' | 'email' | 'link' | 'qr';
-export type InviteStatus  = 'pending' | 'accepted' | 'declined' | 'expired';
-export type NotifType     = 'invite_accepted' | 'invite_pending' | 'health_alert' | 'report_ready';
+export type InviteStatus = 'pending' | 'accepted' | 'declined' | 'expired';
+export type NotifType = 'invite_accepted' | 'invite_pending' | 'health_alert' | 'report_ready';
 
 export interface FamilyMember {
-  member_id:    string;
-  name:         string;
+  member_id: string;
+  name: string;
   relationship: string;
   health_score: number;
-  status:       HealthStatus;
-  avatar_url?:  string;
+  status: HealthStatus;
+  avatar_url?: string;
 }
 
 export interface FamilyDashboard {
-  family_health_score:       number;
-  score_label:               string;
-  total_members:             number;
-  good_count:                number;
-  attention_count:           number;
-  critical_count:            number;
-  members:                   FamilyMember[];
+  family_health_score: number;
+  score_label: string;
+  total_members: number;
+  good_count: number;
+  attention_count: number;
+  critical_count: number;
+  members: FamilyMember[];
   pending_invitations_count: number;
 }
 
 export interface Invitation {
-  invite_id:    string;
-  name:         string;
+  invite_id: string;
+  name: string;
   relationship: string;
-  invited_on:   string;
-  status:       InviteStatus;
-  channel:      InviteChannel;
+  invited_on: string;
+  status: InviteStatus;
+  channel: InviteChannel;
 }
 
 export interface FamilyTreeNode {
-  member_id:    string;
-  name:         string;
+  member_id: string;
+  name: string;
   relationship: string;
   health_score: number;
-  status:       HealthStatus;
-  parent_ids:   string[];
+  status: HealthStatus;
+  parent_ids: string[];
   children_ids: string[];
 }
 
 export interface MemberPermissions {
-  view_reports:   boolean;
+  view_reports: boolean;
   upload_reports: boolean;
   view_medicines: boolean;
-  reminders:      boolean;
-  ai_insights:    boolean;
-  edit_medical:   boolean;
-  full_access:    boolean;
-  emergency:      boolean;
+  reminders: boolean;
+  ai_insights: boolean;
+  edit_medical: boolean;
+  full_access: boolean;
+  emergency: boolean;
 }
 
 export interface MemberProfile {
-  member_id:             string;
-  name:                  string;
-  relationship:          string;
-  date_of_birth:         string;
-  health_score:          number;
-  health_status:         HealthStatus;
-  last_report:           string;
-  active_medications:    number;
+  member_id: string;
+  name: string;
+  relationship: string;
+  date_of_birth: string;
+  health_score: number;
+  health_status: HealthStatus;
+  last_report: string;
+  active_medications: number;
   upcoming_appointments: number;
-  ai_insights_count:     number;
+  ai_insights_count: number;
 }
 
 export interface FamilyNotification {
-  notif_id:   string;
-  type:       NotifType;
-  title:      string;
-  read:       boolean;
+  notif_id: string;
+  type: NotifType;
+  title: string;
+  read: boolean;
   created_at: string;
 }
 
@@ -138,7 +138,7 @@ export async function getFamilyDashboard(): Promise<FamilyDashboard> {
 
   if (d?.stats !== undefined || d?.members !== undefined) {
     // ── New backend shape ─────────────────────────────────────────
-    const stats   = d.stats   ?? {};
+    const stats = d.stats ?? {};
     const preview = d.health_preview ?? {};
     const members = d.members ?? [];
 
@@ -146,31 +146,31 @@ export async function getFamilyDashboard(): Promise<FamilyDashboard> {
     //   backend: { id, full_name, relationship, health_score?, health_status? }
     //   expected: { member_id, name, relationship, health_score, status }
     const mappedMembers: FamilyMember[] = members.map((m: any) => ({
-      member_id:    String(m.id ?? m.member_id ?? m.user_id),
-      name:         m.full_name ?? m.name ?? 'Member',
+      member_id: String(m.id ?? m.member_id ?? m.user_id),
+      name: m.full_name ?? m.name ?? 'Member',
       relationship: m.relationship ?? 'Member',
       health_score: m.health_score ?? preview?.member_scores?.find((s: any) => s.member_id === m.id)?.health_score ?? 0,
-      status:       normalizeStatus(
-                      m.health_status
-                      ?? preview?.member_scores?.find((s: any) => s.member_id === m.id)?.health_status
-                    ),
-      avatar_url:   m.profile_image ?? undefined,
+      status: normalizeStatus(
+        m.health_status
+        ?? preview?.member_scores?.find((s: any) => s.member_id === m.id)?.health_status
+      ),
+      avatar_url: m.profile_image ?? undefined,
     }));
 
     const memberScores = preview?.member_scores ?? [];
-    const goodCount      = memberScores.filter((s: any) => s.health_status === 'Good' || s.health_status === 'Excellent').length;
+    const goodCount = memberScores.filter((s: any) => s.health_status === 'Good' || s.health_status === 'Excellent').length;
     const attentionCount = memberScores.filter((s: any) => s.health_status === 'Attention').length;
-    const criticalCount  = memberScores.filter((s: any) => s.health_status === 'Critical' || s.health_status === 'Poor').length;
-    const familyScore    = preview?.family_health_score ?? 0;
+    const criticalCount = memberScores.filter((s: any) => s.health_status === 'Critical' || s.health_status === 'Poor').length;
+    const familyScore = preview?.family_health_score ?? 0;
 
     return {
-      family_health_score:       familyScore,
-      score_label:               scoreLabelFromScore(familyScore),
-      total_members:             stats.total_members ?? mappedMembers.length,
-      good_count:                goodCount,
-      attention_count:           attentionCount,
-      critical_count:            criticalCount,
-      members:                   mappedMembers,
+      family_health_score: familyScore,
+      score_label: scoreLabelFromScore(familyScore),
+      total_members: stats.total_members ?? mappedMembers.length,
+      good_count: goodCount,
+      attention_count: attentionCount,
+      critical_count: criticalCount,
+      members: mappedMembers,
       pending_invitations_count: stats.pending_invitations ?? 0,
     };
   }
@@ -189,7 +189,7 @@ function normalizeStatus(raw?: string): HealthStatus {
   if (!raw) return 'Good';
   const s = raw.toLowerCase();
   if (s === 'excellent') return 'Excellent';
-  if (s === 'good')      return 'Good';
+  if (s === 'good') return 'Good';
   if (s === 'attention') return 'Attention';
   if (s === 'critical' || s === 'poor') return 'Critical';
   return 'Good';
@@ -325,10 +325,36 @@ export async function getInvitations(
   // 🔴 REAL
   const url = `${ENDPOINTS.familyInvitations}?status=${status}`;
   const raw = await medicineApiCall<any>(url);
-  const invitations = unwrapList<Invitation>(raw, 'invitations', 'data');
+
+  // The backend might nest under decrypted_data.data or just data
+  const dataNode = raw?.decrypted_data?.data ?? raw?.data ?? raw;
+  const sent = Array.isArray(dataNode?.sent) ? dataNode.sent : [];
+  const received = Array.isArray(dataNode?.received) ? dataNode.received : [];
+  const allRaw = [...sent, ...received];
+
+  const invitations: Invitation[] = allRaw.map((b: any) => {
+    let formattedDate = 'Unknown Date';
+    if (b.created_at) {
+      try {
+        const d = new Date(b.created_at);
+        formattedDate = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      } catch (e) {
+        formattedDate = b.created_at;
+      }
+    }
+    return {
+      invite_id: String(b.id),
+      name: b.invitee_name ?? 'Unknown',
+      relationship: b.relationship ?? 'Member',
+      invited_on: formattedDate,
+      status: b.status ?? 'pending',
+      channel: b.invite_type ?? 'link'
+    };
+  });
+
   return {
-    pending_count:  raw?.pending_count  ?? invitations.filter((i) => i.status === 'pending').length,
-    accepted_count: raw?.accepted_count ?? invitations.filter((i) => i.status === 'accepted').length,
+    pending_count: invitations.filter((i) => i.status === 'pending').length,
+    accepted_count: invitations.filter((i) => i.status === 'accepted').length,
     invitations,
   };
 
@@ -403,12 +429,12 @@ export async function getInviteDetails(invite_code: string): Promise<{
 
 /** POST /api/api/family/invite/{invite_id}/accept */
 export async function acceptInvitation(
-  invite_id: string, otp_code: string
+  invite_id: string, id_token: string
 ): Promise<{ success: boolean; family_id: string; member_id: string; message: string }> {
   // 🔴 REAL
   const raw = await medicineApiCall<any>(ENDPOINTS.familyInviteAccept(invite_id), {
     method: 'POST',
-    body: { otp_code },
+    body: { id_token },
   });
   return (raw?.data ?? raw) as { success: boolean; family_id: string; member_id: string; message: string };
 
@@ -475,16 +501,16 @@ export async function getMemberPermissions(
   // 🔴 REAL
   const raw = await medicineApiCall<any>(ENDPOINTS.familyMemberPermissions(member_id));
   const rawPerms = raw?.data?.permissions ?? raw?.permissions ?? raw;
-  
+
   const permissions: MemberPermissions = {
-    view_reports:   rawPerms.can_view_reports ?? rawPerms.view_reports ?? true,
+    view_reports: rawPerms.can_view_reports ?? rawPerms.view_reports ?? true,
     upload_reports: rawPerms.can_upload_reports ?? rawPerms.upload_reports ?? true,
     view_medicines: rawPerms.can_manage_medicines ?? rawPerms.view_medicines ?? true,
-    reminders:      rawPerms.can_manage_reminders ?? rawPerms.reminders ?? true,
-    ai_insights:    rawPerms.can_view_insights ?? rawPerms.ai_insights ?? true,
-    edit_medical:   rawPerms.can_edit_profile ?? rawPerms.edit_medical ?? true,
-    full_access:    rawPerms.full_access ?? false,
-    emergency:      rawPerms.emergency ?? true,
+    reminders: rawPerms.can_manage_reminders ?? rawPerms.reminders ?? true,
+    ai_insights: rawPerms.can_view_insights ?? rawPerms.ai_insights ?? true,
+    edit_medical: rawPerms.can_edit_profile ?? rawPerms.edit_medical ?? true,
+    full_access: rawPerms.full_access ?? false,
+    emergency: rawPerms.emergency ?? true,
   };
   return { member_id, permissions };
 

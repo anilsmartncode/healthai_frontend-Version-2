@@ -5,18 +5,25 @@ import {
   StyleSheet,
   Pressable,
   TextInput,
-  ScrollView,
   ActivityIndicator,
   Modal,
   Alert,
   useWindowDimensions,
+  Platform,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Path, G, ClipPath, Rect, Defs } from "react-native-svg";
 import { useLang } from "@/context/Languagecontext";
 import { useAuth } from "@/context/AuthContext";
-import { signupApi } from "@/services/authapi/apiService";
+import { firebaseLoginApi } from "@/services/authapi/apiService";
+import { signInWithGoogle } from "@/utils/googleAuth";
+// Lazy-load Firebase Auth so the page still opens in Expo Go
+function getAuth() {
+  const mod = require('@react-native-firebase/auth');
+  return (mod.default || mod)();
+}
 
 // ── Real OAuth imports (uncomment when libraries are installed) ──
 // import * as Google from "expo-auth-session/providers/google";
@@ -199,6 +206,7 @@ export default function SignUp() {
   const [password, setPassword]     = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [agreedToDPDP, setAgreedToDPDP] = useState(false);
   const [loading, setLoading]       = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
@@ -206,6 +214,7 @@ export default function SignUp() {
     email?: string;
     password?: string;
     terms?: string;
+    dpdp?: string;
   }>({});
 
   // 🟢 MOCK — account picker state (remove when using real SDK)
@@ -228,26 +237,44 @@ export default function SignUp() {
       next.password = "Password must be at least 8 characters";
     if (!agreedToTerms)
       next.terms = "You must agree to the Terms & Conditions to continue";
+    if (!agreedToDPDP)
+      next.dpdp = "You must consent to health data processing to use this app";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
 
   // ── Email/Password Sign Up ─────────────────────────
 
-  // 🔴 REAL — comment out this function when using MOCK below
   const handleCreateAccount = async () => {
     if (!validate()) return;
     try {
       setLoading(true);
-      const data = await signupApi("", email, password);
+      
+      // 1. Create User with Firebase
+      const userCredential = await getAuth().createUserWithEmailAndPassword(email, password);
+      
+      // 2. Send email verification link
+      await userCredential.user.sendEmailVerification();
+      
+      // 3. Get the ID token and register with backend
+      const idToken = await userCredential.user.getIdToken();
+      const data = await firebaseLoginApi(idToken);
       if (data?.token) {
         await signIn(data.token, email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
-        router.replace("/(auth)/PersonOnboardingScreen");
+        // 4. Navigate to email verification screen
+        router.replace({ pathname: "/(auth)/email-verify", params: { email } });
       } else {
-        setErrors({ email: data?.message || "Signup failed" });
+        setErrors({ email: data?.message || "Signup failed on backend" });
       }
+      
     } catch (error: any) {
-      setErrors({ email: error.message || "Network error. Check connection." });
+      if (error.code === 'auth/email-already-in-use') {
+        setErrors({ email: 'That email address is already in use!' });
+      } else if (error.code === 'auth/invalid-email') {
+        setErrors({ email: 'That email address is invalid!' });
+      } else {
+        setErrors({ email: error.message || "Network error. Check connection." });
+      }
     } finally {
       setLoading(false);
     }
@@ -271,29 +298,28 @@ export default function SignUp() {
 
   // ── Google Sign Up ─────────────────────────────────
 
-  // 🔴 REAL — uncomment this and comment out MOCK below when Google SDK is ready
-  // const handleGoogleSignUp = async () => {
-  //   try {
-  //     const [request, response, promptAsync] = Google.useAuthRequest({ ... });
-  //     const result = await promptAsync();
-  //     if (result?.type === "success") {
-  //       const { authentication } = result;
-  //       // exchange token with your backend
-  //       const data = await googleSignupApi(authentication?.accessToken);
-  //       if (data?.token) {
-  //         await signIn(data.token, data.email);
-  //         router.replace("/(auth)/PersonOnboardingScreen");
-  //       }
-  //     }
-  //   } catch (error: any) {
-  //     setErrors({ email: error.message || "Google Sign-Up failed" });
-  //   }
-  // };
-
-  // 🟢 MOCK — comment out this and uncomment REAL above when Google SDK is ready
-  const handleGoogleSignUp = () => {
-    console.log("[DEBUG] Google button tapped");
-    setAccountPicker("google");
+  const handleGoogleSignUp = async () => {
+    try {
+      setLoading(true);
+      const result = await signInWithGoogle();
+      if (result.success && result.idToken) {
+        // Exchange token with backend using googleLoginApi 
+        // (Assuming backend uses googleLoginApi for both login and signup for Google)
+        const data = await firebaseLoginApi(result.idToken);
+        if (data?.token) {
+          await signIn(data.token, data.email || result.user?.email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
+          router.replace("/(auth)/PersonOnboardingScreen");
+        } else {
+          setErrors({ email: data?.message || "Google Sign-Up failed on backend" });
+        }
+      } else if (!result.success && result.error !== 'Sign-in cancelled') {
+        setErrors({ email: result.error });
+      }
+    } catch (error: any) {
+      setErrors({ email: error.message || "Google Sign-Up failed" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ── Apple Sign Up ──────────────────────────────────
@@ -357,10 +383,12 @@ export default function SignUp() {
         onClose={() => setAccountPicker(null)}
       />
 
-      <ScrollView
+      <KeyboardAwareScrollView
         style={styles.container}
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
+        enableOnAndroid={true}
+        extraScrollHeight={Platform.OS === 'ios' ? 20 : 100}
       >
         {/* Hero header */}
         <View style={styles.hero}>
@@ -554,6 +582,27 @@ export default function SignUp() {
             </View>
           )}
 
+          {/* ── DPDP Consent checkbox ── */}
+          <Pressable
+            style={[styles.checkboxRow, { marginTop: 4 }]}
+            onPress={() => { setAgreedToDPDP((v) => !v); clearError("dpdp"); }}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: agreedToDPDP }}
+          >
+            <View style={[styles.checkbox, agreedToDPDP && styles.checkboxChecked, !!errors.dpdp && styles.checkboxError]}>
+              {agreedToDPDP && <Ionicons name="checkmark" size={12} color="#fff" />}
+            </View>
+            <Text style={styles.checkboxLabel}>
+              I explicitly consent to HealthAI storing and processing my personal and health data for the purpose of generating medical insights using AI, as detailed in the Privacy Policy.
+            </Text>
+          </Pressable>
+          {!!errors.dpdp && (
+            <View style={styles.errorRow}>
+              <Ionicons name="alert-circle-outline" size={13} color="#EF4444" />
+              <Text style={styles.errorText}>{errors.dpdp}</Text>
+            </View>
+          )}
+
           {/* ── Create Account button ── */}
           <Pressable
             style={({ pressed }) => [
@@ -580,7 +629,7 @@ export default function SignUp() {
           </View>
 
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </>
   );
 }

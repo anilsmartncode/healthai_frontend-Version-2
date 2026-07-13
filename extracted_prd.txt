@@ -1,0 +1,636 @@
+HealthAI
+Super Admin Platform
+Enterprise-Grade Multi-Tenant Administration System
+Product Requirements & Technical Architecture Document
+Prepared for SMARTnCODE Technologies
+Version 1.0  |  July 2026
+Table of Contents
+1. Executive Summary
+HealthAI's consumer application currently spans authentication and onboarding, AI-powered health report analysis, a medicines hub, family management, AI chat, and account settings. As HealthAI scales toward hospital, clinic, insurer, and enterprise-wellness partnerships, the platform requires a Super Admin layer that governs every tenant, user, AI model, content asset, and compliance obligation running on top of the existing consumer experience.
+This document specifies a production-ready, cloud-native Super Admin platform designed as a governance and operations layer above the existing HealthAI application — not a replacement for it. It is built multi-tenant from the ground up so that hospital groups, diagnostic chains, insurers, and direct-to-consumer deployments can each operate in logically isolated workspaces while SMARTnCODE retains a single global control plane.
+1.1 Objectives
+Enable centralized management of unlimited tenants (hospitals, clinics, insurers, corporate wellness programs, and the direct-to-consumer instance) from one control plane.
+Provide granular role-based access control so platform staff, tenant admins, support agents, compliance officers, and billing staff each see only what their role requires.
+Give operational visibility and control over the AI systems that power report analysis, medicine scanning, and the AI chat assistant — including model versioning, prompt governance, quota management, and safety monitoring.
+Support DPDP Act 2023 (India), HIPAA (for US-bound deployments), and GDPR (for EU tenants) compliance through audit logging, consent tracking, and data-subject request tooling.
+Provide a billing and subscription engine supporting per-tenant plans, usage-based AI billing, and consumer subscription tiers.
+Deliver real-time system monitoring, security operations, and analytics dashboards suitable for executive and engineering audiences alike.
+1.2 Design Principles
+Multi-tenant by default — every data model carries a tenant_id and every query is tenant-scoped, with a separate global/platform scope for SMARTnCODE staff.
+Additive, not disruptive — the Super Admin platform is a new set of services and a new frontend; existing HealthAI mobile app flows (documented separately) are unaffected except where an admin action (suspension, feature flag, content update) intentionally changes user-facing behavior.
+Least privilege by default — every permission is opt-in per role; no role receives blanket access.
+Auditability first — every state-changing admin action is logged immutably before it is considered complete.
+API-first — the Super Admin frontend is a consumer of the same versioned API surface that could support future partner integrations.
+2. Scope & Multi-Tenancy Model
+HealthAI Super Admin is designed to manage a spectrum of tenant types on one platform:
+Tenant Type
+Example
+Typical Admin Users
+Data Isolation Need
+Direct-to-Consumer (D2C)
+The public HealthAI app instance
+SMARTnCODE Platform Admins
+Baseline — single logical tenant
+Hospital / Hospital Group
+Multi-branch hospital network
+Hospital IT Admin, Department Heads
+High — patient data must not cross branches without consent
+Diagnostic / Lab Chain
+Chain of diagnostic centers
+Lab Operations Admin
+High — report data tied to lab branch
+Insurer
+Health insurance provider offering HealthAI as a member benefit
+Insurer Program Admin
+High — regulatory + contractual isolation
+Corporate Wellness
+Employer-sponsored wellness program
+HR/Wellness Admin
+Medium — aggregate analytics only, no individual PHI to employer
+Table 2.1 — Tenant archetypes supported by the platform.
+2.1 Tenancy Architecture Strategy
+A hybrid isolation model is recommended:
+Pooled multi-tenancy (shared database, tenant_id row-level security) for standard tenants — cost-efficient, fast to provision, sufficient isolation when combined with Postgres Row-Level Security (RLS) policies enforced at the database layer, not just the application layer.
+Bridge model (dedicated schema per tenant) offered as a premium/regulated tier for large hospital groups or insurers with contractual data-residency requirements.
+Silo model (fully dedicated database/cluster) reserved for government or extremely large enterprise deployments, mirroring the isolation pattern already proven in the Maharashtra Excise Department deployment for SmartVakheel.
+2.2 Global vs. Tenant Scope
+The Super Admin platform maintains two operating scopes at all times:
+Scope
+Who Operates Here
+What They See
+Platform (Global) Scope
+SMARTnCODE Super Admins, Platform Ops, Compliance
+All tenants, cross-tenant analytics, system health, billing across the platform, AI model configuration
+Tenant Scope
+Tenant Admins, Tenant Support Staff
+Only their own tenant's users, reports, billing, and configuration — enforced by RLS and JWT tenant claims
+3. Module Hierarchy & Navigation Structure
+The Super Admin platform is organized as a left-rail navigation with twelve primary modules. Navigation items are rendered dynamically based on the logged-in admin's role and permission set.
+#
+Module
+Purpose
+1
+Dashboard
+Executive KPIs, tenant health, alerts feed
+2
+Tenant Management
+Provisioning, plans, branding, tenant lifecycle
+3
+User Management
+Cross-tenant and per-tenant user directory, impersonation, suspension
+4
+Roles & Permissions (RBAC)
+Role builder, permission matrix, admin user assignment
+5
+AI Administration
+Model versions, prompt governance, quotas, safety monitoring
+6
+Content Management
+Medicine database, knowledge base, notification templates, localization
+7
+Billing & Subscriptions
+Plans, invoices, usage metering, dunning, revenue reporting
+8
+Notifications Center
+Campaign builder, transactional templates, delivery logs
+9
+API & Integrations
+API keys, webhooks, third-party connectors (labs, pharmacies, e-Courts-style gov integrations)
+10
+Audit & Compliance
+Immutable audit trail, DPDP/HIPAA/GDPR tooling, data-subject requests
+11
+Security Center
+Session management, anomaly detection, IP allow-listing, incident response
+12
+System Monitoring
+Service health, infrastructure metrics, error tracking, SLA dashboards
+Table 3.1 — Top-level Super Admin navigation modules.
+3.1 Navigation Structure (Text Wireframe)
+Super Admin  ›  [Global Tenant Switcher]  ›  Left Rail:
+Dashboard
+Tenant Management  →  All Tenants | Provisioning Wizard | Plans & Tiers | Branding
+User Management  →  Directory | Impersonation Log | Suspensions & Bans | Bulk Actions
+RBAC  →  Roles | Permission Matrix | Admin Users | Access Requests
+AI Administration  →  Models & Versions | Prompt Library | Usage Quotas | Safety & Moderation | Evaluation Reports
+Content Management  →  Medicine Database | Knowledge Base | Notification Templates | Localization (23 languages)
+Billing  →  Plans | Invoices | Usage Metering | Revenue Analytics | Dunning Queue
+Notifications  →  Campaigns | Transactional Templates | Delivery Logs | Preferences Registry
+API & Integrations  →  API Keys | Webhooks | Connector Marketplace | Rate Limits
+Audit & Compliance  →  Audit Trail | Consent Registry | DSR Requests | Regulatory Reports
+Security Center  →  Active Sessions | Threat Feed | IP Allow-list | Incident Log
+System Monitoring  →  Service Health | Infra Metrics | Error Tracker | SLA Reports
+Settings  →  Platform Configuration | Feature Flags | White-label Settings
+4. Role-Based Access Control (RBAC)
+Seven baseline roles are defined at platform level; tenants may additionally define up to five custom roles scoped to their own tenant using the Role Builder, constrained to a subset of the platform's permission catalogue.
+4.1 Baseline Roles
+Role
+Typical User
+Access Summary
+Super Admin
+SMARTnCODE leadership / platform ops lead
+All modules, all tenants, irrevocable actions (tenant deletion, global config)
+Platform Admin
+SMARTnCODE operations staff
+All modules, all tenants, excluding irreversible/destructive actions
+Compliance Officer
+SMARTnCODE / tenant legal & privacy
+Audit & Compliance, read-only User Management, DSR handling
+Billing Admin
+SMARTnCODE finance / tenant finance
+Billing & Subscriptions, read-only Tenant/User Management
+Tenant Admin
+Hospital IT lead, insurer program owner
+Full control within their own tenant only
+Support Agent
+Customer support (platform or tenant)
+User lookup, impersonation (logged), ticket-linked actions only
+Read-Only Auditor
+External auditors, board reviewers
+View-only across permitted modules, no write access anywhere
+Table 4.1 — Baseline platform roles.
+4.2 Permissions Matrix
+Permissions follow a create / read / update / delete / approve (CRUDA) model per module. Legend: F = Full, R = Read-only, C = Conditional (own tenant / logged action), — = No access.
+Module
+Super
+Admin
+Platform
+Admin
+Compliance
+Officer
+Billing
+Admin
+Tenant
+Admin
+Support
+Agent
+Read-Only
+Auditor
+Dashboard
+F
+F
+R
+R
+C
+R
+R
+Tenant Management
+F
+F
+R
+R
+C
+-
+R
+User Management
+F
+F
+R
+-
+C
+C
+R
+RBAC
+F
+F
+-
+-
+C
+-
+R
+AI Administration
+F
+F
+R
+-
+-
+-
+R
+Content Management
+F
+F
+-
+-
+C
+-
+R
+Billing & Subscriptions
+F
+R
+-
+F
+C
+-
+R
+Notifications Center
+F
+F
+-
+-
+C
+-
+R
+API & Integrations
+F
+F
+-
+-
+C
+-
+R
+Audit & Compliance
+F
+R
+F
+-
+R
+-
+R
+Security Center
+F
+F
+R
+-
+R
+-
+R
+System Monitoring
+F
+F
+-
+-
+-
+-
+R
+Table 4.2 — Full permissions matrix by module and role.
+4.3 RBAC Enforcement Architecture
+Every API request carries a signed JWT with role, tenant_id, and a permission-scope claim issued at login and refreshed on role change.
+The API Gateway performs coarse-grained route authorization; each microservice performs fine-grained, resource-level authorization against the Permissions Service.
+PostgreSQL Row-Level Security policies provide a second enforcement layer so that even a compromised application token cannot read across tenant boundaries.
+Permission changes take effect within 60 seconds via a short-lived permission cache with pub/sub invalidation (Redis + event bus), avoiding immediate forced re-login for most changes.
+5. Tenant & User Management
+5.1 Tenant Lifecycle
+Provisioning → Configuration → Active → Suspended → Offboarding/Archived. Each transition is logged and, where relevant, triggers downstream automation (billing pause on suspension, data export offer on offboarding).
+Stage
+Trigger
+Key Actions
+Automation
+Provisioning
+Sales/ops creates tenant via wizard
+Assign plan, branding, initial admin invite
+Auto-generate tenant_id, isolated config namespace
+Configuration
+Tenant admin completes setup
+Branding, SSO config (if enterprise), feature flags
+Onboarding checklist tracked in Dashboard
+Active
+Setup complete
+Normal operations
+Usage metering begins
+Suspended
+Non-payment, compliance hold, tenant request
+Read-only mode for tenant users
+Billing paused, grace-period timer starts
+Offboarding
+Contract end / churn
+Data export, credential revocation
+30/60/90-day data retention per contract
+5.2 User Management (Cross-Tenant)
+Global user directory searchable by tenant, role, status, signup channel (phone/email), and last active date.
+Bulk actions: suspend, reinstate, force password/OTP reset, export, merge duplicate accounts (phone + email signup collision).
+Impersonation ("Log in as user") strictly for Support Agents and above, requiring a linked support-ticket ID, time-boxed to 30 minutes, and fully audit-logged with session recording metadata.
+Consumer-side subscription and family-account relationships are visible read-only here and link out to Billing and Family Management detail views.
+6. AI Administration Module
+HealthAI's core differentiation is its AI: report analysis and scoring, medicine label scanning, drug-interaction checking, and the AI chat assistant. This module gives platform admins operational control over that AI surface.
+6.1 Sub-Modules
+Model & Version Registry
+Track which model/version powers each AI feature (report scoring, OCR extraction, interaction checking, chat) with rollback capability.
+Prompt & Policy Library
+Versioned system prompts, safety instructions, and per-tenant prompt overrides (e.g., a hospital's preferred bedside-manner tone for the AI chat).
+Usage Quotas & Rate Limits
+Per-tenant and per-user daily/monthly caps on report scans, chat messages, and medicine scans, with overage billing hooks.
+Safety & Moderation
+Review queue for flagged AI chat conversations, hallucination reports on report analysis, and confidence-score thresholds that trigger human review.
+Evaluation & Accuracy Reports
+Ongoing precision/recall tracking for OCR extraction and interaction-risk scoring, mirroring the multi-layer validation approach used in SmartVakheel's citation pipeline.
+A/B & Canary Rollouts
+Stage new model versions to a percentage of tenants/users before full rollout, with automatic rollback on error-rate spikes.
+7. Content Management
+Medicine Database — canonical medicine records (dosage, warnings, interactions) with source attribution, versioning, and a review workflow before publishing changes live to the Medicines Hub.
+Health Knowledge Base — articles and AI-assistant reference material, with tenant-level visibility overrides (e.g., an insurer promoting specific preventive-care content).
+Notification Templates — transactional (OTP, report-ready, reminder) and marketing templates, versioned and localized.
+Localization Management — central translation memory across the 23 supported languages, with per-string approval workflow and missing-translation detection.
+8. Billing & Subscriptions
+8.1 Billing Models Supported
+Model
+Applies To
+Example
+Flat SaaS subscription
+Tenants (hospitals, insurers)
+Per-branch or per-seat monthly/annual fee
+Usage-based AI metering
+All tenants
+Cost per report scan / chat token / medicine scan beyond plan allowance
+Consumer subscription tiers
+D2C end users
+Free / Plus / Family plans within the HealthAI app
+Government/enterprise contract
+Large deployments
+Fixed-fee contract with milestone billing, similar in spirit to the Maharashtra Excise NICSI engagement
+8.2 Capabilities
+Plan and price-tier builder with feature-flag linkage (a plan change instantly adjusts available Content and AI Administration quotas for that tenant).
+Automated invoicing, dunning workflow for failed payments, and a grace-period suspension flow tied into Tenant Lifecycle.
+Revenue analytics: MRR/ARR, churn, expansion revenue, and cohort views by tenant type.
+Consumer subscription management surfaced read-only here, writable in the consumer app itself.
+9. Notifications Center
+Campaign builder for push/SMS/email/in-app announcements, targetable by tenant, plan tier, or user segment (e.g., "users with an abnormal report older than 7 days and no follow-up booked").
+Transactional template management (OTP, report-ready alerts, pill reminders, interaction warnings) with delivery-provider fallback chains (primary SMS gateway → backup gateway).
+Delivery logs with open/click/failure tracking per channel, feeding back into the Analytics module.
+10. API & Integrations Management
+API key issuance and rotation for tenant-side integrations (e.g., a hospital's EMR pushing lab results directly into HealthAI).
+Webhook management for outbound events (report analyzed, appointment booked, subscription changed) with delivery retries and signature verification.
+Connector marketplace for pharmacy networks, diagnostic labs, and — following the pattern proven in SmartVakheel's e-Courts integration — potential government health-registry connectors.
+Rate limiting and quota dashboards per API key, with anomaly alerts on unusual call patterns.
+11. Audit & Compliance
+11.1 Regulatory Scope
+Framework
+Applies When
+Key Requirements Addressed
+DPDP Act 2023 (India)
+Default — all Indian users/tenants
+Consent registry, data-principal request handling, breach notification workflow, data localization tracking
+HIPAA
+Any US-bound tenant or PHI processing
+Access logging, minimum-necessary access, Business Associate Agreement tracking
+GDPR
+Any EU user or tenant
+Right to erasure, data portability export, lawful-basis tracking
+11.2 Capabilities
+Immutable, append-only audit trail for every admin action (who, what, when, before/after state, source IP), retained per regulatory minimums and exportable for auditors.
+Consent registry tracking what each user/tenant has consented to and when, versioned against policy changes.
+Data Subject Request (DSR) workspace for access, correction, and erasure requests with SLA countdown timers.
+One-click regulatory export packages formatted for DPDP/HIPAA/GDPR submission.
+12. Security Center
+Active session management across admin and end-user accounts, with forced logout capability.
+Anomaly detection surfacing impossible-travel logins, credential-stuffing patterns, and abnormal admin-action velocity.
+IP allow-listing for tenant admin consoles, particularly for hospital/government tenants requiring network-level restriction.
+Incident response workspace linking detected threats to a runbook and post-incident report, feeding the Audit & Compliance module.
+13. System Monitoring & Observability
+Service health dashboard across all microservices (uptime, latency p50/p95/p99, error rate).
+Infrastructure metrics: compute, database connections, queue depth, AI inference latency and GPU/accelerator utilization.
+Error tracking integrated with on-call alerting and automatic incident creation above defined thresholds.
+SLA dashboards per tenant tier, feeding contractual uptime reporting for enterprise/government tenants.
+14. Analytics & Executive Dashboards
+Platform-wide KPIs: total tenants, active users (DAU/MAU), reports analyzed, AI cost per report, revenue, churn.
+Tenant-level operational dashboards for Tenant Admins: their own user growth, engagement, and support ticket volume.
+Cohort and funnel analysis across the onboarding paths (phone vs. email signup conversion, drop-off points).
+AI quality dashboards: extraction accuracy trends, flagged-conversation rate, model version performance comparison.
+15. System Architecture (Microservices)
+The Super Admin platform is delivered as an independent set of services sitting alongside the existing HealthAI consumer backend, sharing core identity and data-access patterns but deployed and scaled separately.
+15.1 Core Services
+Service
+Stack
+Responsibility
+API Gateway
+Kong / AWS API Gateway
+Auth enforcement, rate limiting, routing to microservices
+Identity & Access Service
+Node.js + PostgreSQL
+Admin auth, RBAC, tenant claims, session management
+Tenant Service
+Node.js + PostgreSQL
+Tenant lifecycle, configuration, branding
+User Directory Service
+Node.js + PostgreSQL
+Cross-tenant user directory, impersonation control
+AI Admin Service
+Python + PostgreSQL + Redis
+Model registry, prompt library, quota enforcement
+Content Service
+Node.js + PostgreSQL + Elasticsearch
+Medicine DB, knowledge base, localization
+Billing Service
+Node.js + PostgreSQL
+Plans, invoicing, usage metering, integrates Stripe/Razorpay
+Notification Service
+Node.js + Redis Queue
+Campaign delivery, template rendering, provider fallback
+Integration Service
+Node.js
+API key management, webhook dispatch, connector adapters
+Audit Service
+Node.js + append-only PostgreSQL / event log
+Immutable audit trail, DSR workflow
+Security Service
+Python + Redis
+Anomaly detection, session/IP policy enforcement
+Monitoring Service
+Prometheus + Grafana + OpenTelemetry
+Metrics, tracing, alerting
+Analytics Service
+Python + ClickHouse/BigQuery
+Aggregated reporting and dashboards
+Table 15.1 — Core Super Admin microservices.
+15.2 Architecture Flow (Text Diagram)
+Admin Browser  →  CDN / WAF  →  API Gateway  →  Identity & Access Service (auth check)  →  routed to target microservice  →  PostgreSQL (tenant-scoped via RLS) / Redis (cache & quota) / Elasticsearch (search) / Event Bus (Kafka or SNS+SQS) for async fan-out (audit logging, notifications, analytics ingestion).
+The Event Bus decouples write-path services from side effects: every state-changing action publishes an event that the Audit Service, Analytics Service, and Notification Service each consume independently, so a slow audit write can never block a tenant admin's action.
+16. Database Architecture
+16.1 Multi-Tenancy Data Strategy
+Primary operational data uses PostgreSQL with a shared-schema, row-level-security model as the default. Every tenant-scoped table includes a tenant_id column and an RLS policy of the form current_setting('app.tenant_id') = tenant_id, set per-connection by the API layer immediately after authentication.
+16.2 Key Schema Domains
+Table / Domain
+Key Fields
+tenants
+id, name, type, plan_id, status, branding_config, created_at
+admin_users
+id, tenant_id (nullable for platform staff), name, email, role_id, status
+roles / permissions / role_permissions
+Standard RBAC join tables; permissions keyed by module + action
+end_users (reference)
+Read-mirrored from the consumer HealthAI DB; not owned by Super Admin
+ai_models / ai_model_versions
+model_name, version, status (staged/active/retired), rollout_percentage
+prompts / prompt_versions
+feature_key, tenant_override_id (nullable), content, status
+usage_quotas / usage_events
+tenant_id, user_id, feature, period, count, limit
+billing_plans / invoices / usage_charges
+Standard billing schema linked to tenant_id
+notification_templates / notification_logs
+channel, locale, status, delivery_metadata
+api_keys / webhooks / webhook_deliveries
+tenant_id, scopes, secret_hash, delivery_status
+audit_log (append-only)
+actor_id, tenant_id, action, resource, before_state, after_state, ip, timestamp
+consent_records / dsr_requests
+user_id, consent_type, granted_at, dsr_type, sla_due_at, status
+Table 16.1 — Primary schema domains (illustrative, not exhaustive).
+16.3 Analytics Store
+Operational Postgres data is streamed via CDC (Debezium) into a columnar analytics store (ClickHouse or BigQuery, matching whichever the rest of SMARTnCODE's stack already standardizes on) to keep heavy aggregate queries off the transactional database.
+17. API Architecture
+RESTful JSON API as the primary surface, versioned via URL prefix (/api/v1/...), consistent with the architecture pattern already used across SmartVakheel and SMART HCM AI.
+GraphQL gateway offered as a secondary surface for the Analytics and Dashboard modules where flexible, nested queries reduce over-fetching.
+All admin-facing endpoints require a valid admin JWT with tenant and role claims; service-to-service calls use mutual TLS plus short-lived service tokens.
+Idempotency keys required on all state-changing endpoints used by bulk-action tooling (bulk suspend, bulk export) to make retries safe.
+Standard envelope: { data, meta: { pagination, requestId }, errors[] } across every endpoint for predictable client handling.
+17.1 Representative Endpoint Groups
+Endpoint Group
+Purpose
+/api/v1/tenants
+CRUD + lifecycle transitions (suspend, reinstate, offboard)
+/api/v1/users
+Directory, bulk actions, impersonation session issuance
+/api/v1/rbac/roles
+Role CRUD, permission assignment
+/api/v1/ai/models
+Model registry, version rollout control
+/api/v1/ai/prompts
+Prompt CRUD, tenant overrides
+/api/v1/content/medicines
+Medicine database CRUD + publish workflow
+/api/v1/billing/plans
+Plan CRUD, tenant plan assignment
+/api/v1/billing/invoices
+Invoice retrieval, dunning status
+/api/v1/notifications/campaigns
+Campaign CRUD, targeting, scheduling
+/api/v1/integrations/api-keys
+Key issuance, rotation, revocation
+/api/v1/audit/logs
+Immutable log query (read-only, heavily indexed)
+/api/v1/compliance/dsr
+DSR request CRUD and status tracking
+/api/v1/monitoring/health
+Aggregated service health for the dashboard
+18. Deployment Architecture
+Kubernetes (EKS/AKS/GKE, matching whatever the existing HealthAI and SmartVakheel infrastructure already runs on) with each microservice as an independently scalable deployment.
+Environment separation: dev → staging → production, with tenant-level canary flag to route a specific pilot tenant's traffic to a staging-equivalent "canary" production pool before full rollout.
+CI/CD via GitHub Actions or GitLab CI: lint → unit tests → container build → staging deploy → automated smoke tests → manual approval gate → production deploy.
+Blue-green or rolling deployment strategy per service, with automatic rollback triggered by the Monitoring Service on error-rate spikes.
+Secrets managed via a dedicated secrets manager (AWS Secrets Manager / HashiCorp Vault); no credentials in environment files or source control.
+Database migrations run as a separate, gated pipeline step with backward-compatible (expand/contract) migration discipline to support zero-downtime deploys.
+18.1 Environment Topology
+Environment
+Purpose
+Data
+Development
+Feature development, integration testing
+Synthetic/seeded data only
+Staging
+Pre-production validation, UAT with pilot tenant admins
+Anonymized production-shaped data
+Production
+Live tenants
+Real data, full RLS + encryption at rest and in transit
+19. Key Workflows & Sequence Flows
+The following flows are expressed as ordered steps; each corresponds to a sequence diagram in the companion interactive architecture diagram set.
+Tenant Onboarding
+Step 1: Sales/Ops initiates provisioning via Tenant Management wizard.
+Step 2: Tenant Service creates tenant_id, default plan, and namespace config.
+Step 3: Identity & Access Service creates the first Tenant Admin invite (email/SMS via Notification Service).
+Step 4: Tenant Admin accepts invite, completes branding and feature-flag setup.
+Step 5: Billing Service activates the assigned plan; usage metering begins.
+Step 6: Audit Service logs every step of the above as an immutable record.
+AI Model Rollout
+Step 1: Platform Admin stages a new model version in AI Admin Service (status: staged).
+Step 2: Evaluation pipeline runs automated accuracy/safety checks against a held-out test set.
+Step 3: Admin sets canary rollout percentage (e.g., 5% of report-analysis traffic).
+Step 4: Monitoring Service tracks error rate and latency for the canary cohort.
+Step 5: On success, Admin promotes to 100% rollout; on failure, automatic rollback to prior version.
+Data Subject Request (DSR) Handling
+Step 1: User submits an access/erasure request in the consumer app or via support.
+Step 2: Request lands in the Audit & Compliance DSR workspace with an SLA countdown.
+Step 3: Compliance Officer verifies identity and reviews scope of held data across services.
+Step 4: System executes export or erasure across User Directory, Content, Billing, and Audit services as applicable.
+Step 5: Confirmation sent to the user via Notification Service; action logged in Audit Service.
+Tenant Suspension (Non-Payment)
+Step 1: Billing Service flags an invoice as overdue past the grace period.
+Step 2: Tenant Service transitions tenant status to Suspended.
+Step 3: API Gateway begins returning read-only responses for that tenant's end-user traffic.
+Step 4: Notification Service alerts the Tenant Admin and the assigned SMARTnCODE account owner.
+Step 5: Reinstatement on payment automatically reverses the suspension via the same event pipeline.
+20. Integration With Existing HealthAI Modules
+The table below maps each existing consumer-facing flow (from the current HealthAI flow map) to the Super Admin oversight it gains under this platform.
+Existing Consumer Flow
+Super Admin Module(s)
+Oversight Gained
+Authentication & Onboarding
+User Management, Security Center
+Suspend/reinstate accounts, force OTP reset, view signup-channel analytics
+Health Report Upload & AI Analysis
+AI Administration, Content Management
+Model version governing report scoring, extraction accuracy dashboards
+Medicines Hub (Scan, Interactions, Reminders)
+Content Management, AI Administration
+Medicine database publishing workflow, interaction-model quota and safety review
+Family Management
+User Management
+Cross-account relationship visibility, permission-abuse detection (e.g., over-broad family access grants)
+AI Chat Assistant
+AI Administration
+Prompt governance, flagged-conversation review queue
+Appointments (via Family Management)
+Integrations, Analytics
+Connector management for clinic/appointment systems, booking-funnel analytics
+Notifications (OTP, reminders, alerts)
+Notifications Center
+Template management, delivery-log monitoring, provider fallback configuration
+Account Settings / Log Out
+User Management, Security Center
+Session termination visibility, account-change audit trail
+21. Data Flow Overview
+At a high level, data flows through four layers: ingestion (consumer app + admin actions), processing (microservices + AI inference), storage (Postgres + Elasticsearch + analytics store), and distribution (dashboards, notifications, exports).
+Layer
+Inputs
+Outputs
+Ingestion
+Consumer app events, admin console actions, third-party webhooks
+Normalized events on the Event Bus
+Processing
+Events + AI inference requests
+Updated records, AI outputs, computed quotas
+Storage
+Processed records
+Tenant-scoped operational data, immutable audit log, analytics warehouse
+Distribution
+Stored/aggregated data
+Dashboards, notifications, regulatory exports, billing statements
+22. Implementation Roadmap
+Phase
+Key Deliverables
+Phase 1 — Foundation (Weeks 1–6)
+Identity & Access Service, RBAC engine, Tenant Service, base API Gateway, core Dashboard shell
+Phase 2 — Core Operations (Weeks 7–12)
+User Management, Audit Service, Security Center basics, System Monitoring instrumentation
+Phase 3 — AI & Content Governance (Weeks 13–18)
+AI Administration module, Content Management, prompt/version registries, evaluation pipeline
+Phase 4 — Monetization (Weeks 19–24)
+Billing & Subscriptions, Notifications Center, payment gateway integration
+Phase 5 — Compliance & Integrations (Weeks 25–30)
+Full DPDP/HIPAA/GDPR tooling, DSR workspace, API & Integrations marketplace
+Phase 6 — Analytics & Hardening (Weeks 31–36)
+Executive analytics, load/security testing, pilot tenant onboarding, GA readiness review
+Table 22.1 — Indicative 36-week phased roadmap; durations assume a dedicated cross-functional team and should be re-baselined against actual staffing.
+22.1 Suggested Team Composition
+1 Technical Lead / Architect
+3–4 Backend Engineers (Node.js/Python across the microservices)
+2 Frontend Engineers (React admin console)
+1 AI/ML Engineer (model registry, evaluation pipeline)
+1 DevOps/Platform Engineer (Kubernetes, CI/CD, observability)
+1 QA Engineer
+1 Compliance/Security consultant (part-time, DPDP/HIPAA/GDPR review)
+23. Appendix: Glossary
+Term
+Definition
+RLS
+Row-Level Security — a PostgreSQL feature restricting which rows a query can see based on session context (e.g., tenant_id).
+RBAC
+Role-Based Access Control — permissions granted via named roles rather than individual users.
+DSR
+Data Subject Request — a user's formal request to access, correct, or erase their personal data under DPDP/GDPR/HIPAA-equivalent rules.
+Canary Rollout
+Releasing a change to a small percentage of traffic before full deployment, to catch regressions early.
+CDC
+Change Data Capture — streaming database changes into another system (e.g., an analytics warehouse) in near real time.
+Silo / Bridge / Pooled Tenancy
+Increasingly isolated multi-tenant data models, from fully shared (pooled) to fully dedicated (silo) infrastructure per tenant.

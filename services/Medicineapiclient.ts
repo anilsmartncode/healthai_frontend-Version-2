@@ -14,6 +14,7 @@
 import { storage } from '@/utils/storage';
 import { decryptResponse } from '@/utils/encryption';
 import { fetchWithTimeout } from '@/utils/fetchWithTimeout';
+import { DeviceEventEmitter } from 'react-native';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
@@ -61,6 +62,7 @@ export async function medicineApiCall<T = any>(
   if (token) headers.Authorization = `Bearer ${token}`;
   if (!isFormData) headers['Content-Type'] = 'application/json';
 
+  const startMs = Date.now();
   let response: Response;
   try {
     // For FormData (multipart) uploads we MUST use raw fetch — fetchWithTimeout
@@ -75,7 +77,7 @@ export async function medicineApiCall<T = any>(
           method,
           headers,          // no Content-Type — browser/RN sets it + boundary
           body: body as FormData,
-          signal: controller.signal,
+          // signal: controller.signal, // 🐛 React Native instantly aborts file:// FormData uploads if a signal is passed
         });
       } finally {
         clearTimeout(timer);
@@ -99,9 +101,10 @@ export async function medicineApiCall<T = any>(
   }
 
   const rawText = await response.text();
+  const durationMs = Date.now() - startMs;
 
   console.log('=== [Medicines] RAW RESPONSE ===');
-  console.log('STATUS:', response.status);
+  console.log(`STATUS: ${response.status} [${durationMs}ms]`);
   console.log('BODY:', rawText);
   console.log('=================================');
 
@@ -111,6 +114,16 @@ export async function medicineApiCall<T = any>(
   } catch {
     const snippet = rawText?.slice(0, 200) || '(empty response)';
     throw new Error(`Server returned non-JSON response (status ${response.status}): ${snippet}`);
+  }
+
+  // Session expired
+  if (response.status === 401) {
+    await storage.remove('token');
+    await storage.remove('refresh_token');
+    await storage.remove('phone');
+    await storage.remove('member_id');
+    DeviceEventEmitter.emit('SESSION_EXPIRED');
+    throw new Error('SESSION_EXPIRED');
   }
 
   // Backend may respond with encrypted { iv, data } — decrypt it, same as auth

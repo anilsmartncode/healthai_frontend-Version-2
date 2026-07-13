@@ -11,8 +11,11 @@
  * ─────────────────────────────────────────────────────────
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SecureAsyncStorage as AsyncStorage } from '@/utils/storage';
 import type { ChatMessage } from '@/types';
+import { api } from '@/services/api';
+import { ENDPOINTS } from '@/constants/api';
+import { reportsApi } from '@/services/reportsApi';
 
 // ─── Toggle ────────────────────────────────────────────────
 const USE_MOCK = false; // 🟢 MOCK | 🔴 set false when backend ready
@@ -24,6 +27,7 @@ export function STORAGE_KEYS(phone: string | null = null) {
   const user = phone ? phone.replace(/\D/g, '') : 'guest';
   return {
     REPORTS:      `healthai_reports_${user}`,
+    REPORT_DETAILS: `healthai_report_details_${user}`,
     MEDICINES:    `healthai_medicines_${user}`,
     FAMILY:       'healthai_family',
     AI_MEMORY:    `healthai_ai_memory_${user}`,
@@ -61,10 +65,13 @@ export interface ChatSessionSummary {
 // ─── Types ─────────────────────────────────────────────────
 
 export interface AIContextReport {
+  id?: string;
   title: string;
   date: string;
   healthScore?: number;
   abnormalCount?: number;
+  aiSummary?: string;
+  labValues?: string;
 }
 
 export interface AIContextMedicine {
@@ -88,30 +95,98 @@ export interface AIHealthContext {
 // ─── Build context from AsyncStorage ──────────────────────
 
 export async function buildAIContext(phone: string | null = null): Promise<AIHealthContext> {
+  const keys = STORAGE_KEYS(phone);
+  let aiMemoryRaw: string | null = null;
+  let medicinesRaw: string | null = null;
+  let familyRaw: string | null = null;
+  
   try {
-    const keys = STORAGE_KEYS(phone);
-    const [reportsRaw, medicinesRaw, familyRaw, aiMemoryRaw] = await Promise.all([
-      AsyncStorage.getItem(keys.REPORTS),
-      AsyncStorage.getItem(keys.MEDICINES),
-      AsyncStorage.getItem(keys.FAMILY),
-      AsyncStorage.getItem(keys.AI_MEMORY),
-    ]);
+    aiMemoryRaw = await AsyncStorage.getItem(keys.AI_MEMORY);
+    medicinesRaw = await AsyncStorage.getItem(keys.MEDICINES);
+    familyRaw = await AsyncStorage.getItem(keys.FAMILY);
+  } catch {}
 
-    const reports: AIContextReport[]   = reportsRaw   ? JSON.parse(reportsRaw).slice(0, 5)   : [];
-    const medicines: AIContextMedicine[] = medicinesRaw ? JSON.parse(medicinesRaw).slice(0, 10) : [];
-    const family: AIContextFamily[]    = familyRaw    ? JSON.parse(familyRaw).slice(0, 10)    : [];
-    const aiMemory: string | undefined = aiMemoryRaw  ? JSON.parse(aiMemoryRaw)               : undefined;
+  const parseSafe = <T>(raw: string | null, limit: number): T[] => {
+    try { return raw ? JSON.parse(raw).slice(0, limit) : []; } catch { return []; }
+  };
 
-    return { reports, medicines, family, aiMemory };
-  } catch {
-    return { reports: [], medicines: [], family: [] };
+  const reports: AIContextReport[] = [];
+
+  if (USE_MOCK) {
+    try {
+      const reportsRaw = await AsyncStorage.getItem(keys.REPORTS);
+      const reportDetailsRaw = await AsyncStorage.getItem(keys.REPORT_DETAILS);
+      const reportsList: any[] = parseSafe(reportsRaw, 5);
+      let reportDetails: Record<string, any> = {};
+      try { reportDetails = reportDetailsRaw ? JSON.parse(reportDetailsRaw) : {}; } catch {}
+
+      for (const r of reportsList) {
+        const detail = reportDetails[r.id];
+        let labValues = '';
+        let aiSummary = '';
+        if (detail) {
+          if (detail.summary) {
+            try {
+              const s = typeof detail.summary === 'string' ? JSON.parse(detail.summary) : detail.summary;
+              aiSummary = `Summary: ${s.ai_summary || ''}. Recommendations: ${s.recommendations?.join(', ') || ''}`;
+            } catch { aiSummary = detail.summary; }
+          }
+          if (detail.values) {
+            labValues = detail.values.map((v: any) => `${v.name}: ${v.value} (${v.status})`).join(', ');
+          }
+        }
+        reports.push({
+          id: r.id, title: r.title, date: r.date,
+          healthScore: r.healthScore, abnormalCount: r.abnormalCount,
+          aiSummary, labValues
+        });
+      }
+    } catch {}
+  } else {
+    // REAL BACKEND
+    try {
+      const allReports = await reportsApi.list(phone);
+      const recent = allReports.slice(0, 3); // Top 3 to keep prompt size reasonable
+      
+      for (const r of recent) {
+        const detailed = await reportsApi.getById(r.id, phone);
+        let labValues = '';
+        let aiSummary = '';
+        
+        if (detailed) {
+          if (detailed.summary) {
+            try {
+              const s = typeof detailed.summary === 'string' ? JSON.parse(detailed.summary) : detailed.summary;
+              aiSummary = `Summary: ${s.ai_summary || ''}. Recommendations: ${s.recommendations?.join(', ') || ''}`;
+            } catch { aiSummary = detailed.summary; }
+          }
+          if (detailed.values) {
+            labValues = detailed.values.map(v => `${v.name}: ${v.value} (${v.status})`).join(', ');
+          }
+        }
+        
+        reports.push({
+          id: r.id, title: r.title, date: r.date,
+          healthScore: r.healthScore, abnormalCount: r.abnormalCount,
+          aiSummary, labValues
+        });
+      }
+    } catch (e) {
+      console.warn('[buildAIContext] Failed to fetch real reports for context', e);
+    }
   }
+
+  const medicines: AIContextMedicine[] = parseSafe(medicinesRaw, 10);
+  const family: AIContextFamily[] = parseSafe(familyRaw, 10);
+  const aiMemory: string | undefined = aiMemoryRaw ? (() => { try { return JSON.parse(aiMemoryRaw); } catch { return undefined; } })() : undefined;
+
+  return { reports, medicines, family, aiMemory };
 }
 
 export function buildSystemPrompt(ctx: AIHealthContext, prefillContext?: string): string {
   const reportsText = ctx.reports.length > 0
     ? ctx.reports.map(r =>
-        `- ${r.title} (${r.date}): Score ${r.healthScore ?? '?'}/100, ${r.abnormalCount ?? 0} abnormal`
+        `- ${r.title} (${r.date}): Score ${r.healthScore ?? '?'}/100, ${r.abnormalCount ?? 0} abnormal.\n  Lab Values: ${r.labValues || 'N/A'}\n  Insights: ${r.aiSummary || 'N/A'}`
       ).join('\n')
     : 'No reports uploaded yet.';
 
@@ -192,24 +267,37 @@ export async function askAI(
     };
   }
 
-  // 🔴 REAL — uncomment when backend ready
-  // const ctx = await buildAIContext(phone);
-  // const systemPrompt = buildSystemPrompt(ctx, prefillContext);
-  // const res = await fetch(ENDPOINTS.aiChat, {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await getToken()}` },
-  //   body: JSON.stringify({
-  //     system: systemPrompt,
-  //     messages: [
-  //       ...conversationHistory.map(m => ({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.text })),
-  //       { role: 'user', content: question },
-  //     ],
-  //   }),
-  // });
-  // const data = await res.json();
-  // return { id: Date.now().toString(), role: 'ai', text: data.reply, time: new Date().toISOString() };
+  // 🔴 REAL
+  const ctx = await buildAIContext(phone);
+  const systemPrompt = buildSystemPrompt(ctx, prefillContext);
+  
+  console.log('[askAI] System Prompt sent to AI:', systemPrompt);
 
-  throw new Error('Real AI API not configured yet.');
+  try {
+    const data = await api.request<any>(ENDPOINTS.aiChatPath, {
+      method: 'POST',
+      body: JSON.stringify({
+        system_prompt: systemPrompt,
+        question,
+        conversation_history: conversationHistory.map(m => ({
+          role: m.role === 'ai' ? 'assistant' : 'user',
+          content: m.text
+        })),
+      }),
+    });
+    
+    console.log('[askAI] AI Response:', JSON.stringify(data, null, 2));
+
+    return {
+      id: data.id || Date.now().toString(),
+      role: 'ai',
+      text: data.text || data.reply || '',
+      time: data.time || new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error('[askAI] real API failed:', error);
+    throw error;
+  }
 }
 
 // ─── Generate report narrative (called after upload) ──────
@@ -237,6 +325,17 @@ export async function generateReportNarrative(
 // ─── Generate dynamic suggested prompts ───────────────────
 
 export async function generateSuggestedPrompts(phone: string | null = null): Promise<string[]> {
+  if (!USE_MOCK) {
+    try {
+      const data = await api.request<any>(ENDPOINTS.aiSuggestedPromptsPath);
+      if (data && data.prompts && Array.isArray(data.prompts) && data.prompts.length > 0) {
+        return data.prompts;
+      }
+    } catch (e) {
+      console.log('[generateSuggestedPrompts] API failed, falling back to local context generation', e);
+    }
+  }
+
   const ctx = await buildAIContext(phone);
   const prompts: string[] = [];
 
@@ -264,11 +363,23 @@ export async function generateSuggestedPrompts(phone: string | null = null): Pro
 
 export async function saveAIMemory(conversationHistory: ChatMessage[], phone: string | null = null): Promise<void> {
   if (conversationHistory.length < 2) return;
-  // In real mode this would call AI to summarise; here we store last assistant reply
   const lastAI = [...conversationHistory].reverse().find(m => m.role === 'ai');
-  if (lastAI) {
-    const summary = `Last session (${new Date().toLocaleDateString()}): ${lastAI.text.slice(0, 200)}`;
+  if (!lastAI) return;
+  
+  const summary = `Last session (${new Date().toLocaleDateString()}): ${lastAI.text.slice(0, 200)}`;
+
+  if (USE_MOCK) {
     await AsyncStorage.setItem(STORAGE_KEYS(phone).AI_MEMORY, JSON.stringify(summary));
+    return;
+  }
+
+  try {
+    await api.request(ENDPOINTS.aiMemoryPath, {
+      method: 'POST',
+      body: JSON.stringify({ summary })
+    });
+  } catch (e) {
+    console.error('[saveAIMemory] API failed:', e);
   }
 }
 
@@ -282,6 +393,18 @@ export interface HealthAlert {
 }
 
 export async function checkHealthAlerts(phone: string | null = null): Promise<HealthAlert | null> {
+  if (!USE_MOCK) {
+    try {
+      const data = await api.request<any>(ENDPOINTS.aiHealthAlertsPath);
+      if (data && data.alert) {
+        return data.alert as HealthAlert;
+      }
+      return null;
+    } catch (e) {
+      console.log('[checkHealthAlerts] API failed, falling back to local check', e);
+    }
+  }
+
   try {
     const reportsRaw = await AsyncStorage.getItem(STORAGE_KEYS(phone).REPORTS);
     if (!reportsRaw) return null;
@@ -353,12 +476,13 @@ export async function listChatSessions(phone: string | null = null): Promise<Cha
   }
 
   // 🔴 REAL
-  // const res = await fetch(ENDPOINTS.aiSessions, {
-  //   headers: { Authorization: `Bearer ${await getToken()}` },
-  // });
-  // const data = await res.json();
-  // return data.sessions;
-  throw new Error('Real chat history API not configured yet.');
+  try {
+    const data = await api.request<any>(ENDPOINTS.aiSessionsPath);
+    return data.sessions || [];
+  } catch (error) {
+    console.error('[listChatSessions] real API failed:', error);
+    throw error;
+  }
 }
 
 /** Load the full message list for a saved session */
@@ -374,12 +498,13 @@ export async function getChatSession(sessionId: string, phone: string | null = n
   }
 
   // 🔴 REAL
-  // const res = await fetch(`${ENDPOINTS.aiSessions}/${sessionId}`, {
-  //   headers: { Authorization: `Bearer ${await getToken()}` },
-  // });
-  // const data = await res.json();
-  // return data.session;
-  throw new Error('Real chat history API not configured yet.');
+  try {
+    const data = await api.request<any>(ENDPOINTS.aiSessionPath(sessionId));
+    return data.session || null;
+  } catch (error) {
+    console.error('[getChatSession] real API failed:', error);
+    throw error;
+  }
 }
 
 /**
@@ -432,12 +557,15 @@ export async function saveChatSession(
   }
 
   // 🔴 REAL
-  // await fetch(`${ENDPOINTS.aiSessions}/${sessionId}`, {
-  //   method: 'PUT',
-  //   headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await getToken()}` },
-  //   body: JSON.stringify({ messages }),
-  // });
-  throw new Error('Real chat history API not configured yet.');
+  try {
+    await api.request(ENDPOINTS.aiSessionPath(sessionId), {
+      method: 'PUT',
+      body: JSON.stringify({ messages }),
+    });
+  } catch (error) {
+    console.error('[saveChatSession] real API failed:', error);
+    throw error;
+  }
 }
 
 /** Delete a single saved session */
@@ -453,11 +581,14 @@ export async function deleteChatSession(sessionId: string, phone: string | null 
   }
 
   // 🔴 REAL
-  // await fetch(`${ENDPOINTS.aiSessions}/${sessionId}`, {
-  //   method: 'DELETE',
-  //   headers: { Authorization: `Bearer ${await getToken()}` },
-  // });
-  throw new Error('Real chat history API not configured yet.');
+  try {
+    await api.request(ENDPOINTS.aiSessionPath(sessionId), {
+      method: 'DELETE',
+    });
+  } catch (error) {
+    console.error('[deleteChatSession] real API failed:', error);
+    throw error;
+  }
 }
 
 /** Delete all saved sessions for this user */
@@ -473,11 +604,14 @@ export async function clearAllChatSessions(phone: string | null = null): Promise
   }
 
   // 🔴 REAL
-  // await fetch(ENDPOINTS.aiSessions, {
-  //   method: 'DELETE',
-  //   headers: { Authorization: `Bearer ${await getToken()}` },
-  // });
-  throw new Error('Real chat history API not configured yet.');
+  try {
+    await api.request(ENDPOINTS.aiSessionsPath, {
+      method: 'DELETE',
+    });
+  } catch (error) {
+    console.error('[clearAllChatSessions] real API failed:', error);
+    throw error;
+  }
 }
 
 /** Generate a fresh session id for a new conversation */

@@ -62,7 +62,7 @@ function MedicineCard({
   onInteraction: () => void;
 }) {
   const rxColor = med.prescriptionType === 'Prescription' ? '#B91C1C' : '#065F46';
-  const rxBg    = med.prescriptionType === 'Prescription' ? '#FEE2E2' : '#D1FAE5';
+  const rxBg = med.prescriptionType === 'Prescription' ? '#FEE2E2' : '#D1FAE5';
 
   return (
     <View style={styles.card}>
@@ -119,7 +119,7 @@ function MedicineCard({
 // ─── MAIN SCREEN ─────────────────────────────────────────────────────────────
 export default function MyMedicinesScreen() {
   const [medicines, setMedicines] = useState<Medicine[]>([]);
-  const [loading, setLoading]     = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
@@ -244,12 +244,12 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   medName: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
-  medSub:  { fontSize: 12, color: '#64748B', marginTop: 2 },
-  rxPill:  { borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start' },
-  rxText:  { fontSize: 10, fontWeight: '700' },
+  medSub: { fontSize: 12, color: '#64748B', marginTop: 2 },
+  rxPill: { borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start' },
+  rxText: { fontSize: 10, fontWeight: '700' },
   medUses: { fontSize: 13, color: '#334155', lineHeight: 19 },
   sideRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  sideText:{ fontSize: 12, color: '#EA580C', flex: 1 },
+  sideText: { fontSize: 12, color: '#EA580C', flex: 1 },
 
   cardActions: { flexDirection: 'row', gap: 8, marginTop: 2 },
   actionBtn: {
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
-  emptySub:   { fontSize: 14, color: '#64748B', textAlign: 'center', lineHeight: 21 },
+  emptySub: { fontSize: 14, color: '#64748B', textAlign: 'center', lineHeight: 21 },
   browseBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: Colors.primary, borderRadius: 12,

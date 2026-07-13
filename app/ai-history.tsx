@@ -28,11 +28,17 @@ export default function AIHistoryScreen() {
   const { phone } = useAuth();
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
+    setError(null);
     listChatSessions(phone)
       .then(setSessions)
+      .catch((e) => {
+        console.warn('[AIHistory] load failed', e);
+        setError('Could not load history. Please try again.');
+      })
       .finally(() => setLoading(false));
   }, [phone]);
 
@@ -96,6 +102,15 @@ export default function AIHistoryScreen() {
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={Colors.primary} />
+        </View>
+      ) : error ? (
+        <View style={styles.center}>
+          <Ionicons name="alert-circle-outline" size={48} color={Colors.danger} />
+          <Text style={styles.emptyTitle}>Oops!</Text>
+          <Text style={styles.emptySub}>{error}</Text>
+          <Pressable style={{ marginTop: 16, padding: 10, backgroundColor: Colors.primary, borderRadius: 8 }} onPress={load}>
+            <Text style={{ color: '#fff', fontWeight: '600' }}>Retry</Text>
+          </Pressable>
         </View>
       ) : sessions.length === 0 ? (
         <View style={styles.center}>

@@ -2,12 +2,15 @@ import { Config } from '@/config/env';
 import { storage } from '@/utils/storage';
 import { fetchWithTimeout } from '@/utils/fetchWithTimeout';
 import { decryptResponse } from '@/utils/encryption';
+import { DeviceEventEmitter } from 'react-native';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await storage.get<string>('token');
 
   const url = `${Config.apiBaseUrl}${path}`;
   console.log('[api] REQUEST', init?.method ?? 'GET', url);
+  const startMs = Date.now();
+  
   const res = await fetchWithTimeout(url, {
     ...init,
     headers: {
@@ -18,7 +21,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   const rawText = await res.text();
-  console.log('[api] RESPONSE', res.status, url);
+  const durationMs = Date.now() - startMs;
+  console.log(`[api] RESPONSE ${res.status} [${durationMs}ms]`, url);
   let rawData: any;
   try {
     rawData = rawText ? JSON.parse(rawText) : {};
@@ -33,6 +37,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     await storage.remove('refresh_token');
     await storage.remove('phone');
     await storage.remove('member_id');
+    DeviceEventEmitter.emit('SESSION_EXPIRED');
     throw new Error('SESSION_EXPIRED');
   }
 

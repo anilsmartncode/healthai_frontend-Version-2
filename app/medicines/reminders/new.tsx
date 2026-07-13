@@ -25,13 +25,16 @@ import {
   FlatList,
   Alert,
   TouchableOpacity,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/Colors';
+import { scheduleReminderNotification, parseTimeStringToNextDate } from '@/utils/notifications';
 import {
   getUserMedicines,
+  searchMedicines,
   createReminder,
   type Medicine,
   type ReminderFrequency,
@@ -185,6 +188,29 @@ function MedicinePicker({
   onSelect: (m: Medicine) => void;
   onClose: () => void;
 }) {
+  const [customName, setCustomName] = useState('');
+  const [searchResults, setSearchResults] = useState<Medicine[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Live search the global database when typing
+  useEffect(() => {
+    if (customName.trim().length > 2) {
+      setIsSearching(true);
+      const delayDebounce = setTimeout(() => {
+        searchMedicines(customName.trim(), 1, 15)
+          .then((res) => setSearchResults(res))
+          .catch(() => setSearchResults([]))
+          .finally(() => setIsSearching(false));
+      }, 500);
+      return () => clearTimeout(delayDebounce);
+    } else {
+      setSearchResults([]);
+      setIsSearching(false);
+    }
+  }, [customName]);
+
+  const displayList = customName.trim().length > 2 ? searchResults : medicines;
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }} edges={['top', 'bottom']}>
@@ -194,26 +220,83 @@ function MedicinePicker({
             <Ionicons name="close" size={22} color="#64748B" />
           </Pressable>
         </View>
-        <FlatList
-          data={medicines}
-          keyExtractor={(m) => m.id}
-          contentContainerStyle={{ padding: 16, gap: 8 }}
-          renderItem={({ item }) => (
+
+        {/* ── SEARCH OR CUSTOM MEDICINE INPUT ── */}
+        <View style={{ padding: 16, borderBottomWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#64748B', marginBottom: 8, textTransform: 'uppercase' }}>
+            Search or Add Custom
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TextInput
+              style={{ flex: 1, borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 10, paddingHorizontal: 14, height: 48, backgroundColor: '#fff', fontSize: 15 }}
+              placeholder="Search global database..."
+              value={customName}
+              onChangeText={setCustomName}
+            />
             <Pressable
-              style={({ pressed }) => [styles.medRow, pressed && { opacity: 0.7 }]}
-              onPress={() => { onSelect(item); onClose(); }}
+              style={{ backgroundColor: Colors.primary, paddingHorizontal: 18, justifyContent: 'center', borderRadius: 10, opacity: customName.trim() ? 1 : 0.5 }}
+              disabled={!customName.trim()}
+              onPress={() => {
+                if (customName.trim()) {
+                  onSelect({
+                    id: `custom_${Date.now()}`,
+                    name: customName.trim(),
+                    type: 'Custom',
+                    category: '',
+                    uses: '',
+                    dosage: '',
+                    sideEffects: [],
+                    prescriptionType: 'OTC',
+                  });
+                  setCustomName('');
+                  onClose();
+                }
+              }}
             >
-              <View style={styles.medRowIcon}>
-                <Ionicons name="medical-outline" size={18} color={Colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.medRowName}>{item.name}</Text>
-                <Text style={styles.medRowSub}>{item.type} · {item.category}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Add Custom</Text>
             </Pressable>
-          )}
-        />
+          </View>
+        </View>
+
+        {isSearching && (
+          <View style={{ padding: 20, alignItems: 'center' }}>
+             <ActivityIndicator size="small" color={Colors.primary} />
+             <Text style={{ color: '#94A3B8', marginTop: 8 }}>Searching...</Text>
+          </View>
+        )}
+
+        {!isSearching && (
+          <FlatList
+            data={displayList}
+            keyExtractor={(m) => m.id}
+            contentContainerStyle={{ padding: 16, gap: 8 }}
+            ListHeaderComponent={() => (
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#0F172A', marginBottom: 4 }}>
+                {customName.trim().length > 2 ? 'Search Results' : 'My Saved Medicines'}
+              </Text>
+            )}
+            ListEmptyComponent={() => (
+              <Text style={{ textAlign: 'center', color: '#94A3B8', marginTop: 20 }}>
+                {customName.trim().length > 2 ? 'No exact matches. You can tap "Add Custom".' : 'No saved medicines yet.'}
+              </Text>
+            )}
+            renderItem={({ item }) => (
+              <Pressable
+                style={({ pressed }) => [styles.medRow, pressed && { opacity: 0.7 }]}
+                onPress={() => { onSelect(item); onClose(); }}
+              >
+                <View style={styles.medRowIcon}>
+                  <Ionicons name="medical-outline" size={18} color={Colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.medRowName}>{item.name}</Text>
+                  <Text style={styles.medRowSub}>{item.type} {item.category ? `· ${item.category}` : ''}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+              </Pressable>
+            )}
+          />
+        )}
       </SafeAreaView>
     </Modal>
   );
@@ -235,16 +318,15 @@ export default function AddReminderScreen() {
   const [saving,            setSaving]            = useState(false);
   const [success,           setSuccess]           = useState(false);
 
+  // 1. Fetch 'My Medicines' list in the background on mount
   useEffect(() => {
     getUserMedicines()
       .then((meds) => {
         setMedicines(meds);
+        // If the params specify a medicine that exists in the user's saved list, select the full object
         if (params.medicineId) {
           const found = meds.find((m) => m.id === params.medicineId);
           if (found) setSelectedMed(found);
-          else if (params.medicineName) {
-            setSelectedMed({ id: params.medicineId, name: params.medicineName, type: 'Tablet', category: '', uses: '', dosage: '', sideEffects: [], prescriptionType: 'OTC' });
-          }
         }
       })
       .catch((e) => {
@@ -253,6 +335,27 @@ export default function AddReminderScreen() {
       })
       .finally(() => setLoadingMeds(false));
   }, []);
+
+  // 2. Immediately pre-fill from params if they change (Reactive for Expo Router)
+  useEffect(() => {
+    if (params.medicineId || params.medicineName) {
+      setSelectedMed((prev) => {
+        // Only overwrite if we haven't already loaded the full medicine object from the backend
+        if (prev && prev.id === params.medicineId && prev.uses) return prev;
+        
+        return {
+          id: params.medicineId || String(Date.now()),
+          name: params.medicineName || 'Unknown',
+          type: 'Tablet',
+          category: '',
+          uses: '',
+          dosage: '',
+          sideEffects: [],
+          prescriptionType: 'OTC',
+        };
+      });
+    }
+  }, [params.medicineId, params.medicineName]);
 
   const handleSelectPreset = (slot: string) => {
     setTime(slot);
@@ -265,19 +368,35 @@ export default function AddReminderScreen() {
   };
 
   const handleSave = async () => {
-    if (!selectedMed) return;
+    if (!selectedMed) {
+      Alert.alert('Missing Info', 'Please select a medicine first.');
+      return;
+    }
     setSaving(true);
     try {
-      await createReminder({
-        medicineId:   selectedMed.id,
+      const res = await createReminder({
+        medicineId: selectedMed.id,
         medicineName: selectedMed.name,
         medicineType: selectedMed.type,
-        dosage:       selectedMed.dosage,
-        time,
+        dosage: selectedMed.dosage,
+        time: time,
         frequency,
         whenToTake,
       });
-      setSuccess(true);
+      if (res.success) {
+        // Schedule local push notification
+        const triggerTime = parseTimeStringToNextDate(time);
+        await scheduleReminderNotification(
+          res.reminderId,
+          "Medicine Time!",
+          `Time to take your ${selectedMed.name}${selectedMed.dosage ? ' (' + selectedMed.dosage + ')' : ''}`,
+          triggerTime
+        );
+
+        setSuccess(true);
+      } else {
+        Alert.alert('Error', res.message || 'Failed to save reminder.');
+      }
     } catch (e) {
       console.error('[ReminderNew] createReminder error', e);
       Alert.alert('Error', 'Could not save reminder. Please try again.');

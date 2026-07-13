@@ -20,10 +20,10 @@ import {
 
 function severityStyle(s: InsightSeverity) {
   switch (s) {
-    case 'warning':  return { border: Colors.warning, bg: '#FFFBEB', icon: 'warning-outline' as const,        iconColor: Colors.warning };
-    case 'critical': return { border: Colors.danger,  bg: '#FFF5F5', icon: 'alert-circle-outline' as const,   iconColor: Colors.danger };
-    case 'info':     return { border: '#007AFF',       bg: '#EFF6FF', icon: 'information-circle-outline' as const, iconColor: '#007AFF' };
-    default:         return { border: Colors.border,   bg: '#F8FAFC', icon: 'sparkles-outline' as const,      iconColor: '#8B5CF6' };
+    case 'warning': return { border: Colors.warning, bg: '#FFFBEB', icon: 'warning-outline' as const, iconColor: Colors.warning };
+    case 'critical': return { border: Colors.danger, bg: '#FFF5F5', icon: 'alert-circle-outline' as const, iconColor: Colors.danger };
+    case 'info': return { border: '#007AFF', bg: '#EFF6FF', icon: 'information-circle-outline' as const, iconColor: '#007AFF' };
+    default: return { border: Colors.border, bg: '#F8FAFC', icon: 'sparkles-outline' as const, iconColor: '#8B5CF6' };
   }
 }
 
@@ -34,8 +34,8 @@ export default function MemberAIInsightsScreen() {
   const { id = 'mem2', name = 'Member' } = useLocalSearchParams<{ id: string; name: string }>();
 
   const [insights, setInsights] = useState<AIInsight[]>([]);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [newCount, setNewCount] = useState(0);
 
   useEffect(() => {
@@ -58,7 +58,7 @@ export default function MemberAIInsightsScreen() {
     );
   }
 
-  const newInsights  = insights.filter((i) => i.is_new);
+  const newInsights = insights.filter((i) => i.is_new);
   const readInsights = insights.filter((i) => !i.is_new);
 
   return (
@@ -92,7 +92,7 @@ export default function MemberAIInsightsScreen() {
               New Insights
               <Text style={styles.sectionBadge}> {newInsights.length}</Text>
             </Text>
-            {newInsights.map((ins) => <InsightCard key={ins.insight_id} insight={ins} />)}
+            {newInsights.map((ins) => <InsightCard key={ins.id || ins.insight_id || Math.random().toString()} insight={ins} />)}
           </>
         )}
 
@@ -100,7 +100,7 @@ export default function MemberAIInsightsScreen() {
         {readInsights.length > 0 && (
           <>
             <Text style={[styles.section, { marginTop: 8 }]}>Earlier</Text>
-            {readInsights.map((ins) => <InsightCard key={ins.insight_id} insight={ins} />)}
+            {readInsights.map((ins) => <InsightCard key={ins.id || ins.insight_id || Math.random().toString()} insight={ins} />)}
           </>
         )}
 
@@ -151,33 +151,33 @@ function InsightCard({ insight }: { insight: AIInsight }) {
 }
 
 const styles = StyleSheet.create({
-  screen:   { flex: 1, backgroundColor: '#F4F7F6' },
+  screen: { flex: 1, backgroundColor: '#F4F7F6' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10 },
-  page:     { padding: 12, paddingBottom: 40 },
+  page: { padding: 12, paddingBottom: 40 },
 
-  headerBanner:  { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0EAFF', borderRadius: 12, padding: 13, gap: 10, marginBottom: 12 },
-  bannerIcon:    { width: 38, height: 38, borderRadius: 10, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
-  bannerTitle:   { fontSize: 13, fontWeight: '700', color: '#3B0764' },
-  bannerSub:     { fontSize: 11, color: '#6D28D9', marginTop: 2 },
-  markRead:      { fontSize: 11, color: '#8B5CF6', fontWeight: '600', flexShrink: 0 },
+  headerBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0EAFF', borderRadius: 12, padding: 13, gap: 10, marginBottom: 12 },
+  bannerIcon: { width: 38, height: 38, borderRadius: 10, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
+  bannerTitle: { fontSize: 13, fontWeight: '700', color: '#3B0764' },
+  bannerSub: { fontSize: 11, color: '#6D28D9', marginTop: 2 },
+  markRead: { fontSize: 11, color: '#8B5CF6', fontWeight: '600', flexShrink: 0 },
 
-  section:      { fontSize: 12, fontWeight: '600', color: Colors.textMuted, marginBottom: 8 },
+  section: { fontSize: 12, fontWeight: '600', color: Colors.textMuted, marginBottom: 8 },
   sectionBadge: { color: '#8B5CF6', fontWeight: '700' },
 
-  insightCard:   { borderLeftWidth: 3, borderRadius: 12, padding: 13, marginBottom: 9, overflow: 'hidden' },
+  insightCard: { borderLeftWidth: 3, borderRadius: 12, padding: 13, marginBottom: 9, overflow: 'hidden' },
   insightHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 7 },
-  insightTitle:  { flex: 1, fontSize: 13, fontWeight: '700' },
-  insightBody:   { fontSize: 12, color: Colors.text, lineHeight: 18 },
-  insightDate:   { fontSize: 10, color: Colors.textMuted, flexShrink: 0 },
-  newDot:        { width: 7, height: 7, borderRadius: 4, backgroundColor: '#8B5CF6', flexShrink: 0 },
+  insightTitle: { flex: 1, fontSize: 13, fontWeight: '700' },
+  insightBody: { fontSize: 12, color: Colors.text, lineHeight: 18 },
+  insightDate: { fontSize: 10, color: Colors.textMuted, flexShrink: 0 },
+  newDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#8B5CF6', flexShrink: 0 },
 
-  actionChip:    { flexDirection: 'row', alignItems: 'center', gap: 3, alignSelf: 'flex-start', borderWidth: 1, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginTop: 9 },
+  actionChip: { flexDirection: 'row', alignItems: 'center', gap: 3, alignSelf: 'flex-start', borderWidth: 1, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginTop: 9 },
   actionChipTxt: { fontSize: 11, fontWeight: '600' },
 
-  empty:    { alignItems: 'center', gap: 8, paddingVertical: 50 },
+  empty: { alignItems: 'center', gap: 8, paddingVertical: 50 },
   emptyTxt: { fontSize: 14, fontWeight: '600', color: Colors.textMuted },
   emptySub: { fontSize: 12, color: Colors.textMuted, textAlign: 'center', paddingHorizontal: 32 },
 
-  disclaimer:    { flexDirection: 'row', alignItems: 'flex-start', gap: 6, backgroundColor: '#F8FAFC', borderRadius: 10, padding: 10, marginTop: 8 },
+  disclaimer: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, backgroundColor: '#F8FAFC', borderRadius: 10, padding: 10, marginTop: 8 },
   disclaimerTxt: { fontSize: 11, color: Colors.textMuted, flex: 1, lineHeight: 16 },
 });

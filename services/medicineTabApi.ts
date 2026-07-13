@@ -11,7 +11,7 @@
  * ─────────────────────────────────────────────────────────────
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SecureAsyncStorage as AsyncStorage } from '@/utils/storage';
 import { MOCK_CATEGORIES, MOCK_MEDICINES, MOCK_REMINDERS, MOCK_SCAN_HISTORY, MOCK_INTERACTIONS } from './medicineMockData';
 import { ENDPOINTS } from '@/constants/api';
 import { medicineApiCall } from './Medicineapiclient';
@@ -33,18 +33,18 @@ function unwrapList<T>(raw: any, ...keys: string[]): T[] {
 // always populated regardless of which key the server uses.
 function mapMedicine(raw: any): Medicine {
   return {
-    id:               String(raw.id ?? raw.medicine_id ?? ''),
-    name:             raw.name ?? raw.medicine_name ?? '',
-    type:             raw.type ?? raw.medicine_type ?? 'Tablet',
-    category:         raw.category ?? raw.category_name ?? '',
-    uses:             raw.uses ?? raw.use ?? '',
-    dosage:           raw.dosage ?? raw.dose ?? '',
-    sideEffects:      Array.isArray(raw.sideEffects)  ? raw.sideEffects
-                    : Array.isArray(raw.side_effects) ? raw.side_effects
-                    : [],
-    prescriptionType: raw.prescriptionType ?? raw.prescription_type ?? 'OTC',
-    isSaved:          raw.isSaved ?? raw.is_saved,
-    imageUrl:         raw.imageUrl ?? raw.image_url,
+    id: String(raw.id ?? raw.medicine_id ?? ''),
+    name: raw.name ?? raw.medicine_name ?? '',
+    type: raw.form ?? raw.type ?? raw.medicine_type ?? 'Tablet',
+    category: raw.category ?? raw.category_name ?? '',
+    uses: raw.uses ?? raw.use ?? '',
+    dosage: raw.dosage ?? raw.dose ?? '',
+    sideEffects: Array.isArray(raw.sideEffects) ? raw.sideEffects
+      : Array.isArray(raw.side_effects) ? raw.side_effects
+        : [],
+    prescriptionType: (raw.rx !== undefined) ? (raw.rx ? 'Rx' : 'OTC') : (raw.prescriptionType ?? raw.prescription_type ?? 'OTC'),
+    isSaved: raw.isSaved ?? raw.is_saved,
+    imageUrl: raw.imageUrl ?? raw.image_url,
   };
 }
 
@@ -170,7 +170,7 @@ export async function searchMedicines(query: string, page = 1, limit = 20): Prom
   // 🔴 REAL — active
   const url = `${ENDPOINTS.medicineSearch}?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`;
   const raw = await medicineApiCall<any>(url);
-  return unwrapList<Medicine>(raw, 'medicines', 'data', 'results');
+  return unwrapList<any>(raw, 'medicines', 'data', 'results').map(mapMedicine);
 
   // 🟢 MOCK
   // await delay(500);
@@ -189,9 +189,9 @@ export async function searchMedicines(query: string, page = 1, limit = 20): Prom
  */
 export async function getMedicinesByCategory(categoryId: string, page = 1, limit = 20): Promise<Medicine[]> {
   // 🔴 REAL — active
-  const url = `${ENDPOINTS.medicinesByCategory}?category_id=${categoryId}&page=${page}&limit=${limit}`;
+  const url = `${ENDPOINTS.medicinesByCategory}?category=${categoryId}&page=${page}&limit=${limit}`;
   const raw = await medicineApiCall<any>(url);
-  return unwrapList<Medicine>(raw, 'medicines', 'data', 'results');
+  return unwrapList<any>(raw, 'medicines', 'data', 'results').map(mapMedicine);
 
   // 🟢 MOCK
   // await delay(600);
@@ -207,8 +207,13 @@ export async function getMedicinesByCategory(categoryId: string, page = 1, limit
 export async function getMedicineDetails(medicineId: string): Promise<Medicine | null> {
   // 🔴 REAL — active
   try {
-    return await medicineApiCall<Medicine>(ENDPOINTS.medicineDetails(medicineId));
-  } catch {
+    const raw = await medicineApiCall<any>(ENDPOINTS.medicineDetails(medicineId));
+    // The backend might return { success: true, medicine: { ... } }
+    // Or it might just return the medicine object directly.
+    const payload = raw.decrypted_data?.medicine ?? raw.decrypted_data ?? raw.medicine ?? raw.data ?? raw;
+    return mapMedicine(payload);
+  } catch (e) {
+    console.error('[getMedicineDetails] Error:', e);
     return null;
   }
 
@@ -252,7 +257,7 @@ export async function getRecentlyViewed(page = 1, limit = 10): Promise<Medicine[
   // 🔴 REAL — active
   const url = `${ENDPOINTS.medicineRecent}?page=${page}&limit=${limit}`;
   const raw = await medicineApiCall<any>(url);
-  return unwrapList<Medicine>(raw, 'medicines', 'data', 'results');
+  return unwrapList<any>(raw, 'medicines', 'data', 'results').map(mapMedicine);
 
   // 🟢 MOCK
   // await delay(400);
@@ -268,7 +273,7 @@ export async function getPopularMedicines(limit = 10): Promise<Medicine[]> {
   // 🔴 REAL — active
   const url = `${ENDPOINTS.medicinePopular}?limit=${limit}`;
   const raw = await medicineApiCall<any>(url);
-  return unwrapList<Medicine>(raw, 'medicines', 'data', 'results');
+  return unwrapList<any>(raw, 'medicines', 'data', 'results').map(mapMedicine);
 
   // 🟢 MOCK
   // await delay(400);
@@ -296,17 +301,17 @@ export async function getUserMedicines(): Promise<Medicine[]> {
 
 // ─── Enum maps: internal snake_case → API Title Case literals ────────────────
 const FREQ_API_MAP: Record<ReminderFrequency, string> = {
-  daily:   'Daily',
-  weekly:  'Weekly',
+  daily: 'Daily',
+  weekly: 'Weekly',
   monthly: 'Monthly',
-  custom:  'Custom',
+  custom: 'Custom',
 };
 
 const WHEN_API_MAP: Record<WhenToTake, string> = {
   before_food: 'Before Food',
-  after_food:  'After Food',
-  with_food:   'With Food',
-  bedtime:     'At Bedtime',
+  after_food: 'After Food',
+  with_food: 'With Food',
+  bedtime: 'At Bedtime',
 };
 
 /**
@@ -315,25 +320,25 @@ const WHEN_API_MAP: Record<WhenToTake, string> = {
  * Expected time: ~0.8 – 1.2 s
  */
 export async function createReminder(payload: {
-  medicineId:   string;
+  medicineId: string;
   medicineName: string;
   medicineType: string;
-  dosage:       string;
-  time:         string;
-  frequency:    ReminderFrequency;
-  whenToTake:   WhenToTake;
+  dosage: string;
+  time: string;
+  frequency: ReminderFrequency;
+  whenToTake: WhenToTake;
 }): Promise<{ success: boolean; message: string; reminderId: string }> {
   // 🔴 REAL — active
   const data = await medicineApiCall<any>(ENDPOINTS.reminders, {
     method: 'POST',
     body: {
-      medicine_id:   payload.medicineId,
+      medicine_id: payload.medicineId,
       medicine_name: payload.medicineName,
       medicine_type: payload.medicineType,
-      dosage:        payload.dosage,
+      dosage: payload.dosage,
       reminder_time: payload.time,
-      frequency:     FREQ_API_MAP[payload.frequency],
-      when_to_take:  WHEN_API_MAP[payload.whenToTake],
+      frequency: FREQ_API_MAP[payload.frequency],
+      when_to_take: WHEN_API_MAP[payload.whenToTake],
     },
   });
   return {
@@ -422,8 +427,8 @@ export async function updateReminder(
 ): Promise<{ success: boolean; message: string }> {
   // 🔴 REAL — active
   const body: Record<string, unknown> = {};
-  if (payload.time !== undefined)      body.reminder_time = payload.time;
-  if (payload.frequency !== undefined) body.frequency     = FREQ_API_MAP[payload.frequency];
+  if (payload.time !== undefined) body.reminder_time = payload.time;
+  if (payload.frequency !== undefined) body.frequency = FREQ_API_MAP[payload.frequency];
   if (payload.whenToTake !== undefined) body.when_to_take = WHEN_API_MAP[payload.whenToTake];
   return medicineApiCall(ENDPOINTS.reminderUpdate(reminderId), { method: 'PUT', body });
 
@@ -459,12 +464,14 @@ export async function uploadMedicineImage(imageUri: string): Promise<{ scanId: s
   // 🔴 REAL — active
   const formData = new FormData();
   formData.append('file', { uri: imageUri, name: 'scan.jpg', type: 'image/jpeg' } as any);
-  const data = await medicineApiCall<{ scan_id: string }>(ENDPOINTS.scannerUpload, {
+  const data = await medicineApiCall<any>(ENDPOINTS.scannerUpload, {
     method: 'POST',
     body: formData,
     isFormData: true,
   });
-  return { scanId: data.scan_id, status: 'processing' };
+
+  const payload = data.decrypted_data ?? data.data ?? data;
+  return { scanId: payload.scan_id, status: 'processing' };
 
   // 🟢 MOCK
   // await delay(1200);
@@ -479,13 +486,19 @@ export async function uploadMedicineImage(imageUri: string): Promise<{ scanId: s
 export async function getScanResult(scanId: string): Promise<ScanResult> {
   // 🔴 REAL — active
   const data = await medicineApiCall<any>(ENDPOINTS.scannerResult(scanId));
+
+  const payload = data.decrypted_data ?? data.data ?? data;
+  let status = payload.status ?? 'done';
+  // Normalize backend's "identified" status to "done" so the polling loop breaks
+  if (status === 'identified') status = 'done';
+
   return {
-    scanId: data.scan_id ?? scanId,
-    medicineFound: !!(data.medicine_id ?? data.medicine_found),
-    medicineId: data.medicine_id,
-    medicineName: data.medicine_name,
-    confidence: data.confidence,
-    status: data.status ?? 'done',
+    scanId: payload.scan_id ?? scanId,
+    medicineFound: !!(payload.medicine_id ?? payload.medicine_found ?? payload.medicine),
+    medicineId: payload.medicine_id ? String(payload.medicine_id) : undefined,
+    medicineName: payload.medicine?.medicine_name ?? payload.medicine_name,
+    confidence: payload.medicine?.confidence ?? payload.confidence ?? payload.ocr_info?.ocr_confidence,
+    status: status,
   };
 
   // 🟢 MOCK
@@ -521,7 +534,18 @@ export async function getScanHistory(page = 1, limit = 10): Promise<ScanHistoryI
   // 🔴 REAL — active
   const url = `${ENDPOINTS.scannerHistory}?page=${page}&limit=${limit}`;
   const raw = await medicineApiCall<any>(url);
-  return unwrapList<ScanHistoryItem>(raw, 'history', 'scans', 'data', 'results');
+  const list = unwrapList<any>(raw, 'history', 'scans', 'data', 'results');
+
+  return list.map(item => ({
+    scanId: item.scan_id ?? item.scanId ?? '',
+    status: item.status ?? 'done',
+    medicineId: item.medicine_id ? String(item.medicine_id) : undefined,
+    medicineName: item.medicine_name ?? item.medicineName ?? 'Unknown Medicine',
+    confidence: item.confidence ?? 0,
+    aiSummary: item.ai_summary ?? item.aiSummary ?? '',
+    imageUrl: item.image_url ?? item.imageUrl,
+    createdAt: item.created_at ?? item.createdAt ?? new Date().toISOString(),
+  }));
 
   // 🟢 MOCK
   // await delay(600);
@@ -647,13 +671,13 @@ export async function getInteractionDetails(interactionId: string): Promise<Inte
     return {
       interactionId: String(d.id ?? d.interaction_id ?? d.interactionId ?? interactionId),
       medicines,
-      severity:       d.overall_severity ?? d.severity ?? 'none',
-      summary:        d.summary ?? '',
-      description:    d.description ?? d.ai_summary ?? '',
+      severity: d.overall_severity ?? d.severity ?? 'none',
+      summary: d.summary ?? '',
+      description: d.description ?? d.ai_summary ?? '',
       recommendation,
-      symptoms:       d.possible_symptoms ?? d.symptoms ?? d.side_effects ?? [],
-      aiSummary:      d.ai_summary ?? '',
-      checkedAt:      d.checked_at ?? d.created_at ?? d.checkedAt ?? new Date().toISOString(),
+      symptoms: d.possible_symptoms ?? d.symptoms ?? d.side_effects ?? [],
+      aiSummary: d.ai_summary ?? '',
+      checkedAt: d.checked_at ?? d.created_at ?? d.checkedAt ?? new Date().toISOString(),
     };
   } catch (e: any) {
     console.error('[medicineTabApi] getInteractionDetails ERROR', e?.message ?? e);
@@ -730,9 +754,11 @@ export async function getInteractionHistory(): Promise<InteractionHistoryItem[]>
  * DELETE /api/interactions/history/{id}
  * Expected time: ~300ms
  */
-export async function deleteInteractionReport(reportId: string): Promise<{ success: boolean }> {
-  await delay(300);
-  return { success: true };
+export async function deleteInteractionReport(reportId: string): Promise<{ success: boolean; message?: string }> {
+  // 🔴 REAL — active
+  return medicineApiCall(ENDPOINTS.interactionHistoryDelete(reportId), {
+    method: 'DELETE',
+  });
 }
 
 /**
@@ -741,11 +767,12 @@ export async function deleteInteractionReport(reportId: string): Promise<{ succe
  * Expected time: ~1 s
  */
 export async function getAiInteractionSummary(medicineIds: string[]): Promise<{ summary: string }> {
-  await delay(1000);
-  return {
-    summary:
-      'Based on the selected medicines, there is a moderate risk of gastrointestinal discomfort. It is recommended to take these medicines after food and consult your physician before continuing.',
-  };
+  // 🔴 REAL — active
+  const raw = await medicineApiCall<any>(ENDPOINTS.interactionsAiSummary, {
+    method: 'POST',
+    body: { medicine_ids: medicineIds },
+  });
+  return (raw?.data ?? raw) as { summary: string };
 }
 
 // ═══════════════════════════════════════════════════════════════

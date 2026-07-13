@@ -6,6 +6,7 @@ import { useState, useCallback } from 'react';
 import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/Languagecontext';
+import { useUsage } from '@/context/UsageContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '@/services/api';
 import { ENDPOINTS } from '@/constants/api';
@@ -13,6 +14,7 @@ import { ENDPOINTS } from '@/constants/api';
 export default function Profile() {
   const { phone, signOut } = useAuth();
   const { t } = useLang();
+  const { activePlan } = useUsage();
   const [displayName, setDisplayName] = useState('');
 
   // Refresh the display name from the real backend every time this tab is
@@ -53,9 +55,9 @@ export default function Profile() {
 
   const items = [
     { icon: 'person-outline',           label: t('account_info'),  href: '/account'         },
-    { icon: 'notifications-outline',    label: t('notifications'), href: '/notifications'   },
-    { icon: 'language-outline',         label: t('language_pref'), href: '/(auth)/language' },
+    { icon: 'star',                     label: 'Subscription & Plans', href: '/plans'       },
     { icon: 'people-outline',           label: t('family_health'), href: '/family'          },
+    { icon: 'notifications-outline',    label: t('notifications'), href: '/notifications'   },
     { icon: 'shield-checkmark-outline', label: t('legal_privacy'), href: '/legal-privacy'   },
     { icon: 'help-circle-outline',      label: t('help_support'),  href: '/help-support'    },
     { icon: 'star-outline',             label: t('rate_app'),      href: '/rate-app'        },
@@ -74,8 +76,13 @@ export default function Profile() {
               : <Ionicons name="person" size={28} color="#fff" />
             }
           </View>
-          <View>
-            <Text style={styles.name}>{displayName || t('profile')}</Text>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={styles.name}>{displayName || t('profile')}</Text>
+              <View style={styles.planBadge}>
+                <Text style={styles.planBadgeText}>{activePlan}</Text>
+              </View>
+            </View>
             <Text style={styles.sub}>{phone ?? 'guest@healthai.app'}</Text>
           </View>
         </View>
@@ -118,4 +125,15 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   rowLabel: { flex: 1, fontSize: 15, color: Colors.text },
+  planBadge: {
+    backgroundColor: Colors.primary + '20',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  planBadgeText: {
+    color: Colors.primary,
+    fontSize: 10,
+    fontWeight: '700',
+  }
 });

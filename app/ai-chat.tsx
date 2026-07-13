@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
-  View, FlatList, StyleSheet, Text, Image,
+  View, FlatList, StyleSheet, Text, Image, ScrollView,
   KeyboardAvoidingView, Platform, Pressable, TextInput,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAI } from '@/hooks/useAI';
 import { AlertBanner } from '@/components/ai/AlertBanner';
 import { ChatInput } from '@/components/ai/ChatInput';
+import { useUsage } from '@/context/UsageContext';
 import type { ChatMessage } from '@/types';
 
 const C = {
@@ -341,13 +342,27 @@ export default function AIChatScreen() {
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showSymptomChips, setShowSymptomChips] = useState(false);
-  const [showConditionCard, setShowConditionCard] = useState(false);
   const [inputText, setInputText] = useState('');
 
   const {
     messages, input, setInput, loading,
     suggestions, alert, send, clearConversation, dismissAlert,
   } = useAI(prefill, context, openSessionId);
+
+  const { canSendAiChat, incrementAiChat, setShowPaywall } = useUsage();
+
+  const handleSend = async () => {
+    if (!canSendAiChat()) {
+      setShowPaywall(true);
+      return;
+    }
+    await incrementAiChat();
+    send();
+  };
+
+  const filteredSuggestions = input.trim().length > 0
+    ? suggestions.filter(s => s.toLowerCase().includes(input.trim().toLowerCase()) && s.toLowerCase() !== input.trim().toLowerCase())
+    : [];
 
   useEffect(() => {
     const t = setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 120);
@@ -357,7 +372,6 @@ export default function AIChatScreen() {
   useEffect(() => {
     const userMsgs = messages.filter(m => m.role === 'user').length;
     if (userMsgs >= 1) setShowSymptomChips(true);
-    if (userMsgs >= 2) setShowConditionCard(true);
   }, [messages]);
 
   const renderItem = ({ item, index }: { item: ChatMessage; index: number }) => (
@@ -415,7 +429,6 @@ export default function AIChatScreen() {
                 setMenuOpen(false);
                 clearConversation();
                 setShowSymptomChips(false);
-                setShowConditionCard(false);
               }}
             >
               <Ionicons name="add-circle-outline" size={18} color={C.text} />
@@ -450,13 +463,33 @@ export default function AIChatScreen() {
           ListFooterComponent={
             <>
               {loading && <TypingBubble />}
-              {showConditionCard && !loading && <ConditionCard />}
             </>
           }
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
         />
+
+        {/* Autocomplete Suggestions */}
+        {filteredSuggestions.length > 0 && (
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            style={{ maxHeight: 44, borderTopWidth: 1, borderColor: C.border, backgroundColor: C.surface, flexShrink: 0 }}
+            contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 8, gap: 8 }}
+            keyboardShouldPersistTaps="always"
+          >
+            {filteredSuggestions.map(s => (
+              <Pressable 
+                key={s} 
+                style={({pressed}) => [styles.suggestionChip, pressed && {opacity: 0.7}]}
+                onPress={() => setInput(s)}
+              >
+                <Text style={styles.suggestionText}>{s}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
 
         {/* Input bar */}
         <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
@@ -467,13 +500,13 @@ export default function AIChatScreen() {
             <ChatInput
               value={input}
               onChangeText={setInput}
-              onSend={() => send()}
+              onSend={handleSend}
               loading={loading}
               bottomInset={0}
               inline
             />
           </View>
-          <Pressable style={styles.micBtn} onPress={() => send()}>
+          <Pressable style={styles.micBtn} onPress={handleSend}>
             {input.trim()
               ? <Ionicons name="send" size={18} color="#fff" />
               : <Ionicons name="mic" size={20} color="#fff" />
@@ -535,4 +568,14 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     flexShrink: 0,
   },
+  suggestionChip: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1, borderColor: '#BFDBFE',
+    justifyContent: 'center'
+  },
+  suggestionText: {
+    fontSize: 13, color: '#1D4ED8', fontWeight: '500'
+  }
 });

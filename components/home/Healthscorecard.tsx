@@ -21,6 +21,8 @@ interface Props {
   stableOverReports?: number;
   /** When true, renders the "no reports yet" empty state (Image 1) */
   hasReports?: boolean;
+  attentionReportId?: string;
+  onAttentionPress?: () => void;
 }
 
 // ── Empty state (no reports uploaded yet) ── Image 1
@@ -129,14 +131,16 @@ function EmptyHealthScore({ onUpload }: { onUpload: () => void }) {
 
 // ── Filled state (reports uploaded) ── Image 2
 function FilledHealthScore({
-  score,
-  label,
-  normalCount,
-  reportsAnalyzed,
-  lastUpdated,
-  attentionCount,
-  stableOverReports,
-}: Required<Omit<Props, "hasReports">>) {
+  score = 0,
+  label = "—",
+  normalCount = 0,
+  reportsAnalyzed = 0,
+  lastUpdated = "—",
+  attentionCount = 0,
+  stableOverReports = 0,
+  attentionReportId,
+  onAttentionPress,
+}: Omit<Props, "hasReports">) {
   const { width } = useWindowDimensions();
   const SIZE = Math.min(width * 0.38, 152);
   const STROKE = SIZE * 0.07;
@@ -239,12 +243,15 @@ function FilledHealthScore({
 
       {/* ── Attention banner ── */}
       {attentionCount > 0 && (
-        <Pressable style={styles.attentionBanner} onPress={() => router.push("/analysis")}>
+        <Pressable
+          style={styles.attentionBanner}
+          onPress={onAttentionPress}
+        >
           <View style={styles.attentionIcon}>
             <Ionicons name="alert-circle" size={20} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.attentionTop}>Current Report:</Text>
+            <Text style={styles.attentionTop}>Health Alerts:</Text>
             <Text style={styles.attentionBottom}>{attentionCount} findings need attention</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
@@ -264,6 +271,8 @@ export function HealthScoreCard({
   attentionCount = 0,
   stableOverReports = 0,
   hasReports = false,
+  attentionReportId,
+  onAttentionPress,
 }: Props) {
   if (!hasReports) {
     return <EmptyHealthScore onUpload={() => router.push("/upload")} />;
@@ -277,6 +286,8 @@ export function HealthScoreCard({
       lastUpdated={lastUpdated}
       attentionCount={attentionCount}
       stableOverReports={stableOverReports}
+      attentionReportId={attentionReportId}
+      onAttentionPress={onAttentionPress}
     />
   );
 }

@@ -44,11 +44,11 @@ const QUICK_ACTIONS = [
   { icon: 'pulse-outline' as const,          label: 'Symptom\nChecker',   bg: '#F3F0FF', color: '#7C3AED', prefill: 'I have these symptoms, can you help me understand what they might mean?' },
   { icon: 'calendar-outline' as const,       label: 'Book\nDoctor',       bg: '#EFF6FF', color: '#2563EB', prefill: 'I would like to book a doctor appointment.' },
   { icon: 'medkit-outline' as const,         label: 'Order\nMedicine',    bg: '#FFF7ED', color: '#EA580C', prefill: 'I want to order my recommended medicines.' },
-  { icon: 'document-text-outline' as const,  label: 'Upload\nReports',    bg: '#F0FDF4', color: '#16A34A', prefill: 'I want to upload a new health report for analysis.' },
-  { icon: 'folder-open-outline' as const,    label: 'Health\nRecords',    bg: '#FDF4FF', color: '#C026D3', prefill: 'Show me a summary of my health records.' },
-  { icon: 'alarm-outline' as const,          label: 'Medicine\nReminder', bg: '#FFFBEB', color: '#D97706', prefill: 'Help me set up a medicine reminder.' },
+  { icon: 'document-text-outline' as const,  label: 'Upload\nReports',    bg: '#F0FDF4', color: '#16A34A', route: '/upload' as any },
+  { icon: 'folder-open-outline' as const,    label: 'Health\nRecords',    bg: '#FDF4FF', color: '#C026D3', route: '/reports' as any },
+  { icon: 'alarm-outline' as const,          label: 'Medicine\nReminder', bg: '#FFFBEB', color: '#D97706', route: '/medicines/reminders' as any },
   { icon: 'flask-outline' as const,          label: 'Lab\nTests',         bg: '#ECFEFF', color: '#0891B2', prefill: 'What lab tests should I consider getting done?' },
-  { icon: 'alert-circle-outline' as const,   label: 'Emergency\nSOS',     bg: '#FEF2F2', color: '#DC2626', prefill: 'I have a medical emergency, what should I do?' },
+  { icon: 'alert-circle-outline' as const,   label: 'Emergency\nSOS',     bg: '#FEF2F2', color: '#DC2626', route: '/family/emergency' as any },
 ];
 
 export default function AIHomeScreen() {
@@ -150,7 +150,10 @@ export default function AIHomeScreen() {
               <Pressable
                 key={a.label}
                 style={({ pressed }) => [styles.gridItem, pressed && { opacity: 0.72 }]}
-                onPress={() => goToChat(a.prefill)}
+                onPress={() => {
+                  if (a.route) router.push(a.route);
+                  else if (a.prefill) goToChat(a.prefill);
+                }}
               >
                 <View style={[styles.gridIconWrap, { backgroundColor: a.bg }]}>
                   <Ionicons name={a.icon} size={22} color={a.color} />

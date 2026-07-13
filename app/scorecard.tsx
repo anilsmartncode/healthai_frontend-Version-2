@@ -34,18 +34,18 @@ interface Scorecard {
 }
 
 const RISK_CONFIG: Record<RiskLevel, { icon: keyof typeof Ionicons.glyphMap; color: string; bg: string; label: string }> = {
-  low:      { icon: 'checkmark-circle', color: Colors.success, bg: '#DCFCE7', label: 'Low Risk' },
-  moderate: { icon: 'warning',          color: Colors.warning, bg: '#FEF3C7', label: 'Moderate Risk' },
-  high:     { icon: 'alert-circle',     color: Colors.danger,  bg: '#FEE2E2', label: 'High Risk' },
+  low: { icon: 'checkmark-circle', color: Colors.success, bg: '#DCFCE7', label: 'Low Risk' },
+  moderate: { icon: 'warning', color: Colors.warning, bg: '#FEF3C7', label: 'Moderate Risk' },
+  high: { icon: 'alert-circle', color: Colors.danger, bg: '#FEE2E2', label: 'High Risk' },
 };
 
 function GaugeChart({ score, size = 160 }: { score: number; size?: number }) {
-  const stroke   = size * 0.08;
-  const radius   = (size - stroke) / 2;
-  const circ     = 2 * Math.PI * radius;
-  const color    = score >= 80 ? Colors.success : score >= 60 ? Colors.warning : Colors.danger;
-  const offset   = circ - (score / 100) * circ;
-  const label    = score >= 80 ? 'Good' : score >= 60 ? 'Moderate' : 'At Risk';
+  const stroke = size * 0.08;
+  const radius = (size - stroke) / 2;
+  const circ = 2 * Math.PI * radius;
+  const color = score >= 80 ? Colors.success : score >= 60 ? Colors.warning : Colors.danger;
+  const offset = circ - (score / 100) * circ;
+  const label = score >= 80 ? 'Good' : score >= 60 ? 'Moderate' : 'At Risk';
 
   return (
     <View style={{ alignItems: 'center', justifyContent: 'center', width: size, height: size }}>
@@ -83,8 +83,8 @@ export default function ScorecardScreen() {
   const sc = scorecard ?? {
     overallScore: 85, scoreLabel: 'Good',
     riskIndicators: [
-      { label: 'Diabetes',             level: 'low'      as RiskLevel, disease: 'Diabetes' },
-      { label: 'Heart Disease',        level: 'low'      as RiskLevel, disease: 'Heart Disease' },
+      { label: 'Diabetes', level: 'low' as RiskLevel, disease: 'Diabetes' },
+      { label: 'Heart Disease', level: 'low' as RiskLevel, disease: 'Heart Disease' },
       { label: 'Vitamin D Deficiency', level: 'moderate' as RiskLevel, disease: 'Vitamin D Deficiency' },
     ],
     trend: 'stable' as const, lastUpdated: 'Recently', totalReports: 5,
@@ -161,25 +161,25 @@ export default function ScorecardScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe:         { flex: 1, backgroundColor: Colors.bg },
-  header:       { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 10 },
-  backBtn:      { padding: 4 },
-  headerTitle:  { flex: 1, fontSize: 18, fontWeight: '700', color: Colors.text },
-  bellBtn:      { padding: 4 },
-  body:         { padding: 16, gap: 16, paddingBottom: 40 },
-  gaugeCard:    { backgroundColor: Colors.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, padding: 20, alignItems: 'center', gap: 12 },
-  gaugeSubtitle:{ fontSize: 13, color: Colors.textMuted, fontWeight: '600' },
+  safe: { flex: 1, backgroundColor: Colors.bg },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 10 },
+  backBtn: { padding: 4 },
+  headerTitle: { flex: 1, fontSize: 18, fontWeight: '700', color: Colors.text },
+  bellBtn: { padding: 4 },
+  body: { padding: 16, gap: 16, paddingBottom: 40 },
+  gaugeCard: { backgroundColor: Colors.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, padding: 20, alignItems: 'center', gap: 12 },
+  gaugeSubtitle: { fontSize: 13, color: Colors.textMuted, fontWeight: '600' },
   gaugeMotivation: { fontSize: 14, color: Colors.textMuted, textAlign: 'center', lineHeight: 20 },
-  section:      { gap: 10 },
+  section: { gap: 10 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: Colors.text },
-  riskRow:      { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, padding: 12 },
+  riskRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, padding: 12 },
   riskIconWrap: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  riskInfo:     { flex: 1 },
-  riskLabel:    { fontSize: 14, fontWeight: '600', color: Colors.text },
-  riskDisease:  { fontSize: 12, color: Colors.textMuted },
-  trendCard:    { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, padding: 14 },
-  trendTitle:   { fontSize: 14, fontWeight: '600', color: Colors.text },
-  trendSub:     { fontSize: 12, color: Colors.textMuted },
-  primaryBtn:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.primary, borderRadius: Radius.pill, paddingVertical: 16, marginTop: 4 },
-  primaryBtnText:{ color: '#fff', fontSize: 16, fontWeight: '700' },
+  riskInfo: { flex: 1 },
+  riskLabel: { fontSize: 14, fontWeight: '600', color: Colors.text },
+  riskDisease: { fontSize: 12, color: Colors.textMuted },
+  trendCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, padding: 14 },
+  trendTitle: { fontSize: 14, fontWeight: '600', color: Colors.text },
+  trendSub: { fontSize: 12, color: Colors.textMuted },
+  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.primary, borderRadius: Radius.pill, paddingVertical: 16, marginTop: 4 },
+  primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

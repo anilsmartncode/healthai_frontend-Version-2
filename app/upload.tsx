@@ -10,7 +10,7 @@ import {
   View, Text, StyleSheet, Pressable, ActivityIndicator, Alert, Modal,
 } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, Stack } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/Button';
 import { Colors, Radius } from '@/constants/Colors';
 import { useLang } from '@/context/Languagecontext';
 import { useAuth } from '@/context/AuthContext';
+import { useUsage } from '@/context/UsageContext';
 import { reportsApi } from '@/services/reportsApi';
 import { generateReportNarrative } from '@/services/aiService';
 
@@ -57,13 +58,14 @@ function validatePickedFile(name: string): boolean {
 
 // ── Analysis consent modal ─────────────────────────────────────────────────
 function AnalysisPermissionModal({
-  file, visible, onConfirm, onCancel, isSubmitting,
+  file, visible, onConfirm, onCancel, isSubmitting, context,
 }: {
   file: PickedFile | null;
   visible: boolean;
   onConfirm: () => void;
   onCancel: () => void;
   isSubmitting: boolean;
+  context?: string;
 }) {
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -75,7 +77,7 @@ function AnalysisPermissionModal({
 
           <Text style={perm.title}>Allow AI Analysis?</Text>
           <Text style={perm.sub}>
-            Your report will be securely sent to our AI to extract lab values and
+            Your {context === 'prescription' ? 'prescription' : 'report'} will be securely sent to our AI to extract {context === 'prescription' ? 'medicines' : 'lab values'} and
             generate health insights. It is never shared with third parties.
           </Text>
 
@@ -114,7 +116,7 @@ function AnalysisPermissionModal({
             {isSubmitting ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Text style={perm.confirmText}>Yes, Analyze Report</Text>
+              <Text style={perm.confirmText}>{context === 'prescription' ? 'Yes, Analyze Prescription' : 'Yes, Analyze Report'}</Text>
             )}
           </Pressable>
           <Pressable style={perm.cancelBtn} onPress={onCancel}>
@@ -130,12 +132,13 @@ function AnalysisPermissionModal({
 export default function Upload() {
   const { t } = useLang();
   const { phone } = useAuth();
-  const { memberId } = useLocalSearchParams<{ memberId?: string }>();
-  const [file, setFile]                   = useState<PickedFile | null>(null);
-  const [loading, setLoading]             = useState(false);
+  const { canUploadReport, incrementReportUpload, setShowPaywall } = useUsage();
+  const { memberId, context } = useLocalSearchParams<{ memberId?: string, context?: string }>();
+  const [file, setFile] = useState<PickedFile | null>(null);
+  const [loading, setLoading] = useState(false);
   const [showPermModal, setShowPermModal] = useState(false);
-  const [elapsedSec, setElapsedSec]       = useState(0);
-  const [isAnalyzing, setIsAnalyzing]     = useState(false);
+  const [elapsedSec, setElapsedSec] = useState(0);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   // Belt-and-suspenders guard: a ref (not state) so the check is synchronous
   // and can't be bypassed by two onPress events firing before a re-render
   // commits. This is what actually stops a double-tap from sending two
@@ -158,6 +161,7 @@ export default function Upload() {
 
   // ── Camera: request permission FIRST, then launch ──
   const camera = async () => {
+    if (!canUploadReport()) return setShowPaywall(true);
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert(
@@ -178,6 +182,7 @@ export default function Upload() {
 
   // ── Gallery: request media-library permission FIRST, then launch ──
   const pickImage = async () => {
+    if (!canUploadReport()) return setShowPaywall(true);
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert(
@@ -201,6 +206,7 @@ export default function Upload() {
 
   // ── Document picker — no extra permission needed on modern Android/iOS ──
   const pickDoc = async () => {
+    if (!canUploadReport()) return setShowPaywall(true);
     const r = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'image/*'] });
     if (!r.canceled && r.assets?.[0]) {
       const a = r.assets[0];
@@ -211,6 +217,7 @@ export default function Upload() {
 
   // Step 1: show AI analysis consent modal
   const handleSendPress = () => {
+    if (!canUploadReport()) return setShowPaywall(true);
     if (!file) return;
     setShowPermModal(true);
   };
@@ -243,6 +250,10 @@ export default function Upload() {
       if (memberId) {
         formData.append('member_id', memberId);
       }
+      
+      // Tell the backend what kind of file this is (report vs prescription)
+      // so it can trigger the right AI extraction prompt.
+      formData.append('document_type', context);
 
       console.log(
         `[upload] sending file "${file.name}" — ${file.size ? (file.size / 1024 / 1024).toFixed(2) + ' MB' : 'size unknown'}`
@@ -259,6 +270,8 @@ export default function Upload() {
           'Already Uploaded',
           'This report was already uploaded and analyzed previously. Showing the existing analysis.'
         );
+      } else {
+        await incrementReportUpload();
       }
 
       // ── Navigate immediately — don't block on generateReportNarrative ───────
@@ -266,35 +279,45 @@ export default function Upload() {
       // navigation. If it's slow or fails the user never sees the result even
       // though the report was fully analyzed. Navigate first, fire narrative
       // generation in the background (non-blocking).
-      router.push({
-        pathname: '/analysis',
-        params: {
-          reportId:          String(result.reportId),
-          patientName:       result.patientName,
-          hospitalName:      result.hospitalName,
-          summary:           result.summary,
-          values:            JSON.stringify(result.values),
-          detectedMedicines: JSON.stringify(result.detectedMedicines),
-          narrative:         '',
-        },
-      });
+      if (context === 'prescription') {
+        router.push({
+          pathname: '/medicines/prescription-review',
+          params: {
+            detectedMedicines: JSON.stringify(result.detectedMedicines),
+          },
+        });
+      } else {
+        router.push({
+          pathname: '/analysis',
+          params: {
+            reportId: String(result.reportId),
+            patientName: result.patientName,
+            hospitalName: result.hospitalName,
+            summary: result.summary,
+            values: JSON.stringify(result.values),
+            detectedMedicines: JSON.stringify(result.detectedMedicines),
+            narrative: '',
+          },
+        });
+      }
 
       // Background narrative generation — errors silently ignored
       try {
         let parsedSummary: any = null;
-        try { parsedSummary = result.summary ? JSON.parse(result.summary) : null; } catch {}
+        try { parsedSummary = result.summary ? JSON.parse(result.summary) : null; } catch { }
         generateReportNarrative(
           result.reportType ?? 'Report',
           result.values?.filter((v: any) => v.status === 'high' || v.status === 'low').length ?? 0,
           parsedSummary?.health_score ?? 75,
           parsedSummary?.abnormal_findings ?? [],
-        ).catch(() => {});
-      } catch {}
+        ).catch(() => { });
+      } catch { }
     } catch (err: any) {
       const isCancelled = err?.message === 'Analysis cancelled';
       const isTimeout =
         !isCancelled &&
         (err?.name === 'AbortError' || /timeout|timed out|150s/i.test(err?.message ?? ''));
+      const isNameMismatch = /name mismatch/i.test(err?.message ?? '') || err?.code === 'NAME_MISMATCH';
 
       if (isCancelled) {
         // User tapped Stop — silent exit, stay on upload screen so they can retry
@@ -310,6 +333,11 @@ export default function Upload() {
             },
             { text: 'Stay Here', style: 'cancel' },
           ]
+        );
+      } else if (isNameMismatch) {
+        Alert.alert(
+          'Name Mismatch',
+          'Your name and the report name are not matching. Analysis cannot proceed for security reasons.'
         );
       } else {
         Alert.alert('Analysis Failed', err.message);
@@ -327,6 +355,7 @@ export default function Upload() {
 
   return (
     <View style={styles.c}>
+      <Stack.Screen options={{ title: context === 'prescription' ? 'Upload Prescription' : t('upload_report') }} />
       {/* Analyzing overlay */}
       <Modal visible={loading} transparent animationType="fade">
         <View style={styles.overlay}>
@@ -368,6 +397,7 @@ export default function Upload() {
         onConfirm={handleConfirmedAnalysis}
         onCancel={() => setShowPermModal(false)}
         isSubmitting={isAnalyzing}
+        context={context}
       />
 
       <Pressable onPress={pickDoc}>
@@ -382,7 +412,7 @@ export default function Upload() {
           ) : (
             <>
               <Ionicons name="cloud-upload-outline" size={64} color={Colors.primary} />
-              <Text style={styles.title}>{t('upload_report')}</Text>
+              <Text style={styles.title}>{context === 'prescription' ? 'Upload Prescription' : t('upload_report')}</Text>
               <Text style={styles.sub}>(JPG, PNG, PDF | Max 10MB)</Text>
             </>
           )}
@@ -419,41 +449,41 @@ export default function Upload() {
 }
 
 const styles = StyleSheet.create({
-  c:            { flex: 1, padding: 16, backgroundColor: Colors.bg, gap: 16 },
-  dropzone:     { alignItems: 'center', justifyContent: 'center', paddingVertical: 40, borderStyle: 'dashed', gap: 8 },
-  title:        { fontSize: 16, fontWeight: '600', color: Colors.text },
-  fileName:     { fontSize: 15, fontWeight: '600', color: Colors.text, maxWidth: '80%' },
-  fileSize:     { fontSize: 12, color: Colors.textMuted },
-  sub:          { color: Colors.textMuted, fontSize: 12 },
-  or:           { textAlign: 'center', color: Colors.textMuted },
-  row:          { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
-  opt:          { flex: 1, alignItems: 'center', padding: 16, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md, gap: 6, backgroundColor: Colors.surface },
-  optLabel:     { fontSize: 12, color: Colors.text, textAlign: 'center' },
-  sendBtn:      { borderRadius: Radius.lg, paddingVertical: 16 },
-  overlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  overlayCard:  { backgroundColor: '#fff', borderRadius: Radius.xl, padding: 32, alignItems: 'center', gap: 12, marginHorizontal: 32 },
-  overlayTitle:   { fontSize: 18, fontWeight: '700', color: Colors.text },
-  overlaySub:     { fontSize: 14, color: Colors.textMuted, textAlign: 'center', lineHeight: 22 },
-  overlayStopBtn:  { marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 20, borderRadius: Radius.pill, borderWidth: 1.5, borderColor: Colors.danger, backgroundColor: '#FEF2F2' },
+  c: { flex: 1, padding: 16, backgroundColor: Colors.bg, gap: 16 },
+  dropzone: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40, borderStyle: 'dashed', gap: 8 },
+  title: { fontSize: 16, fontWeight: '600', color: Colors.text },
+  fileName: { fontSize: 15, fontWeight: '600', color: Colors.text, maxWidth: '80%' },
+  fileSize: { fontSize: 12, color: Colors.textMuted },
+  sub: { color: Colors.textMuted, fontSize: 12 },
+  or: { textAlign: 'center', color: Colors.textMuted },
+  row: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
+  opt: { flex: 1, alignItems: 'center', padding: 16, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md, gap: 6, backgroundColor: Colors.surface },
+  optLabel: { fontSize: 12, color: Colors.text, textAlign: 'center' },
+  sendBtn: { borderRadius: Radius.lg, paddingVertical: 16 },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  overlayCard: { backgroundColor: '#fff', borderRadius: Radius.xl, padding: 32, alignItems: 'center', gap: 12, marginHorizontal: 32 },
+  overlayTitle: { fontSize: 18, fontWeight: '700', color: Colors.text },
+  overlaySub: { fontSize: 14, color: Colors.textMuted, textAlign: 'center', lineHeight: 22 },
+  overlayStopBtn: { marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 20, borderRadius: Radius.pill, borderWidth: 1.5, borderColor: Colors.danger, backgroundColor: '#FEF2F2' },
   overlayStopText: { fontSize: 14, color: Colors.danger, fontWeight: '700' },
 });
 
 const perm = StyleSheet.create({
-  overlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  sheet:       { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 14, paddingBottom: 36 },
-  iconWrap:    { alignSelf: 'center', width: 64, height: 64, borderRadius: 32, backgroundColor: Colors.primary + '15', justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
-  title:       { fontSize: 20, fontWeight: '800', color: Colors.text, textAlign: 'center' },
-  sub:         { fontSize: 14, color: Colors.textMuted, textAlign: 'center', lineHeight: 21 },
-  fileCard:    { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.bg, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, padding: 12 },
-  fileInfo:    { flex: 1 },
-  fileName:    { fontSize: 14, fontWeight: '600', color: Colors.text },
-  fileMeta:    { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-  bullets:     { gap: 8 },
-  bullet:      { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  bulletText:  { flex: 1, fontSize: 13, color: Colors.text, lineHeight: 20 },
-  confirmBtn:  { backgroundColor: Colors.primary, borderRadius: Radius.pill, paddingVertical: 15, alignItems: 'center', marginTop: 4 },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 14, paddingBottom: 36 },
+  iconWrap: { alignSelf: 'center', width: 64, height: 64, borderRadius: 32, backgroundColor: Colors.primary + '15', justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
+  title: { fontSize: 20, fontWeight: '800', color: Colors.text, textAlign: 'center' },
+  sub: { fontSize: 14, color: Colors.textMuted, textAlign: 'center', lineHeight: 21 },
+  fileCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.bg, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, padding: 12 },
+  fileInfo: { flex: 1 },
+  fileName: { fontSize: 14, fontWeight: '600', color: Colors.text },
+  fileMeta: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
+  bullets: { gap: 8 },
+  bullet: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  bulletText: { flex: 1, fontSize: 13, color: Colors.text, lineHeight: 20 },
+  confirmBtn: { backgroundColor: Colors.primary, borderRadius: Radius.pill, paddingVertical: 15, alignItems: 'center', marginTop: 4 },
   confirmBtnDisabled: { opacity: 0.6 },
   confirmText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  cancelBtn:   { alignItems: 'center', paddingVertical: 10 },
-  cancelText:  { color: Colors.textMuted, fontSize: 15, fontWeight: '500' },
+  cancelBtn: { alignItems: 'center', paddingVertical: 10 },
+  cancelText: { color: Colors.textMuted, fontSize: 15, fontWeight: '500' },
 });

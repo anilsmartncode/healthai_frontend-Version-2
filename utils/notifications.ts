@@ -31,8 +31,9 @@ export async function requestNotificationPermissions() {
       await Notifications.setNotificationChannelAsync('reminders', {
         name: 'Medicine Reminders',
         importance: Notifications.AndroidImportance.HIGH,
-        vibrationPattern: [0, 250, 250, 250],
+        vibrationPattern: [0, 500, 500, 500],
         lightColor: '#0066FF',
+        sound: 'alarm.wav',
       });
     } catch (e) {
       console.warn('[Notifications] Could not set Android channel', e);
@@ -105,7 +106,7 @@ export async function scheduleReminderNotification(id: string, title: string, bo
       content: {
         title,
         body,
-        sound: true,
+        sound: 'alarm.wav',
         categoryIdentifier: 'reminder-actions',
         data: { reminderId: id }, // Pass the ID in data so the listener can read it
       },

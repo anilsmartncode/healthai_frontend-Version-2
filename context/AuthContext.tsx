@@ -4,6 +4,8 @@ import { reportStorageKey, reportDetailsStorageKey } from '@/services/reportsApi
 import { medicineStorageKey, reminderStorageKey } from '@/services/medicineTabApi';
 import { STORAGE_KEYS as AI_STORAGE_KEYS } from '@/services/aiService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DeviceEventEmitter } from 'react-native';
+import { router } from 'expo-router';
 
 interface AuthState {
   token: string | null;
@@ -100,6 +102,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPhone(null);
     setMemberId(null);
   };
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('SESSION_EXPIRED', async () => {
+      await signOut();
+      router.replace('/(auth)/onboarding');
+    });
+    return () => sub.remove();
+  }, []);
 
   // 🔴 REAL — exchanges the stored refresh_token for a new access token.
   // Doesn't auto-sign-out on failure here; the caller (e.g. an API wrapper

@@ -60,28 +60,12 @@ const apiCall = async (url: string, payload: unknown) => {
 // =========================
 // AUTH APIs
 // =========================
+export const firebaseLoginApi = async (idToken: string) => {
+  return apiCall(ENDPOINTS.firebaseLogin, { idToken });
+};
+
 export const loginApi = async (email: string, password: string) => {
   return apiCall(ENDPOINTS.login, { email, password });
-};
-
-export const signupApi = async (
-  full_name: string,
-  email: string,
-  password: string
-) => {
-  return apiCall(ENDPOINTS.signup, { full_name, email, password });
-};
-
-export const googleLoginApi = async (token: string) => {
-  return apiCall(ENDPOINTS.googleLogin, { token });
-};
-
-export const sendOtpApi = async (phone: string) => {
-  return apiCall(ENDPOINTS.sendOtp, { phone });
-};
-
-export const verifyOtpApi = async (phone: string, otp: string) => {
-  return apiCall(ENDPOINTS.verifyOtp, { phone, otp });
 };
 
 // =========================

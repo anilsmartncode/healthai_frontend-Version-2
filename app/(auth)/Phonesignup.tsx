@@ -16,7 +16,13 @@ import {
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Path, G, ClipPath, Rect, Defs } from "react-native-svg";
-import { sendOtpApi, verifyOtpApi } from "@/services/authapi/apiService";
+import { firebaseLoginApi } from "@/services/authapi/apiService";
+import { signInWithGoogle } from "@/utils/googleAuth";
+// Lazy-load Firebase Auth so the page still opens in Expo Go
+function getAuth() {
+  const mod = require('@react-native-firebase/auth');
+  return (mod.default || mod)();
+}
 import { useAuth } from "@/context/AuthContext";
 
 // ── Scalers ───────────────────────────────────────────
@@ -106,7 +112,7 @@ function OtpInput({
 }) {
   const { rs, ms } = useScalers();
   const inputs = useRef<(TextInput | null)[]>([]);
-  const OTP_LENGTH = 4;
+  const OTP_LENGTH = 6;
   const digits = value.padEnd(OTP_LENGTH, " ").split("").slice(0, OTP_LENGTH);
 
   const handleChange = (text: string, idx: number) => {
@@ -139,10 +145,10 @@ function OtpInput({
     }
   };
 
-  const boxSize = rs(62);
+  const boxSize = rs(46);
 
   return (
-    <View style={{ flexDirection: "row", gap: rs(12), justifyContent: "center" }}>
+    <View style={{ flexDirection: "row", gap: rs(8), justifyContent: "center" }}>
       {digits.map((d, i) => (
         <TextInput
           key={i}
@@ -413,6 +419,7 @@ export default function PhoneSignup() {
   const [loading, setLoading]             = useState(false);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [resendTimer, setResendTimer]     = useState(0);
+  const [confirm, setConfirm]             = useState<any>(null);
   const [errors, setErrors]               = useState<{
     phone?: string;
     otp?: string;
@@ -444,7 +451,6 @@ export default function PhoneSignup() {
   const fullNumber = `${country.dial}${phone}`;
 
   // ── Step 1: Validate phone & send OTP ──
-  // 🔴 REAL — active
   const handleSendOtp = async () => {
     const next: typeof errors = {};
     if (!phone.trim() || phone.replace(/\D/g, "").length < 7)
@@ -452,7 +458,8 @@ export default function PhoneSignup() {
     if (Object.keys(next).length) { setErrors(next); return; }
     try {
       setLoading(true);
-      await sendOtpApi(fullNumber);
+      const confirmation = await getAuth().signInWithPhoneNumber(fullNumber);
+      setConfirm(confirmation);
       setResendTimer(60);
       setStep("otp");
     } catch (e: any) {
@@ -461,50 +468,32 @@ export default function PhoneSignup() {
       setLoading(false);
     }
   };
-
-  // 🟢 MOCK — uncomment this and comment out REAL above to use mock
-  /*
-  const handleSendOtp = async () => {
-    const next: typeof errors = {};
-    if (!phone.trim() || phone.replace(/\D/g, "").length < 7)
-      next.phone = "Enter a valid phone number";
-    if (Object.keys(next).length) { setErrors(next); return; }
-    try {
-      setLoading(true);
-      await new Promise((r) => setTimeout(r, 900));        // fake network delay
-      console.log("[MOCK] OTP sent to", fullNumber, "→ use 1234");
-      setResendTimer(60);
-      setStep("otp");
-    } catch (e: any) {
-      setErrors({ phone: e.message || "Failed to send OTP" });
-    } finally {
-      setLoading(false);
-    }
-  };
-  */
 
   // ── Step 2: Verify OTP ── (called automatically when 4 digits filled)
-  // 🔴 REAL — active
   const handleVerifyOtp = async (otpValue?: string) => {
     const code = otpValue ?? otp;
-    if (code.replace(/\s/g, "").length < 4) {
-      setErrors({ otp: "Enter the 4-digit code" });
+    if (code.replace(/\s/g, "").length < 6) {
+      setErrors({ otp: "Enter the code" });
       return;
     }
     try {
       setLoading(true);
-      const verifyData = await verifyOtpApi(fullNumber, code.trim());
+      const userCredential = await confirm.confirm(code.trim());
+      const idToken = await userCredential.user.getIdToken();
+      
+      const verifyData = await firebaseLoginApi(idToken);
       if (verifyData?.token) {
         await signIn(verifyData.token, fullNumber, verifyData.member_id ?? verifyData.user_id ?? null, verifyData.refresh_token ?? null);
         router.replace("/(auth)/PersonOnboardingScreen");
-      } else if (verifyData?.verified === true) {
-        await signIn("verified-" + fullNumber, fullNumber);
-        router.replace("/(auth)/PersonOnboardingScreen");
       } else {
-        setErrors({ otp: verifyData?.message || "Verification failed" });
+        setErrors({ otp: verifyData?.message || "Verification failed on backend" });
       }
     } catch (e: any) {
-      setErrors({ otp: e.message || "Invalid or expired code" });
+      if (e.code === 'auth/invalid-verification-code') {
+        setErrors({ otp: "Invalid or expired code" });
+      } else {
+        setErrors({ otp: e.message || "Invalid code" });
+      }
     } finally {
       setLoading(false);
     }
@@ -578,7 +567,8 @@ export default function PhoneSignup() {
     clearError("otp");
     try {
       setLoading(true);
-      await sendOtpApi(fullNumber);
+      const confirmation = await getAuth().signInWithPhoneNumber(fullNumber);
+      setConfirm(confirmation);
       setResendTimer(60);
     } catch (e: any) {
       setErrors({ otp: e.message || "Failed to resend OTP" });
@@ -638,7 +628,7 @@ export default function PhoneSignup() {
               </Text>
               <Text style={styles.welcomeSub}>
                 {step === "otp"
-                  ? `We sent a 4-digit code to\n${country.flag} ${fullNumber}`
+                  ? `We sent a 6-digit code to\n${country.flag} ${fullNumber}`
                   : "Enter your phone number to get started."}
               </Text>
             </View>
@@ -802,7 +792,7 @@ export default function PhoneSignup() {
                 <Text style={styles.fieldHint}>
                   {loading
                     ? "Verifying code automatically…"
-                    : "Enter the 4-digit code sent via SMS"}
+                    : "Enter the 6-digit code sent via SMS"}
                 </Text>
                 <View style={{ marginTop: vs(14), paddingVertical: vs(4), overflow: "visible" }}>
                   <OtpInput

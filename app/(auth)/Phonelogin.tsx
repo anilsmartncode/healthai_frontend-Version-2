@@ -16,7 +16,13 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Path, G, ClipPath, Rect, Defs } from "react-native-svg";
 import { Colors, Radius } from "@/constants/Colors";
-import { sendOtpApi, verifyOtpApi } from "@/services/authapi/apiService";
+import { firebaseLoginApi } from "@/services/authapi/apiService";
+import { signInWithGoogle } from "@/utils/googleAuth";
+// Lazy-load Firebase Auth so the page still opens in Expo Go
+function getAuth() {
+  const mod = require('@react-native-firebase/auth');
+  return (mod.default || mod)();
+}
 import { useAuth } from "@/context/AuthContext";
 
 // ── Scalers ───────────────────────────────────────────
@@ -40,26 +46,26 @@ interface Country {
 
 // ── Country list ──────────────────────────────────────
 const COUNTRIES: Country[] = [
-  { name: "India",          code: "IN", dial: "+91", flag: "🇮🇳" },
-  { name: "United States",  code: "US", dial: "+1",  flag: "🇺🇸" },
+  { name: "India", code: "IN", dial: "+91", flag: "🇮🇳" },
+  { name: "United States", code: "US", dial: "+1", flag: "🇺🇸" },
   { name: "United Kingdom", code: "GB", dial: "+44", flag: "🇬🇧" },
-  { name: "Australia",      code: "AU", dial: "+61", flag: "🇦🇺" },
-  { name: "Canada",         code: "CA", dial: "+1",  flag: "🇨🇦" },
-  { name: "Germany",        code: "DE", dial: "+49", flag: "🇩🇪" },
-  { name: "France",         code: "FR", dial: "+33", flag: "🇫🇷" },
-  { name: "UAE",            code: "AE", dial: "+971", flag: "🇦🇪" },
-  { name: "Singapore",      code: "SG", dial: "+65", flag: "🇸🇬" },
-  { name: "Japan",          code: "JP", dial: "+81", flag: "🇯🇵" },
-  { name: "Brazil",         code: "BR", dial: "+55", flag: "🇧🇷" },
-  { name: "South Africa",   code: "ZA", dial: "+27", flag: "🇿🇦" },
-  { name: "Nigeria",        code: "NG", dial: "+234", flag: "🇳🇬" },
-  { name: "Pakistan",       code: "PK", dial: "+92", flag: "🇵🇰" },
-  { name: "Bangladesh",     code: "BD", dial: "+880", flag: "🇧🇩" },
-  { name: "Indonesia",      code: "ID", dial: "+62", flag: "🇮🇩" },
-  { name: "Philippines",    code: "PH", dial: "+63", flag: "🇵🇭" },
-  { name: "Malaysia",       code: "MY", dial: "+60", flag: "🇲🇾" },
-  { name: "Kenya",          code: "KE", dial: "+254", flag: "🇰🇪" },
-  { name: "Mexico",         code: "MX", dial: "+52", flag: "🇲🇽" },
+  { name: "Australia", code: "AU", dial: "+61", flag: "🇦🇺" },
+  { name: "Canada", code: "CA", dial: "+1", flag: "🇨🇦" },
+  { name: "Germany", code: "DE", dial: "+49", flag: "🇩🇪" },
+  { name: "France", code: "FR", dial: "+33", flag: "🇫🇷" },
+  { name: "UAE", code: "AE", dial: "+971", flag: "🇦🇪" },
+  { name: "Singapore", code: "SG", dial: "+65", flag: "🇸🇬" },
+  { name: "Japan", code: "JP", dial: "+81", flag: "🇯🇵" },
+  { name: "Brazil", code: "BR", dial: "+55", flag: "🇧🇷" },
+  { name: "South Africa", code: "ZA", dial: "+27", flag: "🇿🇦" },
+  { name: "Nigeria", code: "NG", dial: "+234", flag: "🇳🇬" },
+  { name: "Pakistan", code: "PK", dial: "+92", flag: "🇵🇰" },
+  { name: "Bangladesh", code: "BD", dial: "+880", flag: "🇧🇩" },
+  { name: "Indonesia", code: "ID", dial: "+62", flag: "🇮🇩" },
+  { name: "Philippines", code: "PH", dial: "+63", flag: "🇵🇭" },
+  { name: "Malaysia", code: "MY", dial: "+60", flag: "🇲🇾" },
+  { name: "Kenya", code: "KE", dial: "+254", flag: "🇰🇪" },
+  { name: "Mexico", code: "MX", dial: "+52", flag: "🇲🇽" },
 ];
 
 // ── Google SVG ────────────────────────────────────────
@@ -106,7 +112,7 @@ function OtpInput({
 }) {
   const { rs, ms } = useScalers();
   const inputs = useRef<(TextInput | null)[]>([]);
-  const OTP_LENGTH = 4;
+  const OTP_LENGTH = 6;
   const digits = value.padEnd(OTP_LENGTH, " ").split("").slice(0, OTP_LENGTH);
 
   const handleChange = (text: string, idx: number) => {
@@ -137,10 +143,10 @@ function OtpInput({
     }
   };
 
-  const boxSize = rs(62);
+  const boxSize = rs(46);
 
   return (
-    <View style={{ flexDirection: "row", gap: rs(12), justifyContent: "center" }}>
+    <View style={{ flexDirection: "row", gap: rs(8), justifyContent: "center" }}>
       {digits.map((d, i) => (
         <TextInput
           key={i}
@@ -271,74 +277,74 @@ const makePickerStyles = (
   SH: number,
 ) =>
   StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
-  },
-  sheet: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "#fff",
-    borderTopLeftRadius: rs(24),
-    borderTopRightRadius: rs(24),
-    maxHeight: SH * 0.72,
-    paddingHorizontal: rs(20),
-    paddingBottom: vs(32),
-  },
-  handle: {
-    width: rs(36),
-    height: vs(4),
-    backgroundColor: "#E2ECEC",
-    borderRadius: rs(2),
-    alignSelf: "center",
-    marginTop: vs(10),
-    marginBottom: vs(14),
-  },
-  title: {
-    fontSize: ms(16),
-    fontWeight: "800",
-    color: "#1a2e35",
-    marginBottom: vs(12),
-    letterSpacing: -0.3,
-  },
-  searchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F7FAFA",
-    borderWidth: 1.5,
-    borderColor: "#E2ECEC",
-    borderRadius: rs(12),
-    paddingHorizontal: rs(12),
-    paddingVertical: vs(10),
-    gap: rs(8),
-    marginBottom: vs(10),
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: ms(13),
-    color: "#1a2e35",
-    fontWeight: "500",
-  },
-  countryRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(12),
-    paddingVertical: vs(11),
-    paddingHorizontal: rs(4),
-    borderRadius: rs(10),
-  },
-  countryRowActive: {
-    backgroundColor: "rgba(45,156,142,0.06)",
-  },
-  flag: { fontSize: ms(22) },
-  countryName: { flex: 1, fontSize: ms(13), fontWeight: "600", color: "#1a2e35" },
-  countryDial: { fontSize: ms(13), fontWeight: "600", color: "#2D9C8E" },
-  sep: { height: 1, backgroundColor: "#F0F7F6" },
-  emptyWrap: { paddingVertical: vs(24), alignItems: "center" },
-  emptyText: { fontSize: ms(13), color: "#8aabab", fontWeight: "500" },
-});
+    overlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.35)",
+    },
+    sheet: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: "#fff",
+      borderTopLeftRadius: rs(24),
+      borderTopRightRadius: rs(24),
+      maxHeight: SH * 0.72,
+      paddingHorizontal: rs(20),
+      paddingBottom: vs(32),
+    },
+    handle: {
+      width: rs(36),
+      height: vs(4),
+      backgroundColor: "#E2ECEC",
+      borderRadius: rs(2),
+      alignSelf: "center",
+      marginTop: vs(10),
+      marginBottom: vs(14),
+    },
+    title: {
+      fontSize: ms(16),
+      fontWeight: "800",
+      color: "#1a2e35",
+      marginBottom: vs(12),
+      letterSpacing: -0.3,
+    },
+    searchRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: "#F7FAFA",
+      borderWidth: 1.5,
+      borderColor: "#E2ECEC",
+      borderRadius: rs(12),
+      paddingHorizontal: rs(12),
+      paddingVertical: vs(10),
+      gap: rs(8),
+      marginBottom: vs(10),
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: ms(13),
+      color: "#1a2e35",
+      fontWeight: "500",
+    },
+    countryRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rs(12),
+      paddingVertical: vs(11),
+      paddingHorizontal: rs(4),
+      borderRadius: rs(10),
+    },
+    countryRowActive: {
+      backgroundColor: "rgba(45,156,142,0.06)",
+    },
+    flag: { fontSize: ms(22) },
+    countryName: { flex: 1, fontSize: ms(13), fontWeight: "600", color: "#1a2e35" },
+    countryDial: { fontSize: ms(13), fontWeight: "600", color: "#2D9C8E" },
+    sep: { height: 1, backgroundColor: "#F0F7F6" },
+    emptyWrap: { paddingVertical: vs(24), alignItems: "center" },
+    emptyText: { fontSize: ms(13), color: "#8aabab", fontWeight: "500" },
+  });
 
 // ── Main Component ────────────────────────────────────
 export default function Phonelogin() {
@@ -353,6 +359,7 @@ export default function Phonelogin() {
   const [loading, setLoading] = useState(false);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
+  const [confirm, setConfirm] = useState<any>(null);
   const [errors, setErrors] = useState<{ phone?: string; otp?: string }>({});
 
   // Resend countdown
@@ -371,12 +378,20 @@ export default function Phonelogin() {
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
-      await new Promise((r) => setTimeout(r, 1000)); // fake network delay
-      console.log("[MOCK] Google Sign-In success → mock-google-user@gmail.com");
-      await signIn("mock-token-google", "mock-google-user@gmail.com");
-      router.replace("/(tabs)/home");
-    } catch (e: any) {
-      setErrors({ phone: e.message || "Google Sign-In failed" });
+      const result = await signInWithGoogle();
+      if (result.success && result.idToken) {
+        const data = await firebaseLoginApi(result.idToken);
+        if (data?.token) {
+          await signIn(data.token, data.email || result.user?.email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
+          router.replace("/(tabs)/home");
+        } else {
+          setErrors({ phone: data?.message || "Google Sign-In failed on backend" });
+        }
+      } else if (!result.success && result.error !== 'Sign-in cancelled') {
+        setErrors({ phone: result.error });
+      }
+    } catch (error: any) {
+      setErrors({ phone: error.message || "Google Sign-In failed" });
     } finally {
       setLoading(false);
     }
@@ -398,7 +413,6 @@ export default function Phonelogin() {
   };
 
   // ── Step 1: Send OTP ──
-  // 🔴 REAL — active
   const handleSendOtp = async () => {
     if (!phone.trim() || phone.replace(/\D/g, "").length < 7) {
       setErrors({ phone: "Enter a valid phone number" });
@@ -406,59 +420,41 @@ export default function Phonelogin() {
     }
     try {
       setLoading(true);
-      console.log("[PhoneLogin] Sending OTP to:", fullNumber);
-      await sendOtpApi(fullNumber);
-      console.log("[PhoneLogin] OTP sent successfully");
+      const confirmation = await getAuth().signInWithPhoneNumber(fullNumber);
+      setConfirm(confirmation);
       setResendTimer(60);
       setStep("otp");
     } catch (e: any) {
-      console.log("[PhoneLogin] Send OTP error:", e.message);
       setErrors({ phone: e.message || "Failed to send OTP" });
     } finally {
       setLoading(false);
     }
   };
 
-  // 🟢 MOCK — uncomment this function and comment out REAL above to use mock
-  // const handleSendOtp = async () => {
-  //   if (!phone.trim() || phone.replace(/\D/g, "").length < 7) {
-  //     setErrors({ phone: "Enter a valid phone number" });
-  //     return;
-  //   }
-  //   try {
-  //     setLoading(true);
-  //     await new Promise((r) => setTimeout(r, 900));        // fake network delay
-  //     console.log("[MOCK] OTP sent to", fullNumber, "→ use 1234");
-  //     setResendTimer(60);
-  //     setStep("otp");
-  //   } catch (e: any) {
-  //     setErrors({ phone: e.message || "Failed to send OTP" });
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
   // ── Step 2: Verify OTP ──
-  // 🔴 REAL — active
   const handleVerifyOtp = async () => {
-    if (otp.length < 4) {
-      setErrors({ otp: "Enter the 4-digit code" });
+    if (otp.length < 6) {
+      setErrors({ otp: "Enter the code" });
       return;
     }
     try {
       setLoading(true);
-      console.log("[PhoneLogin] Verifying OTP for:", fullNumber);
-      const data = await verifyOtpApi(fullNumber, otp);
-      console.log("[PhoneLogin] Verify response:", JSON.stringify(data));
+      const userCredential = await confirm.confirm(otp);
+      const idToken = await userCredential.user.getIdToken();
+
+      const data = await firebaseLoginApi(idToken);
       if (data?.token) {
         await signIn(data.token, fullNumber, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
         router.replace("/(tabs)/home");
       } else {
-        setErrors({ otp: data?.message || "Verification failed" });
+        setErrors({ otp: data?.message || "Verification failed on backend" });
       }
     } catch (e: any) {
-      console.log("[PhoneLogin] Verify OTP error:", e.message);
-      setErrors({ otp: e.message || "Invalid or expired code" });
+      if (e.code === 'auth/invalid-verification-code') {
+        setErrors({ otp: "Invalid or expired code" });
+      } else {
+        setErrors({ otp: e.message || "Invalid code" });
+      }
     } finally {
       setLoading(false);
     }
@@ -514,7 +510,7 @@ export default function Phonelogin() {
               </Text>
               <Text style={styles.welcomeSub}>
                 {step === "otp"
-                  ? `We sent a 4-digit code to\n${country.flag} ${fullNumber}`
+                  ? `We sent a 6-digit code to\n${country.flag} ${fullNumber}`
                   : "Sign in with your phone number to access your health insights."}
               </Text>
             </View>
@@ -682,7 +678,7 @@ export default function Phonelogin() {
 
               <View style={styles.fieldWrap}>
                 <Text style={styles.fieldLabel}>Verification Code</Text>
-                <Text style={styles.fieldHint}>Enter the 4-digit code sent via SMS</Text>
+                <Text style={styles.fieldHint}>Enter the 6-digit code sent via SMS</Text>
                 <View style={{ marginTop: vs(12) }}>
                   <OtpInput
                     value={otp}
@@ -732,8 +728,8 @@ export default function Phonelogin() {
                       try {
                         setLoading(true);
                         // 🔴 REAL — comment out line below when using MOCK
-                        console.log("[PhoneLogin] Resending OTP to:", fullNumber);
-                        await sendOtpApi(fullNumber);
+                        const confirmation = await getAuth().signInWithPhoneNumber(fullNumber);
+                        setConfirm(confirmation);
                         // 🟢 MOCK — uncomment 2 lines below and comment out REAL lines above
                         // await new Promise((r) => setTimeout(r, 900));   // fake network delay
                         // console.log("[MOCK] OTP resent to", fullNumber, "→ use 1234");
@@ -793,338 +789,338 @@ const makeStyles = (
   ms: (n: number, f?: number) => number,
 ) =>
   StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#EAF6F5" },
-  scrollContent: { flexGrow: 1 },
+    container: { flex: 1, backgroundColor: "#EAF6F5" },
+    scrollContent: { flexGrow: 1 },
 
-  // ── Hero ──
-  hero: {
-    backgroundColor: "#EAF6F5",
-    paddingHorizontal: rs(20),
-    paddingTop: vs(52),
-    paddingBottom: vs(20),
-  },
-  logoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(10),
-    marginBottom: vs(18),
-  },
-  logoBox: {
-    width: rs(44),
-    height: rs(44),
-    borderRadius: rs(14),
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#2D9C8E",
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  logoText: { fontSize: ms(17), fontWeight: "800", color: "#1a2e35", letterSpacing: -0.3 },
-  logoAccent: { color: "#2D9C8E" },
-  logoSub: { fontSize: ms(11), color: "#7a9a9a", fontWeight: "500" },
-  statsBadge: {
-    width: rs(36),
-    height: rs(36),
-    borderRadius: rs(10),
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.07,
-    shadowRadius: 4,
-    elevation: 2,
-  },
+    // ── Hero ──
+    hero: {
+      backgroundColor: "#EAF6F5",
+      paddingHorizontal: rs(20),
+      paddingTop: vs(52),
+      paddingBottom: vs(20),
+    },
+    logoRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rs(10),
+      marginBottom: vs(18),
+    },
+    logoBox: {
+      width: rs(44),
+      height: rs(44),
+      borderRadius: rs(14),
+      backgroundColor: "#fff",
+      justifyContent: "center",
+      alignItems: "center",
+      shadowColor: "#2D9C8E",
+      shadowOpacity: 0.15,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    logoText: { fontSize: ms(17), fontWeight: "800", color: "#1a2e35", letterSpacing: -0.3 },
+    logoAccent: { color: "#2D9C8E" },
+    logoSub: { fontSize: ms(11), color: "#7a9a9a", fontWeight: "500" },
+    statsBadge: {
+      width: rs(36),
+      height: rs(36),
+      borderRadius: rs(10),
+      backgroundColor: "#fff",
+      justifyContent: "center",
+      alignItems: "center",
+      shadowColor: "#000",
+      shadowOpacity: 0.07,
+      shadowRadius: 4,
+      elevation: 2,
+    },
 
-  heroBody: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(8),
-  },
-  welcomeWrap: { flex: 1 },
-  welcomeTitle: {
-    fontSize: ms(22),
-    fontWeight: "800",
-    color: "#1a2e35",
-    marginBottom: vs(6),
-    letterSpacing: -0.5,
-  },
-  welcomeSub: {
-    fontSize: ms(12),
-    color: "#6b8f8f",
-    lineHeight: ms(18),
-    fontWeight: "400",
-  },
-  decorWrap: {
-    width: rs(110),
-    height: rs(110),
-    position: "relative",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  phoneCircle: {
-    width: rs(100),
-    height: rs(100),
-    borderRadius: rs(50),
-    backgroundColor: "rgba(45,156,142,0.1)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  heartBadge: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    width: rs(30),
-    height: rs(30),
-    borderRadius: rs(9),
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  docBadge: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: rs(30),
-    height: rs(30),
-    borderRadius: rs(9),
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
+    heroBody: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rs(8),
+    },
+    welcomeWrap: { flex: 1 },
+    welcomeTitle: {
+      fontSize: ms(22),
+      fontWeight: "800",
+      color: "#1a2e35",
+      marginBottom: vs(6),
+      letterSpacing: -0.5,
+    },
+    welcomeSub: {
+      fontSize: ms(12),
+      color: "#6b8f8f",
+      lineHeight: ms(18),
+      fontWeight: "400",
+    },
+    decorWrap: {
+      width: rs(110),
+      height: rs(110),
+      position: "relative",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    phoneCircle: {
+      width: rs(100),
+      height: rs(100),
+      borderRadius: rs(50),
+      backgroundColor: "rgba(45,156,142,0.1)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    heartBadge: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      width: rs(30),
+      height: rs(30),
+      borderRadius: rs(9),
+      backgroundColor: "#fff",
+      justifyContent: "center",
+      alignItems: "center",
+      shadowColor: "#000",
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    docBadge: {
+      position: "absolute",
+      bottom: 0,
+      right: 0,
+      width: rs(30),
+      height: rs(30),
+      borderRadius: rs(9),
+      backgroundColor: "#fff",
+      justifyContent: "center",
+      alignItems: "center",
+      shadowColor: "#000",
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
 
-  // Step dots
-  stepDots: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: rs(6),
-    marginTop: vs(14),
-  },
-  dot: {
-    width: rs(6),
-    height: rs(6),
-    borderRadius: rs(3),
-    backgroundColor: "rgba(45,156,142,0.25)",
-  },
-  dotActive: {
-    width: rs(18),
-    backgroundColor: "#2D9C8E",
-    borderRadius: rs(3),
-  },
+    // Step dots
+    stepDots: {
+      flexDirection: "row",
+      justifyContent: "center",
+      gap: rs(6),
+      marginTop: vs(14),
+    },
+    dot: {
+      width: rs(6),
+      height: rs(6),
+      borderRadius: rs(3),
+      backgroundColor: "rgba(45,156,142,0.25)",
+    },
+    dotActive: {
+      width: rs(18),
+      backgroundColor: "#2D9C8E",
+      borderRadius: rs(3),
+    },
 
-  // ── Card ──
-  card: {
-    flex: 1,
-    backgroundColor: "#fff",
-    borderTopLeftRadius: rs(28),
-    borderTopRightRadius: rs(28),
-    paddingHorizontal: rs(20),
-    paddingTop: vs(26),
-    paddingBottom: vs(36),
-    gap: vs(14),
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 5,
-  },
+    // ── Card ──
+    card: {
+      flex: 1,
+      backgroundColor: "#fff",
+      borderTopLeftRadius: rs(28),
+      borderTopRightRadius: rs(28),
+      paddingHorizontal: rs(20),
+      paddingTop: vs(26),
+      paddingBottom: vs(36),
+      gap: vs(14),
+      shadowColor: "#000",
+      shadowOpacity: 0.06,
+      shadowRadius: 12,
+      elevation: 5,
+    },
 
-  // ── Fields ──
-  fieldWrap: { gap: vs(4) },
-  fieldLabel: {
-    fontSize: ms(13),
-    fontWeight: "600",
-    color: "#1a2e35",
-    marginBottom: vs(4),
-  },
-  fieldHint: { fontSize: ms(12), color: "#8aabab" },
+    // ── Fields ──
+    fieldWrap: { gap: vs(4) },
+    fieldLabel: {
+      fontSize: ms(13),
+      fontWeight: "600",
+      color: "#1a2e35",
+      marginBottom: vs(4),
+    },
+    fieldHint: { fontSize: ms(12), color: "#8aabab" },
 
-  // ── Phone input ──
-  phoneRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F7FAFA",
-    borderWidth: 1.5,
-    borderColor: "#E2ECEC",
-    borderRadius: rs(14),
-    overflow: "hidden",
-  },
-  inputError: { borderColor: "#EF4444" },
-  dialPicker: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: rs(12),
-    paddingVertical: vs(12),
-    gap: rs(5),
-  },
-  flagText: { fontSize: ms(18) },
-  dialText: { fontSize: ms(13), fontWeight: "700", color: "#1a2e35" },
-  phoneDivider: {
-    width: 1,
-    height: vs(22),
-    backgroundColor: "#E2ECEC",
-  },
-  phoneInput: {
-    flex: 1,
-    fontSize: ms(14),
-    fontWeight: "500",
-    color: "#1a2e35",
-    paddingHorizontal: rs(12),
-    paddingVertical: vs(12),
-  },
+    // ── Phone input ──
+    phoneRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: "#F7FAFA",
+      borderWidth: 1.5,
+      borderColor: "#E2ECEC",
+      borderRadius: rs(14),
+      overflow: "hidden",
+    },
+    inputError: { borderColor: "#EF4444" },
+    dialPicker: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: rs(12),
+      paddingVertical: vs(12),
+      gap: rs(5),
+    },
+    flagText: { fontSize: ms(18) },
+    dialText: { fontSize: ms(13), fontWeight: "700", color: "#1a2e35" },
+    phoneDivider: {
+      width: 1,
+      height: vs(22),
+      backgroundColor: "#E2ECEC",
+    },
+    phoneInput: {
+      flex: 1,
+      fontSize: ms(14),
+      fontWeight: "500",
+      color: "#1a2e35",
+      paddingHorizontal: rs(12),
+      paddingVertical: vs(12),
+    },
 
-  errorRow: { flexDirection: "row", alignItems: "center", gap: rs(4), marginTop: vs(3) },
-  errorText: { fontSize: ms(11), color: "#EF4444", fontWeight: "500", flex: 1 },
+    errorRow: { flexDirection: "row", alignItems: "center", gap: rs(4), marginTop: vs(3) },
+    errorText: { fontSize: ms(11), color: "#EF4444", fontWeight: "500", flex: 1 },
 
-  switchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    gap: rs(2),
-    marginTop: vs(6),
-  },
-  switchText: { fontSize: ms(12), fontWeight: "600", color: "#2D9C8E" },
+    switchRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "flex-end",
+      gap: rs(2),
+      marginTop: vs(6),
+    },
+    switchText: { fontSize: ms(12), fontWeight: "600", color: "#2D9C8E" },
 
-  // ── Info box ──
-  infoBox: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: rs(8),
-    backgroundColor: "rgba(45,156,142,0.06)",
-    borderRadius: rs(12),
-    padding: rs(12),
-    borderWidth: 1,
-    borderColor: "#C8E8E5",
-  },
-  infoText: {
-    flex: 1,
-    fontSize: ms(12),
-    color: "#4a7a7a",
-    lineHeight: ms(17),
-    fontWeight: "500",
-  },
+    // ── Info box ──
+    infoBox: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: rs(8),
+      backgroundColor: "rgba(45,156,142,0.06)",
+      borderRadius: rs(12),
+      padding: rs(12),
+      borderWidth: 1,
+      borderColor: "#C8E8E5",
+    },
+    infoText: {
+      flex: 1,
+      fontSize: ms(12),
+      color: "#4a7a7a",
+      lineHeight: ms(17),
+      fontWeight: "500",
+    },
 
-  // ── Primary button ──
-  primaryBtn: {
-    backgroundColor: "#2D9C8E",
-    borderRadius: rs(14),
-    paddingVertical: vs(14),
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    shadowColor: "#2D9C8E",
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  primaryBtnText: { color: "#fff", fontSize: ms(15), fontWeight: "700", letterSpacing: 0.3 },
-  btnArrow: {
-    position: "absolute",
-    right: rs(14),
-    width: rs(28),
-    height: rs(28),
-    borderRadius: rs(8),
-    backgroundColor: "rgba(255,255,255,0.25)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
+    // ── Primary button ──
+    primaryBtn: {
+      backgroundColor: "#2D9C8E",
+      borderRadius: rs(14),
+      paddingVertical: vs(14),
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      shadowColor: "#2D9C8E",
+      shadowOpacity: 0.35,
+      shadowRadius: 10,
+      elevation: 5,
+    },
+    primaryBtnText: { color: "#fff", fontSize: ms(15), fontWeight: "700", letterSpacing: 0.3 },
+    btnArrow: {
+      position: "absolute",
+      right: rs(14),
+      width: rs(28),
+      height: rs(28),
+      borderRadius: rs(8),
+      backgroundColor: "rgba(255,255,255,0.25)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
 
-  // ── Divider ──
-  orRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(8),
-    marginVertical: vs(2),
-  },
-  orLine: { flex: 1, height: 1, backgroundColor: "#E8F0F0" },
-  orText: { fontSize: ms(11), color: "#8aabab", fontWeight: "500" },
+    // ── Divider ──
+    orRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rs(8),
+      marginVertical: vs(2),
+    },
+    orLine: { flex: 1, height: 1, backgroundColor: "#E8F0F0" },
+    orText: { fontSize: ms(11), color: "#8aabab", fontWeight: "500" },
 
-  // ── Social ──
-  socialBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(12),
-    backgroundColor: "#F7FAFA",
-    borderWidth: 1.5,
-    borderColor: "#E2ECEC",
-    borderRadius: rs(14),
-    paddingVertical: vs(12),
-    paddingHorizontal: rs(16),
-  },
-  socialText: { fontSize: ms(13), fontWeight: "600", color: "#1a2e35" },
+    // ── Social ──
+    socialBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rs(12),
+      backgroundColor: "#F7FAFA",
+      borderWidth: 1.5,
+      borderColor: "#E2ECEC",
+      borderRadius: rs(14),
+      paddingVertical: vs(12),
+      paddingHorizontal: rs(16),
+    },
+    socialText: { fontSize: ms(13), fontWeight: "600", color: "#1a2e35" },
 
-  // ── Signup ──
-  signupRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: vs(4),
-  },
-  signupText: { fontSize: ms(13), color: "#8aabab", fontWeight: "500" },
-  signupLink: { fontSize: ms(13), color: "#2D9C8E", fontWeight: "700" },
+    // ── Signup ──
+    signupRow: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      marginTop: vs(4),
+    },
+    signupText: { fontSize: ms(13), color: "#8aabab", fontWeight: "500" },
+    signupLink: { fontSize: ms(13), color: "#2D9C8E", fontWeight: "700" },
 
-  // ── Phone info strip (OTP step) ──
-  phoneInfoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(8),
-    backgroundColor: "#F0FAF9",
-    borderRadius: rs(12),
-    padding: rs(12),
-    borderWidth: 1,
-    borderColor: "#C8E8E5",
-  },
-  phoneInfoFlag: { fontSize: ms(18) },
-  phoneInfoNumber: { flex: 1, fontSize: ms(13), fontWeight: "600", color: "#1a2e35" },
-  changeText: { fontSize: ms(12), color: "#2D9C8E", fontWeight: "700" },
+    // ── Phone info strip (OTP step) ──
+    phoneInfoRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rs(8),
+      backgroundColor: "#F0FAF9",
+      borderRadius: rs(12),
+      padding: rs(12),
+      borderWidth: 1,
+      borderColor: "#C8E8E5",
+    },
+    phoneInfoFlag: { fontSize: ms(18) },
+    phoneInfoNumber: { flex: 1, fontSize: ms(13), fontWeight: "600", color: "#1a2e35" },
+    changeText: { fontSize: ms(12), color: "#2D9C8E", fontWeight: "700" },
 
-  // ── Resend ──
-  resendRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  resendText: { fontSize: ms(13), color: "#8aabab", fontWeight: "500" },
-  resendLink: { fontSize: ms(13), color: "#2D9C8E", fontWeight: "700" },
-  resendTimer: { fontSize: ms(13), color: "#aab", fontWeight: "600" },
+    // ── Resend ──
+    resendRow: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    resendText: { fontSize: ms(13), color: "#8aabab", fontWeight: "500" },
+    resendLink: { fontSize: ms(13), color: "#2D9C8E", fontWeight: "700" },
+    resendTimer: { fontSize: ms(13), color: "#aab", fontWeight: "600" },
 
-  // ── Security ──
-  securityRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(12),
-    backgroundColor: "#F0FAF9",
-    borderRadius: rs(14),
-    padding: rs(14),
-    borderWidth: 1,
-    borderColor: "#C8E8E5",
-  },
-  securityIcon: {
-    width: rs(34),
-    height: rs(34),
-    borderRadius: rs(10),
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  securityTitle: { fontSize: ms(12), fontWeight: "600", color: "#1a2e35" },
-  securitySub: { fontSize: ms(10), color: "#7a9a9a", marginTop: vs(1) },
+    // ── Security ──
+    securityRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: rs(12),
+      backgroundColor: "#F0FAF9",
+      borderRadius: rs(14),
+      padding: rs(14),
+      borderWidth: 1,
+      borderColor: "#C8E8E5",
+    },
+    securityIcon: {
+      width: rs(34),
+      height: rs(34),
+      borderRadius: rs(10),
+      backgroundColor: "#fff",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    securityTitle: { fontSize: ms(12), fontWeight: "600", color: "#1a2e35" },
+    securitySub: { fontSize: ms(10), color: "#7a9a9a", marginTop: vs(1) },
 
-  // ── Back row ──
-  backRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: rs(6),
-    paddingVertical: vs(2),
-  },
-  backText: { fontSize: ms(13), fontWeight: "600", color: "#2D9C8E" },
-});
+    // ── Back row ──
+    backRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: rs(6),
+      paddingVertical: vs(2),
+    },
+    backText: { fontSize: ms(13), fontWeight: "600", color: "#2D9C8E" },
+  });

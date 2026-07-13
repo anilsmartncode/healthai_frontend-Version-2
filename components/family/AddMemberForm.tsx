@@ -31,8 +31,14 @@ export function AddMemberForm({ onContinue }: Props) {
   const [name,  setName]  = useState('');
   const [phone, setPhone] = useState('');
   const [dob,   setDob]   = useState<Date | null>(null);
+  const [consent, setConsent] = useState(false);
 
-  const canContinue = name.trim().length > 0 && phone.trim().length > 0;
+  const canContinue = name.trim().length > 0 && phone.trim().length > 0 && consent;
+
+  const isMinor = rel === 'Son' || rel === 'Daughter';
+  const consentText = isMinor
+    ? "I confirm I am the legal parent/guardian of this minor and explicitly consent to HealthAI processing their health data."
+    : "I confirm I have explicit consent from this individual to manage and process their health records on their behalf.";
 
   const handleContinue = () => {
     if (!canContinue) return;
@@ -98,6 +104,17 @@ export function AddMemberForm({ onContinue }: Props) {
         maximumDate={new Date()}
       />
 
+      {/* ── DPDP Consent Checkbox ── */}
+      <Pressable
+        style={styles.checkboxRow}
+        onPress={() => setConsent(!consent)}
+      >
+        <View style={[styles.checkbox, consent && styles.checkboxChecked]}>
+          {consent && <Ionicons name="checkmark" size={14} color="#fff" />}
+        </View>
+        <Text style={styles.checkboxLabel}>{consentText}</Text>
+      </Pressable>
+
       <Pressable
         style={({ pressed }) => [
           styles.btn,
@@ -128,4 +145,8 @@ const styles = StyleSheet.create({
   btn:         { backgroundColor: Colors.primary, borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 28 },
   btnDisabled: { opacity: 0.5 },
   btnTxt:      { color: '#fff', fontSize: 15, fontWeight: '700' },
+  checkboxRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginTop: 24 },
+  checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 2, borderColor: '#D0E0E0', justifyContent: 'center', alignItems: 'center', marginTop: 2 },
+  checkboxChecked: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  checkboxLabel: { flex: 1, fontSize: 12, color: Colors.textMuted, lineHeight: 18, fontWeight: '500' },
 });

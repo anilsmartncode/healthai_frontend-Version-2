@@ -294,7 +294,7 @@ export async function searchMedicines(q: string, page = 1, limit = 20): Promise<
  */
 export async function getMedicinesByCategory(categoryId: string, page = 1, limit = 20): Promise<Medicine[]> {
   // 🔴 REAL — active
-  const url = `${ENDPOINTS.medicinesByCategory}?category_id=${categoryId}&page=${page}&limit=${limit}`;
+  const url = `${ENDPOINTS.medicinesByCategory}?category=${categoryId}&page=${page}&limit=${limit}`;
   const raw = await medicineApiCall<any>(url);
   return unwrapList<Medicine>(raw, 'medicines', 'data', 'results');
 

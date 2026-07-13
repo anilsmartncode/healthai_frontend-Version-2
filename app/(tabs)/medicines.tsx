@@ -108,6 +108,7 @@ function MedicineRow({
 export default function Medicines() {
   const [searchQ, setSearchQ] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [catPage, setCatPage] = useState(0);
 
   // All data-fetching (categories, recently viewed, today's reminders)
   // now lives in useMedicines() — this screen just renders what it returns.
@@ -206,31 +207,68 @@ export default function Medicines() {
                 <Text style={styles.viewAll}>View All</Text>
               </Pressable>
             </View>
-            {/* Row-based grid — avoids flexWrap % width collision */}
-            <View style={styles.catGrid}>
-              {Array.from(
-                { length: Math.ceil(categories.length / CAT_COLUMNS) },
-                (_, rowIdx) => (
-                  <View key={rowIdx} style={styles.catRow}>
-                    {categories
-                      .slice(rowIdx * CAT_COLUMNS, rowIdx * CAT_COLUMNS + CAT_COLUMNS)
-                      .map((cat) => (
-                        <CategoryCard
-                          key={cat.id}
-                          item={cat}
-                          onPress={() => handleCategoryPress(cat)}
-                        />
-                      ))}
-                    {/* Fill empty slots in last row so cards don't stretch */}
-                    {categories.slice(rowIdx * CAT_COLUMNS, rowIdx * CAT_COLUMNS + CAT_COLUMNS).length < CAT_COLUMNS &&
-                      Array.from(
-                        { length: CAT_COLUMNS - categories.slice(rowIdx * CAT_COLUMNS, rowIdx * CAT_COLUMNS + CAT_COLUMNS).length },
-                        (_, i) => <View key={`placeholder-${i}`} style={styles.catItemPlaceholder} />,
-                      )}
-                  </View>
-                ),
-              )}
+            {/* Paginated grid wrapper */}
+            <View style={{ marginHorizontal: -H_PADDING }}>
+              <ScrollView
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                decelerationRate="fast"
+                onScroll={(e) => {
+                  const newPage = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+                  if (newPage !== catPage) setCatPage(newPage);
+                }}
+                scrollEventThrottle={16}
+              >
+                {Array.from({ length: Math.ceil(categories.length / 6) }, (_, pageIdx) => {
+                  const pageCats = categories.slice(pageIdx * 6, pageIdx * 6 + 6);
+                  return (
+                    <View key={pageIdx} style={{ width: SCREEN_WIDTH, paddingHorizontal: H_PADDING }}>
+                      <View style={styles.catGrid}>
+                        {Array.from({ length: 2 }, (_, rowIdx) => {
+                          const rowCats = pageCats.slice(rowIdx * CAT_COLUMNS, rowIdx * CAT_COLUMNS + CAT_COLUMNS);
+                          if (rowCats.length === 0) return null;
+                          return (
+                            <View key={rowIdx} style={styles.catRow}>
+                              {rowCats.map((cat) => (
+                                <CategoryCard
+                                  key={cat.id}
+                                  item={cat}
+                                  onPress={() => handleCategoryPress(cat)}
+                                />
+                              ))}
+                              {/* Fill empty slots in last row so cards don't stretch */}
+                              {rowCats.length < CAT_COLUMNS &&
+                                Array.from({ length: CAT_COLUMNS - rowCats.length }, (_, i) => (
+                                  <View key={`placeholder-${i}`} style={styles.catItemPlaceholder} />
+                                ))
+                              }
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  );
+                })}
+              </ScrollView>
             </View>
+
+            {/* Pagination dots */}
+            {categories.length > 6 && (
+              <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 16 }}>
+                {Array.from({ length: Math.ceil(categories.length / 6) }).map((_, i) => (
+                  <View
+                    key={i}
+                    style={{
+                      width: catPage === i ? 16 : 6,
+                      height: 6,
+                      borderRadius: 3,
+                      backgroundColor: catPage === i ? Colors.primary : '#CBD5E1',
+                    }}
+                  />
+                ))}
+              </View>
+            )}
           </View>
 
           {/* ── Today's Reminder Banner ── */}
@@ -255,6 +293,18 @@ export default function Medicines() {
               </View>
             </Pressable>
           )}
+
+          {/* ── Upload Prescription Banner ── */}
+          <Pressable style={styles.rxBanner} onPress={() => router.push({ pathname: '/upload', params: { context: 'prescription' } } as any)}>
+            <View style={styles.rxBannerIconWrap}>
+              <Ionicons name="document-text" size={24} color="#0284C7" />
+            </View>
+            <View style={styles.rxBannerTextWrap}>
+              <Text style={styles.rxBannerTitle}>Upload Prescription</Text>
+              <Text style={styles.rxBannerSub}>Extract all your medicines instantly</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+          </Pressable>
 
           {/* ── Quick Action Cards: Scan + Check Interactions ── */}
           <View style={styles.quickRow}>
@@ -475,6 +525,32 @@ const styles = StyleSheet.create({
   },
   quickTitle: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
   quickSub:   { fontSize: 11, color: '#94A3B8', lineHeight: 16 },
+
+  // ── Upload Prescription Banner ────────────────────────────────────────────
+  rxBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#F0F9FF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    padding: 14,
+    marginHorizontal: H_PADDING,
+    marginTop: 18,
+  },
+  rxBannerIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#E0F2FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  rxBannerTextWrap: { flex: 1 },
+  rxBannerTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
+  rxBannerSub: { fontSize: 12, color: '#475569', marginTop: 2 },
 
   // ── My Medicines banner ───────────────────────────────────────────────────
   myMedsBanner: {

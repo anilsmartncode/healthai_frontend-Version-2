@@ -132,12 +132,12 @@ function MedicineDetailModal({
 
   const handleSetReminder = () => {
     onClose();
-    router.push('/medicines/reminders');
+    router.push(`/medicines/reminders/new?medicineId=${med.id}&medicineName=${encodeURIComponent(med.name)}`);
   };
 
   const handleCheckInteractions = () => {
     onClose();
-    router.push('/medicines/check-interactions');
+    router.push(`/medicines/check-interactions?medicineId=${med.id}&medicineName=${encodeURIComponent(med.name)}`);
   };
 
   return (
@@ -213,7 +213,7 @@ function MedicineDetailModal({
           <View style={styles.extraActions}>
             {[
               { icon: 'notifications-outline', label: 'Set Reminder', onPress: handleSetReminder },
-              { icon: 'git-compare-outline',   label: 'Check Interactions', onPress: handleCheckInteractions },
+              { icon: 'git-compare-outline', label: 'Check Interactions', onPress: handleCheckInteractions },
               {
                 icon: 'sparkles-outline',
                 label: 'Ask AI About Medicine',
@@ -583,6 +583,17 @@ export default function BrowseMedicinesScreen() {
           {isSearching && !listLoading && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Search Results</Text>
+
+              {/* Similar Results Banner */}
+              {medicines.length > 0 && searchQ.trim() !== '' && !medicines.some(m => m.name.toLowerCase() === searchQ.toLowerCase().trim()) && (
+                <View style={{ backgroundColor: '#FFFBEB', padding: 12, borderRadius: 8, marginBottom: 12, borderWidth: 1, borderColor: '#FEF3C7', flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="bulb" size={20} color="#D97706" />
+                  <Text style={{ flex: 1, fontSize: 13, color: '#92400E', lineHeight: 18 }}>
+                    We couldn't find an exact match for "{searchQ}". Showing similar medicines instead.
+                  </Text>
+                </View>
+              )}
+
               <View style={styles.medList}>
                 {medicines.length === 0 ? (
                   <View style={styles.empty}>
@@ -600,6 +611,25 @@ export default function BrowseMedicinesScreen() {
                     />
                   ))
                 )}
+
+                {/* Add Manually Button */}
+                <Pressable
+                  style={({ pressed }) => [
+                    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: Colors.primary, borderStyle: 'dashed', marginTop: 4 },
+                    pressed && { backgroundColor: Colors.primary + '10' }
+                  ]}
+                  onPress={() => {
+                    router.push({
+                      pathname: '/medicines/reminders/new',
+                      params: { medicineId: `manual_${Date.now()}`, medicineName: searchQ }
+                    });
+                  }}
+                >
+                  <Ionicons name="add-circle-outline" size={20} color={Colors.primary} />
+                  <Text style={{ color: Colors.primary, fontWeight: '600', fontSize: 14 }}>
+                    Can't find it? Add "{searchQ}" manually
+                  </Text>
+                </Pressable>
               </View>
             </View>
           )}

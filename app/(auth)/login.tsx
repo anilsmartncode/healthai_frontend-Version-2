@@ -5,17 +5,27 @@ import {
   StyleSheet,
   Pressable,
   TextInput,
-  ScrollView,
   ActivityIndicator,
   Dimensions,
+  Platform,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Path, G, ClipPath, Rect, Defs } from "react-native-svg";
 import { Colors, Radius } from "@/constants/Colors";
 import { useLang } from "@/context/Languagecontext";
 import { useAuth } from "@/context/AuthContext";
-import { loginApi } from "@/services/authapi/apiService";
+import { firebaseLoginApi, loginApi } from "@/services/authapi/apiService";
+import { signInWithGoogle } from "@/utils/googleAuth";
+
+// 🎛️ Toggle Switch for Authentication
+const USE_FIREBASE_AUTH = true;
+// Lazy-load Firebase Auth so the page still opens in Expo Go
+function getAuth() {
+  const mod = require('@react-native-firebase/auth');
+  return (mod.default || mod)();
+}
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -66,7 +76,6 @@ export default function Login() {
   const clearError = (field: string) =>
     setErrors((prev) => ({ ...prev, [field]: undefined }));
 
-  // 🔴 REAL — comment out this function when using MOCK below
   const handleLogin = async () => {
     const next: typeof errors = {};
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
@@ -78,48 +87,74 @@ export default function Login() {
 
     try {
       setLoading(true);
-      const data = await loginApi(email, password);
-      if (data?.token) {
-        await signIn(data.token, email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
-        router.replace("/(tabs)/home");
+
+      if (USE_FIREBASE_AUTH) {
+        // 🟢 FLOW 1: FIREBASE AUTHENTICATION
+        const userCredential = await getAuth().signInWithEmailAndPassword(email, password);
+        const idToken = await userCredential.user.getIdToken();
+        const data = await firebaseLoginApi(idToken);
+
+        if (data?.token) {
+          await signIn(data.token, email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
+          router.replace("/(tabs)/home");
+        } else {
+          setErrors({ email: data?.message || "Login failed on backend" });
+        }
       } else {
-        setErrors({ email: data?.message || "Login failed" });
+        // 🔵 FLOW 2: CUSTOM OLD API AUTHENTICATION
+        const data = await loginApi(email, password);
+
+        if (data?.token) {
+          await signIn(data.token, email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
+          router.replace("/(tabs)/home");
+        } else {
+          setErrors({ email: data?.message || "Custom API Login failed" });
+        }
       }
+
     } catch (error: any) {
-      setErrors({ email: error.message || "Network error. Check connection." });
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        setErrors({ email: "Invalid email or password" });
+      } else {
+        setErrors({ email: error.message || "Network error. Check connection." });
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // 🟢 MOCK — uncomment this function and comment out REAL above to use mock
-  // const handleLogin = async () => {
-  //   const next: typeof errors = {};
-  //   if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-  //     next.email = "Enter a valid email address";
-  //   if (!password || password.length < 6)
-  //     next.password = "Password must be at least 6 characters";
-  //   setErrors(next);
-  //   if (Object.keys(next).length > 0) return;
-  //   try {
-  //     setLoading(true);
-  //     await new Promise((r) => setTimeout(r, 900));
-  //     if (password !== "password123") throw new Error("Use password: password123");
-  //     await signIn("mock-token-login", email);
-  //     router.replace("/(tabs)/home");
-  //   } catch (error: any) {
-  //     setErrors({ email: error.message || "Network error. Check connection." });
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+  // ── Google Sign In ──
+  const handleGoogleSignIn = async () => {
+    try {
+      setLoading(true);
+      const result = await signInWithGoogle();
+      if (result.success && result.idToken) {
+        // Exchange token with backend
+        const data = await firebaseLoginApi(result.idToken);
+        if (data?.token) {
+          await signIn(data.token, data.email || result.user?.email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
+          router.replace("/(tabs)/home");
+        } else {
+          setErrors({ email: data?.message || "Google Sign-In failed on backend" });
+        }
+      } else if (!result.success && result.error !== 'Sign-in cancelled') {
+        setErrors({ email: result.error });
+      }
+    } catch (error: any) {
+      setErrors({ email: error.message || "Google Sign-In failed" });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <ScrollView
+    <KeyboardAwareScrollView
       style={styles.container}
       contentContainerStyle={styles.scrollContent}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
+      enableOnAndroid={true}
+      extraScrollHeight={Platform.OS === 'ios' ? 20 : 100}
     >
       {/* ── Hero ── */}
       <View style={styles.hero}>
@@ -170,6 +205,7 @@ export default function Login() {
           {/* Google */}
           <Pressable
             style={({ pressed }) => [styles.socialBtn, pressed && { opacity: 0.82 }]}
+            onPress={handleGoogleSignIn}
             disabled={loading}
           >
             <GoogleIcon />
@@ -319,12 +355,12 @@ export default function Login() {
           </Pressable>
         </View>
       </View>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container:     { flex: 1, backgroundColor: "#EAF6F5" },
+  container: { flex: 1, backgroundColor: "#EAF6F5" },
   scrollContent: { flexGrow: 1 },
 
   // ── Hero ──
@@ -346,9 +382,9 @@ const styles = StyleSheet.create({
     justifyContent: "center", alignItems: "center",
     shadowColor: "#2D9C8E", shadowOpacity: 0.15, shadowRadius: 8, elevation: 4,
   },
-  logoText:   { fontSize: ms(17), fontWeight: "800", color: "#1a2e35", letterSpacing: -0.3 },
+  logoText: { fontSize: ms(17), fontWeight: "800", color: "#1a2e35", letterSpacing: -0.3 },
   logoAccent: { color: "#2D9C8E" },
-  logoSub:    { fontSize: ms(11), color: "#7a9a9a", fontWeight: "500" },
+  logoSub: { fontSize: ms(11), color: "#7a9a9a", fontWeight: "500" },
   statsBadge: {
     width: rs(36), height: rs(36), borderRadius: rs(10),
     backgroundColor: "#fff",
@@ -356,10 +392,10 @@ const styles = StyleSheet.create({
     shadowColor: "#000", shadowOpacity: 0.07, shadowRadius: 4, elevation: 2,
   },
 
-  heroBody:    { flexDirection: "row", alignItems: "center", gap: rs(8) },
+  heroBody: { flexDirection: "row", alignItems: "center", gap: rs(8) },
   welcomeWrap: { flex: 1 },
   welcomeTitle: { fontSize: ms(22), fontWeight: "800", color: "#1a2e35", marginBottom: vs(6), letterSpacing: -0.5 },
-  welcomeSub:   { fontSize: ms(12), color: "#6b8f8f", lineHeight: ms(18), fontWeight: "400" },
+  welcomeSub: { fontSize: ms(12), color: "#6b8f8f", lineHeight: ms(18), fontWeight: "400" },
 
   decorWrap: {
     width: rs(110), height: rs(110),
@@ -429,7 +465,7 @@ const styles = StyleSheet.create({
   orText: { fontSize: ms(11), color: "#9BB5B5", fontWeight: "600" },
 
   // ── Fields ──
-  fieldWrap:  { gap: vs(4) },
+  fieldWrap: { gap: vs(4) },
   fieldLabel: { fontSize: ms(13), fontWeight: "700", color: "#1a2e35", marginBottom: vs(2) },
   inputRow: {
     flexDirection: "row", alignItems: "center",
@@ -440,9 +476,9 @@ const styles = StyleSheet.create({
     gap: rs(10),
     shadowColor: "#2D9C8E", shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
   },
-  inputError:   { borderColor: "#EF4444" },
+  inputError: { borderColor: "#EF4444" },
   inputFocused: { borderColor: "#2D9C8E", shadowOpacity: 0.12, shadowRadius: 6, elevation: 2 },
-  inputField:   { flex: 1, fontSize: ms(14), fontWeight: "500", color: "#1a2e35", paddingVertical: 0 },
+  inputField: { flex: 1, fontSize: ms(14), fontWeight: "500", color: "#1a2e35", paddingVertical: 0 },
 
   errorRow: { flexDirection: "row", alignItems: "center", gap: rs(4), marginTop: vs(3) },
   errorText: { fontSize: ms(11), color: "#EF4444", fontWeight: "500", flex: 1 },
@@ -452,7 +488,7 @@ const styles = StyleSheet.create({
     gap: rs(2), marginTop: vs(5),
   },
   usePhoneText: { fontSize: ms(12), fontWeight: "600", color: "#2D9C8E" },
-  forgotText:   { fontSize: ms(12), fontWeight: "600", color: "#2D9C8E", marginTop: vs(5) },
+  forgotText: { fontSize: ms(12), fontWeight: "600", color: "#2D9C8E", marginTop: vs(5) },
 
   // ── Login Button ──
   loginBtn: {
@@ -482,7 +518,7 @@ const styles = StyleSheet.create({
     justifyContent: "center", alignItems: "center",
   },
   securityTitle: { fontSize: ms(12), fontWeight: "600", color: "#1a2e35" },
-  securitySub:   { fontSize: ms(10), color: "#7a9a9a", marginTop: vs(1) },
+  securitySub: { fontSize: ms(10), color: "#7a9a9a", marginTop: vs(1) },
 
   // ── Sign Up ──
   signupRow: { flexDirection: "row", justifyContent: "center", alignItems: "center", marginTop: vs(4) },
