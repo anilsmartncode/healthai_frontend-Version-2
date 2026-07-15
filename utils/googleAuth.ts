@@ -4,6 +4,11 @@
  * Uses lazy require() so the file can be imported in Expo Go
  * without crashing. Native modules are only loaded when
  * signInWithGoogle() is actually called.
+ *
+ * v16 fix: GoogleAuthProvider.credential(idToken, accessToken)
+ * needs at least ONE non-null token. v16 of @react-native-google-signin
+ * often returns null for idToken but a valid accessToken — so we now
+ * capture both and pass both to Firebase.
  */
 
 import Constants from 'expo-constants';
@@ -40,7 +45,6 @@ function getGoogleSignin() {
 }
 
 function getFirebaseAuth() {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const auth = require('@react-native-firebase/auth').default;
   return auth;
 }
@@ -48,49 +52,68 @@ function getFirebaseAuth() {
 export const signInWithGoogle = async () => {
   try {
     const GoogleSignin = getGoogleSignin();
-    const { statusCodes } = require('@react-native-google-signin/google-signin');
     const auth = getFirebaseAuth();
 
     await GoogleSignin.hasPlayServices();
 
-    // Step 1: Open the Google account picker and let the user sign in
+    // Step 1: Force account picker by clearing the previous session
+    // This prevents Google from automatically picking the last used account
+    try {
+      await GoogleSignin.signOut();
+    } catch (e) {
+      // Ignore errors here (e.g. if no user was signed in yet)
+    }
+
+    // Step 2: Open the Google account picker
     const userInfo = await GoogleSignin.signIn();
     console.log('[GoogleAuth] signIn result keys:', Object.keys(userInfo || {}));
 
-    // Step 2: Extract the idToken.
-    // v16+ of @react-native-google-signin changed the response shape.
-    // signIn() may no longer include idToken directly — we must try
-    // getTokens() as a fallback.
-    let gToken: string | null =
+    // Step 2: Extract idToken + accessToken from signIn() response
+    // v16 changed the response shape — tokens might be nested under .data
+    let idToken: string | null =
       (userInfo as any)?.idToken ||
       (userInfo as any)?.data?.idToken ||
       null;
+    let accessToken: string | null =
+      (userInfo as any)?.accessToken ||
+      (userInfo as any)?.data?.accessToken ||
+      null;
 
-    if (!gToken) {
+    // Step 3: If either token is missing, fetch from getTokens()
+    // In v16, getTokens() returns { idToken, accessToken }
+    // idToken may be null but accessToken is usually present
+    if (!idToken || !accessToken) {
       try {
         const tokens = await GoogleSignin.getTokens();
-        console.log('[GoogleAuth] getTokens result keys:', Object.keys(tokens || {}));
-        gToken = tokens?.idToken || null;
+        console.log('[GoogleAuth] getTokens:', {
+          hasIdToken: !!tokens?.idToken,
+          hasAccessToken: !!tokens?.accessToken,
+        });
+        if (!idToken) idToken = tokens?.idToken || null;
+        if (!accessToken) accessToken = tokens?.accessToken || null;
       } catch (tokenErr) {
         console.log('[GoogleAuth] getTokens() failed:', tokenErr);
       }
     }
 
-    if (!gToken) {
+    console.log('[GoogleAuth] final tokens:', { hasIdToken: !!idToken, hasAccessToken: !!accessToken });
+
+    // Step 4: At least one token must be non-null for Firebase
+    if (!idToken && !accessToken) {
       throw new Error(
-        'Google Sign-In succeeded but no ID Token was returned. ' +
-        'Ensure the webClientId matches your OAuth 2.0 Web Client ID in Google Cloud Console, ' +
-        'and that the SHA-1 fingerprint of this APK is registered in Firebase.'
+        'Google Sign-In completed but returned no tokens. ' +
+        'Ensure the webClientId is the Web OAuth Client ID from Firebase Console.'
       );
     }
 
-    console.log('[GoogleAuth] Got idToken, length:', gToken.length);
+    // Step 5: Create Firebase credential — passes both tokens,
+    // Firebase uses whichever is available (idToken preferred)
+    const googleCredential = auth.GoogleAuthProvider.credential(idToken, accessToken);
 
-    // Create a Google credential with the token
-    const googleCredential = auth.GoogleAuthProvider.credential(gToken);
-
-    // Sign-in the user with the credential
+    // Step 6: Sign in to Firebase with the Google credential
     const userCredential = await auth().signInWithCredential(googleCredential);
+
+    // Step 7: Get the Firebase ID Token to send to your backend
     const firebaseIdToken = await userCredential.user.getIdToken();
 
     return {
@@ -113,4 +136,3 @@ export const signInWithGoogle = async () => {
     return { success: false, error: error.message || 'Google Sign-In failed' };
   }
 };
-

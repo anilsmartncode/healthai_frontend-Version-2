@@ -423,13 +423,14 @@ export async function getReminderHistory(): Promise<Reminder[]> {
  */
 export async function updateReminder(
   reminderId: string,
-  payload: Partial<Pick<Reminder, 'time' | 'frequency' | 'whenToTake'>>
+  payload: Partial<Pick<Reminder, 'time' | 'frequency' | 'whenToTake'>> & { enabled?: boolean }
 ): Promise<{ success: boolean; message: string }> {
   // 🔴 REAL — active
   const body: Record<string, unknown> = {};
   if (payload.time !== undefined) body.reminder_time = payload.time;
   if (payload.frequency !== undefined) body.frequency = FREQ_API_MAP[payload.frequency];
   if (payload.whenToTake !== undefined) body.when_to_take = WHEN_API_MAP[payload.whenToTake];
+  if (payload.enabled !== undefined) body.is_active = payload.enabled;
   return medicineApiCall(ENDPOINTS.reminderUpdate(reminderId), { method: 'PUT', body });
 
   // 🟢 MOCK

@@ -12,7 +12,7 @@ import { useState } from 'react';
 import {
   ScrollView, Text, StyleSheet, View, Pressable, Alert,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
@@ -80,6 +80,8 @@ export default function AnalysisScreen() {
     summary?: string;
     values?: string;
     detectedMedicines?: string;  // ← NEW
+    narrative?: string;
+    reportType?: string;
   }>();
 
   const values: LabValue[] = params.values ? JSON.parse(params.values) : [];
@@ -195,6 +197,20 @@ export default function AnalysisScreen() {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <Pressable 
+              onPress={() => Alert.alert('Translate', 'Language selection coming soon!')} 
+              hitSlop={10} 
+              style={{ marginRight: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            >
+              <Ionicons name="language" size={20} color={Colors.primary} />
+              <Text style={{ fontSize: 13, color: Colors.primary, fontWeight: '600' }}>Translate</Text>
+            </Pressable>
+          ),
+        }}
+      />
       {/* Patient / hospital meta */}
       {params.patientName ? (
         <Text style={styles.meta}>

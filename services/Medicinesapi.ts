@@ -120,36 +120,36 @@ export interface InteractionHistoryItem {
 // ═════════════════════════════════════════════════════════════════════════════
 
 export const MOCK_CATEGORIES: Category[] = [
-  { id: 'c1', name: 'Diabetes',       icon: 'water-outline',       color: '#2563EB', bg: '#EFF6FF' },
-  { id: 'c2', name: 'Blood Pressure', icon: 'pulse-outline',        color: '#E11D48', bg: '#FFF1F2' },
-  { id: 'c3', name: 'Vitamins',       icon: 'nutrition-outline',    color: '#16A34A', bg: '#F0FDF4' },
-  { id: 'c4', name: 'Heart Care',     icon: 'heart-outline',        color: '#EA580C', bg: '#FFF7ED' },
-  { id: 'c5', name: 'Thyroid',        icon: 'stats-chart-outline',  color: '#7C3AED', bg: '#F5F3FF' },
-  { id: 'c6', name: 'Pain Relief',    icon: 'bandage-outline',      color: '#E11D48', bg: '#FFF1F2' },
+  { id: 'c1', name: 'Diabetes', icon: 'water-outline', color: '#2563EB', bg: '#EFF6FF' },
+  { id: 'c2', name: 'Blood Pressure', icon: 'pulse-outline', color: '#E11D48', bg: '#FFF1F2' },
+  { id: 'c3', name: 'Vitamins', icon: 'nutrition-outline', color: '#16A34A', bg: '#F0FDF4' },
+  { id: 'c4', name: 'Heart Care', icon: 'heart-outline', color: '#EA580C', bg: '#FFF7ED' },
+  { id: 'c5', name: 'Thyroid', icon: 'stats-chart-outline', color: '#7C3AED', bg: '#F5F3FF' },
+  { id: 'c6', name: 'Pain Relief', icon: 'bandage-outline', color: '#E11D48', bg: '#FFF1F2' },
 ];
 
 export const MOCK_MEDICINES: Medicine[] = [
-  { id: 'm1',  name: 'Metformin 500mg',    form: 'Tablet',  category: 'Diabetes',       rx: true,  uses: 'Controls blood sugar in type 2 diabetes.',         dosage: 'As prescribed by doctor',     sideEffects: ['Nausea', 'Stomach discomfort'] },
-  { id: 'm2',  name: 'Glimepiride 1mg',    form: 'Tablet',  category: 'Diabetes',       rx: true,  uses: 'Stimulates insulin release.',                       dosage: 'Once daily before breakfast',  sideEffects: ['Hypoglycemia', 'Weight gain'] },
-  { id: 'm3',  name: 'Gliclazide 80mg',    form: 'Tablet',  category: 'Diabetes',       rx: true,  uses: 'Lowers blood glucose levels.',                      dosage: 'As prescribed by doctor',     sideEffects: ['Nausea', 'Dizziness'] },
-  { id: 'm4',  name: 'Voglibose 0.2mg',    form: 'Tablet',  category: 'Diabetes',       rx: true,  uses: 'Reduces post-meal blood sugar spikes.',             dosage: 'With meals',                  sideEffects: ['Flatulence', 'Diarrhea'] },
-  { id: 'm5',  name: 'Sitagliptin 50mg',   form: 'Tablet',  category: 'Diabetes',       rx: true,  uses: 'Helps pancreas make more insulin when needed.',     dosage: 'Once daily',                  sideEffects: ['Runny nose', 'Headache'] },
-  { id: 'm6',  name: 'Dapagliflozin 10mg', form: 'Tablet',  category: 'Diabetes',       rx: true,  uses: 'Removes excess sugar through urine.',               dosage: 'Once daily in the morning',   sideEffects: ['Urinary tract infections', 'Thirst'] },
-  { id: 'm7',  name: 'Amlodipine 5mg',     form: 'Tablet',  category: 'Blood Pressure', rx: true,  uses: 'Lowers high blood pressure, treats angina.',        dosage: '5mg once daily',              sideEffects: ['Flushing', 'Ankle swelling'] },
-  { id: 'm8',  name: 'Aspirin 75mg',        form: 'Tablet',  category: 'Heart Care',     rx: false, uses: 'Blood thinner, reduces heart attack risk.',         dosage: '75mg once daily after food',  sideEffects: ['Stomach upset', 'Heartburn'] },
-  { id: 'm9',  name: 'Vitamin D3',          form: 'Capsule', category: 'Vitamins',       rx: false, uses: 'Maintains bone health and immune system.',          dosage: '1 capsule daily',             sideEffects: ['Nausea if overdosed'] },
-  { id: 'm10', name: 'Paracetamol 500mg',   form: 'Tablet',  category: 'Pain Relief',    rx: false, uses: 'Relieves mild to moderate pain and fever.',        dosage: '500mg every 4–6 hours',       sideEffects: ['Rare liver issues if overdosed'] },
+  { id: 'm1', name: 'Metformin 500mg', form: 'Tablet', category: 'Diabetes', rx: true, uses: 'Controls blood sugar in type 2 diabetes.', dosage: 'As prescribed by doctor', sideEffects: ['Nausea', 'Stomach discomfort'] },
+  { id: 'm2', name: 'Glimepiride 1mg', form: 'Tablet', category: 'Diabetes', rx: true, uses: 'Stimulates insulin release.', dosage: 'Once daily before breakfast', sideEffects: ['Hypoglycemia', 'Weight gain'] },
+  { id: 'm3', name: 'Gliclazide 80mg', form: 'Tablet', category: 'Diabetes', rx: true, uses: 'Lowers blood glucose levels.', dosage: 'As prescribed by doctor', sideEffects: ['Nausea', 'Dizziness'] },
+  { id: 'm4', name: 'Voglibose 0.2mg', form: 'Tablet', category: 'Diabetes', rx: true, uses: 'Reduces post-meal blood sugar spikes.', dosage: 'With meals', sideEffects: ['Flatulence', 'Diarrhea'] },
+  { id: 'm5', name: 'Sitagliptin 50mg', form: 'Tablet', category: 'Diabetes', rx: true, uses: 'Helps pancreas make more insulin when needed.', dosage: 'Once daily', sideEffects: ['Runny nose', 'Headache'] },
+  { id: 'm6', name: 'Dapagliflozin 10mg', form: 'Tablet', category: 'Diabetes', rx: true, uses: 'Removes excess sugar through urine.', dosage: 'Once daily in the morning', sideEffects: ['Urinary tract infections', 'Thirst'] },
+  { id: 'm7', name: 'Amlodipine 5mg', form: 'Tablet', category: 'Blood Pressure', rx: true, uses: 'Lowers high blood pressure, treats angina.', dosage: '5mg once daily', sideEffects: ['Flushing', 'Ankle swelling'] },
+  { id: 'm8', name: 'Aspirin 75mg', form: 'Tablet', category: 'Heart Care', rx: false, uses: 'Blood thinner, reduces heart attack risk.', dosage: '75mg once daily after food', sideEffects: ['Stomach upset', 'Heartburn'] },
+  { id: 'm9', name: 'Vitamin D3', form: 'Capsule', category: 'Vitamins', rx: false, uses: 'Maintains bone health and immune system.', dosage: '1 capsule daily', sideEffects: ['Nausea if overdosed'] },
+  { id: 'm10', name: 'Paracetamol 500mg', form: 'Tablet', category: 'Pain Relief', rx: false, uses: 'Relieves mild to moderate pain and fever.', dosage: '500mg every 4–6 hours', sideEffects: ['Rare liver issues if overdosed'] },
 ];
 
 export const MOCK_REMINDERS: Reminder[] = [
-  { id: 'r1', medicineId: 'm1',  medicineName: 'Metformin 500mg', time: '08:00 AM', frequency: 'daily', whenToTake: 'after_food', enabled: true, status: 'upcoming' },
-  { id: 'r2', medicineId: 'm9',  medicineName: 'Vitamin D3',      time: '08:00 PM', frequency: 'daily', whenToTake: 'after_food', enabled: true, status: 'upcoming' },
+  { id: 'r1', medicineId: 'm1', medicineName: 'Metformin 500mg', time: '08:00 AM', frequency: 'daily', whenToTake: 'after_food', enabled: true, status: 'upcoming' },
+  { id: 'r2', medicineId: 'm9', medicineName: 'Vitamin D3', time: '08:00 PM', frequency: 'daily', whenToTake: 'after_food', enabled: true, status: 'upcoming' },
 ];
 
 export const MOCK_REMINDER_HISTORY: Reminder[] = [
-  { id: 'h1', medicineId: 'm1', medicineName: 'Metformin 500mg', time: '08:00 AM', frequency: 'daily', whenToTake: 'after_food', enabled: true, status: 'taken'  },
-  { id: 'h2', medicineId: 'm9', medicineName: 'Vitamin D3',      time: '08:00 PM', frequency: 'daily', whenToTake: 'after_food', enabled: true, status: 'missed' },
-  { id: 'h3', medicineId: 'm1', medicineName: 'Metformin 500mg', time: '08:00 AM', frequency: 'daily', whenToTake: 'after_food', enabled: true, status: 'taken'  },
+  { id: 'h1', medicineId: 'm1', medicineName: 'Metformin 500mg', time: '08:00 AM', frequency: 'daily', whenToTake: 'after_food', enabled: true, status: 'taken' },
+  { id: 'h2', medicineId: 'm9', medicineName: 'Vitamin D3', time: '08:00 PM', frequency: 'daily', whenToTake: 'after_food', enabled: true, status: 'missed' },
+  { id: 'h3', medicineId: 'm1', medicineName: 'Metformin 500mg', time: '08:00 AM', frequency: 'daily', whenToTake: 'after_food', enabled: true, status: 'taken' },
 ];
 
 export const MOCK_SCAN_RESULT: ScanResult = {
@@ -161,27 +161,27 @@ export const MOCK_SCAN_RESULT: ScanResult = {
 };
 
 export const MOCK_SCAN_HISTORY: ScanHistoryItem[] = [
-  { id: 's1', name: 'Metformin 500mg',   form: 'Tablet', scannedAt: '02 Jun 2026, 10:30 AM', confidence: 98 },
-  { id: 's2', name: 'Aspirin 75mg',      form: 'Tablet', scannedAt: '01 Jun 2026, 08:15 PM', confidence: 94 },
+  { id: 's1', name: 'Metformin 500mg', form: 'Tablet', scannedAt: '02 Jun 2026, 10:30 AM', confidence: 98 },
+  { id: 's2', name: 'Aspirin 75mg', form: 'Tablet', scannedAt: '01 Jun 2026, 08:15 PM', confidence: 94 },
   { id: 's3', name: 'Paracetamol 500mg', form: 'Tablet', scannedAt: '30 May 2026, 07:45 PM', confidence: 91 },
 ];
 
 export const MOCK_SEARCH_RESULTS: MedicineSearchResult[] = [
-  { id: 'm1',  name: 'Metformin 500mg',    form: 'Tablet',  rx: true  },
-  { id: 'm2',  name: 'Metformin 850mg',    form: 'Tablet',  rx: true  },
-  { id: 'm11', name: 'Metoprolol 25mg',    form: 'Tablet',  rx: true  },
-  { id: 'm12', name: 'Methotrexate 2.5mg', form: 'Tablet',  rx: true  },
-  { id: 'm8',  name: 'Aspirin 75mg',       form: 'Tablet',  rx: false },
-  { id: 'm13', name: 'Aspirin 150mg',      form: 'Tablet',  rx: false },
-  { id: 'm14', name: 'Ibuprofen 400mg',    form: 'Tablet',  rx: false },
-  { id: 'm10', name: 'Paracetamol 500mg',  form: 'Tablet',  rx: false },
-  { id: 'm15', name: 'Amoxicillin 500mg',  form: 'Capsule', rx: true  },
+  { id: 'm1', name: 'Metformin 500mg', form: 'Tablet', rx: true },
+  { id: 'm2', name: 'Metformin 850mg', form: 'Tablet', rx: true },
+  { id: 'm11', name: 'Metoprolol 25mg', form: 'Tablet', rx: true },
+  { id: 'm12', name: 'Methotrexate 2.5mg', form: 'Tablet', rx: true },
+  { id: 'm8', name: 'Aspirin 75mg', form: 'Tablet', rx: false },
+  { id: 'm13', name: 'Aspirin 150mg', form: 'Tablet', rx: false },
+  { id: 'm14', name: 'Ibuprofen 400mg', form: 'Tablet', rx: false },
+  { id: 'm10', name: 'Paracetamol 500mg', form: 'Tablet', rx: false },
+  { id: 'm15', name: 'Amoxicillin 500mg', form: 'Capsule', rx: true },
 ];
 
 export const MOCK_INTERACTION_HISTORY: InteractionHistoryItem[] = [
-  { id: 'i1', medicines: ['Metformin 500mg', 'Aspirin 75mg'],      severity: 'moderate', date: '02 Jun 2026, 10:30 AM' },
-  { id: 'i2', medicines: ['Paracetamol 500mg', 'Ibuprofen 400mg'], severity: 'low',      date: '30 May 2026, 07:45 PM' },
-  { id: 'i3', medicines: ['Amoxicillin 500mg'],                    severity: 'high',     date: '28 May 2026, 08:20 AM' },
+  { id: 'i1', medicines: ['Metformin 500mg', 'Aspirin 75mg'], severity: 'moderate', date: '02 Jun 2026, 10:30 AM' },
+  { id: 'i2', medicines: ['Paracetamol 500mg', 'Ibuprofen 400mg'], severity: 'low', date: '30 May 2026, 07:45 PM' },
+  { id: 'i3', medicines: ['Amoxicillin 500mg'], severity: 'high', date: '28 May 2026, 08:20 AM' },
 ];
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -197,46 +197,46 @@ export const MOCK_INTERACTION_HISTORY: InteractionHistoryItem[] = [
 // Maps backend category slugs/names → valid Ionicons names
 const CAT_ICON_MAP: Record<string, string> = {
   // pain / fever
-  pain:          'bandage-outline',
-  fever:         'thermometer-outline',
-  painkiller:    'bandage-outline',
+  pain: 'bandage-outline',
+  fever: 'thermometer-outline',
+  painkiller: 'bandage-outline',
   // allergy
-  allergy:       'alert-circle-outline',
-  allergies:     'alert-circle-outline',
+  allergy: 'alert-circle-outline',
+  allergies: 'alert-circle-outline',
   antihistamine: 'alert-circle-outline',
   // cough / cold / respiratory
-  cough:         'mic-off-outline',
-  cold:          'snow-outline',
-  respiratory:   'fitness-outline',
+  cough: 'mic-off-outline',
+  cold: 'snow-outline',
+  respiratory: 'fitness-outline',
   // stomach / digestive / gastro
-  stomach:       'nutrition-outline',
-  digestive:     'nutrition-outline',
-  gastro:        'nutrition-outline',
-  antacid:       'nutrition-outline',
+  stomach: 'nutrition-outline',
+  digestive: 'nutrition-outline',
+  gastro: 'nutrition-outline',
+  antacid: 'nutrition-outline',
   // vitamin / supplement
-  vitamin:       'leaf-outline',
-  supplement:    'leaf-outline',
+  vitamin: 'leaf-outline',
+  supplement: 'leaf-outline',
   // skin / derma
-  skin:          'color-palette-outline',
-  derma:         'color-palette-outline',
-  topical:       'color-palette-outline',
+  skin: 'color-palette-outline',
+  derma: 'color-palette-outline',
+  topical: 'color-palette-outline',
   // diabetes / blood sugar
-  diabetes:      'pulse-outline',
-  blood:         'pulse-outline',
-  cardiac:       'heart-outline',
-  heart:         'heart-outline',
+  diabetes: 'pulse-outline',
+  blood: 'pulse-outline',
+  cardiac: 'heart-outline',
+  heart: 'heart-outline',
   // sleep / anxiety / mental
-  sleep:         'moon-outline',
-  anxiety:       'happy-outline',
-  mental:        'brain',
+  sleep: 'moon-outline',
+  anxiety: 'happy-outline',
+  mental: 'brain',
   // antibiotic / infection
-  antibiotic:    'shield-checkmark-outline',
-  infection:     'shield-checkmark-outline',
+  antibiotic: 'shield-checkmark-outline',
+  infection: 'shield-checkmark-outline',
   // eye / ear / ent
-  eye:           'eye-outline',
-  ear:           'ear-outline',
+  eye: 'eye-outline',
+  ear: 'ear-outline',
   // default
-  general:       'medical-outline',
+  general: 'medical-outline',
 };
 
 function resolveCatIcon(raw: string | undefined): string {
@@ -431,7 +431,23 @@ export async function createReminder(payload: {
 export async function getTodaysReminders(): Promise<Reminder[]> {
   // 🔴 REAL — active
   const raw = await medicineApiCall<any>(ENDPOINTS.remindersToday);
-  return unwrapList<Reminder>(raw, 'reminders', 'data', 'results');
+  console.log('=== GET TODAYS REMINDERS API RESPONSE ===', JSON.stringify(raw, null, 2));
+  const list = unwrapList<any>(raw, 'reminders', 'data', 'results');
+  
+  // NOTE: This mapping is REQUIRED because the Home Screen banner explicitly
+  // expects 'medicineName', 'time', and 'status: "upcoming"'. 
+  // The backend returns 'medicine_name', 'reminder_time', and 'is_active'.
+  return list.map((r: any) => ({
+    id: String(r.id),
+    medicineName: r.medicine_name ?? r.medicineName ?? '',
+    time: r.reminder_time ?? r.time ?? '',
+    frequency: r.frequency ?? 'daily',
+    whenToTake: r.when_to_take ?? r.whenToTake ?? 'after_food',
+    enabled: r.is_active ?? true,
+    status: (['taken', 'missed', 'cancelled'].includes(String(r.status || '').toLowerCase())) 
+      ? (String(r.status).toLowerCase() as 'upcoming' | 'taken' | 'missed' | 'cancelled')
+      : 'upcoming'
+  }));
 
   // 🟢 MOCK
   // await delay(600);

@@ -160,7 +160,9 @@ export default function MedicineDetail() {
           {/* Check Interactions */}
           <Pressable
             style={styles.actionRow}
-            onPress={() => router.push('/medicines/check-interactions')}
+            onPress={() => 
+              router.push(`/medicines/check-interactions?medicineId=${medicine.id}&medicineName=${encodeURIComponent(medicine.name)}`)
+            }
           >
             <View style={styles.actionIconWrap}>
               <Ionicons name="git-compare-outline" size={22} color={Colors.primary} />

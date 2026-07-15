@@ -390,7 +390,8 @@ export default function AddReminderScreen() {
           res.reminderId,
           "Medicine Time!",
           `Time to take your ${selectedMed.name}${selectedMed.dosage ? ' (' + selectedMed.dosage + ')' : ''}`,
-          triggerTime
+          triggerTime,
+          frequency === 'daily' || frequency === 'weekly' ? frequency : 'once'
         );
 
         setSuccess(true);

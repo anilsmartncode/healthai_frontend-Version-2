@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   View, FlatList, StyleSheet, Text, Image, ScrollView,
-  KeyboardAvoidingView, Platform, Pressable, TextInput,
+  KeyboardAvoidingView, Platform, Pressable, TextInput, Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -69,6 +69,16 @@ function ChatBubble({ message }: { message: ChatMessage }) {
         <View style={[bubbleStyles.timeRow, isUser && { justifyContent: 'flex-end' }]}>
           <Text style={[bubbleStyles.time, isUser && { color: 'rgba(255,255,255,0.65)' }]}>{time}</Text>
           {isUser && <Ionicons name="checkmark-done" size={13} color="rgba(255,255,255,0.8)" />}
+          {!isUser && (
+            <Pressable 
+              onPress={() => Alert.alert('Translate', 'Language selection coming soon!')}
+              hitSlop={8}
+              style={{ marginLeft: 8, flexDirection: 'row', alignItems: 'center', gap: 3 }}
+            >
+              <Ionicons name="language" size={12} color={C.primary} />
+              <Text style={{ fontSize: 10, color: C.primary, fontWeight: '600' }}>Translate</Text>
+            </Pressable>
+          )}
         </View>
       </View>
     </View>

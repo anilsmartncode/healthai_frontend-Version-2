@@ -34,6 +34,7 @@ import { Colors, Radius, Spacing } from '@/constants/Colors';
 import { ENDPOINTS } from '@/constants/api';
 import { medicineApiCall } from '@/services/Medicineapiclient';
 import { requestNotificationPermissions, cancelReminderNotification } from '@/utils/notifications';
+import { updateReminder } from '@/services/medicineTabApi';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 type ReminderTab = 'today' | 'history';
@@ -77,21 +78,21 @@ const FREQ_LABELS: Record<Frequency, string> = {
 // ← plug in your API: GET /api/reminders/today
 const MOCK_TODAY_REMINDERS: Reminder[] = [
   { id: 'r1', medicineName: 'Metformin 500mg', time: '08:00 AM', frequency: 'daily', whenToTake: 'after_food', enabled: true, status: 'upcoming' },
-  { id: 'r2', medicineName: 'Vitamin D3',      time: '08:00 PM', frequency: 'daily', whenToTake: 'after_food', enabled: true, status: 'upcoming' },
+  { id: 'r2', medicineName: 'Vitamin D3', time: '08:00 PM', frequency: 'daily', whenToTake: 'after_food', enabled: true, status: 'upcoming' },
 ];
 
 // ← plug in your API: GET /api/reminders/history
 const MOCK_HISTORY: HistoryItem[] = [
   { id: 'h1', date: '01 Jun 2026', medicineName: 'Metformin 500mg', time: '08:00 AM', status: 'taken' },
-  { id: 'h2', date: '01 Jun 2026', medicineName: 'Vitamin D3',      time: '08:00 PM', status: 'missed' },
+  { id: 'h2', date: '01 Jun 2026', medicineName: 'Vitamin D3', time: '08:00 PM', status: 'missed' },
   { id: 'h3', date: '31 May 2026', medicineName: 'Metformin 500mg', time: '08:00 AM', status: 'taken' },
 ];
 
 // ─── STATUS CONFIG ────────────────────────────────────────────────────────────
 const STATUS_CFG = {
-  upcoming:  { color: '#64748B', bg: '#F1F5F9', label: 'Upcoming' },
-  taken:     { color: '#16A34A', bg: '#F0FDF4', label: 'Taken' },
-  missed:    { color: '#DC2626', bg: '#FEF2F2', label: 'Missed' },
+  upcoming: { color: '#64748B', bg: '#F1F5F9', label: 'Upcoming' },
+  taken: { color: '#16A34A', bg: '#F0FDF4', label: 'Taken' },
+  missed: { color: '#DC2626', bg: '#FEF2F2', label: 'Missed' },
   cancelled: { color: '#94A3B8', bg: '#F8FAFC', label: 'Cancelled' },
 };
 
@@ -210,6 +211,7 @@ export default function RemindersScreen() {
     try {
       if (tab === 'today') {
         const res = await medicineApiCall<any>(ENDPOINTS.remindersToday);
+        console.log('=== REMINDERS SCREEN API RESPONSE (TODAY) ===', JSON.stringify(res, null, 2));
         const data = res?.data || res?.reminders || res || [];
         const list = Array.isArray(data) ? data : [];
         setReminders(list.map((r: any) => ({
@@ -219,7 +221,9 @@ export default function RemindersScreen() {
           frequency: r.frequency ?? 'daily',
           whenToTake: r.when_to_take ?? r.whenToTake ?? 'after_food',
           enabled: r.is_active ?? true,
-          status: (r.status === 'active' || !r.status) ? 'upcoming' : r.status.toLowerCase()
+          status: (['taken', 'missed', 'cancelled'].includes(String(r.status || '').toLowerCase())) 
+            ? (String(r.status).toLowerCase() as ReminderStatus)
+            : 'upcoming'
         })));
       } else {
         const res = await medicineApiCall<any>(ENDPOINTS.reminderHistory);
@@ -288,9 +292,11 @@ export default function RemindersScreen() {
 
   const handleSave = async (r: Reminder) => {
     try {
-      await medicineApiCall(ENDPOINTS.reminderUpdate(r.id), {
-        method: 'PUT',
-        body: r,
+      await updateReminder(r.id, {
+        time: r.time,
+        frequency: r.frequency,
+        whenToTake: r.whenToTake,
+        enabled: r.enabled
       });
       setReminders((prev) => prev.map((rem) => rem.id === r.id ? r : rem));
     } catch (e: any) {

@@ -280,14 +280,14 @@ export default function Upload() {
       // though the report was fully analyzed. Navigate first, fire narrative
       // generation in the background (non-blocking).
       if (context === 'prescription') {
-        router.push({
+        router.replace({
           pathname: '/medicines/prescription-review',
           params: {
             detectedMedicines: JSON.stringify(result.detectedMedicines),
           },
         });
       } else {
-        router.push({
+        router.replace({
           pathname: '/analysis',
           params: {
             reportId: String(result.reportId),

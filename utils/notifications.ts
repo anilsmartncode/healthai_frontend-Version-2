@@ -1,6 +1,9 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import * as TaskManager from 'expo-task-manager';
+import { medicineApiCall } from '@/services/Medicineapiclient';
+import { ENDPOINTS } from '@/constants/api';
 
 // Determine if we are running inside the Expo Go app.
 // expo-notifications native code was removed from Expo Go in SDK 53+
@@ -14,6 +17,54 @@ if (!isExpoGo) {
       shouldPlaySound: true,
       shouldSetBadge: false,
     }),
+  });
+}
+
+// ── Background Task Definition ────────────────────────────────────────────────
+export const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND-NOTIFICATION-TASK';
+
+export function defineBackgroundNotificationTask() {
+  if (isExpoGo) return;
+
+  TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => {
+    if (error) {
+      console.warn('[Notifications] Background task error:', error);
+      return;
+    }
+    
+    if (data) {
+      const { actionIdentifier, notification } = data as any;
+      const reminderId = notification?.request?.content?.data?.reminderId || 'unknown';
+      
+      console.log(`[Notifications] Background action received! ID: ${actionIdentifier}, Reminder: ${reminderId}`);
+
+      if (actionIdentifier === 'snooze') {
+        // Schedule a one-off 10-minute snooze alarm
+        const snoozeDate = new Date(Date.now() + 10 * 60 * 1000);
+        await scheduleReminderNotification(
+          `${reminderId}-snooze`,
+          `Snoozed: ${notification?.request?.content?.title || 'Medicine'}`,
+          notification?.request?.content?.body || 'Time to take your medicine',
+          snoozeDate,
+          'once'
+        );
+      } else if (actionIdentifier === 'take') {
+        // Mark as taken (will hook into backend later)
+        console.log(`[Notifications] Medicine ${reminderId} marked as taken in background.`);
+        
+        // Notify the backend
+        if (reminderId && reminderId !== 'unknown') {
+          try {
+            await medicineApiCall(ENDPOINTS.reminderTaken(reminderId), { method: 'POST' });
+          } catch (apiErr) {
+            console.warn('[Notifications] Background API call failed:', apiErr);
+          }
+        }
+        
+        // Just clear the snooze alarm if it exists
+        await cancelReminderNotification(`${reminderId}-snooze`);
+      }
+    }
   });
 }
 
@@ -87,18 +138,43 @@ export async function setupNotificationCategories() {
  * @param title The notification title (e.g. "Time to take your Metformin")
  * @param body The notification body (e.g. "Dosage: 500mg, After Food")
  * @param triggerTime The specific Date object for when this should trigger
+ * @param frequency 'once', 'daily', or 'weekly'
  */
-export async function scheduleReminderNotification(id: string, title: string, body: string, triggerTime: Date) {
+export async function scheduleReminderNotification(
+  id: string, 
+  title: string, 
+  body: string, 
+  triggerTime: Date,
+  frequency: 'once' | 'daily' | 'weekly' | 'monthly' = 'daily'
+) {
   if (isExpoGo) return null;
 
   try {
     // First cancel any existing notification with this ID just in case
     await cancelReminderNotification(id);
 
-    // Make sure triggerTime is in the future
-    if (triggerTime.getTime() <= Date.now()) {
-      console.warn('[Notifications] Cannot schedule notification in the past');
-      return null;
+    let trigger: Notifications.NotificationTriggerInput = { date: triggerTime };
+
+    if (frequency === 'daily') {
+      trigger = {
+        hour: triggerTime.getHours(),
+        minute: triggerTime.getMinutes(),
+        repeats: true,
+      };
+    } else if (frequency === 'weekly') {
+      // Expo weekday: 1 = Sunday, 7 = Saturday
+      trigger = {
+        weekday: triggerTime.getDay() + 1,
+        hour: triggerTime.getHours(),
+        minute: triggerTime.getMinutes(),
+        repeats: true,
+      };
+    } else {
+      // One-off
+      if (triggerTime.getTime() <= Date.now()) {
+        console.warn('[Notifications] Cannot schedule notification in the past');
+        return null;
+      }
     }
 
     return await Notifications.scheduleNotificationAsync({
@@ -109,10 +185,9 @@ export async function scheduleReminderNotification(id: string, title: string, bo
         sound: 'alarm.wav',
         categoryIdentifier: 'reminder-actions',
         data: { reminderId: id }, // Pass the ID in data so the listener can read it
+        channelId: 'reminders',   // IMPORTANT: Tell Android to use our custom channel
       },
-      trigger: {
-        date: triggerTime,
-      },
+      trigger,
     });
   } catch (e) {
     console.warn('[Notifications] Error scheduling notification', e);

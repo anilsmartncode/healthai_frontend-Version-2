@@ -488,7 +488,16 @@ export default function CheckInteractionsScreen() {
               <View style={[styles.resultIconCircle, { backgroundColor: sev.color + '20' }]}>
                 <Ionicons name={sev.icon as any} size={32} color={sev.color} />
               </View>
-              <Text style={[styles.resultSevLabel, { color: sev.color }]}>{sev.label} Found</Text>
+              <Text style={[styles.resultSevLabel, { color: sev.color, flex: 1 }]}>{sev.label} Found</Text>
+
+              <Pressable 
+                onPress={() => Alert.alert('Translate', 'Language selection coming soon!')}
+                hitSlop={8}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: sev.color + '15', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: sev.color + '30' }}
+              >
+                <Ionicons name="language" size={14} color={sev.color} />
+                <Text style={{ fontSize: 11, fontWeight: '700', color: sev.color }}>Translate</Text>
+              </Pressable>
             </View>
 
             <Text style={styles.resultMeds}>{medNames.join(' + ')}</Text>

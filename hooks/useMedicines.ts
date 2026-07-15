@@ -32,11 +32,11 @@ export interface TodayReminderBanner {
 }
 
 export function useMedicines() {
-  const [categories, setCategories]     = useState<Category[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [recentlyViewed, setRecentlyViewed] = useState<Medicine[]>([]);
-  const [todayBanner, setTodayBanner]    = useState<TodayReminderBanner | null>(null);
-  const [loading, setLoading]            = useState(true);
-  const [error, setError]                = useState<string | null>(null);
+  const [todayBanner, setTodayBanner] = useState<TodayReminderBanner | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);

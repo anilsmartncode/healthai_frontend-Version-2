@@ -159,27 +159,36 @@ export default function Home() {
 
         <FamilyHealthCard />
 
-        {todayBanner && todayBanner.count > 0 && (
-          <Pressable style={styles.reminderBanner} onPress={() => router.push('/medicines/reminders')}>
-            <View style={styles.reminderLeft}>
-              <Text style={styles.reminderEyebrow}>TODAY'S REMINDER</Text>
-              <Text style={styles.reminderTitle}>
-                {todayBanner.count} medicine{todayBanner.count !== 1 ? 's' : ''} due
-              </Text>
+        {/* ── Today's Reminder Banner ── */}
+        <Pressable style={styles.reminderBanner} onPress={() => router.push('/medicines/reminders')}>
+          <View style={styles.reminderLeft}>
+            <Text style={styles.reminderEyebrow}>TODAY'S REMINDER</Text>
+            <Text style={styles.reminderTitle}>
+              {todayBanner && todayBanner.count > 0 
+                ? `${todayBanner.count} medicine${todayBanner.count !== 1 ? 's' : ''} due` 
+                : "No medicines due"}
+            </Text>
+            {todayBanner && todayBanner.count > 0 ? (
               <Text style={styles.reminderSub}>
                 Next: {todayBanner.nextName} at {todayBanner.nextTime}
               </Text>
+            ) : (
+              <Text style={styles.reminderSub}>
+                Set up a schedule
+              </Text>
+            )}
+            {todayBanner && todayBanner.count > 0 && (
               <View style={styles.dotRow}>
                 <View style={[styles.dot, styles.dotActive]} />
                 <View style={styles.dot} />
                 <View style={styles.dot} />
               </View>
-            </View>
-            <View style={styles.reminderBtn}>
-              <Text style={styles.reminderBtnText}>View</Text>
-            </View>
-          </Pressable>
-        )}
+            )}
+          </View>
+          <View style={styles.reminderBtn}>
+            <Text style={styles.reminderBtnText}>{todayBanner && todayBanner.count > 0 ? "View" : "Add"}</Text>
+          </View>
+        </Pressable>
 
         {hasReports ? <RecentReports reports={reports} /> : <EmptyState />}
       </ScrollView>

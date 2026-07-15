@@ -17,7 +17,7 @@ export function useReports() {
   const { phone } = useAuth();
 
   const [allReports, setAllReports] = useState<ReportListItem[]>([]);
-  const [loading, setLoading]       = useState(true);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');

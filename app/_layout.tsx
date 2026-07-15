@@ -19,9 +19,13 @@ import { SecurityWrapper } from "@/components/SecurityWrapper";
 
 // Initialize notification handler globally
 import * as Notifications from "expo-notifications";
-import { setupNotificationCategories, scheduleReminderNotification, cancelReminderNotification } from "@/utils/notifications";
+import { setupNotificationCategories, scheduleReminderNotification, cancelReminderNotification, defineBackgroundNotificationTask } from "@/utils/notifications";
 import { medicineApiCall } from "@/services/Medicineapiclient";
 import { ENDPOINTS } from "@/constants/api";
+
+// Register headless background task to handle 'snooze' and 'take' when app is closed
+defineBackgroundNotificationTask();
+
 // --- GLOBAL NETWORK LATENCY TRACKER ---
 const originalFetch = global.fetch;
 global.fetch = async (...args) => {

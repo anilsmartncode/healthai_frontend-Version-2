@@ -272,27 +272,35 @@ export default function Medicines() {
           </View>
 
           {/* ── Today's Reminder Banner ── */}
-          {todayBanner && todayBanner.count > 0 && (
-            <Pressable style={styles.reminderBanner} onPress={handleViewReminder}>
-              <View style={styles.reminderLeft}>
-                <Text style={styles.reminderEyebrow}>TODAY'S REMINDER</Text>
-                <Text style={styles.reminderTitle}>
-                  {todayBanner.count} medicine{todayBanner.count !== 1 ? 's' : ''} due
-                </Text>
+          <Pressable style={styles.reminderBanner} onPress={handleViewReminder}>
+            <View style={styles.reminderLeft}>
+              <Text style={styles.reminderEyebrow}>TODAY'S REMINDER</Text>
+              <Text style={styles.reminderTitle}>
+                {todayBanner && todayBanner.count > 0 
+                  ? `${todayBanner.count} medicine${todayBanner.count !== 1 ? 's' : ''} due` 
+                  : "No medicines due"}
+              </Text>
+              {todayBanner && todayBanner.count > 0 ? (
                 <Text style={styles.reminderSub}>
                   Next: {todayBanner.nextName} at {todayBanner.nextTime}
                 </Text>
+              ) : (
+                <Text style={styles.reminderSub}>
+                  Set up a schedule
+                </Text>
+              )}
+              {todayBanner && todayBanner.count > 0 && (
                 <View style={styles.dotRow}>
                   <View style={[styles.dot, styles.dotActive]} />
                   <View style={styles.dot} />
                   <View style={styles.dot} />
                 </View>
-              </View>
-              <View style={styles.reminderBtn}>
-                <Text style={styles.reminderBtnText}>View</Text>
-              </View>
-            </Pressable>
-          )}
+              )}
+            </View>
+            <View style={styles.reminderBtn}>
+              <Text style={styles.reminderBtnText}>{todayBanner && todayBanner.count > 0 ? "View" : "Add"}</Text>
+            </View>
+          </Pressable>
 
           {/* ── Upload Prescription Banner ── */}
           <Pressable style={styles.rxBanner} onPress={() => router.push({ pathname: '/upload', params: { context: 'prescription' } } as any)}>
