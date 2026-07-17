@@ -695,11 +695,17 @@ export async function getInteractionDetails(interactionId: string): Promise<Inte
  * POST /api/interactions/save  { medicine_ids }
  * Expected time: ~300ms
  */
-export async function saveInteractionReport(medicineIds: string[]): Promise<{ success: boolean; message: string }> {
+export async function saveInteractionReport(
+  medicineIds: string[],
+  interactionId?: string
+): Promise<{ success: boolean; message: string }> {
   // 🔴 REAL — active
   return medicineApiCall(ENDPOINTS.interactionsSave, {
     method: 'POST',
-    body: { medicine_ids: medicineIds },
+    body: { 
+      medicine_ids: medicineIds,
+      interaction_id: interactionId || undefined
+    },
   });
 
   // 🟢 MOCK

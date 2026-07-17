@@ -47,6 +47,27 @@ export function reportDetailsStorageKey(phone: string | null): string {
   return `healthai_report_details_${user}`;
 }
 
+export async function getReportRenames(phone: string | null): Promise<Record<string, string>> {
+  try {
+    const key = `healthai_report_renames_${phone ? phone.replace(/\D/g, '') : 'guest'}`;
+    const data = await AsyncStorage.getItem(key);
+    return data ? JSON.parse(data) : {};
+  } catch {
+    return {};
+  }
+}
+
+export async function renameReport(id: string, newName: string, phone: string | null): Promise<void> {
+  try {
+    const key = `healthai_report_renames_${phone ? phone.replace(/\D/g, '') : 'guest'}`;
+    const renames = await getReportRenames(phone);
+    renames[id] = newName.trim();
+    await AsyncStorage.setItem(key, JSON.stringify(renames));
+  } catch (e) {
+    console.error('Failed to save rename', e);
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  TYPES
 // ─────────────────────────────────────────────────────────────────────────────
@@ -596,30 +617,33 @@ export const reportsApi = {
       // NOT a bare array. The old code did `Array.isArray(data) ? data : []`,
       // which was always false for this shape, silently returning an empty
       // list every time (no error, no log — just nothing rendered in the UI).
-      const list: any[] = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.reports)
-          ? data.reports
-          : [];
-      return list.map((r: any): ReportListItem => ({
-        id: String(r.id ?? r.report_id),
-        title: r.title ?? r.report_type_full ?? r.report_type ?? 'Report',
-        reportType: r.report_type ?? r.reportType ?? '',
-        reportTypeFull: r.report_type_full ?? r.reportTypeFull ?? r.report_type ?? '',
-        category: deriveCategory(r.report_type ?? r.reportType ?? ''),
-        date: r.date ?? (r.analyzed_at ? new Date(r.analyzed_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
-        labName: r.lab_name ?? r.hospital_name ?? r.labName ?? 'Lab',
-        fileType: (r.file_type ?? r.fileType ?? 'PDF') as 'PDF' | 'IMAGE',
-        healthScore: r.health_score ?? r.healthScore ?? 0,
-        healthLabel: r.health_label ?? r.healthLabel ?? scoreToLabel(r.health_score ?? r.healthScore ?? 0),
-        totalValues: r.total_values ?? r.totalValues ?? 0,
-        abnormalCount: r.abnormal_count ?? r.abnormalCount ?? 0,
-        borderlineCount: r.borderline_count ?? r.borderlineCount ?? 0,
-        status: (r.status ?? ((r.abnormal_count ?? 0) > 2 ? 'attention' : 'good')) as 'good' | 'attention',
-        thumbnailUri: r.thumbnail_uri ?? r.thumbnailUri ?? null,
-        fileUri: r.file_uri ?? r.fileUri ?? null,
-        analyzedAt: r.analyzed_at ?? r.analyzedAt ?? new Date().toISOString(),
-      })).sort((a, b) => new Date(b.analyzedAt).getTime() - new Date(a.analyzedAt).getTime());
+      const renames = await getReportRenames(phone);
+      
+      const rawList = data?.data?.reports || data?.reports || data;
+      const list = Array.isArray(rawList) ? rawList : [];
+
+      return list.map((r: any): ReportListItem => {
+        const idStr = String(r.id ?? r.report_id);
+        return {
+          id: idStr,
+          title: renames[idStr] || (r.title ?? r.report_type_full ?? r.report_type ?? 'Report'),
+          reportType: r.report_type ?? r.reportType ?? '',
+          reportTypeFull: r.report_type_full ?? r.reportTypeFull ?? r.report_type ?? '',
+          category: deriveCategory(r.report_type ?? r.reportType ?? ''),
+          date: r.date ?? (r.analyzed_at ? new Date(r.analyzed_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
+          labName: r.lab_name ?? r.hospital_name ?? r.labName ?? 'Lab',
+          fileType: (r.file_type ?? r.fileType ?? 'PDF') as 'PDF' | 'IMAGE',
+          healthScore: r.health_score ?? r.healthScore ?? 0,
+          healthLabel: r.health_label ?? r.healthLabel ?? scoreToLabel(r.health_score ?? r.healthScore ?? 0),
+          totalValues: r.total_values ?? r.totalValues ?? 0,
+          abnormalCount: r.abnormal_count ?? r.abnormalCount ?? 0,
+          borderlineCount: r.borderline_count ?? r.borderlineCount ?? 0,
+          status: (r.status ?? ((r.abnormal_count ?? 0) > 2 ? 'attention' : 'good')) as 'good' | 'attention',
+          thumbnailUri: r.thumbnail_uri ?? r.thumbnailUri ?? null,
+          fileUri: r.file_uri ?? r.fileUri ?? null,
+          analyzedAt: r.analyzed_at ?? r.analyzedAt ?? new Date().toISOString(),
+        };
+      }).sort((a, b) => new Date(b.analyzedAt).getTime() - new Date(a.analyzedAt).getTime());
     } catch (e) {
       console.log('[reportsApi.list] 🔴 REAL call failed:', e);
       // Surface as an empty list rather than throwing — useReports() already

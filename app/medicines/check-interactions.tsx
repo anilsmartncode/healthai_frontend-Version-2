@@ -308,13 +308,26 @@ export default function CheckInteractionsScreen() {
 
   // ── Save (real API) ──────────────────────────────────────────────────────
   const handleSave = async () => {
-    const ids = selectedMedicines.map((m) => m.id);
-    if (ids.length === 0) return;
-    console.log('[CheckInteractions] saveInteractionReport REQUEST', { medicineIds: ids });
+    let ids = selectedMedicines.map((m) => String(m.id));
+    
+    // If no medicines are selected (e.g. loaded from history), try to get them from the result object
+    if (ids.length === 0) {
+      const sourceMeds = detail?.medicines || result?.medicines || [];
+      ids = sourceMeds.map((m: any) => String(m.id ?? m)); // handles both object array and string array
+    }
+
+    const interactionId = detail?.interactionId || result?.interactionId || '';
+
+    if (ids.length === 0 && !interactionId) {
+      Alert.alert('Error', 'No check available to save.');
+      return;
+    }
+
+    console.log('[CheckInteractions] saveInteractionReport REQUEST', { medicineIds: ids, interactionId });
     setIsSaving(true);
     const t0 = Date.now();
     try {
-      const res = await saveInteractionReport(ids);
+      const res = await saveInteractionReport(ids, interactionId);
       console.log('[CheckInteractions] saveInteractionReport RESPONSE', { ...res, ms: Date.now() - t0 });
       setCurrentView('saved');
     } catch (e: any) {
@@ -378,14 +391,20 @@ export default function CheckInteractionsScreen() {
           <View style={styles.savedCircle}>
             <Ionicons name="checkmark" size={48} color="#fff" />
           </View>
-          <Text style={styles.savedTitle}>Interaction Report Saved!</Text>
-          <Text style={styles.savedSub}>You can view it anytime in Interaction History.</Text>
-          <Pressable style={styles.primaryBtn} onPress={() => setHistoryVisible(true)}>
-            <Text style={styles.primaryBtnText}>View History</Text>
-          </Pressable>
-          <Pressable style={styles.ghostBtn} onPress={handleClear}>
-            <Text style={styles.ghostBtnText}>Check Another</Text>
-          </Pressable>
+          
+          <View style={{ gap: 6, marginBottom: 24, marginTop: 8 }}>
+            <Text style={styles.savedTitle}>Interaction Report Saved!</Text>
+            <Text style={styles.savedSub}>You can view it anytime in your Interaction History.</Text>
+          </View>
+
+          <View style={{ width: '100%', gap: 14 }}>
+            <Pressable style={[styles.primaryBtn, { width: '100%' }]} onPress={() => setHistoryVisible(true)}>
+              <Text style={styles.primaryBtnText}>View History</Text>
+            </Pressable>
+            <Pressable style={[styles.ghostBtn, { width: '100%' }]} onPress={handleClear}>
+              <Text style={styles.ghostBtnText}>Check Another</Text>
+            </Pressable>
+          </View>
         </View>
         <HistoryModal visible={historyVisible} onClose={() => setHistoryVisible(false)} onSelectItem={handleSelectHistoryItem} />
       </SafeAreaView>
@@ -732,7 +751,15 @@ const styles = StyleSheet.create({
   resultSummaryText: { fontSize: 14, color: '#334155', lineHeight: 21 },
   resultActions: { flexDirection: 'row', gap: 10 },
 
-  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.primary, borderRadius: 12, paddingVertical: 14 },
+  primaryBtn: { 
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, 
+    backgroundColor: Colors.primary, borderRadius: 12, paddingVertical: 14,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
   primaryBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   outlineBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff', borderWidth: 1.5, borderColor: Colors.primary, borderRadius: 12, paddingVertical: 14 },
   outlineBtnText: { color: Colors.primary, fontSize: 14, fontWeight: '700' },

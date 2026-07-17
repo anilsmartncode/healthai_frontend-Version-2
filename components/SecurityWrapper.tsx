@@ -10,8 +10,8 @@ import { Ionicons } from '@expo/vector-icons';
 const INACTIVITY_TIMEOUT_MS = 10000; 
 
 export function SecurityWrapper({ children }: { children: React.ReactNode }) {
-  // 1. Prevent Screen Capture globally
-  usePreventScreenCapture();
+  // 1. Prevent Screen Capture globally (Temporarily disabled for testing)
+  // usePreventScreenCapture();
 
   const { token, ready } = useAuth();
   const [isLocked, setIsLocked] = useState(false);

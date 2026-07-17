@@ -56,9 +56,9 @@ const inlineStyles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: Colors.text,
-    paddingVertical: 8,
+    paddingVertical: 0,
     maxHeight: 100,
-    minHeight: 36,
+    minHeight: 20,
   },
 });
 

@@ -272,9 +272,19 @@ export async function sendInvite(payload: {
   channel: InviteChannel; phone?: string; email?: string; date_of_birth: string;
 }): Promise<{ success: boolean; invite_id: string; expires_at: string; message: string }> {
   // 🔴 REAL
+  const backendPayload = {
+    relationship: payload.relationship,
+    invitee_name: payload.full_name,
+    invitee_phone: payload.phone || null,
+    invitee_email: payload.email || null,
+    date_of_birth: payload.date_of_birth,
+    invite_type: payload.channel,
+    channel: payload.channel // send both for backwards compatibility
+  };
+
   const raw = await medicineApiCall<any>(ENDPOINTS.familyInviteSend, {
     method: 'POST',
-    body: payload,
+    body: backendPayload,
   });
   return (raw?.data ?? raw) as { success: boolean; invite_id: string; expires_at: string; message: string };
 
@@ -294,9 +304,18 @@ export async function generateInviteLink(payload: {
   relationship: string; full_name: string; date_of_birth: string;
 }): Promise<{ invite_id: string; invite_code: string; invite_url: string; expires_at: string }> {
   // 🔴 REAL
+  const backendPayload = {
+    relationship: payload.relationship,
+    invitee_name: payload.full_name,
+    invitee_phone: null,
+    invitee_email: null,
+    date_of_birth: payload.date_of_birth,
+    invite_type: 'link'
+  };
+
   const raw = await medicineApiCall<any>(ENDPOINTS.familyInviteGenerateLink, {
     method: 'POST',
-    body: payload,
+    body: backendPayload,
   });
   const d = raw?.data ?? raw;
   return {

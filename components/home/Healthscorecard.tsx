@@ -252,7 +252,7 @@ function FilledHealthScore({
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.attentionTop}>Health Alerts:</Text>
-            <Text style={styles.attentionBottom}>{attentionCount} findings need attention</Text>
+            <Text style={styles.attentionBottom}>{attentionCount} reports need attention</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
         </Pressable>

@@ -112,7 +112,7 @@ export default function Onboarding() {
             <Image
               source={item.image}
               style={{ width, height: imageAreaHeight, flex: 1 }}
-              resizeMode="cover"
+              resizeMode="contain"
             />
           </View>
         )}

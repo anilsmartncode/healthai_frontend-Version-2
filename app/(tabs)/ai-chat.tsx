@@ -35,7 +35,7 @@ function NurseAvatar({ size = 34 }: { size?: number }) {
   return (
     <View style={[avatarStyles.wrap, { width: size, height: size, borderRadius: size / 2 }]}>
       <Image
-        source={require('../assets/images/nurse_avatar.png')}
+        source={require('../../assets/images/nurse_avatar.png')}
         style={{ width: size, height: size }}
         resizeMode="contain"
       />
@@ -254,7 +254,13 @@ function ConditionCard() {
           <Pressable
             key={a.label}
             style={({ pressed }) => [condStyles.helpRow, pressed && { opacity: 0.7 }]}
-            onPress={() => {}}
+            onPress={() => {
+              if (a.label === 'Upload Reports') {
+                router.push('/upload');
+              } else {
+                Alert.alert('Coming Soon', `${a.label} will be available in a future update.`);
+              }
+            }}
           >
             <View style={condStyles.helpIconWrap}>
               <Ionicons name={a.icon} size={18} color={C.primary} />
@@ -502,26 +508,33 @@ export default function AIChatScreen() {
         )}
 
         {/* Input bar */}
-        <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-          <Pressable style={styles.plusBtn}>
-            <Ionicons name="add" size={22} color={C.primary} />
-          </Pressable>
+        <View style={[styles.inputBar, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 16 }]}>
           <View style={styles.inputWrap}>
-            <ChatInput
-              value={input}
-              onChangeText={setInput}
-              onSend={handleSend}
-              loading={loading}
-              bottomInset={0}
-              inline
-            />
+            <Pressable style={styles.innerPlusBtn}>
+              <Ionicons name="add" size={24} color={C.textMuted} />
+            </Pressable>
+            
+            <View style={{ flex: 1, paddingVertical: Platform.OS === 'ios' ? 8 : 4 }}>
+              <ChatInput
+                value={input}
+                onChangeText={setInput}
+                onSend={handleSend}
+                loading={loading}
+                bottomInset={0}
+                inline
+              />
+            </View>
+
+            <Pressable 
+              style={[styles.innerMicBtn, input.trim() ? { backgroundColor: C.primary } : { backgroundColor: '#F1F5F9' }]} 
+              onPress={handleSend}
+            >
+              {input.trim()
+                ? <Ionicons name="arrow-up" size={18} color="#fff" />
+                : <Ionicons name="mic" size={18} color={C.textMuted} />
+              }
+            </Pressable>
           </View>
-          <Pressable style={styles.micBtn} onPress={handleSend}>
-            {input.trim()
-              ? <Ionicons name="send" size={18} color="#fff" />
-              : <Ionicons name="mic" size={20} color="#fff" />
-            }
-          </Pressable>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -560,23 +573,36 @@ const styles = StyleSheet.create({
   list: { padding: 16, gap: 2, paddingBottom: 10 },
 
   inputBar: {
-    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
-    paddingHorizontal: 12, paddingTop: 10,
-    borderTopWidth: 1, borderColor: C.border,
-    backgroundColor: C.bg,
+    paddingHorizontal: 16, paddingTop: 12,
+    backgroundColor: C.chatBg,
   },
-  plusBtn: {
-    width: 42, height: 42, borderRadius: 21,
-    borderWidth: 1.5, borderColor: C.primary,
-    alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0,
+  inputWrap: { 
+    flexDirection: 'row', alignItems: 'flex-end',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5, 
+    borderColor: '#E2E8F0',
+    borderRadius: 28,
+    paddingLeft: 8,
+    paddingRight: 8,
+    paddingTop: 8,
+    paddingBottom: 8,
+    minHeight: 52,
+    shadowColor: C.text,
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
-  inputWrap: { flex: 1 },
-  micBtn: {
-    width: 42, height: 42, borderRadius: 21,
-    backgroundColor: C.primary,
+  innerPlusBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: '#F8FAFC',
     alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0,
+    marginRight: 6,
+  },
+  innerMicBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
+    marginLeft: 6,
   },
   suggestionChip: {
     backgroundColor: '#EFF6FF',

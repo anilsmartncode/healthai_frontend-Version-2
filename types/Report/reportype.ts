@@ -137,6 +137,7 @@ export type ReportCategory =
 
 // Map API response → internal LabValue[]
 export function mapApiLabValues(raw: ApiLabValue[]): LabValue[] {
+  if (!Array.isArray(raw)) return [];
   return raw.map((item) => ({
     name:   item['Test Name'],
     value:  item['Units'] ? `${item['Value']} ${item['Units']}` : item['Value'],

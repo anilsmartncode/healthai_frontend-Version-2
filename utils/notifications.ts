@@ -23,6 +23,20 @@ if (!isExpoGo) {
 // ── Background Task Definition ────────────────────────────────────────────────
 export const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND-NOTIFICATION-TASK';
 
+// FCM Background Handler (Must be registered early)
+if (!isExpoGo) {
+  try {
+    import('@react-native-firebase/messaging').then((messagingModule) => {
+      const messaging = messagingModule.default;
+      messaging().setBackgroundMessageHandler(async remoteMessage => {
+        console.log('[FCM] Message handled in the background!', remoteMessage);
+      });
+    }).catch(e => console.warn('[FCM] Failed to dynamically load messaging for background', e));
+  } catch (e) {
+    console.warn('[FCM] Failed to register background handler', e);
+  }
+}
+
 export function defineBackgroundNotificationTask() {
   if (isExpoGo) return;
 
@@ -100,10 +114,34 @@ export async function requestNotificationPermissions() {
       finalStatus = status;
     }
 
+    // Also request FCM permissions
+    if (!isExpoGo) {
+      const messagingModule = await import('@react-native-firebase/messaging');
+      const messaging = messagingModule.default;
+      await messaging().requestPermission();
+    }
+
     return finalStatus === 'granted';
   } catch (e) {
     console.warn('[Notifications] Error requesting permissions', e);
     return false;
+  }
+}
+
+/**
+ * Get the FCM Push Token for this device
+ */
+export async function getFCMToken(): Promise<string | null> {
+  if (isExpoGo) return null;
+  try {
+    const messagingModule = await import('@react-native-firebase/messaging');
+    const messaging = messagingModule.default;
+    const token = await messaging().getToken();
+    console.log('[FCM] Device Token:', token);
+    return token;
+  } catch (e) {
+    console.warn('[FCM] Failed to get push token:', e);
+    return null;
   }
 }
 

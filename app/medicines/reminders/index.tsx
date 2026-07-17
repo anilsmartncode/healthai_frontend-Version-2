@@ -31,6 +31,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors, Radius, Spacing } from '@/constants/Colors';
+import { CustomTimePicker } from '@/components/medicines/CustomTimePicker';
 import { ENDPOINTS } from '@/constants/api';
 import { medicineApiCall } from '@/services/Medicineapiclient';
 import { requestNotificationPermissions, cancelReminderNotification } from '@/utils/notifications';
@@ -140,7 +141,15 @@ function MarkTakenModal({ reminder, onTaken, onMissed, onClose }: { reminder: Re
 
 // ─── EDIT REMINDER MODAL ──────────────────────────────────────────────────────
 function EditReminderModal({ reminder, onSave, onDelete, onClose }: { reminder: Reminder | null; onSave: (r: Reminder) => void; onDelete: (id: string) => void; onClose: () => void }) {
-  if (!reminder) return null;
+  const [edited, setEdited] = useState<Reminder | null>(null);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+
+  useEffect(() => {
+    if (reminder) setEdited(reminder);
+  }, [reminder]);
+
+  if (!edited) return null;
+
   const freqOptions: Frequency[] = ['daily', 'weekly', 'monthly', 'custom'];
   const whenOptions: WhenToTake[] = ['before_food', 'after_food', 'with_food', 'bedtime'];
   return (
@@ -153,24 +162,21 @@ function EditReminderModal({ reminder, onSave, onDelete, onClose }: { reminder: 
         <ScrollView contentContainerStyle={styles.editPad}>
           <View style={styles.editRow}>
             <Text style={styles.editLabel}>Medicine</Text>
-            <Text style={styles.editValue}>{reminder.medicineName}</Text>
+            <Text style={styles.editValue}>{edited.medicineName}</Text>
           </View>
           <View style={styles.editRow}>
             <Text style={styles.editLabel}>Time</Text>
-            <Pressable style={styles.editPicker} onPress={() => {
-              // Time picker: integrate @react-native-community/datetimepicker
-              // For now shows current value; replace with DateTimePicker component
-            }}>
+            <Pressable style={styles.editPicker} onPress={() => setShowTimePicker(true)}>
               <Ionicons name="time-outline" size={16} color={Colors.primary} />
-              <Text style={styles.editPickerText}>{reminder.time}</Text>
+              <Text style={styles.editPickerText}>{edited.time}</Text>
             </Pressable>
           </View>
           <View style={styles.editRow}>
             <Text style={styles.editLabel}>Frequency</Text>
             <View style={styles.pillRow}>
               {freqOptions.map((f) => (
-                <Pressable key={f} style={[styles.selPill, reminder.frequency === f && styles.selPillActive]}>
-                  <Text style={[styles.selPillText, reminder.frequency === f && styles.selPillTextActive]}>{FREQ_LABELS[f]}</Text>
+                <Pressable key={f} style={[styles.selPill, edited.frequency === f && styles.selPillActive]} onPress={() => setEdited({ ...edited, frequency: f })}>
+                  <Text style={[styles.selPillText, edited.frequency === f && styles.selPillTextActive]}>{FREQ_LABELS[f]}</Text>
                 </Pressable>
               ))}
             </View>
@@ -179,19 +185,25 @@ function EditReminderModal({ reminder, onSave, onDelete, onClose }: { reminder: 
             <Text style={styles.editLabel}>When to Take</Text>
             <View style={styles.pillRow}>
               {whenOptions.map((w) => (
-                <Pressable key={w} style={[styles.selPill, reminder.whenToTake === w && styles.selPillActive]}>
-                  <Text style={[styles.selPillText, reminder.whenToTake === w && styles.selPillTextActive]}>{WHEN_LABELS[w]}</Text>
+                <Pressable key={w} style={[styles.selPill, edited.whenToTake === w && styles.selPillActive]} onPress={() => setEdited({ ...edited, whenToTake: w })}>
+                  <Text style={[styles.selPillText, edited.whenToTake === w && styles.selPillTextActive]}>{WHEN_LABELS[w]}</Text>
                 </Pressable>
               ))}
             </View>
           </View>
-          <Pressable style={styles.primaryBtn} onPress={() => { onSave(reminder); onClose(); }}>
+          <Pressable style={styles.primaryBtn} onPress={() => { onSave(edited); onClose(); }}>
             <Text style={styles.primaryBtnText}>Update Reminder</Text>
           </Pressable>
-          <Pressable style={styles.deleteBtn} onPress={() => { onDelete(reminder.id); onClose(); }}>
+          <Pressable style={styles.deleteBtn} onPress={() => { onDelete(edited.id); onClose(); }}>
             <Text style={styles.deleteBtnText}>Delete Reminder</Text>
           </Pressable>
         </ScrollView>
+        <CustomTimePicker
+          visible={showTimePicker}
+          initial={edited.time}
+          onConfirm={(t) => setEdited({ ...edited, time: t })}
+          onClose={() => setShowTimePicker(false)}
+        />
       </SafeAreaView>
     </Modal>
   );

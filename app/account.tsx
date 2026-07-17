@@ -6,10 +6,12 @@ import {
   Pressable,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { useState, useEffect } from 'react';
 import { SecureAsyncStorage as AsyncStorage } from '@/utils/storage';
 import { Colors, Radius, Spacing } from '@/constants/Colors';
@@ -18,7 +20,7 @@ import { DatePickerField } from '@/components/ui/DatePickerField';
 import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/Languagecontext';
 import { api } from '@/services/api';
-import { ENDPOINTS } from '@/constants/api';
+import { ENDPOINTS, BASE_URL } from '@/constants/api';
 
 const BLOOD_GROUPS = ['A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−'];
 const GENDERS      = ['Male', 'Female', 'Other', 'Prefer not to say'];
@@ -42,11 +44,14 @@ export default function Account() {
 
   const [name,       setName]       = useState('');
   const [email,      setEmail]      = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [dob,        setDob]        = useState<Date | null>(null);
   const [bloodGroup, setBloodGroup] = useState('B+');
   const [gender,     setGender]     = useState('Male');
   const [height,     setHeight]     = useState('');
   const [weight,     setWeight]     = useState('');
+  const [avatarUrl,  setAvatarUrl]  = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [loading,    setLoading]    = useState(true);
   const [saving,     setSaving]     = useState(false);
 
@@ -66,13 +71,21 @@ export default function Account() {
         } else {
           // 🔴 REAL: GET /api/user/profile
           const raw = await api.request<any>(ENDPOINTS.profileMePath);
+          console.log('[Account] RAW API RESPONSE:', JSON.stringify(raw, null, 2));
           // GET returns flat: { user_id, full_name, email, phone, avatar_url,
           //                     date_of_birth, gender, blood_type, created_at }
           // PATCH response wraps under user: { user_id, full_name, ... }
           const data = raw?.user ?? raw;
           setName(data.full_name ?? data.name ?? '');
           setEmail(data.email ?? '');
-          setDob(data.date_of_birth ?? data.dob ? new Date(data.date_of_birth ?? data.dob) : null);
+          setPhoneNumber(data.phone ?? '');
+          const dobValue = data.date_of_birth ?? data.dob;
+          setDob(dobValue ? new Date(dobValue) : null);
+          let avUrl = data.avatar_url ?? null;
+          if (avUrl && !avUrl.startsWith('http')) {
+            avUrl = avUrl.startsWith('/') ? BASE_URL + avUrl : `${BASE_URL}/${avUrl}`;
+          }
+          setAvatarUrl(avUrl);
           setBloodGroup(data.blood_type ?? data.blood_group ?? 'B+');
           setGender(data.gender ?? 'Male');
           setHeight(data.height ? String(data.height) : '');
@@ -112,6 +125,7 @@ export default function Account() {
           body: JSON.stringify({
             full_name:     name,
             email,
+            phone:         phoneNumber,
             date_of_birth: dob ? dob.toISOString().split('T')[0] : null,
             blood_type:    bloodGroup,
             gender,
@@ -136,6 +150,57 @@ export default function Account() {
       Alert.alert('Error', e?.message || 'Failed to save profile. Please try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePickImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Sorry, we need camera roll permissions to upload a profile photo.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        setUploadingAvatar(true);
+
+        const formData = new FormData();
+        formData.append('file', {
+          uri: asset.uri,
+          name: asset.fileName || 'avatar.jpg',
+          type: asset.mimeType || 'image/jpeg',
+        } as any);
+
+        const response = await api.request<any>(ENDPOINTS.profileAvatarPath, {
+          method: 'POST',
+          body: formData,
+        });
+
+        let newAvatarUrl = response?.user?.avatar_url || response?.avatar_url;
+        if (newAvatarUrl) {
+          if (!newAvatarUrl.startsWith('http')) {
+            newAvatarUrl = newAvatarUrl.startsWith('/') ? BASE_URL + newAvatarUrl : `${BASE_URL}/${newAvatarUrl}`;
+          }
+          setAvatarUrl(newAvatarUrl);
+        } else {
+          // Show local image immediately if backend didn't return the URL but succeeded
+          setAvatarUrl(asset.uri);
+        }
+        Alert.alert('Success', 'Profile photo updated!');
+      }
+    } catch (e: any) {
+      console.warn('[Account] Photo upload error:', e);
+      Alert.alert('Error', e.message || 'Failed to upload photo');
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
@@ -170,7 +235,9 @@ export default function Account() {
         {/* Avatar */}
         <View style={styles.avatarWrap}>
           <View style={styles.avatar}>
-            {name.trim() ? (
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={{ width: 78, height: 78, borderRadius: 39 }} resizeMode="cover" />
+            ) : name.trim() ? (
               <Text style={styles.avatarInitial}>
                 {name.trim()[0].toUpperCase()}
               </Text>
@@ -178,8 +245,12 @@ export default function Account() {
               <Ionicons name="person" size={34} color="#fff" />
             )}
           </View>
-          <Pressable>
-            <Text style={styles.changePhoto}>Change photo</Text>
+          <Pressable onPress={handlePickImage} disabled={uploadingAvatar}>
+            {uploadingAvatar ? (
+              <ActivityIndicator size="small" color={Colors.primary} />
+            ) : (
+              <Text style={styles.changePhoto}>Change photo</Text>
+            )}
           </Pressable>
         </View>
 
@@ -192,21 +263,44 @@ export default function Account() {
             onChangeText={setName}
             autoCapitalize="words"
           />
-          <Input
-            label={t('email')}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          <View>
-            <Text style={styles.fieldLabel}>{t('phone')}</Text>
-            <View style={styles.phoneRow}>
-              <Ionicons name="lock-closed-outline" size={14} color={Colors.textMuted} />
-              <Text style={styles.phoneVal}>{phone ?? '—'}</Text>
-              <Text style={styles.phoneHint}>Cannot be changed</Text>
+          {/* Email Field */}
+          {phone?.includes('@') ? (
+            <View>
+              <Text style={styles.fieldLabel}>{t('email')}</Text>
+              <View style={styles.phoneRow}>
+                <Ionicons name="lock-closed-outline" size={14} color={Colors.textMuted} />
+                <Text style={styles.phoneVal}>{phone}</Text>
+                <Text style={styles.phoneHint}>Cannot be changed</Text>
+              </View>
             </View>
-          </View>
+          ) : (
+            <Input
+              label={t('email')}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          )}
+
+          {/* Phone Field */}
+          {!phone?.includes('@') ? (
+            <View>
+              <Text style={styles.fieldLabel}>{t('phone')}</Text>
+              <View style={styles.phoneRow}>
+                <Ionicons name="lock-closed-outline" size={14} color={Colors.textMuted} />
+                <Text style={styles.phoneVal}>{phone ?? '—'}</Text>
+                <Text style={styles.phoneHint}>Cannot be changed</Text>
+              </View>
+            </View>
+          ) : (
+            <Input
+              label={t('phone')}
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+              keyboardType="phone-pad"
+            />
+          )}
 
           <DatePickerField
             label="Date of birth"
@@ -316,7 +410,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 78, height: 78, borderRadius: 39,
     backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center',
-    borderWidth: 2, borderColor: '#5DCAA5',
+    borderWidth: 2, borderColor: '#5DCAA5', overflow: 'hidden',
   },
   avatarInitial: { fontSize: 30, fontWeight: '700', color: '#fff' },
   changePhoto:   { fontSize: 14, fontWeight: '600', color: Colors.primary },

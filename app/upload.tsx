@@ -265,6 +265,15 @@ export default function Upload() {
         fileUri: file.uri,
       }, phone, cancelControllerRef.current.signal);
 
+      // Guard against blurry photos or unreadable documents
+      const hasData = context === 'prescription'
+        ? (result.detectedMedicines && result.detectedMedicines.length > 0)
+        : (result.values && result.values.length > 0);
+
+      if (!hasData) {
+        throw new Error('Please provide a clear photo or document');
+      }
+
       if (result.duplicate) {
         Alert.alert(
           'Already Uploaded',
@@ -294,8 +303,8 @@ export default function Upload() {
             patientName: result.patientName,
             hospitalName: result.hospitalName,
             summary: result.summary,
-            values: JSON.stringify(result.values),
-            detectedMedicines: JSON.stringify(result.detectedMedicines),
+            values: JSON.stringify(Array.isArray(result.values) ? result.values : []),
+            detectedMedicines: JSON.stringify(Array.isArray(result.detectedMedicines) ? result.detectedMedicines : []),
             narrative: '',
           },
         });

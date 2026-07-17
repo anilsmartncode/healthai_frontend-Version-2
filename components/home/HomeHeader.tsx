@@ -1,8 +1,10 @@
+import { useState, useEffect } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/Colors";
 import { useAuth } from "@/context/AuthContext";
+import { SecureAsyncStorage as AsyncStorage } from '@/utils/storage';
 
 interface Props {
   attentionCount?: number;
@@ -25,8 +27,15 @@ function formatName(raw: string): string {
 
 export function HomeHeader({ attentionCount = 0 }: Props) {
   const { phone } = useAuth();
-  const userName = formatName(phone ?? "User");
+  const [userName, setUserName] = useState(formatName(phone ?? "User"));
   const { text: greetingText, emoji } = getGreeting();
+
+  useEffect(() => {
+    const cacheKey = `healthai_profile_name_${phone ?? 'guest'}`;
+    AsyncStorage.getItem(cacheKey).then(name => {
+      if (name && name.trim()) setUserName(name.trim());
+    });
+  }, [phone]);
 
   return (
     <View style={styles.container}>

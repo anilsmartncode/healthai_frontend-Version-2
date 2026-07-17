@@ -11,6 +11,7 @@ import {
   Modal,
   useWindowDimensions,
   Platform,
+  Alert,
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -644,7 +645,7 @@ export default function Phonelogin() {
 
               <Pressable
                 style={({ pressed }) => [styles.socialBtn, pressed && { opacity: 0.8 }]}
-                onPress={handleAppleSignIn}
+                onPress={() => Alert.alert('Apple Sign-In is not supported')}
                 disabled={loading}
               >
                 <AppleIcon />

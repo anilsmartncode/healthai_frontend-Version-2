@@ -13,8 +13,7 @@ import { Colors } from '@/constants/Colors';
 import { DatePickerField } from '@/components/ui/DatePickerField';
 
 const RELATIONSHIPS = [
-  'Father','Mother','Husband','Wife',
-  'Son','Daughter','Brother','Sister','Other',
+  'Father','Mother','Husband','Wife','Other'
 ];
 
 export interface AddMemberFormData {

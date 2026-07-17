@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Modal, Pressable, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { Colors, Radius } from '@/constants/Colors';
 import { useUsage } from '@/context/UsageContext';
 
@@ -30,7 +31,7 @@ export function PaywallModal() {
               <Text style={styles.cancelText}>Maybe Later</Text>
             </Pressable>
             
-            <Pressable style={styles.upgradeButton} onPress={() => setShowPaywall(false)}>
+            <Pressable style={styles.upgradeButton} onPress={() => { setShowPaywall(false); router.push('/plans'); }}>
               <Text style={styles.upgradeText}>Upgrade Plan</Text>
             </Pressable>
           </View>

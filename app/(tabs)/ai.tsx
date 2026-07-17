@@ -12,6 +12,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/context/AuthContext';
+import { SecureAsyncStorage as AsyncStorage } from '@/utils/storage';
 
 const C = {
   primary:   '#2563EB',
@@ -58,11 +59,10 @@ export default function AIHomeScreen() {
   const [input, setInput] = useState('');
 
   useEffect(() => {
-    import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
-      AsyncStorage.getItem('user_name').then(name => {
-        if (name && name.trim()) setUserName(name.trim().split(' ')[0]);
-        else setUserName(formatName(phone ?? 'Rahul'));
-      });
+    const cacheKey = `healthai_profile_name_${phone ?? 'guest'}`;
+    AsyncStorage.getItem(cacheKey).then(name => {
+      if (name && name.trim()) setUserName(name.trim());
+      else setUserName(formatName(phone ?? 'Rahul'));
     });
   }, [phone]);
 
@@ -91,9 +91,8 @@ export default function AIHomeScreen() {
               <Text style={styles.brandName}>HealthAI</Text>
               <Text style={styles.brandSub}>Your AI Health Companion</Text>
             </View>
-            <Pressable style={styles.bellWrap} onPress={() => router.push('/notifications')} hitSlop={8}>
-              <Ionicons name="notifications-outline" size={22} color={C.text} />
-              <View style={styles.bellBadge} />
+            <Pressable style={styles.historyBtn} onPress={() => router.push('/ai-history')} hitSlop={8}>
+              <Ionicons name="time-outline" size={24} color={C.text} />
             </Pressable>
           </View>
 
@@ -115,13 +114,16 @@ export default function AIHomeScreen() {
             </View>
           </View>
 
-          {/* Chat input card */}
-          <View style={styles.inputCard}>
-            <Text style={styles.inputLabel}>Chat with HealthAI</Text>
-            <View style={styles.inputRow}>
+          {/* Chat input */}
+          <View style={styles.inputRow}>
+            <View style={styles.inputWrap}>
+              <Pressable style={styles.innerPlusBtn}>
+                <Ionicons name="add" size={24} color={C.textMuted} />
+              </Pressable>
+              
               <TextInput
                 style={styles.input}
-                placeholder="Type your symptoms or health questions..."
+                placeholder="Message HealthAI..."
                 placeholderTextColor={C.textMuted}
                 value={input}
                 onChangeText={setInput}
@@ -129,13 +131,14 @@ export default function AIHomeScreen() {
                 returnKeyType="send"
                 multiline
               />
+
               <Pressable
-                style={styles.micBtn}
+                style={[styles.innerMicBtn, input.trim() ? { backgroundColor: C.primary } : { backgroundColor: '#F1F5F9' }]}
                 onPress={() => input.trim() ? goToChat(input) : router.push('/ai-chat')}
               >
                 {input.trim()
-                  ? <Ionicons name="send" size={18} color="#fff" />
-                  : <Ionicons name="mic" size={20} color="#fff" />
+                  ? <Ionicons name="arrow-up" size={18} color="#fff" />
+                  : <Ionicons name="mic" size={18} color={C.textMuted} />
                 }
               </Pressable>
             </View>
@@ -192,15 +195,10 @@ const styles = StyleSheet.create({
   },
   brandName: { fontSize: 26, fontWeight: '800', color: C.primary, letterSpacing: -0.3 },
   brandSub:  { fontSize: 12, color: C.textMuted, marginTop: 1 },
-  bellWrap: {
-    width: 42, height: 42, borderRadius: 13,
+  historyBtn: {
+    width: 44, height: 44, borderRadius: 22,
     backgroundColor: C.surface, borderWidth: 1, borderColor: C.border,
     alignItems: 'center', justifyContent: 'center',
-  },
-  bellBadge: {
-    position: 'absolute', top: 9, right: 9,
-    width: 8, height: 8, borderRadius: 4,
-    backgroundColor: '#EF4444', borderWidth: 1.5, borderColor: C.bg,
   },
 
   greeting: { fontSize: 20, fontWeight: '700', color: C.text, marginBottom: 2 },
@@ -230,30 +228,43 @@ const styles = StyleSheet.create({
   },
   nurseImage: { width: 200, height: 200 },
 
-  inputCard: {
-    backgroundColor: C.bg,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: '#BFDBFE',
-    padding: 14,
-    marginBottom: 20,
-    shadowColor: C.primary,
-    shadowOpacity: 0.08,
+  inputRow: {
+    marginBottom: 24,
+    paddingHorizontal: 16,
+  },
+  inputWrap: {
+    flexDirection: 'row', alignItems: 'flex-end',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5, 
+    borderColor: '#E2E8F0',
+    borderRadius: 28,
+    paddingLeft: 8,
+    paddingRight: 8,
+    paddingTop: 8,
+    paddingBottom: 8,
+    minHeight: 52,
+    shadowColor: C.text,
+    shadowOpacity: 0.03,
     shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
-  inputLabel: { fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 10 },
-  inputRow:   { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
-  input: {
-    flex: 1, fontSize: 14, color: C.text,
-    paddingVertical: 0, maxHeight: 80, minHeight: 36,
-  },
-  micBtn: {
-    width: 42, height: 42, borderRadius: 21,
-    backgroundColor: C.primary,
+  innerPlusBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: '#F8FAFC',
     alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0,
+    marginRight: 6,
+  },
+  input: {
+    flex: 1, fontSize: 15, color: C.text,
+    maxHeight: 100, minHeight: 36,
+    paddingTop: Platform.OS === 'ios' ? 8 : 4,
+    paddingBottom: Platform.OS === 'ios' ? 8 : 4,
+  },
+  innerMicBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
+    marginLeft: 6,
   },
 
   sectionLabel: {

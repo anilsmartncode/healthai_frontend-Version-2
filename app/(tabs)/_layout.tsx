@@ -34,6 +34,10 @@ export default function TabsLayout() {
         name="profile"
         options={{ title: t('nav_profile'), tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} /> }}
       />
+      <Tabs.Screen
+        name="ai-chat"
+        options={{ href: null, title: 'Chat' }}
+      />
     </Tabs>
   );
 }

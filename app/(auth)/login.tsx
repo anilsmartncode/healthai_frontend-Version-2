@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Platform,
+  Alert,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { router } from "expo-router";
@@ -20,7 +21,7 @@ import { firebaseLoginApi, loginApi } from "@/services/authapi/apiService";
 import { signInWithGoogle } from "@/utils/googleAuth";
 
 // 🎛️ Toggle Switch for Authentication
-const USE_FIREBASE_AUTH = false;
+const USE_FIREBASE_AUTH = true;
 // Lazy-load Firebase Auth so the page still opens in Expo Go
 function getAuth() {
   const mod = require('@react-native-firebase/auth');
@@ -216,6 +217,7 @@ export default function Login() {
           <Pressable
             style={({ pressed }) => [styles.socialBtn, pressed && { opacity: 0.82 }]}
             disabled={loading}
+            onPress={() => Alert.alert('Apple Sign-In is not supported')}
           >
             <AppleIcon />
             <Text style={styles.socialText}>Apple</Text>

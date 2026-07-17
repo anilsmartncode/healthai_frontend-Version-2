@@ -42,8 +42,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setPhone(p);
       setMemberId(m ?? null);
       setReady(true);
+
+      // If user is already logged in, ensure backend has the latest FCM token
+      if (t) {
+        registerPushToken();
+      }
     })();
   }, []);
+
+  const registerPushToken = async () => {
+    try {
+      const { requestNotificationPermissions, getFCMToken } = await import('@/utils/notifications');
+      const hasPermission = await requestNotificationPermissions();
+      if (hasPermission) {
+        const fcmToken = await getFCMToken();
+        if (fcmToken) {
+          const { ENDPOINTS } = await import('@/constants/api');
+          const { medicineApiCall } = await import('@/services/Medicineapiclient');
+          await medicineApiCall(ENDPOINTS.updateFcmToken, {
+            method: 'POST',
+            body: { fcm_token: fcmToken }
+          });
+          console.log('[AuthContext] Successfully registered FCM token with backend.');
+        }
+      }
+    } catch (e) {
+      console.warn('[AuthContext] Failed to register FCM token', e);
+    }
+  };
 
   const signIn = async (t: string, p: string, mId?: number | null, rt?: string | null) => {
     await storage.set('token', t);
@@ -54,6 +80,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPhone(p);
     if (mId != null) setMemberId(mId);
     if (rt) setRefreshToken(rt);
+
+    // After setting auth tokens, register this device for push notifications
+    await registerPushToken();
   };
 
   const signOut = async () => {

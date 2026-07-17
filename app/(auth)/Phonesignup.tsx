@@ -751,7 +751,7 @@ export default function PhoneSignup() {
               </Pressable>
               <Pressable
                 style={({ pressed }) => [styles.socialBtn, pressed && { opacity: 0.8 }]}
-                onPress={handleAppleSignIn}
+                onPress={() => Alert.alert('Apple Sign-In is not supported')}
                 disabled={loading}
               >
                 <AppleIcon />

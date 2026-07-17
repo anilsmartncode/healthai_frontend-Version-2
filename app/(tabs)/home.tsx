@@ -1,4 +1,4 @@
-import { View, ScrollView, StyleSheet, Text, Alert, Pressable } from "react-native";
+import { View, ScrollView, StyleSheet, Text, Alert, Pressable, RefreshControl } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors, Radius } from "@/constants/Colors";
@@ -39,7 +39,7 @@ const emptyStyles = StyleSheet.create({
 });
 
 export default function Home() {
-  const { reports } = useReports();
+  const { reports, refreshing, refresh } = useReports();
   const [scorecard, setScorecard] = useState<{
     overallScore: number;
     scoreLabel: string;
@@ -128,15 +128,21 @@ export default function Home() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <HomeHeader attentionCount={hasReports ? overallAttentionCount : 0} />
+        <HomeHeader attentionCount={0} />
       </View>
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        bounces={false}
-        overScrollMode="never"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refresh}
+            colors={[Colors.primary]}
+            tintColor={Colors.primary}
+          />
+        }
       >
         <HealthScoreCard
           hasReports={hasReports}

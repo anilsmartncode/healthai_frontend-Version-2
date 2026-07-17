@@ -39,6 +39,7 @@ export const ENDPOINTS = {
   profileMe: `${BASE_URL}/api/api/user/profile`,
   profileMePath: '/api/api/user/profile',           // relative path for api.request()
   profileAvatar: `${BASE_URL}/api/api/user/profile/avatar`,
+  profileAvatarPath: '/api/api/user/profile/avatar',
   deleteAccount: `${BASE_URL}/api/api/user/account`,
 
   // ── Reports 
@@ -68,11 +69,12 @@ export const ENDPOINTS = {
   // ── Medicines — Saved / User Medicines (/api/api/user/...) ───────────────
   userMedicines: `${BASE_URL}/api/api/user/medicines`,
   userMedicineRemove: (id: string) => `${BASE_URL}/api/api/user/medicines/${id}`,
+  updateFcmToken: `${BASE_URL}/api/api/user/fcm-token`,
 
   // ── Medicines — Reminders (/api/api/reminders/...) ───────────────────────
   reminders: `${BASE_URL}/api/api/reminders`,
   remindersToday: `${BASE_URL}/api/api/reminders/today`,
-  reminderTaken: (id: string) => `${BASE_URL}/api/reminders/${id}/taken`,
+  reminderTaken: (id: string) => `${BASE_URL}/api/api/reminders/${id}/taken`,
   reminderMissed: (id: string) => `${BASE_URL}/api/api/reminders/${id}/missed`,
   reminderHistory: `${BASE_URL}/api/api/reminders/history`,
   reminderUpdate: (id: string) => `${BASE_URL}/api/api/reminders/${id}`,

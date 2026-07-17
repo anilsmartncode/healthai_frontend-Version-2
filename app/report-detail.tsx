@@ -8,7 +8,7 @@
 
 import {
   View, Text, StyleSheet, ScrollView, Pressable,
-  ActivityIndicator, Alert,
+  ActivityIndicator, Alert, TextInput, Modal, KeyboardAvoidingView, Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -18,7 +18,7 @@ import * as Sharing from 'expo-sharing';
 import * as WebBrowser from 'expo-web-browser';
 import { Colors, Radius } from '@/constants/Colors';
 import { useAuth } from '@/context/AuthContext';
-import { reportsApi, type ReportListItem, type AnalyzeResult } from '@/services/reportsApi';
+import { reportsApi, renameReport, type ReportListItem, type AnalyzeResult } from '@/services/reportsApi';
 import { AskAIButton } from '@/components/ai/AskAIButton';
 import { AnalysisSummaryCard } from '@/components/reports/AnalysisSummaryCard';
 import type { ApiSummary, LabValue } from '@/types/Report/reportype';
@@ -63,6 +63,11 @@ export default function ReportDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [opening, setOpening] = useState(false);
 
+  // Rename state
+  const [showRename, setShowRename] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [savingRename, setSavingRename] = useState(false);
+
   useEffect(() => {
     reportsApi.getById(id ?? '', phone).then(r => {
       setReport(r);
@@ -75,6 +80,15 @@ export default function ReportDetailScreen() {
     setOpening(true);
     await openReportFile(report.fileUri, report.fileType);
     setOpening(false);
+  };
+
+  const handleSaveRename = async () => {
+    if (!report || !newName.trim()) return;
+    setSavingRename(true);
+    await renameReport(report.id, newName, phone);
+    setReport({ ...report, title: newName.trim() });
+    setSavingRename(false);
+    setShowRename(false);
   };
 
   if (loading) {
@@ -123,8 +137,8 @@ export default function ReportDetailScreen() {
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </Pressable>
         <Text style={styles.headerTitle} numberOfLines={1}>Report Details</Text>
-        <Pressable style={styles.shareBtn}>
-          <Ionicons name="share-outline" size={22} color={Colors.text} />
+        <Pressable style={styles.editBtn} onPress={() => { setNewName(report.title); setShowRename(true); }}>
+          <Ionicons name="pencil" size={20} color={Colors.text} />
         </Pressable>
       </View>
 
@@ -254,6 +268,32 @@ export default function ReportDetailScreen() {
           prefill={`My ${report.title} report (score: ${report.healthScore ?? '?'}/100) has ${report.abnormalCount ?? 0} abnormal values. What should I know about this?`}
         />
       </ScrollView>
+
+      {/* RENAME MODAL */}
+      <Modal visible={showRename} transparent animationType="fade" onRequestClose={() => setShowRename(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Rename Report</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={newName}
+              onChangeText={setNewName}
+              placeholder="Enter custom report name..."
+              autoFocus
+              selectTextOnFocus
+            />
+            <View style={styles.modalActions}>
+              <Pressable style={styles.modalBtnCancel} onPress={() => setShowRename(false)} disabled={savingRename}>
+                <Text style={styles.modalBtnCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable style={styles.modalBtnSave} onPress={handleSaveRename} disabled={savingRename || !newName.trim()}>
+                {savingRename ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalBtnSaveText}>Save Name</Text>}
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -263,7 +303,7 @@ const styles = StyleSheet.create({
   header:           { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 10 },
   backBtn:          { padding: 4 },
   headerTitle:      { flex: 1, fontSize: 18, fontWeight: '700', color: Colors.text },
-  shareBtn:         { padding: 4 },
+  editBtn:          { padding: 4 },
   body:             { padding: 16, gap: 16, paddingBottom: 40 },
 
   previewCard:      { flexDirection: 'row', gap: 14, backgroundColor: Colors.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, padding: 16, alignItems: 'flex-start' },
@@ -288,4 +328,14 @@ const styles = StyleSheet.create({
   primaryBtn:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.primary, borderRadius: Radius.pill, paddingVertical: 16, marginTop: 8 },
   primaryBtnText:   { color: '#fff', fontSize: 16, fontWeight: '700' },
   errorText:        { textAlign: 'center', marginTop: 60, color: Colors.textMuted },
+
+  modalOverlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
+  modalContent:     { backgroundColor: '#fff', padding: 24, borderRadius: Radius.lg, gap: 16 },
+  modalTitle:       { fontSize: 18, fontWeight: '700', color: Colors.text },
+  modalInput:       { borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.sm, paddingHorizontal: 14, height: 48, fontSize: 16 },
+  modalActions:     { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 8 },
+  modalBtnCancel:   { paddingVertical: 10, paddingHorizontal: 16 },
+  modalBtnCancelText: { fontSize: 15, fontWeight: '600', color: Colors.textMuted },
+  modalBtnSave:     { paddingVertical: 10, paddingHorizontal: 20, backgroundColor: Colors.primary, borderRadius: Radius.md, minWidth: 100, alignItems: 'center' },
+  modalBtnSaveText: { fontSize: 15, fontWeight: '700', color: '#fff' },
 });

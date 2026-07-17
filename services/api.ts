@@ -11,13 +11,19 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   console.log('[api] REQUEST', init?.method ?? 'GET', url);
   const startMs = Date.now();
   
+  const headers: Record<string, string> = {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(init?.headers ?? {}),
+  };
+
+  // Only force application/json if we are NOT sending FormData
+  if (!(init?.body instanceof FormData) && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   const res = await fetchWithTimeout(url, {
     ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(init?.headers ?? {}),
-    },
+    headers,
   });
 
   const rawText = await res.text();
@@ -51,7 +57,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   // Surface the backend's actual message instead of a generic status code,
   // so screens like account.tsx can show the real reason a save failed.
-  if (!res.ok) throw new Error(rawData?.message || rawData?.detail || `Request failed: ${res.status}`);
+  if (!res.ok) {
+    let errorMsg = `Request failed: ${res.status}`;
+    if (rawData?.message) {
+      errorMsg = typeof rawData.message === 'string' ? rawData.message : JSON.stringify(rawData.message);
+    } else if (rawData?.detail) {
+      errorMsg = typeof rawData.detail === 'string' ? rawData.detail : JSON.stringify(rawData.detail);
+    }
+    console.warn(`[api] ERROR ${res.status} BODY:`, JSON.stringify(rawData));
+    throw new Error(errorMsg);
+  }
 
   return rawData as T;
 }

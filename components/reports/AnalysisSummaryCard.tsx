@@ -262,7 +262,7 @@ export function AnalysisSummaryCard({
 
             {isMultiRow ? (
               <View style={styles.chipGrid}>
-                {abnormalValues.map((v) => (
+                {(abnormalValues || []).map((v) => (
                   <View key={v.name} style={styles.chip}>
                     <Ionicons name="water" size={11} color={Colors.danger} />
                     <Text style={styles.chipName}>{v.name}</Text>
@@ -279,7 +279,7 @@ export function AnalysisSummaryCard({
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{ gap: 6, paddingTop: 2 }}
               >
-                {abnormalValues.map((v) => (
+                {(abnormalValues || []).map((v) => (
                   <View key={v.name} style={styles.chip}>
                     <Ionicons name="water" size={11} color={Colors.danger} />
                     <Text style={styles.chipName}>{v.name}</Text>

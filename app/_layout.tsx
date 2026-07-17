@@ -32,7 +32,7 @@ global.fetch = async (...args) => {
   const startMs = Date.now();
   const url = typeof args[0] === 'string' ? args[0] : (args[0] as Request).url;
   const method = (args[1]?.method) || (typeof args[0] !== 'string' ? (args[0] as Request).method : 'GET');
-  
+
   try {
     const res = await originalFetch(...args);
     const durationMs = Date.now() - startMs;
@@ -171,10 +171,7 @@ export default function RootLayout() {
                       name="analysis"
                       options={{ headerShown: true, title: "Report Analysis" }}
                     />
-                    <Stack.Screen
-                      name="all-values"
-                      options={{ headerShown: true, title: "All Values" }}
-                    />
+
                     <Stack.Screen
                       name="interactions"
                       options={{ headerShown: true, title: "Interactions" }}

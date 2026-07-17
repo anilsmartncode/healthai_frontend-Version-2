@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Radius } from "@/constants/Colors";
@@ -22,7 +23,7 @@ export default function LanguagePicker() {
   const { lang, setLang, t } = useLang();
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={Colors.text} />
@@ -66,7 +67,7 @@ export default function LanguagePicker() {
           <Text style={styles.btnText}>{t("continue")}</Text>
         </Pressable>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -76,8 +77,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    padding: 16,
-    paddingTop: 56,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
   backBtn: {
     width: 36,
