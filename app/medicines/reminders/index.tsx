@@ -238,16 +238,41 @@ export default function RemindersScreen() {
             : 'upcoming'
         })));
       } else {
+        // Fetch active reminders first to map reminder_id to medicine names locally
+        let activeRemindersMap: Record<string, { name: string; dosage?: string }> = {};
+        try {
+          const activeRes = await medicineApiCall<any>(ENDPOINTS.reminders);
+          const activeData = activeRes?.data || activeRes?.reminders || activeRes || [];
+          const activeList = Array.isArray(activeData) ? activeData : [];
+          activeList.forEach((r: any) => {
+            const rId = r.id || r.reminder_id;
+            if (rId) {
+              activeRemindersMap[String(rId)] = {
+                name: r.medicine_name ?? r.medicineName ?? '',
+                dosage: r.dosage ?? '',
+              };
+            }
+          });
+        } catch (activeErr) {
+          console.warn('[Reminders] Failed to load active reminders for history mapping:', activeErr);
+        }
+
         const res = await medicineApiCall<any>(ENDPOINTS.reminderHistory);
         const data = res?.data || res?.history || res || [];
         const list = Array.isArray(data) ? data : [];
         setHistory(list.map((h: any) => {
           const evtTime = h.event_time || h.created_at;
           const dt = evtTime ? new Date(evtTime) : null;
+          
+          // Match local reminder info
+          const rIdStr = String(h.reminder_id || '');
+          const mapped = activeRemindersMap[rIdStr];
+
           return {
             id: String(h.id),
             date: dt ? dt.toLocaleDateString() : 'Unknown Date',
-            medicineName: h.medicine_name ?? h.medicineName ?? `Reminder #${h.reminder_id || 'Unknown'}`,
+            medicineName: h.medicine_name ?? h.medicineName ?? h.reminder?.medicine_name ?? h.reminder?.medicineName ?? h.medicine?.name ?? mapped?.name ?? `Reminder #${h.reminder_id || 'Unknown'}`,
+            dosage: h.dosage ?? h.reminder?.dosage ?? mapped?.dosage ?? '',
             time: h.reminder_time ?? h.time ?? (dt ? dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''),
             status: h.event?.toLowerCase() ?? h.status?.toLowerCase() ?? 'taken'
           };
@@ -393,7 +418,7 @@ export default function RemindersScreen() {
               <View style={styles.historyCard}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.historyDate}>{item.date}</Text>
-                  <Text style={styles.historyName}>{item.medicineName}</Text>
+                  <Text style={styles.historyName}>{item.medicineName}{item.dosage ? ` (${item.dosage})` : ''}</Text>
                   <Text style={styles.historyTime}>{item.time}</Text>
                 </View>
                 <View style={[styles.statusPill, { backgroundColor: st?.bg ?? '#E2E8F0' }]}>

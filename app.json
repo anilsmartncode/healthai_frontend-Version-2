@@ -16,8 +16,14 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.healthai.app",
-      "associatedDomains": ["applinks:healthai.smartncode.com"],
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "associatedDomains": [
+        "applinks:healthai.smartncode.com",
+        "applinks:healthai.smartncode.com"
+      ],
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "softwareKeyboardLayoutMode": "resize",
@@ -33,7 +39,8 @@
         "android.permission.USE_EXACT_ALARM",
         "android.permission.VIBRATE",
         "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECORD_AUDIO"
       ],
       "intentFilters": [
         {
@@ -46,7 +53,10 @@
               "pathPrefix": "/family/join"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -65,7 +75,9 @@
         {
           "icon": "./assets/images/notification-icon.png",
           "color": "#2D9C8E",
-          "sounds": ["./assets/sounds/alarm.wav"]
+          "sounds": [
+            "./assets/sounds/alarm.wav"
+          ]
         }
       ],
       [

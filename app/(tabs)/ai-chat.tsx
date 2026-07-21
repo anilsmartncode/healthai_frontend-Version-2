@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   View, FlatList, StyleSheet, Text, Image, ScrollView,
   KeyboardAvoidingView, Platform, Pressable, TextInput, Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -16,6 +17,9 @@ import { AlertBanner } from '@/components/ai/AlertBanner';
 import { ChatInput } from '@/components/ai/ChatInput';
 import { useUsage } from '@/context/UsageContext';
 import type { ChatMessage } from '@/types';
+import { api } from '@/services/api';
+import { ENDPOINTS } from '@/constants/api';
+import { LanguageSelectModal } from '@/components/ui/LanguageSelectModal';
 
 const C = {
   primary:   '#2563EB',
@@ -61,26 +65,63 @@ function ChatBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === 'user';
   const time = new Date(message.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+  const [langModalOpen, setLangModalOpen] = useState(false);
+  const [translating, setTranslating] = useState(false);
+  const [translatedText, setTranslatedText] = useState<string | null>(null);
+
+  const handleTranslate = async (langCode: string, langName: string) => {
+    setTranslating(true);
+    try {
+      const res = await api.request<any>(ENDPOINTS.translateTextPath, {
+        method: 'POST',
+        body: JSON.stringify({
+          text: message.text,
+          output_language: langCode,
+        }),
+      });
+      const trText = res?.translate_text ?? res?.translated_text ?? message.text;
+      setTranslatedText(trText);
+    } catch (err) {
+      console.warn('[Translation] Chat bubble translation failed:', err);
+      Alert.alert('Translation Error', 'Failed to translate message.');
+    } finally {
+      setTranslating(false);
+    }
+  };
+
   return (
     <View style={[bubbleStyles.row, isUser && bubbleStyles.rowUser]}>
       {!isUser && <NurseAvatar />}
       <View style={[bubbleStyles.bubble, isUser ? bubbleStyles.bubbleUser : bubbleStyles.bubbleAI]}>
-        <Text style={[bubbleStyles.text, isUser && { color: '#fff' }]}>{message.text}</Text>
+        <Text style={[bubbleStyles.text, isUser && { color: '#fff' }]}>{translatedText ?? message.text}</Text>
         <View style={[bubbleStyles.timeRow, isUser && { justifyContent: 'flex-end' }]}>
           <Text style={[bubbleStyles.time, isUser && { color: 'rgba(255,255,255,0.65)' }]}>{time}</Text>
           {isUser && <Ionicons name="checkmark-done" size={13} color="rgba(255,255,255,0.8)" />}
           {!isUser && (
             <Pressable 
-              onPress={() => Alert.alert('Translate', 'Language selection coming soon!')}
+              onPress={() => setLangModalOpen(true)}
               hitSlop={8}
               style={{ marginLeft: 8, flexDirection: 'row', alignItems: 'center', gap: 3 }}
+              disabled={translating}
             >
-              <Ionicons name="language" size={12} color={C.primary} />
-              <Text style={{ fontSize: 10, color: C.primary, fontWeight: '600' }}>Translate</Text>
+              {translating ? (
+                <ActivityIndicator size="small" color={C.primary} style={{ transform: [{ scale: 0.7 }] }} />
+              ) : (
+                <Ionicons name="language" size={12} color={C.primary} />
+              )}
+              <Text style={{ fontSize: 10, color: C.primary, fontWeight: '600' }}>
+                {translating ? 'Translating...' : 'Translate'}
+              </Text>
             </Pressable>
           )}
         </View>
       </View>
+
+      <LanguageSelectModal
+        visible={langModalOpen}
+        onClose={() => setLangModalOpen(false)}
+        onSelect={handleTranslate}
+      />
     </View>
   );
 }

@@ -10,11 +10,11 @@ interface Props {
   attentionCount?: number;
 }
 
-function getGreeting(): { text: string; emoji: string } {
+function getGreeting(): string {
   const hour = new Date().getHours();
-  if (hour < 12) return { text: "Good Morning", emoji: "👋" };
-  if (hour < 17) return { text: "Good Afternoon", emoji: "☀️" };
-  return { text: "Good Evening", emoji: "🌙" };
+  if (hour < 12) return "Good Morning";
+  if (hour < 17) return "Good Afternoon";
+  return "Good Evening";
 }
 
 function formatName(raw: string): string {
@@ -28,7 +28,7 @@ function formatName(raw: string): string {
 export function HomeHeader({ attentionCount = 0 }: Props) {
   const { phone } = useAuth();
   const [userName, setUserName] = useState(formatName(phone ?? "User"));
-  const { text: greetingText, emoji } = getGreeting();
+  const greetingText = getGreeting();
 
   useEffect(() => {
     const cacheKey = `healthai_profile_name_${phone ?? 'guest'}`;
@@ -43,7 +43,7 @@ export function HomeHeader({ attentionCount = 0 }: Props) {
       <View style={styles.textBlock}>
         <Text style={styles.greeting}>{greetingText},</Text>
         <Text style={styles.name} numberOfLines={1}>
-          {userName} {emoji}
+          {userName}
         </Text>
       </View>
 

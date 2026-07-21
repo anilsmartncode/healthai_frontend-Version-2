@@ -25,6 +25,21 @@ interface Props {
   onAttentionPress?: () => void;
 }
 
+function formatDate(dateString?: string): string {
+  if (!dateString) return "—";
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString;
+    return d.toLocaleDateString(undefined, { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric'
+    });
+  } catch {
+    return dateString;
+  }
+}
+
 // ── Empty state (no reports uploaded yet) ── Image 1
 function EmptyHealthScore({ onUpload }: { onUpload: () => void }) {
   const { width } = useWindowDimensions();
@@ -235,7 +250,7 @@ function FilledHealthScore({
           <View style={styles.statText}>
             <Text style={styles.statLabel}>Last Updated</Text>
             <Text style={[styles.statNum, { color: Colors.text, fontSize: 13 }]}>
-              {lastUpdated}
+              {formatDate(lastUpdated)}
             </Text>
           </View>
         </View>

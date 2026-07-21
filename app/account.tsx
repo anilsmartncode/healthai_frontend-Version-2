@@ -7,6 +7,8 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -88,13 +90,24 @@ export default function Account() {
           setAvatarUrl(avUrl);
           setBloodGroup(data.blood_type ?? data.blood_group ?? 'B+');
           setGender(data.gender ?? 'Male');
-          setHeight(data.height ? String(data.height) : '');
-          setWeight(data.weight ? String(data.weight) : '');
+          
+          // Use the email returned by the API as a consistent key (falls back to phone or guest)
+          const userKey = data.email || data.phone || 'guest';
+          const localPhone = await AsyncStorage.getItem(`healthai_phone_${userKey}`);
+          const localHeight = await AsyncStorage.getItem(`healthai_height_${userKey}`);
+          const localWeight = await AsyncStorage.getItem(`healthai_weight_${userKey}`);
+          
+          if (localPhone) setPhoneNumber(localPhone);
+          if (localHeight) setHeight(localHeight);
+          if (localWeight) setWeight(localWeight);
+          
+          if (!localHeight && data.height) setHeight(String(data.height));
+          if (!localWeight && data.weight) setWeight(String(data.weight));
           const displayName = (data.full_name ?? data.name ?? '').trim();
           if (displayName) {
             try {
               await AsyncStorage.setItem(
-                `healthai_profile_name_${phone ?? 'guest'}`,
+                `healthai_profile_name_${userKey}`,
                 displayName
               );
             } catch { /* ignore */ }
@@ -128,19 +141,20 @@ export default function Account() {
             phone:         phoneNumber,
             date_of_birth: dob ? dob.toISOString().split('T')[0] : null,
             blood_type:    bloodGroup,
-            gender,
-            height:        height ? Number(height) : null,
-            weight:        weight ? Number(weight) : null,
+            gender:        gender,
+            height:        height || null,
+            weight:        weight || null,
           }),
         });
       }
       Alert.alert('Saved', 'Your profile has been updated.');
-      // Cache name so profile tab avatar initial updates immediately
+      // Cache extra fields locally so they persist without causing a 500 on the backend
       try {
-        await AsyncStorage.setItem(
-          `healthai_profile_name_${phone ?? 'guest'}`,
-          name.trim()
-        );
+        const userKey = email || phone || 'guest';
+        await AsyncStorage.setItem(`healthai_profile_name_${userKey}`, name.trim());
+        if (phoneNumber) await AsyncStorage.setItem(`healthai_phone_${userKey}`, phoneNumber);
+        if (height) await AsyncStorage.setItem(`healthai_height_${userKey}`, height);
+        if (weight) await AsyncStorage.setItem(`healthai_weight_${userKey}`, weight);
       } catch { /* ignore */ }
     } catch (e: any) {
       if (e?.message === 'SESSION_EXPIRED') {
@@ -227,11 +241,16 @@ export default function Account() {
         </Pressable>
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.body}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 44 : 0}
       >
+        <ScrollView
+          contentContainerStyle={styles.body}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
         {/* Avatar */}
         <View style={styles.avatarWrap}>
           <View style={styles.avatar}>
@@ -266,11 +285,13 @@ export default function Account() {
           {/* Email Field */}
           {phone?.includes('@') ? (
             <View>
-              <Text style={styles.fieldLabel}>{t('email')}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <Text style={[styles.fieldLabel, { marginBottom: 0 }]}>{t('email')}</Text>
+                <Text style={styles.phoneHint}>(Cannot be changed)</Text>
+              </View>
               <View style={styles.phoneRow}>
                 <Ionicons name="lock-closed-outline" size={14} color={Colors.textMuted} />
                 <Text style={styles.phoneVal}>{phone}</Text>
-                <Text style={styles.phoneHint}>Cannot be changed</Text>
               </View>
             </View>
           ) : (
@@ -286,11 +307,13 @@ export default function Account() {
           {/* Phone Field */}
           {!phone?.includes('@') ? (
             <View>
-              <Text style={styles.fieldLabel}>{t('phone')}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <Text style={[styles.fieldLabel, { marginBottom: 0 }]}>{t('phone')}</Text>
+                <Text style={styles.phoneHint}>(Cannot be changed)</Text>
+              </View>
               <View style={styles.phoneRow}>
                 <Ionicons name="lock-closed-outline" size={14} color={Colors.textMuted} />
                 <Text style={styles.phoneVal}>{phone ?? '—'}</Text>
-                <Text style={styles.phoneHint}>Cannot be changed</Text>
               </View>
             </View>
           ) : (
@@ -386,7 +409,8 @@ export default function Account() {
             Your data is encrypted and never shared with third parties.
           </Text>
         </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

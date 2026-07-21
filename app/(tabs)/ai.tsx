@@ -161,7 +161,7 @@ export default function AIHomeScreen() {
                 <View style={[styles.gridIconWrap, { backgroundColor: a.bg }]}>
                   <Ionicons name={a.icon} size={22} color={a.color} />
                 </View>
-                <Text style={styles.gridLabel}>{a.label}</Text>
+                <Text style={styles.gridLabel} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>{a.label}</Text>
               </Pressable>
             ))}
           </View>

@@ -185,50 +185,81 @@ export async function scheduleReminderNotification(
   triggerTime: Date,
   frequency: 'once' | 'daily' | 'weekly' | 'monthly' = 'daily'
 ) {
-  if (isExpoGo) return null;
+  if (isExpoGo) {
+    console.warn('[Notifications] Skipped — running in Expo Go');
+    return null;
+  }
 
   try {
     // First cancel any existing notification with this ID just in case
     await cancelReminderNotification(id);
 
-    let trigger: Notifications.NotificationTriggerInput = { date: triggerTime };
+    let trigger: Notifications.NotificationTriggerInput;
 
     if (frequency === 'daily') {
       trigger = {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour: triggerTime.getHours(),
         minute: triggerTime.getMinutes(),
         repeats: true,
       };
     } else if (frequency === 'weekly') {
-      // Expo weekday: 1 = Sunday, 7 = Saturday
       trigger = {
-        weekday: triggerTime.getDay() + 1,
+        type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+        weekday: triggerTime.getDay() + 1, // Expo: 1=Sunday, 7=Saturday
         hour: triggerTime.getHours(),
         minute: triggerTime.getMinutes(),
         repeats: true,
       };
+    } else if (frequency === 'monthly') {
+      // Expo SDK 53 has no MONTHLY trigger type.
+      // Use a YEARLY trigger with the specific month/day as a workaround,
+      // but more practically, schedule as a one-off DATE for next month
+      // and rely on the app to re-schedule when opened.
+      const nextTrigger = new Date(triggerTime);
+      if (nextTrigger.getTime() <= Date.now()) {
+        nextTrigger.setMonth(nextTrigger.getMonth() + 1);
+      }
+      trigger = {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: nextTrigger,
+      };
     } else {
-      // One-off
+      // One-off — must be in the future
       if (triggerTime.getTime() <= Date.now()) {
         console.warn('[Notifications] Cannot schedule notification in the past');
         return null;
       }
+      trigger = {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: triggerTime,
+      };
     }
 
-    return await Notifications.scheduleNotificationAsync({
+    console.log(`[Notifications] Scheduling alarm "${title}" | freq=${frequency} | trigger:`, JSON.stringify(trigger));
+
+    const notifId = await Notifications.scheduleNotificationAsync({
       identifier: id,
       content: {
         title,
         body,
         sound: 'alarm.wav',
         categoryIdentifier: 'reminder-actions',
-        data: { reminderId: id }, // Pass the ID in data so the listener can read it
-        channelId: 'reminders',   // IMPORTANT: Tell Android to use our custom channel
+        data: { reminderId: id },
+        channelId: 'reminders',
       },
       trigger,
     });
+
+    console.log(`[Notifications] ✅ Alarm scheduled! ID: ${notifId}`);
+
+    // Debug: List all scheduled notifications
+    const all = await Notifications.getAllScheduledNotificationsAsync();
+    console.log(`[Notifications] Total scheduled alarms: ${all.length}`);
+
+    return notifId;
   } catch (e) {
-    console.warn('[Notifications] Error scheduling notification', e);
+    console.error('[Notifications] ❌ Error scheduling notification:', e);
     return null;
   }
 }
@@ -272,4 +303,33 @@ export function parseTimeStringToNextDate(timeStr: string): Date {
   }
 
   return trigger;
+}
+
+/**
+ * Fire a test notification in 5 seconds — used to verify the alarm system works.
+ * Call this from any screen to quickly test.
+ */
+export async function testNotification() {
+  if (isExpoGo) {
+    console.warn('[Notifications] Cannot test in Expo Go');
+    return;
+  }
+
+  try {
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '🔔 Test Alarm!',
+        body: 'If you see this, notifications are working!',
+        sound: 'alarm.wav',
+        channelId: 'reminders',
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: 5,
+      },
+    });
+    console.log('[Notifications] ✅ Test notification scheduled in 5 seconds, ID:', id);
+  } catch (e) {
+    console.error('[Notifications] ❌ Test notification FAILED:', e);
+  }
 }

@@ -32,6 +32,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { AskAIButton } from '@/components/ai/AskAIButton';
+import { api } from '@/services/api';
+import { ENDPOINTS } from '@/constants/api';
+import { LanguageSelectModal } from '@/components/ui/LanguageSelectModal';
 import {
   searchMedicines,
   checkInteractions,
@@ -184,6 +187,50 @@ export default function CheckInteractionsScreen() {
   const [detail,             setDetail]             = useState<InteractionResult | null>(null);
   const [detailLoading,      setDetailLoading]      = useState(false);
   const [historyVisible,     setHistoryVisible]     = useState(false);
+
+  const [langModalOpen, setLangModalOpen] = useState(false);
+  const [translating, setTranslating] = useState(false);
+  const [translatedSummary, setTranslatedSummary] = useState<string | null>(null);
+  const [translatedReco, setTranslatedReco] = useState<string | null>(null);
+
+  // Clear translations when starting a new query
+  useEffect(() => {
+    setTranslatedSummary(null);
+    setTranslatedReco(null);
+  }, [result]);
+
+  const handleTranslate = async (langCode: string, langName: string) => {
+    if (!result) return;
+    setTranslating(true);
+    try {
+      if (result.summary) {
+        const res1 = await api.request<any>(ENDPOINTS.translateTextPath, {
+          method: 'POST',
+          body: JSON.stringify({
+            text: result.summary,
+            output_language: langCode,
+          }),
+        });
+        setTranslatedSummary(res1?.translate_text ?? res1?.translated_text ?? result.summary);
+      }
+      if (result.recommendation) {
+        const res2 = await api.request<any>(ENDPOINTS.translateTextPath, {
+          method: 'POST',
+          body: JSON.stringify({
+            text: result.recommendation,
+            output_language: langCode,
+          }),
+        });
+        setTranslatedReco(res2?.translate_text ?? res2?.translated_text ?? result.recommendation);
+      }
+      Alert.alert('Success', `Translated details into ${langName}!`);
+    } catch (err) {
+      console.warn('[Translation] Interaction screen translation failed:', err);
+      Alert.alert('Translation Error', 'Failed to translate details.');
+    } finally {
+      setTranslating(false);
+    }
+  };
 
   const params = useLocalSearchParams<{ medicineId?: string; medicineName?: string }>();
 
@@ -510,31 +557,44 @@ export default function CheckInteractionsScreen() {
               <Text style={[styles.resultSevLabel, { color: sev.color, flex: 1 }]}>{sev.label} Found</Text>
 
               <Pressable 
-                onPress={() => Alert.alert('Translate', 'Language selection coming soon!')}
+                onPress={() => setLangModalOpen(true)}
                 hitSlop={8}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: sev.color + '15', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: sev.color + '30' }}
+                disabled={translating}
               >
-                <Ionicons name="language" size={14} color={sev.color} />
-                <Text style={{ fontSize: 11, fontWeight: '700', color: sev.color }}>Translate</Text>
+                {translating ? (
+                  <ActivityIndicator size="small" color={sev.color} style={{ transform: [{ scale: 0.8 }] }} />
+                ) : (
+                  <Ionicons name="language" size={14} color={sev.color} />
+                )}
+                <Text style={{ fontSize: 11, fontWeight: '700', color: sev.color }}>
+                  {translating ? 'Translating...' : 'Translate'}
+                </Text>
               </Pressable>
             </View>
 
             <Text style={styles.resultMeds}>{medNames.join(' + ')}</Text>
 
-            {result.summary ? (
+            {(translatedSummary ?? result.summary) ? (
               <View style={styles.resultSummaryBlock}>
                 <Text style={styles.resultSummaryTitle}>Summary</Text>
-                <Text style={styles.resultSummaryText}>{result.summary}</Text>
+                <Text style={styles.resultSummaryText}>{translatedSummary ?? result.summary}</Text>
               </View>
             ) : null}
 
-            {result.recommendation ? (
+            {(translatedReco ?? result.recommendation) ? (
               <View style={styles.resultRecoBlock}>
                 <Text style={styles.resultSummaryTitle}>Recommendation</Text>
-                <Text style={styles.resultSummaryText}>{result.recommendation}</Text>
+                <Text style={styles.resultSummaryText}>{translatedReco ?? result.recommendation}</Text>
               </View>
             ) : null}
           </View>
+
+          <LanguageSelectModal
+            visible={langModalOpen}
+            onClose={() => setLangModalOpen(false)}
+            onSelect={handleTranslate}
+          />
 
           <View style={styles.resultActions}>
             <Pressable

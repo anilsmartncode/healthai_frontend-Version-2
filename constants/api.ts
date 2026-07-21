@@ -135,4 +135,8 @@ export const ENDPOINTS = {
   familyMemberEmergencyContacts: (id: string) => `${BASE_URL}/api/api/family/member/${id}/emergency/contacts`,
   familyMemberEmergencyContact: (id: string, contactId: string) => `${BASE_URL}/api/api/family/member/${id}/emergency/contacts/${contactId}`,
   familyMemberMedicalInfo: (id: string) => `${BASE_URL}/api/api/family/member/${id}/emergency/medical-info`,
+
+  // ── Translations
+  supportedLanguagesPath: '/api/supported-languages',
+  translateTextPath: '/api/translate-text',
 };

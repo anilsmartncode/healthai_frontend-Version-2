@@ -7,7 +7,7 @@ import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/Languagecontext';
 import { useUsage } from '@/context/UsageContext';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SecureAsyncStorage as AsyncStorage } from '@/utils/storage';
 import { api } from '@/services/api';
 import { ENDPOINTS } from '@/constants/api';
 

@@ -7,7 +7,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, Pressable,
-  StyleSheet, RefreshControl,
+  StyleSheet, RefreshControl, Alert
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -75,9 +75,6 @@ export default function FamilyScreen() {
         {/* Members section */}
         <View style={styles.sectionHdr}>
           <Text style={styles.sectionTitle}>Family Members</Text>
-          {!loading && (dashboard?.members.length ?? 0) > 0 && (
-            <Pressable><Text style={styles.editLink}>Edit</Text></Pressable>
-          )}
         </View>
 
         {loading
