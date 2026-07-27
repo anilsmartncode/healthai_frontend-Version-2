@@ -22,6 +22,8 @@ import * as Notifications from "expo-notifications";
 import { setupNotificationCategories, scheduleReminderNotification, cancelReminderNotification, defineBackgroundNotificationTask } from "@/utils/notifications";
 import { medicineApiCall } from "@/services/Medicineapiclient";
 import { ENDPOINTS } from "@/constants/api";
+import Purchases, { LOG_LEVEL } from "react-native-purchases";
+import { getRevenueCatKey } from "@/config/purchases";
 
 // Register headless background task to handle 'snooze' and 'take' when app is closed
 defineBackgroundNotificationTask();
@@ -111,6 +113,25 @@ export default function RootLayout() {
       console.log(`[Navigation] -> ${pathname}`, Object.keys(params).length ? JSON.stringify(params) : '');
     }
   }, [pathname, params]);
+
+  // Initialize RevenueCat
+  useEffect(() => {
+    const initPurchases = async () => {
+      try {
+        Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+        const apiKey = getRevenueCatKey();
+        if (apiKey) {
+          Purchases.configure({ apiKey });
+          console.log('[RevenueCat] Initialized successfully.');
+        } else {
+          console.warn('[RevenueCat] No API key found for this platform.');
+        }
+      } catch (e) {
+        console.error('[RevenueCat] Initialization failed:', e);
+      }
+    };
+    initPurchases();
+  }, []);
 
   // Global Notification Listener setup
   useEffect(() => {

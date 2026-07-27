@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.healthai.app",
+      "bundleIdentifier": "com.smartncode.healthai",
       "associatedDomains": [
         "applinks:healthai.smartncode.com",
         "applinks:healthai.smartncode.com"
@@ -92,9 +92,18 @@
       [
         "@react-native-google-signin/google-signin",
         {
-          "iosUrlScheme": "com.googleusercontent.apps.933979596939-68suovtthpu7b3sitqlc2p692hgfe14a"
+          "iosUrlScheme": "com.googleusercontent.apps.933979596939-laqosq3i8u2n3gq9v1dqdb62akf4a52p"
         }
-      ]
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ],
+      "./plugins/with-rnfb-fix.js"
     ],
     "experiments": {
       "typedRoutes": true

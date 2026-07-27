@@ -57,7 +57,7 @@ export const SecureAsyncStorage = {
   removeItem: (key: string): Promise<void> => {
     const mmkv = getMmkv();
     if (mmkv) {
-      mmkv.delete(key);
+      mmkv.remove(key);
       return Promise.resolve();
     }
     return AsyncStorage.removeItem(key);
@@ -93,7 +93,7 @@ export const getItem = (key: string): Promise<string | null> => {
 export const removeItem = (key: string): Promise<void> => {
   const mmkv = getMmkv();
   if (mmkv) {
-    mmkv.delete(key);
+    mmkv.remove(key);
     return Promise.resolve();
   }
   return AsyncStorage.removeItem(key);
@@ -103,7 +103,7 @@ export const clearAll = async (): Promise<void> => {
   const mmkv = getMmkv();
   const keys = ['authToken', 'refreshToken', 'userData', 'device_id'];
   if (mmkv) {
-    keys.forEach((key) => mmkv.delete(key));
+    keys.forEach((key) => mmkv.remove(key));
   } else {
     await Promise.allSettled(keys.map((key) => AsyncStorage.removeItem(key)));
   }

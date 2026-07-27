@@ -52,6 +52,9 @@ import {
   type Category,
   type Medicine,
 } from '@/services/Medicinesapi';
+import { LanguageSelectModal } from '@/components/ui/LanguageSelectModal';
+import { ENDPOINTS } from '@/constants/api';
+import { api } from '@/services/api';
 
 // ─── MEDICINE ROW ─────────────────────────────────────────────────────────────
 function MedicineRow({
@@ -102,6 +105,13 @@ function MedicineDetailModal({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // Translation State
+  const [langModalOpen, setLangModalOpen] = useState(false);
+  const [translating, setTranslating] = useState(false);
+  const [translatedUses, setTranslatedUses] = useState<string | null>(null);
+  const [translatedDosage, setTranslatedDosage] = useState<string | null>(null);
+  const [translatedSideEffects, setTranslatedSideEffects] = useState<string[] | null>(null);
+
   useEffect(() => {
     if (visible) setSaved(false);
   }, [visible, med?.id]);
@@ -138,6 +148,48 @@ function MedicineDetailModal({
   const handleCheckInteractions = () => {
     onClose();
     router.push(`/medicines/check-interactions?medicineId=${med.id}&medicineName=${encodeURIComponent(med.name)}`);
+  };
+
+  const handleTranslate = async (langCode: string, langName: string) => {
+    if (!med) return;
+    setTranslating(true);
+    try {
+      const texts: string[] = [];
+      const keys: { key: string, index?: number }[] = [];
+
+      if (med.uses) { texts.push(med.uses); keys.push({ key: 'uses' }); }
+      if (med.dosage) { texts.push(med.dosage); keys.push({ key: 'dosage' }); }
+      if (med.sideEffects) {
+        med.sideEffects.forEach((se, i) => {
+          texts.push(se); keys.push({ key: 'sideEffect', index: i });
+        });
+      }
+
+      if (texts.length > 0) {
+        const combined = texts.join('\n|||\n');
+        const res = await api.request<any>(ENDPOINTS.translateTextPath, {
+          method: 'POST',
+          body: JSON.stringify({ text: combined, language: langCode }),
+        });
+        const trText = res?.translate_text ?? res?.translated_text ?? combined;
+        const pieces = trText.split(/\|\|\|/g).map((s: string) => s.trim());
+
+        if (pieces.length === texts.length) {
+          const newSideEffects: string[] = [];
+          keys.forEach((meta, idx) => {
+            const translated = pieces[idx];
+            if (meta.key === 'uses') setTranslatedUses(translated);
+            if (meta.key === 'dosage') setTranslatedDosage(translated);
+            if (meta.key === 'sideEffect') newSideEffects.push(translated);
+          });
+          if (newSideEffects.length > 0) setTranslatedSideEffects(newSideEffects);
+        }
+      }
+    } catch (e) {
+      console.warn('[Browse] Translation failed:', e);
+    } finally {
+      setTranslating(false);
+    }
   };
 
   return (
@@ -181,26 +233,42 @@ function MedicineDetailModal({
                 <Text style={styles.rxBadgeText}>Prescription Required</Text>
               </View>
             )}
+            
+            <Pressable 
+              onPress={() => setLangModalOpen(true)}
+              hitSlop={10}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, backgroundColor: Colors.primary + '10', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 99 }}
+              disabled={translating}
+            >
+              {translating ? (
+                <ActivityIndicator size="small" color={Colors.primary} />
+              ) : (
+                <Ionicons name="language" size={18} color={Colors.primary} />
+              )}
+              <Text style={{ fontSize: 13, color: Colors.primary, fontWeight: '700' }}>
+                {translating ? 'Translating...' : 'Translate'}
+              </Text>
+            </Pressable>
           </View>
 
           {/* Detail rows */}
           {med.uses && (
             <View style={styles.infoBlock}>
               <Text style={styles.infoLabel}>Uses</Text>
-              <Text style={styles.infoValue}>{med.uses}</Text>
+              <Text style={styles.infoValue}>{translatedUses ?? med.uses}</Text>
             </View>
           )}
           {med.dosage && (
             <View style={styles.infoBlock}>
               <Text style={styles.infoLabel}>Dosage</Text>
-              <Text style={styles.infoValue}>{med.dosage}</Text>
+              <Text style={styles.infoValue}>{translatedDosage ?? med.dosage}</Text>
             </View>
           )}
-          {med.sideEffects && med.sideEffects.length > 0 && (
+          {(translatedSideEffects || med.sideEffects) && (translatedSideEffects || med.sideEffects)!.length > 0 && (
             <View style={styles.infoBlock}>
               <Text style={styles.infoLabel}>Side Effects</Text>
               <Text style={styles.infoValue}>
-                {med.sideEffects.map((s) => `• ${s}`).join('\n')}
+                {(translatedSideEffects ?? med.sideEffects)!.map((s) => `• ${s}`).join('\n')}
               </Text>
             </View>
           )}
@@ -253,6 +321,12 @@ function MedicineDetailModal({
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      <LanguageSelectModal
+        visible={langModalOpen}
+        onClose={() => setLangModalOpen(false)}
+        onSelect={handleTranslate}
+      />
     </Modal>
   );
 }

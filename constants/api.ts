@@ -136,6 +136,16 @@ export const ENDPOINTS = {
   familyMemberEmergencyContact: (id: string, contactId: string) => `${BASE_URL}/api/api/family/member/${id}/emergency/contacts/${contactId}`,
   familyMemberMedicalInfo: (id: string) => `${BASE_URL}/api/api/family/member/${id}/emergency/medical-info`,
 
+  // ── Family — Commute & Activity Tracking
+  familyMemberGeofences: (id: string) => `${BASE_URL}/api/api/family/member/${id}/geofences`,
+  familyMemberGeofenceDelete: (id: string, zoneId: string) => `${BASE_URL}/api/api/family/member/${id}/geofences/${zoneId}`,
+  familyCommuteEvent: `${BASE_URL}/api/api/family/commute/event`,
+  familyMemberCommuteHistory: (id: string) => `${BASE_URL}/api/api/family/member/${id}/commute/history`,
+  familyMemberCommuteStatus: (id: string) => `${BASE_URL}/api/api/family/member/${id}/commute/status`,
+  familyMemberSleep: (id: string) => `${BASE_URL}/api/api/family/member/${id}/sleep`,
+  healthDataSync: `${BASE_URL}/api/api/user/health-data`,
+  familyMemberTrackingPermissions: (id: string) => `${BASE_URL}/api/api/family/member/${id}/tracking-permissions`,
+
   // ── Translations
   supportedLanguagesPath: '/api/supported-languages',
   translateTextPath: '/api/translate-text',

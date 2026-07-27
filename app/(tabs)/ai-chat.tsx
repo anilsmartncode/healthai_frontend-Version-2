@@ -76,7 +76,7 @@ function ChatBubble({ message }: { message: ChatMessage }) {
         method: 'POST',
         body: JSON.stringify({
           text: message.text,
-          output_language: langCode,
+          language: langCode,
         }),
       });
       const trText = res?.translate_text ?? res?.translated_text ?? message.text;

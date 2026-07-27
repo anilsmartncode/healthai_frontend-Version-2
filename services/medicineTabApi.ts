@@ -121,6 +121,8 @@ export interface ScanHistoryItem {
   medicineType: string;
   scannedAt: string;
   imageUrl?: string;
+  medicineId?: string;
+  aiSummary?: string;
 }
 
 export interface InteractionResult {

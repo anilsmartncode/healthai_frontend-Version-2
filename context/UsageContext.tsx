@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PLAN_LIMITS, DEFAULT_TESTING_PLAN, PlanType } from '../constants/plans';
+import Purchases from 'react-native-purchases';
+import { ENTITLEMENTS, STORE_PRODUCTS } from '@/config/purchases';
 
 interface UsageStats {
   aiChatsToday: number;
@@ -34,6 +36,7 @@ interface UsageContextType {
   showPaywall: boolean;
   setShowPaywall: (show: boolean) => void;
   upgradeToPremium: () => Promise<void>;
+  upgradeToFamily: () => Promise<void>;
 }
 
 const UsageContext = createContext<UsageContextType | undefined>(undefined);
@@ -79,9 +82,25 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
         }
       }
       
-      const storedPlan = await AsyncStorage.getItem('@healthai_active_plan');
-      if (storedPlan === 'PREMIUM' || storedPlan === 'FREE') {
-        setActivePlan(storedPlan);
+      // Fetch RevenueCat status
+      try {
+        const customerInfo = await Purchases.getCustomerInfo();
+        if (typeof customerInfo.entitlements.active[ENTITLEMENTS.FAMILY] !== "undefined") {
+          setActivePlan('FAMILY');
+          await AsyncStorage.setItem('@healthai_active_plan', 'FAMILY');
+        } else if (typeof customerInfo.entitlements.active[ENTITLEMENTS.PREMIUM] !== "undefined") {
+          setActivePlan('PREMIUM');
+          await AsyncStorage.setItem('@healthai_active_plan', 'PREMIUM');
+        } else {
+          setActivePlan('FREE');
+          await AsyncStorage.setItem('@healthai_active_plan', 'FREE');
+        }
+      } catch (e) {
+        console.warn('RevenueCat sync failed, falling back to cached plan:', e);
+        const storedPlan = await AsyncStorage.getItem('@healthai_active_plan');
+        if (storedPlan === 'PREMIUM' || storedPlan === 'FREE' || storedPlan === 'FAMILY') {
+          setActivePlan(storedPlan as PlanType);
+        }
       }
     } catch (e) {
       console.log('Error loading usage stats:', e);
@@ -94,8 +113,51 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
   };
 
   const upgradeToPremium = async () => {
-    setActivePlan('PREMIUM');
-    await AsyncStorage.setItem('@healthai_active_plan', 'PREMIUM');
+    try {
+      // In a real flow, you would fetch offerings and purchase the specific package.
+      // Here we simulate picking the Premium product for testing integration.
+      const offerings = await Purchases.getOfferings();
+      if (offerings.current !== null && offerings.current.availablePackages.length !== 0) {
+        // Find package mapping to premium
+        const premiumPackage = offerings.current.availablePackages.find(p => 
+          p.product.identifier === STORE_PRODUCTS.premium.ios || p.product.identifier === STORE_PRODUCTS.premium.android
+        ) || offerings.current.availablePackages[0];
+        
+        const { customerInfo } = await Purchases.purchasePackage(premiumPackage);
+        if (typeof customerInfo.entitlements.active[ENTITLEMENTS.PREMIUM] !== "undefined") {
+          setActivePlan('PREMIUM');
+          await AsyncStorage.setItem('@healthai_active_plan', 'PREMIUM');
+        }
+      }
+    } catch (e: any) {
+      if (!e.userCancelled) {
+        console.error('Purchase failed:', e);
+        throw e;
+      }
+    }
+  };
+
+  const upgradeToFamily = async () => {
+    try {
+      const offerings = await Purchases.getOfferings();
+      if (offerings.current !== null && offerings.current.availablePackages.length !== 0) {
+        // Find package mapping to family
+        const familyPackage = offerings.current.availablePackages.find(p => 
+          p.product.identifier === STORE_PRODUCTS.family.ios || p.product.identifier === STORE_PRODUCTS.family.android
+        ) || offerings.current.availablePackages[1] || offerings.current.availablePackages[0];
+        
+        const { customerInfo } = await Purchases.purchasePackage(familyPackage);
+        if (typeof customerInfo.entitlements.active[ENTITLEMENTS.FAMILY] !== "undefined") {
+          setActivePlan('FAMILY');
+          await AsyncStorage.setItem('@healthai_active_plan', 'FAMILY');
+        }
+      }
+    } catch (e: any) {
+      if (!e.userCancelled) {
+        console.error('Purchase failed:', e);
+        throw e;
+      }
+    }
   };
 
   // --- AI Chat ---
@@ -146,6 +208,7 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
         showPaywall,
         setShowPaywall,
         upgradeToPremium,
+        upgradeToFamily,
       }}
     >
       {children}

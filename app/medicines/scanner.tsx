@@ -46,6 +46,9 @@ import {
   type ScanHistoryItem,
   type Medicine,
 } from '@/services/medicineTabApi';
+import { LanguageSelectModal } from '@/components/ui/LanguageSelectModal';
+import { ENDPOINTS } from '@/constants/api';
+import { api } from '@/services/api';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 type ScanView = 'idle' | 'processing' | 'identified' | 'details' | 'actions';
@@ -60,6 +63,14 @@ export default function MedicineScannerScreen() {
   const [history, setHistory] = useState<ScanHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [savingMed, setSavingMed] = useState(false);
+
+  // Translation State
+  const [langModalOpen, setLangModalOpen] = useState(false);
+  const [translating, setTranslating] = useState(false);
+  const [translatedCategory, setTranslatedCategory] = useState<string | null>(null);
+  const [translatedUses, setTranslatedUses] = useState<string | null>(null);
+  const [translatedDosage, setTranslatedDosage] = useState<string | null>(null);
+  const [translatedSideEffects, setTranslatedSideEffects] = useState<string[] | null>(null);
 
   // ── Core scan flow ──────────────────────────────────────────────────────────
   const runScan = useCallback(async (imageUri: string) => {
@@ -214,9 +225,57 @@ export default function MedicineScannerScreen() {
     setScanResult(null);
     setDetail(null);
     setProgress(0);
+    setTranslatedCategory(null);
+    setTranslatedUses(null);
+    setTranslatedDosage(null);
+    setTranslatedSideEffects(null);
   };
 
-  // ── Load scan history ───────────────────────────────────────────────────
+  const handleTranslate = async (langCode: string, langName: string) => {
+    if (!detail) return;
+    setTranslating(true);
+    try {
+      const texts: string[] = [];
+      const keys: { key: string, index?: number }[] = [];
+
+      if (detail.category) { texts.push(detail.category); keys.push({ key: 'category' }); }
+      if (detail.uses) { texts.push(detail.uses); keys.push({ key: 'uses' }); }
+      if (detail.dosage) { texts.push(detail.dosage); keys.push({ key: 'dosage' }); }
+      if (detail.sideEffects) {
+        detail.sideEffects.forEach((se, i) => {
+          texts.push(se); keys.push({ key: 'sideEffect', index: i });
+        });
+      }
+
+      if (texts.length > 0) {
+        const combined = texts.join('\n|||\n');
+        const res = await api.request<any>(ENDPOINTS.translateTextPath, {
+          method: 'POST',
+          body: JSON.stringify({ text: combined, language: langCode }),
+        });
+        const trText = res?.translate_text ?? res?.translated_text ?? combined;
+        const pieces = trText.split(/\|\|\|/g).map((s: string) => s.trim());
+
+        if (pieces.length === texts.length) {
+          const newSideEffects: string[] = [];
+          keys.forEach((meta, idx) => {
+            const translated = pieces[idx];
+            if (meta.key === 'category') setTranslatedCategory(translated);
+            if (meta.key === 'uses') setTranslatedUses(translated);
+            if (meta.key === 'dosage') setTranslatedDosage(translated);
+            if (meta.key === 'sideEffect') newSideEffects.push(translated);
+          });
+          if (newSideEffects.length > 0) setTranslatedSideEffects(newSideEffects);
+        }
+      }
+    } catch (e) {
+      console.warn('[Scanner] Translation failed:', e);
+    } finally {
+      setTranslating(false);
+    }
+  };
+
+  // ── Action handlers ─────────────────────────────────────────────────────────
   const openHistory = async () => {
     setHistoryVisible(true);
     if (history.length === 0) {
@@ -302,37 +361,52 @@ export default function MedicineScannerScreen() {
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={styles.detailName}>{detail?.name ?? scanResult?.medicineName}</Text>
           <Text style={styles.detailForm}>{detail?.type}</Text>
-          {detail?.prescriptionType === 'Rx' && (
+          {detail?.prescriptionType === 'Prescription' && (
             <View style={styles.rxPill}><Text style={styles.rxText}>Prescription Required</Text></View>
           )}
         </View>
+        <Pressable 
+          onPress={() => setLangModalOpen(true)}
+          hitSlop={10}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+          disabled={translating}
+        >
+          {translating ? (
+            <ActivityIndicator size="small" color={Colors.primary} />
+          ) : (
+            <Ionicons name="language" size={20} color={Colors.primary} />
+          )}
+          <Text style={{ fontSize: 13, color: Colors.primary, fontWeight: '600' }}>
+            {translating ? 'Translating...' : 'Translate'}
+          </Text>
+        </Pressable>
       </View>
 
       {detail?.category ? (
         <View style={styles.infoBlock}>
           <Text style={styles.infoLabel}>Category</Text>
-          <Text style={styles.infoValue}>{detail.category}</Text>
+          <Text style={styles.infoValue}>{translatedCategory ?? detail.category}</Text>
         </View>
       ) : null}
 
       {detail?.uses ? (
         <View style={styles.infoBlock}>
           <Text style={styles.infoLabel}>Uses</Text>
-          <Text style={styles.infoValue}>{detail.uses}</Text>
+          <Text style={styles.infoValue}>{translatedUses ?? detail.uses}</Text>
         </View>
       ) : null}
 
       {detail?.dosage ? (
         <View style={styles.infoBlock}>
           <Text style={styles.infoLabel}>Dosage</Text>
-          <Text style={styles.infoValue}>{detail.dosage}</Text>
+          <Text style={styles.infoValue}>{translatedDosage ?? detail.dosage}</Text>
         </View>
       ) : null}
 
-      {detail?.sideEffects?.length ? (
+      {(translatedSideEffects || detail?.sideEffects) && (translatedSideEffects || detail?.sideEffects)!.length > 0 ? (
         <View style={styles.infoBlock}>
           <Text style={styles.infoLabel}>Side Effects</Text>
-          {detail.sideEffects.map((s, i) => (
+          {(translatedSideEffects ?? detail!.sideEffects).map((s, i) => (
             <View key={i} style={styles.bulletRow}>
               <View style={styles.bullet} />
               <Text style={styles.infoValue}>{s}</Text>
@@ -461,7 +535,7 @@ export default function MedicineScannerScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.historyName}>{item.medicineName}</Text>
                     <Text style={styles.historyMeta} numberOfLines={1}>
-                      {new Date(item.createdAt).toLocaleDateString()} · {item.aiSummary || 'Scanned medicine'}
+                      {new Date(item.scannedAt).toLocaleDateString()} · {item.aiSummary || 'Scanned medicine'}
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
@@ -471,6 +545,12 @@ export default function MedicineScannerScreen() {
           )}
         </SafeAreaView>
       </Modal>
+
+      <LanguageSelectModal
+        visible={langModalOpen}
+        onClose={() => setLangModalOpen(false)}
+        onSelect={handleTranslate}
+      />
     </SafeAreaView>
   );
 }

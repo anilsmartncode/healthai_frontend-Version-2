@@ -16,6 +16,8 @@ if (!isExpoGo) {
       shouldShowAlert: true,
       shouldPlaySound: true,
       shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
     }),
   });
 }
@@ -201,7 +203,6 @@ export async function scheduleReminderNotification(
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour: triggerTime.getHours(),
         minute: triggerTime.getMinutes(),
-        repeats: true,
       };
     } else if (frequency === 'weekly') {
       trigger = {
@@ -209,7 +210,6 @@ export async function scheduleReminderNotification(
         weekday: triggerTime.getDay() + 1, // Expo: 1=Sunday, 7=Saturday
         hour: triggerTime.getHours(),
         minute: triggerTime.getMinutes(),
-        repeats: true,
       };
     } else if (frequency === 'monthly') {
       // Expo SDK 53 has no MONTHLY trigger type.
@@ -246,9 +246,11 @@ export async function scheduleReminderNotification(
         sound: 'alarm.wav',
         categoryIdentifier: 'reminder-actions',
         data: { reminderId: id },
+      },
+      trigger: {
+        ...(trigger as any),
         channelId: 'reminders',
       },
-      trigger,
     });
 
     console.log(`[Notifications] ✅ Alarm scheduled! ID: ${notifId}`);
@@ -321,11 +323,11 @@ export async function testNotification() {
         title: '🔔 Test Alarm!',
         body: 'If you see this, notifications are working!',
         sound: 'alarm.wav',
-        channelId: 'reminders',
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
         seconds: 5,
+        channelId: 'reminders',
       },
     });
     console.log('[Notifications] ✅ Test notification scheduled in 5 seconds, ID:', id);

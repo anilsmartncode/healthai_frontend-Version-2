@@ -208,7 +208,7 @@ export default function CheckInteractionsScreen() {
           method: 'POST',
           body: JSON.stringify({
             text: result.summary,
-            output_language: langCode,
+            language: langCode,
           }),
         });
         setTranslatedSummary(res1?.translate_text ?? res1?.translated_text ?? result.summary);
@@ -218,7 +218,7 @@ export default function CheckInteractionsScreen() {
           method: 'POST',
           body: JSON.stringify({
             text: result.recommendation,
-            output_language: langCode,
+            language: langCode,
           }),
         });
         setTranslatedReco(res2?.translate_text ?? res2?.translated_text ?? result.recommendation);
@@ -692,7 +692,7 @@ export default function CheckInteractionsScreen() {
                       <Text style={styles.dropdownName}>{m.name}</Text>
                       <Text style={styles.dropdownForm}>{m.type}</Text>
                     </View>
-                    {m.prescriptionType === 'Rx' && (
+                    {m.prescriptionType === 'Prescription' && (
                       <View style={styles.rxBadge}><Text style={styles.rxText}>Rx</Text></View>
                     )}
                     <Ionicons name="add-circle-outline" size={18} color={Colors.primary} />

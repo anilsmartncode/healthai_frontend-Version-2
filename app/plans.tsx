@@ -8,24 +8,39 @@ import { PLAN_LIMITS } from '@/constants/plans';
 import { router } from 'expo-router';
 
 export default function PlansScreen() {
-  const { activePlan, upgradeToPremium } = useUsage();
-  const [isProcessing, setIsProcessing] = useState(false);
+  const { activePlan, upgradeToPremium, upgradeToFamily } = useUsage();
+  const [isProcessingPremium, setIsProcessingPremium] = useState(false);
+  const [isProcessingFamily, setIsProcessingFamily] = useState(false);
 
-  const handleSimulatePayment = async () => {
-    setIsProcessing(true);
-    // Simulate a network request to Google Play/Apple IAP
-    setTimeout(async () => {
-      await upgradeToPremium();
-      setIsProcessing(false);
-      alert('Payment Successful! Welcome to Premium! 🎉');
-    }, 1500);
+  const handlePayment = async (plan: 'PREMIUM' | 'FAMILY') => {
+    try {
+      if (plan === 'PREMIUM') {
+        setIsProcessingPremium(true);
+        await upgradeToPremium();
+        alert('Payment Successful! Welcome to Premium! 🎉');
+      } else {
+        setIsProcessingFamily(true);
+        await upgradeToFamily();
+        alert('Payment Successful! Welcome to the Family Plan! 🎉');
+      }
+    } catch (error: any) {
+      if (!error.userCancelled) {
+        alert('Payment failed. Please try again.');
+      }
+    } finally {
+      setIsProcessingPremium(false);
+      setIsProcessingFamily(false);
+    }
   };
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        
+
         <View style={styles.header}>
+          <Pressable onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={28} color={Colors.text} />
+          </Pressable>
           <Text style={styles.title}>Subscription & Plans</Text>
           <Text style={styles.subtitle}>Unlock the full potential of HealthAI</Text>
         </View>
@@ -44,7 +59,7 @@ export default function PlansScreen() {
             <Text style={styles.planName}>Free Plan</Text>
             <Text style={styles.price}>₹0 <Text style={styles.period}>/mo</Text></Text>
           </View>
-          
+
           <View style={styles.featureList}>
             <Feature icon="chatbubbles-outline" text={`${PLAN_LIMITS.FREE.maxDailyAiChats} AI Chats per day`} />
             <Feature icon="document-text-outline" text={`${PLAN_LIMITS.FREE.maxMonthlyReports} Report analysis per month`} />
@@ -56,35 +71,83 @@ export default function PlansScreen() {
         {/* Premium Plan Card */}
         <View style={[styles.card, styles.premiumCard, activePlan === 'PREMIUM' && styles.activeCard]}>
           <View style={styles.premiumBadge}>
-            <Text style={styles.premiumBadgeText}>RECOMMENDED</Text>
+            <Text style={styles.premiumBadgeText}>POPULAR</Text>
           </View>
-          
+
           <View style={styles.cardHeader}>
-            <Text style={[styles.planName, { color: '#fff' }]}>Premium Plan</Text>
+            <View>
+              <Text style={[styles.planName, { color: '#fff' }]}>Premium</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 2 }}>Single User</Text>
+            </View>
             <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6 }}>
               <Text style={styles.strikePrice}>₹299</Text>
               <Text style={[styles.price, { color: '#fff' }]}>₹99 <Text style={[styles.period, { color: 'rgba(255,255,255,0.7)' }]}>/mo</Text></Text>
             </View>
           </View>
-          
+
           <View style={styles.featureList}>
             <Feature icon="chatbubbles" text="Unlimited AI Chats" premium />
             <Feature icon="document-text" text={`${PLAN_LIMITS.PREMIUM.maxMonthlyReports} Report analyses per month`} premium />
             <Feature icon="barcode" text="Unlimited Medicine scans" premium />
-            <Feature icon="people" text={`Up to ${PLAN_LIMITS.PREMIUM.maxFamilyMembers} Family members`} premium />
+            <Feature icon="person" text="Single User Account" premium />
             <Feature icon="star" text="Priority AI Processing" premium />
           </View>
 
-          {activePlan === 'FREE' ? (
-            <Pressable 
-              style={styles.upgradeBtn} 
-              onPress={handleSimulatePayment}
-              disabled={isProcessing}
+          {activePlan !== 'PREMIUM' ? (
+            <Pressable
+              style={styles.upgradeBtn}
+              onPress={() => handlePayment('PREMIUM')}
+              disabled={isProcessingPremium || isProcessingFamily}
             >
-              {isProcessing ? (
+              {isProcessingPremium ? (
                 <ActivityIndicator color={Colors.primary} />
               ) : (
                 <Text style={styles.upgradeBtnText}>Upgrade to Premium</Text>
+              )}
+            </Pressable>
+          ) : (
+            <View style={styles.activePlanBtn}>
+              <Ionicons name="checkmark-circle" size={20} color="#fff" />
+              <Text style={styles.activePlanBtnText}>Active Plan</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Family Plan Card */}
+        <View style={[styles.card, styles.familyCard, activePlan === 'FAMILY' && styles.activeCard]}>
+          <View style={[styles.premiumBadge, { backgroundColor: '#8B5CF6' }]}>
+            <Text style={[styles.premiumBadgeText, { color: '#fff' }]}>BEST VALUE</Text>
+          </View>
+
+          <View style={styles.cardHeader}>
+            <View>
+              <Text style={[styles.planName, { color: '#fff' }]}>Family Plan</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 2 }}>Up to {PLAN_LIMITS.FAMILY.maxFamilyMembers} Members</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6 }}>
+              <Text style={[styles.price, { color: '#fff' }]}>₹199 <Text style={[styles.period, { color: 'rgba(255,255,255,0.7)' }]}>/mo</Text></Text>
+            </View>
+          </View>
+
+          <View style={styles.featureList}>
+            <Feature icon="chatbubbles" text="Unlimited AI Chats" premium />
+            <Feature icon="document-text" text={`${PLAN_LIMITS.FAMILY.maxMonthlyReports} Report analyses per month`} premium />
+            <Feature icon="barcode" text="Unlimited Medicine scans" premium />
+            <Feature icon="people" text={`Up to ${PLAN_LIMITS.FAMILY.maxFamilyMembers} Family members included`} premium />
+            <Feature icon="share-social" text="Shared Family Dashboard" premium />
+            <Feature icon="star" text="Priority AI Processing" premium />
+          </View>
+
+          {activePlan !== 'FAMILY' ? (
+            <Pressable
+              style={[styles.upgradeBtn, { backgroundColor: '#fff' }]}
+              onPress={() => handlePayment('FAMILY')}
+              disabled={isProcessingPremium || isProcessingFamily}
+            >
+              {isProcessingFamily ? (
+                <ActivityIndicator color="#8B5CF6" />
+              ) : (
+                <Text style={[styles.upgradeBtnText, { color: '#7C3AED' }]}>Upgrade to Family</Text>
               )}
             </Pressable>
           ) : (
@@ -112,11 +175,12 @@ function Feature({ icon, text, premium = false }: { icon: any, text: string, pre
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.bg },
   scroll: { padding: 16, paddingBottom: 40, gap: 20 },
-  
-  header: { alignItems: 'center', marginTop: 10, marginBottom: 5 },
+
+  header: { alignItems: 'center', marginTop: 10, marginBottom: 5, position: 'relative' },
+  backButton: { position: 'absolute', left: 0, top: 0, padding: 4, zIndex: 10 },
   title: { fontSize: 24, fontWeight: '800', color: Colors.text, marginBottom: 6 },
   subtitle: { fontSize: 15, color: Colors.textMuted },
-  
+
   currentBanner: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     backgroundColor: Colors.surface, paddingVertical: 12, borderRadius: Radius.lg,
@@ -143,6 +207,16 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
     borderWidth: 2,
     shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  familyCard: {
+    backgroundColor: '#8B5CF6',
+    borderColor: '#8B5CF6',
+    borderWidth: 2,
+    shadowColor: '#8B5CF6',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
     shadowRadius: 16,

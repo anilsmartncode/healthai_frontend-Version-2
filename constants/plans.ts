@@ -4,7 +4,7 @@
  * Modify these limits per hospital/client deployment.
  */
 
-export type PlanType = 'FREE' | 'PREMIUM';
+export type PlanType = 'FREE' | 'PREMIUM' | 'FAMILY';
 
 export interface PlanLimits {
   maxDailyAiChats: number;
@@ -22,7 +22,13 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
   },
   PREMIUM: {
     maxDailyAiChats: 9999, // Essentially unlimited
-    maxMonthlyReports: 20,
+    maxMonthlyReports: 10,
+    maxDailyMedicineScans: 9999,
+    maxFamilyMembers: 0, // Single user
+  },
+  FAMILY: {
+    maxDailyAiChats: 9999,
+    maxMonthlyReports: 25,
     maxDailyMedicineScans: 9999,
     maxFamilyMembers: 5,
   },

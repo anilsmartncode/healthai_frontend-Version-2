@@ -89,7 +89,7 @@ export default function AnalysisScreen() {
         method: 'POST',
         body: JSON.stringify({
           text,
-          output_language: langCode,
+          language: langCode,
         }),
       });
       return res?.translate_text ?? res?.translated_text ?? text;
@@ -119,24 +119,80 @@ export default function AnalysisScreen() {
 
         if (parsed) {
           const translatedObj: ApiSummary = { ...parsed };
-          if (parsed.ai_summary) {
-            translatedObj.ai_summary = await callTranslateApi(parsed.ai_summary, langCode);
+          
+          // 1. Gather all texts to translate to avoid 50+ API calls
+          const keysToTranslate: { key: keyof ApiSummary, index?: number, subkey?: string }[] = [];
+          const textToTranslate: string[] = [];
+          
+          const addText = (key: keyof ApiSummary, text: string, index?: number, subkey?: string) => {
+            if (!text || typeof text !== 'string') return;
+            keysToTranslate.push({ key, index, subkey });
+            textToTranslate.push(text);
           }
-          if (parsed.patient_friendly_explanation) {
-            translatedObj.patient_friendly_explanation = await callTranslateApi(parsed.patient_friendly_explanation, langCode);
+          
+          // Single string fields
+          addText('overall_health', parsed.overall_health as string);
+          addText('ai_summary', parsed.ai_summary as string);
+          addText('condition_severity', parsed.condition_severity as string);
+          addText('patient_friendly_explanation', parsed.patient_friendly_explanation as string);
+          addText('doctor_consultation_needed', parsed.doctor_consultation_needed as string);
+          addText('water_intake', parsed.water_intake as string);
+          addText('emergency_warning', parsed.emergency_warning as string);
+
+          // Array fields
+          const arrayFields: (keyof ApiSummary)[] = [
+            'abnormal_findings', 'important_risks', 'what_patient_should_do_next', 
+            'symptoms_patient_may_feel', 'next_tests_recommended', 'questions_to_ask_doctor',
+            'recommended_diet', 'foods_to_avoid', 'recommended_fruits', 'recommended_juices',
+            'recommended_leafy_vegetables', 'protein_recommendations', 'exercise_recommendations',
+            'sleep_recommendations', 'lifestyle_changes', 'precautions'
+          ];
+          
+          arrayFields.forEach(field => {
+            const arr = parsed![field];
+            if (Array.isArray(arr)) {
+              arr.forEach((item, i) => addText(field, item as string, i));
+            }
+          });
+
+          // Object array fields
+          if (Array.isArray(parsed.medical_terms_translated)) {
+             parsed.medical_terms_translated.forEach((term: any, i: number) => {
+               addText('medical_terms_translated', term.term, i, 'term');
+               addText('medical_terms_translated', term.simple_meaning, i, 'simple_meaning');
+             })
           }
-          if (parsed.condition_severity) {
-            translatedObj.condition_severity = await callTranslateApi(parsed.condition_severity, langCode);
-          }
-          if (Array.isArray(parsed.important_risks)) {
-            translatedObj.important_risks = await Promise.all(
-              parsed.important_risks.map(r => callTranslateApi(r, langCode))
-            );
-          }
-          if (Array.isArray(parsed.what_patient_should_do_next)) {
-            translatedObj.what_patient_should_do_next = await Promise.all(
-              parsed.what_patient_should_do_next.map(s => callTranslateApi(s, langCode))
-            );
+
+          if (textToTranslate.length > 0) {
+            // Join with a unique delimiter that LLMs usually preserve
+            const delimiter = '\n|||\n';
+            const combinedText = textToTranslate.join(delimiter);
+            const translatedCombined = await callTranslateApi(combinedText, langCode);
+            
+            // Split back by delimiter
+            const translatedPieces = translatedCombined.split(/\|\|\|/g).map(s => s.trim());
+            
+            if (translatedPieces.length === textToTranslate.length) {
+              keysToTranslate.forEach((meta, idx) => {
+                const trText = translatedPieces[idx];
+                if (!trText) return;
+
+                if (meta.index !== undefined) {
+                  if (meta.subkey) {
+                    if (!translatedObj[meta.key]) translatedObj[meta.key] = JSON.parse(JSON.stringify(parsed![meta.key]));
+                    (translatedObj[meta.key] as any)[meta.index][meta.subkey] = trText;
+                  } else {
+                    if (!translatedObj[meta.key]) translatedObj[meta.key] = [] as any;
+                    (translatedObj[meta.key] as any)[meta.index] = trText;
+                  }
+                } else {
+                  (translatedObj as any)[meta.key] = trText;
+                }
+              });
+            } else {
+               console.warn('[Translation] Batch translation mismatch! Expected', textToTranslate.length, 'got', translatedPieces.length);
+               // If it fails, at least the core pieces will remain in English as fallback
+            }
           }
           setTranslatedSummary(JSON.stringify(translatedObj));
         } else {
