@@ -128,6 +128,16 @@ export type TranslationKeys = {
   legal_privacy: string;
   help_support: string;
   rate_app: string;
+  key_health_metrics: string;
+  risk_assessment: string;
+  risk_low: string;
+  risk_moderate: string;
+  risk_high: string;
+  blood_sugar: string;
+  cholesterol: string;
+  vitamin_d: string;
+  hemoglobin: string;
+  no_data: string;
 };
 
 export const translations: Record<LangCode, TranslationKeys> = {
@@ -241,6 +251,16 @@ export const translations: Record<LangCode, TranslationKeys> = {
     legal_privacy: 'Legal & Privacy',
     help_support: 'Help & Support',
     rate_app: 'Rate the app',
+    key_health_metrics: 'Key Health Metrics',
+    risk_assessment: 'AI Risk Assessment',
+    risk_low: 'Low Risk',
+    risk_moderate: 'Moderate Risk',
+    risk_high: 'High Risk',
+    blood_sugar: 'Blood Sugar',
+    cholesterol: 'Cholesterol',
+    vitamin_d: 'Vitamin D',
+    hemoglobin: 'Hemoglobin',
+    no_data: 'No Data',
   },
 
   hi: {
@@ -353,6 +373,16 @@ export const translations: Record<LangCode, TranslationKeys> = {
     legal_privacy: 'कानूनी और गोपनीयता',
     help_support: 'सहायता और समर्थन',
     rate_app: 'ऐप को रेट करें',
+    key_health_metrics: 'प्रमुख स्वास्थ्य मेट्रिक्स',
+    risk_assessment: 'AI जोखिम मूल्यांकन',
+    risk_low: 'कम जोखिम',
+    risk_moderate: 'मध्यम जोखिम',
+    risk_high: 'उच्च जोखिम',
+    blood_sugar: 'ब्लड शुगर',
+    cholesterol: 'कोलेस्ट्रॉल',
+    vitamin_d: 'विटामिन डी',
+    hemoglobin: 'हीमोग्लोबिन',
+    no_data: 'कोई डेटा नहीं',
   },
 
   te: {
@@ -463,8 +493,18 @@ export const translations: Record<LangCode, TranslationKeys> = {
     language_pref: 'భాష',
     family_health: 'కుటుంబ ఆరోగ్యం',
     legal_privacy: 'చట్టపరమైన & గోప్యత',
-    help_support: 'సహాయం & మద్దతు',
+    help_support: 'సహాయ & మద్దతు',
     rate_app: 'యాప్‌కు రేటింగ్ ఇవ్వండి',
+    key_health_metrics: 'కీలక ఆరోగ్య సూచికలు',
+    risk_assessment: 'AI ప్రమాద అంచనా',
+    risk_low: 'తక్కువ ప్రమాదం',
+    risk_moderate: 'మధ్యస్థ ప్రమాదం',
+    risk_high: 'ఎక్కువ ప్రమాదం',
+    blood_sugar: 'బ్లడ్ షుగర్',
+    cholesterol: 'కొలెస్ట్రాల్',
+    vitamin_d: 'విటమిన్ డి',
+    hemoglobin: 'హిమోగ్లోబిన్',
+    no_data: 'డేటా లేదు',
   },
 
   ta: {
@@ -577,6 +617,16 @@ export const translations: Record<LangCode, TranslationKeys> = {
     legal_privacy: 'சட்டம் & தனியுரிமை',
     help_support: 'உதவி & ஆதரவு',
     rate_app: 'பயன்பாட்டை மதிப்பிடுங்கள்',
+    key_health_metrics: 'முக்கிய சுகாதார அளவீடுகள்',
+    risk_assessment: 'AI அபாய மதிப்பீடு',
+    risk_low: 'குறைந்த அபாயம்',
+    risk_moderate: 'மிதமான அபாயம்',
+    risk_high: 'அதிக அபாயம்',
+    blood_sugar: 'இரத்த சர்க்கரை',
+    cholesterol: 'கொலஸ்ட்ரால்',
+    vitamin_d: 'வைட்டமின் டி',
+    hemoglobin: 'ஹீமோகுளோபின்',
+    no_data: 'தரவு இல்லை',
   },
 
   kn: {
@@ -689,5 +739,15 @@ export const translations: Record<LangCode, TranslationKeys> = {
     legal_privacy: 'ಕಾನೂನು & ಗೌಪ್ಯತೆ',
     help_support: 'ಸಹಾಯ & ಬೆಂಬಲ',
     rate_app: 'ಅಪ್ಲಿಕೇಶನ್ ರೇಟ್ ಮಾಡಿ',
+    key_health_metrics: 'ಪ್ರಮುಖ ಆರೋಗ್ಯ ಮೆಟ್ರಿಕ್ಸ್',
+    risk_assessment: 'AI ಅಪಾಯದ ಮೌಲ್ಯಮಾಪನ',
+    risk_low: 'ಕಡಿಮೆ ಅಪಾಯ',
+    risk_moderate: 'ಮಧ್ಯಮ ಅಪಾಯ',
+    risk_high: 'ಹೆಚ್ಚಿನ ಅಪಾಯ',
+    blood_sugar: 'ರಕ್ತದ ಸಕ್ಕರೆ',
+    cholesterol: 'ಕೊಲೆಸ್ಟ್ರಾಲ್',
+    vitamin_d: 'ವಿಟಮಿನ್ ಡಿ',
+    hemoglobin: 'ಹಿಮೋಗ್ಲೋಬಿನ್',
+    no_data: 'ಡೇಟಾ ಇಲ್ಲ',
   },
 };

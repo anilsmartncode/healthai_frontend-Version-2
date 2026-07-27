@@ -15,6 +15,10 @@ import { HealthScoreCard } from "@/components/home/Healthscorecard";
 import { FamilyHealthCard } from "@/components/home/Familyhealthcard";
 import { RecentReports } from "@/components/home/RecentReports";
 import { AskAIButton } from "@/components/ai/AskAIButton";
+import { QuickActions } from "@/components/home/QuickActions";
+import { HealthTipCard } from "@/components/home/HealthTipCard";
+import { HealthMetricsSection } from "@/components/home/HealthMetricsSection";
+import { RiskIndicatorsSection } from "@/components/home/RiskIndicatorsSection";
 
 
 function EmptyState() {
@@ -48,6 +52,7 @@ export default function Home() {
     totalReports: number;
     aiSummary: string;
     averageMetrics: any[];
+    riskIndicators: any[];
   } | null>(null);
   const { phone } = useAuth();
   const [navigating, setNavigating] = useState(false);
@@ -128,7 +133,7 @@ export default function Home() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <HomeHeader attentionCount={0} />
+        <HomeHeader attentionCount={overallAttentionCount} />
       </View>
 
       <ScrollView
@@ -157,10 +162,13 @@ export default function Home() {
           onAttentionPress={handleAttentionPress}
         />
 
-        <Button
-          title="+ Upload New Report"
-          onPress={() => router.push('/upload')}
-          style={styles.uploadBtn}
+        <QuickActions />
+
+        <HealthMetricsSection reports={reports} phone={phone} />
+
+        <RiskIndicatorsSection
+          riskIndicators={scorecard?.riskIndicators ?? []}
+          hasReports={hasReports}
         />
 
         <FamilyHealthCard />
@@ -195,6 +203,8 @@ export default function Home() {
             <Text style={styles.reminderBtnText}>{todayBanner && todayBanner.count > 0 ? "View" : "Add"}</Text>
           </View>
         </Pressable>
+
+        <HealthTipCard />
 
         {hasReports ? <RecentReports reports={reports} /> : <EmptyState />}
       </ScrollView>

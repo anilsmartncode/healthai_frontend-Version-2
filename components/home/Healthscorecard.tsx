@@ -99,36 +99,30 @@ function EmptyHealthScore({ onUpload }: { onUpload: () => void }) {
       {/* ── Divider ── */}
       <View style={styles.divider} />
 
-      {/* ── Empty stats row ── */}
+      {/* ── Empty stats cards ── */}
       <View style={styles.statsRow}>
-        <View style={styles.statItem}>
-          <View style={[styles.statIcon, { backgroundColor: "#DCFCE7" }]}>
+        <View style={[styles.statCard, { backgroundColor: "#F0FDF4", borderColor: "#DCFCE7" }]}>
+          <View style={[styles.statCardIcon, { backgroundColor: "#DCFCE7" }]}>
             <Ionicons name="checkmark" size={16} color="#16a34a" />
           </View>
-          <View style={styles.statText}>
-            <Text style={[styles.statNum, { color: "#9CA3AF" }]}>—</Text>
-            <Text style={styles.statLabel}>values in{"\n"}normal range</Text>
-          </View>
+          <Text style={[styles.statCardVal, { color: "#16a34a" }]}>—</Text>
+          <Text style={[styles.statCardLabel, { color: "#16a34a" }]}>Normal</Text>
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <View style={[styles.statIcon, { backgroundColor: "#EDE9FE" }]}>
+
+        <View style={[styles.statCard, { backgroundColor: "#F5F3FF", borderColor: "#EDE9FE" }]}>
+          <View style={[styles.statCardIcon, { backgroundColor: "#EDE9FE" }]}>
             <Ionicons name="document-text-outline" size={16} color="#7C3AED" />
           </View>
-          <View style={styles.statText}>
-            <Text style={[styles.statNum, { color: "#9CA3AF" }]}>—</Text>
-            <Text style={styles.statLabel}>Reports{"\n"}analyzed</Text>
-          </View>
+          <Text style={[styles.statCardVal, { color: "#7C3AED" }]}>—</Text>
+          <Text style={[styles.statCardLabel, { color: "#7C3AED" }]}>Reports</Text>
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <View style={[styles.statIcon, { backgroundColor: "#DBEAFE" }]}>
+
+        <View style={[styles.statCard, { backgroundColor: "#EFF6FF", borderColor: "#DBEAFE" }]}>
+          <View style={[styles.statCardIcon, { backgroundColor: "#DBEAFE" }]}>
             <Ionicons name="calendar-outline" size={16} color="#2563EB" />
           </View>
-          <View style={styles.statText}>
-            <Text style={styles.statLabel}>Last{"\n"}updated</Text>
-            <Text style={[styles.statNum, { color: "#9CA3AF", fontSize: 13 }]}>—</Text>
-          </View>
+          <Text style={[styles.statCardVal, { color: "#2563EB" }]}>—</Text>
+          <Text style={[styles.statCardLabel, { color: "#2563EB" }]}>Updated</Text>
         </View>
       </View>
 
@@ -217,42 +211,36 @@ function FilledHealthScore({
       {/* ── Divider ── */}
       <View style={styles.divider} />
 
-      {/* ── Stats row ── */}
+      {/* ── Stats cards ── */}
       <View style={styles.statsRow}>
-        <View style={styles.statItem}>
-          <View style={[styles.statIcon, { backgroundColor: "#DCFCE7" }]}>
+        <View style={[styles.statCard, { backgroundColor: "#F0FDF4", borderColor: "#DCFCE7" }]}>
+          <View style={[styles.statCardIcon, { backgroundColor: "#DCFCE7" }]}>
             <Ionicons name="checkmark" size={16} color="#16a34a" />
           </View>
-          <View style={styles.statText}>
-            <Text style={[styles.statNum, { color: "#16a34a" }]}>
-              {String(normalCount).padStart(2, "0")}
-            </Text>
-            <Text style={styles.statLabel}>values in{"\n"}normal range</Text>
-          </View>
+          <Text style={[styles.statCardVal, { color: "#16a34a" }]}>
+            {String(normalCount).padStart(2, "0")}
+          </Text>
+          <Text style={[styles.statCardLabel, { color: "#16a34a" }]}>Normal</Text>
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <View style={[styles.statIcon, { backgroundColor: "#EDE9FE" }]}>
+
+        <View style={[styles.statCard, { backgroundColor: "#F5F3FF", borderColor: "#EDE9FE" }]}>
+          <View style={[styles.statCardIcon, { backgroundColor: "#EDE9FE" }]}>
             <Ionicons name="document-text-outline" size={16} color="#7C3AED" />
           </View>
-          <View style={styles.statText}>
-            <Text style={[styles.statNum, { color: "#7C3AED" }]}>
-              {String(reportsAnalyzed).padStart(2, "0")}
-            </Text>
-            <Text style={styles.statLabel}>reports{"\n"}analyzed</Text>
-          </View>
+          <Text style={[styles.statCardVal, { color: "#7C3AED" }]}>
+            {String(reportsAnalyzed).padStart(2, "0")}
+          </Text>
+          <Text style={[styles.statCardLabel, { color: "#7C3AED" }]}>Reports</Text>
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <View style={[styles.statIcon, { backgroundColor: "#DBEAFE" }]}>
+
+        <View style={[styles.statCard, { backgroundColor: "#EFF6FF", borderColor: "#DBEAFE" }]}>
+          <View style={[styles.statCardIcon, { backgroundColor: "#DBEAFE" }]}>
             <Ionicons name="calendar-outline" size={16} color="#2563EB" />
           </View>
-          <View style={styles.statText}>
-            <Text style={styles.statLabel}>Last Updated</Text>
-            <Text style={[styles.statNum, { color: Colors.text, fontSize: 13 }]}>
-              {formatDate(lastUpdated)}
-            </Text>
-          </View>
+          <Text style={[styles.statCardVal, { color: "#2563EB", fontSize: 11 }]} numberOfLines={1}>
+            {formatDate(lastUpdated)}
+          </Text>
+          <Text style={[styles.statCardLabel, { color: "#2563EB" }]}>Updated</Text>
         </View>
       </View>
 
@@ -362,20 +350,32 @@ const styles = StyleSheet.create({
 
   divider: { height: 1, backgroundColor: Colors.border, marginBottom: 14 },
 
-  statsRow: { flexDirection: "row", alignItems: "center", marginBottom: 14 },
-  statItem: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6 },
-  statText: { flex: 1 },
-  statIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+  statsRow: { flexDirection: "row", gap: 8, justifyContent: "space-between", marginBottom: 14 },
+  statCard: {
+    flex: 1,
+    borderRadius: 12,
+    padding: 10,
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 1,
+  },
+  statCardIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    flexShrink: 0,
   },
-  statNum: { fontSize: 16, fontWeight: "700", color: Colors.text },
-  statLabel: { fontSize: 10, color: Colors.textMuted, lineHeight: 14, flexShrink: 1 },
-  statDivider: { width: 1, height: 36, backgroundColor: Colors.border, marginHorizontal: 2 },
+  statCardVal: {
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  statCardLabel: {
+    fontSize: 9,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+  },
 
   attentionBanner: {
     flexDirection: "row",
