@@ -30,6 +30,18 @@ const ACTIONS: {
     route: "/(tabs)/ai",
     bg: "#FDF4FF",
   },
+  {
+    icon: "location-outline",
+    key: "nav_nearby",
+    route: "/(tabs)/nearby",
+    bg: "#ECFDF5",
+  },
+  {
+    icon: "medkit-outline",
+    key: "nav_medicines",
+    route: "/(tabs)/medicines",
+    bg: "#FFF1F2",
+  },
 ];
 
 export function QuickActions() {

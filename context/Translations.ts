@@ -145,6 +145,16 @@ export type TranslationKeys = {
   share_message: string;
   share_card_title: string;
   share_card_desc: string;
+  nav_nearby: string;
+  hospitals: string;
+  pharmacies: string;
+  doctors: string;
+  coming_soon: string;
+  distance_km: string;
+  get_directions: string;
+  no_places_found: string;
+  location_required: string;
+  appointments: string;
 };
 
 export const translations: Record<LangCode, TranslationKeys> = {
@@ -275,6 +285,16 @@ export const translations: Record<LangCode, TranslationKeys> = {
     share_message: "Hi! I'm using HealthAI to track my blood reports, monitor key health indicators, and manage my medications. Try it out to take control of your health: ",
     share_card_title: 'Invite Friends & Family',
     share_card_desc: 'Share HealthAI with your loved ones to help them track biomarkers, medications, and get AI health insights.',
+    nav_nearby: 'Nearby',
+    hospitals: 'Hospitals',
+    pharmacies: 'Pharmacies',
+    doctors: 'Doctors',
+    coming_soon: 'Coming Soon',
+    distance_km: 'km away',
+    get_directions: 'Get Directions',
+    no_places_found: 'No medical stores or hospitals found nearby.',
+    location_required: 'GPS location permission is required to find nearby services.',
+    appointments: 'Appointments',
   },
 
   hi: {
@@ -404,6 +424,16 @@ export const translations: Record<LangCode, TranslationKeys> = {
     share_message: "नमस्ते! मैं अपनी ब्लड रिपोर्ट ट्रैक करने, प्रमुख स्वास्थ्य संकेतकों की निगरानी करने और अपनी दवाओं को प्रबंधित करने के लिए HealthAI का उपयोग कर रहा हूँ। अपने स्वास्थ्य पर नियंत्रण रखने के लिए इसे आज़माएँ: ",
     share_card_title: 'मित्रों और परिवार को आमंत्रित करें',
     share_card_desc: 'अपने प्रियजनों के साथ HealthAI साझा करें ताकि वे बायोमार्कर, दवाओं को ट्रैक कर सकें और AI स्वास्थ्य अंतर्दृष्टि प्राप्त कर सकें।',
+    nav_nearby: 'पास के स्थान',
+    hospitals: 'अस्पताल',
+    pharmacies: 'दवा की दुकानें',
+    doctors: 'डॉक्टर',
+    coming_soon: 'जल्द आ रहा है',
+    distance_km: 'किमी दूर',
+    get_directions: 'दिशा-निर्देश',
+    no_places_found: 'पास में कोई चिकित्सा स्टोर या अस्पताल नहीं मिला।',
+    location_required: 'पास की सेवाओं को खोजने के लिए GPS स्थान अनुमति की आवश्यकता है।',
+    appointments: 'नियुक्तियां',
   },
 
   te: {
@@ -533,6 +563,16 @@ export const translations: Record<LangCode, TranslationKeys> = {
     share_message: "హాయ్! నా రక్త నివేదికలను ట్రాక్ చేయడానికి, కీలక ఆరోగ్య సూచికలను పర్యవేక్షించడానికి మరియు నా మందులను నిర్వహించడానికి నేను HealthAIని ఉపయోగిస్తున్నాను. మీ ఆరోగ్యాన్ని నియంత్రణలో ఉంచుకోవడానికి దీనిని ప్రయత్నించండి: ",
     share_card_title: 'స్నేహితులు & కుటుంబాన్ని ఆహ్వానించండి',
     share_card_desc: 'బయోమార్కర్లు, మందులను ట్రాక్ చేయడానికి మరియు AI ఆరోగ్య అంతర్దృష్టులను పొందడానికి మీ ప్రియమైనవారితో HealthAIని భాగస్వామ్యం చేయండి.',
+    nav_nearby: 'దగ్గరలో',
+    hospitals: 'ఆసుపత్రులు',
+    pharmacies: 'మందుల దుకాణాలు',
+    doctors: 'వైద్యులు',
+    coming_soon: 'త్వరలో వస్తుంది',
+    distance_km: 'ಕಿಮೀ ದೂರದಲ್ಲಿ',
+    get_directions: 'దిశలను పొందండి',
+    no_places_found: 'దగ్గరలో మందుల దుకాణాలు లేదా ఆసుపత్రులు ఏవీ కనుగొనబడలేదు.',
+    location_required: 'దగ్గరి సేవలను కనుగొనడానికి GPS స్థాన అనుమతి అవసరం.',
+    appointments: 'అపాయింట్‌మెంట్‌లు',
   },
 
   ta: {
@@ -662,6 +702,16 @@ export const translations: Record<LangCode, TranslationKeys> = {
     share_message: "ஹாய்! எனது இரத்த அறிக்கைகளைக் கண்காணிக்கவும், முக்கிய சுகாதார குறிகாட்டிகளைக் கண்காணிக்கவும், எனது மருந்துகளை நிர்வகிக்கவும் நான் HealthAI ஐப் பயன்படுத்துகிறேன். உங்கள் ஆரோக்கியத்தைக் கட்டுப்படுத்த இதை முயற்சிக்கவும்: ",
     share_card_title: 'நண்பர்கள் மற்றும் குடும்பத்தினரை அழைக்கவும்',
     share_card_desc: 'உயிரியல் குறிப்பான்கள், மருந்துகளைக் கண்காணிக்கவும் மற்றும் AI சுகாதார நுண்ணறிவுகளைப் பெறவும் உங்கள் அன்புகுரியவர்களுடன் HealthAI ஐப் பகிரவும்.',
+    nav_nearby: 'அருகிலுள்ளவை',
+    hospitals: 'மருத்துவமனைகள்',
+    pharmacies: 'மருந்தகங்கள்',
+    doctors: 'மருத்துவர்கள்',
+    coming_soon: 'விரைவில்',
+    distance_km: 'கிமீ தொலைவில்',
+    get_directions: 'திசைகளைப் பெறுக',
+    no_places_found: 'அருகில் மருந்தகங்களோ மருத்துவமனைகளோ எதுவும் காணப்படவில்லை.',
+    location_required: 'அருகிலுள்ள சேவைகளைக் கண்டறிய GPS இருப்பிட அனுமதி தேவை.',
+    appointments: 'சந்திப்புகள்',
   },
 
   kn: {
@@ -791,5 +841,15 @@ export const translations: Record<LangCode, TranslationKeys> = {
     share_message: "ಹಾಯ್! ನನ್ನ ರಕ್ತದ ವರದಿಗಳನ್ನು ಟ್ರ್ಯಾಕ್ ಮಾಡಲು, ಪ್ರಮುಖ ಆರೋಗ್ಯ ಸೂಚಕಗಳನ್ನು ಮೇಲ್ವಿಚಾರಣೆ ಮಾಡಲು ಮತ್ತು ನನ್ನ ಔಷಧಿಗಳನ್ನು ನಿರ್ವಹಿಸಲು ನಾನು HealthAI ಅನ್ನು ಬಳಸುತ್ತಿದ್ದೇನೆ. ನಿಮ್ಮ ಆರೋಗ್ಯವನ್ನು ನಿಯಂತ್ರಿಸಲು ಇದನ್ನು ಪ್ರಯತ್ನಿಸಿ: ",
     share_card_title: 'ಸ್ನೇಹಿತರು ಮತ್ತು ಕುಟುಂಬವನ್ನು ಆಹ್ವಾನಿಸಿ',
     share_card_desc: 'ಬಯೋಮಾರ್ಕರ್ಸ್, ಔಷಧಿಗಳನ್ನು ಟ್ರ್ಯಾಕ್ ಮಾಡಲು ಮತ್ತು AI ಆರೋಗ್ಯ ಒಳನೋಟಗಳನ್ನು ಪಡೆಯಲು ನಿಮ್ಮ ಪ್ರೀತಿಪಾತ್ರರೊಂದಿಗೆ HealthAI ಅನ್ನು ಹಂಚಿಕೊಳ್ಳಿ.',
+    nav_nearby: 'ಹತ್ತಿರದ',
+    hospitals: 'ಆಸ್ಪತ್ರೆಗಳು',
+    pharmacies: 'ದವಾಖಾನೆಗಳು',
+    doctors: 'ವೈದ್ಯರು',
+    coming_soon: 'ಶೀಘ್ರದಲ್ಲೇ ಬರಲಿದೆ',
+    distance_km: 'ಕಿಮೀ ದೂರದಲ್ಲಿದೆ',
+    get_directions: 'ಮಾರ್ಗಸೂಚಿ ಪಡೆಯಿರಿ',
+    no_places_found: 'ಹತ್ತಿರದಲ್ಲಿ ಯಾವುದೇ ದವಾಖಾನೆಗಳು ಅಥವಾ ಆಸ್ಪತ್ರೆಗಳು ಕಂಡುಬಂದಿಲ್ಲ.',
+    location_required: 'ಹತ್ತಿರದ ಸೇವೆಗಳನ್ನು ಹುಡುಕಲು GPS ಸ್ಥಳ ಅನುಮತಿ ಅಗತ್ಯವಿದೆ.',
+    appointments: 'ನೇಮಕಾತಿಗಳು',
   },
 };
