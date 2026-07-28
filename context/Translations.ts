@@ -138,6 +138,13 @@ export type TranslationKeys = {
   vitamin_d: string;
   hemoglobin: string;
   no_data: string;
+  metric_onboard_title: string;
+  metric_onboard_desc: string;
+  metric_no_biomarkers_desc: string;
+  add_family: string;
+  share_message: string;
+  share_card_title: string;
+  share_card_desc: string;
 };
 
 export const translations: Record<LangCode, TranslationKeys> = {
@@ -261,6 +268,13 @@ export const translations: Record<LangCode, TranslationKeys> = {
     vitamin_d: 'Vitamin D',
     hemoglobin: 'Hemoglobin',
     no_data: 'No Data',
+    metric_onboard_title: 'Unlock Biomarker Trends',
+    metric_onboard_desc: 'Track Blood Sugar, Cholesterol, Vitamin D, and Hemoglobin automatically. Tap to analyze your first report.',
+    metric_no_biomarkers_desc: 'No biomarker trends (Blood Sugar, Cholesterol, Vitamin D, or Hemoglobin) were detected in your uploaded reports. Tap here to upload another report.',
+    add_family: 'Add Family member',
+    share_message: "Hi! I'm using HealthAI to track my blood reports, monitor key health indicators, and manage my medications. Try it out to take control of your health: ",
+    share_card_title: 'Invite Friends & Family',
+    share_card_desc: 'Share HealthAI with your loved ones to help them track biomarkers, medications, and get AI health insights.',
   },
 
   hi: {
@@ -383,6 +397,13 @@ export const translations: Record<LangCode, TranslationKeys> = {
     vitamin_d: 'विटामिन डी',
     hemoglobin: 'हीमोग्लोबिन',
     no_data: 'कोई डेटा नहीं',
+    metric_onboard_title: 'बायोमार्कर रुझान अनलॉक करें',
+    metric_onboard_desc: 'ब्लड शुगर, कोलेस्ट्रॉल, विटामिन डी और हीमोग्लोबिन को स्वचालित रूप से ट्रैक करें। अपनी पहली रिपोर्ट का विश्लेषण करने के लिए टैप करें।',
+    metric_no_biomarkers_desc: 'आपकी अपलोड की गई रिपोर्टों में कोई बायोमार्कर रुझान (ब्लड शुगर, कोलेस्ट्रॉल, विटामिन डी, या हीमोग्लोबिन) नहीं पाया गया। एक और रिपोर्ट अपलोड करने के लिए यहां टैप करें।',
+    add_family: 'परिवार जोड़ें',
+    share_message: "नमस्ते! मैं अपनी ब्लड रिपोर्ट ट्रैक करने, प्रमुख स्वास्थ्य संकेतकों की निगरानी करने और अपनी दवाओं को प्रबंधित करने के लिए HealthAI का उपयोग कर रहा हूँ। अपने स्वास्थ्य पर नियंत्रण रखने के लिए इसे आज़माएँ: ",
+    share_card_title: 'मित्रों और परिवार को आमंत्रित करें',
+    share_card_desc: 'अपने प्रियजनों के साथ HealthAI साझा करें ताकि वे बायोमार्कर, दवाओं को ट्रैक कर सकें और AI स्वास्थ्य अंतर्दृष्टि प्राप्त कर सकें।',
   },
 
   te: {
@@ -505,6 +526,13 @@ export const translations: Record<LangCode, TranslationKeys> = {
     vitamin_d: 'విటమిన్ డి',
     hemoglobin: 'హిమోగ్లోబిన్',
     no_data: 'డేటా లేదు',
+    metric_onboard_title: 'బయోమార్కర్ ట్రెండ్స్ అన్‌లాక్ చేయండి',
+    metric_onboard_desc: 'రక్తంలో చక్కెర, కొలెస్ట్రాల్, విటమిన్ డి మరియు హిమోగ్లోబిన్‌లను స్వయంచాలకంగా ట్రాక్ చేయండి. మీ మొదటి నివేదికను విశ్లేషించడానికి నొక్కండి.',
+    metric_no_biomarkers_desc: 'మీరు అప్‌లోడ్ చేసిన నివేదికలలో బయోమార్కర్ ట్రెండ్స్ (రక్తంలో చక్కెర, కొలెస్ట్రాల్, విటమిన్ డి లేదా హిమోగ్లోబిన్) ఏవీ కనుగొనబడలేదు. మరొక నివేదికను అప్‌లోడ్ చేయడానికి ఇక్కడ నొక్కండి.',
+    add_family: 'కుటుంబాన్ని జోడించండి',
+    share_message: "హాయ్! నా రక్త నివేదికలను ట్రాక్ చేయడానికి, కీలక ఆరోగ్య సూచికలను పర్యవేక్షించడానికి మరియు నా మందులను నిర్వహించడానికి నేను HealthAIని ఉపయోగిస్తున్నాను. మీ ఆరోగ్యాన్ని నియంత్రణలో ఉంచుకోవడానికి దీనిని ప్రయత్నించండి: ",
+    share_card_title: 'స్నేహితులు & కుటుంబాన్ని ఆహ్వానించండి',
+    share_card_desc: 'బయోమార్కర్లు, మందులను ట్రాక్ చేయడానికి మరియు AI ఆరోగ్య అంతర్దృష్టులను పొందడానికి మీ ప్రియమైనవారితో HealthAIని భాగస్వామ్యం చేయండి.',
   },
 
   ta: {
@@ -627,6 +655,13 @@ export const translations: Record<LangCode, TranslationKeys> = {
     vitamin_d: 'வைட்டமின் டி',
     hemoglobin: 'ஹீமோகுளோபின்',
     no_data: 'தரவு இல்லை',
+    metric_onboard_title: 'உயிரியல் குறிப்பான் போக்குகளைத் திறக்கவும்',
+    metric_onboard_desc: 'இரத்த சர்க்கரை, கொலஸ்ட்ரால், வைட்டமின் டி மற்றும் ஹீமோகுளோபின் ஆகியவற்றை தானாகவே கண்காணிக்கவும். உங்கள் முதல் அறிக்கையை பகுப்பாய்வு செய்ய தட்டவும்.',
+    metric_no_biomarkers_desc: 'நீங்கள் பதிவேற்றிய அறிக்கைகளில் பயோமார்க் போக்குகள் (இரத்த சர்க்கரை, கொலஸ்ட்ரால், வைட்டமின் டி அல்லது ஹீமோகுளோபின்) எதுவும் கண்டறியப்படவில்லை. மற்றொரு அறிக்கையைப் பதிவேற்ற இங்கே தட்டவும்.',
+    add_family: 'குடும்பத்தைச் சேர்க்கவும்',
+    share_message: "ஹாய்! எனது இரத்த அறிக்கைகளைக் கண்காணிக்கவும், முக்கிய சுகாதார குறிகாட்டிகளைக் கண்காணிக்கவும், எனது மருந்துகளை நிர்வகிக்கவும் நான் HealthAI ஐப் பயன்படுத்துகிறேன். உங்கள் ஆரோக்கியத்தைக் கட்டுப்படுத்த இதை முயற்சிக்கவும்: ",
+    share_card_title: 'நண்பர்கள் மற்றும் குடும்பத்தினரை அழைக்கவும்',
+    share_card_desc: 'உயிரியல் குறிப்பான்கள், மருந்துகளைக் கண்காணிக்கவும் மற்றும் AI சுகாதார நுண்ணறிவுகளைப் பெறவும் உங்கள் அன்புகுரியவர்களுடன் HealthAI ஐப் பகிரவும்.',
   },
 
   kn: {
@@ -749,5 +784,12 @@ export const translations: Record<LangCode, TranslationKeys> = {
     vitamin_d: 'ವಿಟಮಿನ್ ಡಿ',
     hemoglobin: 'ಹಿಮೋಗ್ಲೋಬಿನ್',
     no_data: 'ಡೇಟಾ ಇಲ್ಲ',
+    metric_onboard_title: 'ಬಯೋಮಾರ್ಕರ್ ಟ್ರೆಂಡ್‌ಗಳನ್ನು ಅನ್‌ಲಾಕ್ ಮಾಡಿ',
+    metric_onboard_desc: 'ರಕ್ತದ ಸಕ್ಕರೆ, ಕೊಲೆಸ್ಟ್ರಾಲ್, ವಿಟಮಿನ್ ಡಿ ಮತ್ತು ಹಿಮೋಗ್ಲೋಬಿನ್ ಅನ್ನು ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಟ್ರ್ಯಾಕ್ ಮಾಡಿ. ನಿಮ್ಮ ಮೊದಲ ವರದಿಯನ್ನು ವಿಶ್ಲೇಷಿಸಲು ಟ್ಯಾಪ್ ಮಾಡಿ.',
+    metric_no_biomarkers_desc: 'ನೀವು ಅಪ್‌ಲೋಡ್ ಮಾಡಿದ ವರದಿಗಳಲ್ಲಿ ಯಾವುದೇ ಬಯೋಮಾರ್ಕರ್ ಟ್ರೆಂಡ್‌ಗಳು (ರಕ್ತದ ಸಕ್ಕರೆ, ಕೊಲೆಸ್ಟ್ರಾಲ್, ವಿಟಮಿನ್ ಡಿ ಅಥವಾ ಹಿಮೋಗ್ಲೋಬೀನ್) ಪತ್ತೆಯಾಗಿಲ್ಲ. ಮತ್ತೊಂದು ವರದಿಯನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಲು ಇಲ್ಲಿ ಟ್ಯಾಪ್ ಮಾಡಿ.',
+    add_family: 'ಕುಟುಂಬ ಸೇರಿಸಿ',
+    share_message: "ಹಾಯ್! ನನ್ನ ರಕ್ತದ ವರದಿಗಳನ್ನು ಟ್ರ್ಯಾಕ್ ಮಾಡಲು, ಪ್ರಮುಖ ಆರೋಗ್ಯ ಸೂಚಕಗಳನ್ನು ಮೇಲ್ವಿಚಾರಣೆ ಮಾಡಲು ಮತ್ತು ನನ್ನ ಔಷಧಿಗಳನ್ನು ನಿರ್ವಹಿಸಲು ನಾನು HealthAI ಅನ್ನು ಬಳಸುತ್ತಿದ್ದೇನೆ. ನಿಮ್ಮ ಆರೋಗ್ಯವನ್ನು ನಿಯಂತ್ರಿಸಲು ಇದನ್ನು ಪ್ರಯತ್ನಿಸಿ: ",
+    share_card_title: 'ಸ್ನೇಹಿತರು ಮತ್ತು ಕುಟುಂಬವನ್ನು ಆಹ್ವಾನಿಸಿ',
+    share_card_desc: 'ಬಯೋಮಾರ್ಕರ್ಸ್, ಔಷಧಿಗಳನ್ನು ಟ್ರ್ಯಾಕ್ ಮಾಡಲು ಮತ್ತು AI ಆರೋಗ್ಯ ಒಳನೋಟಗಳನ್ನು ಪಡೆಯಲು ನಿಮ್ಮ ಪ್ರೀತಿಪಾತ್ರರೊಂದಿಗೆ HealthAI ಅನ್ನು ಹಂಚಿಕೊಳ್ಳಿ.',
   },
 };

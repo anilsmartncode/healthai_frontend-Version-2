@@ -23,7 +23,7 @@ const ACTIONS: {
     route: "/interactions",
     bg: "#FEF3C7",
   },
-  { icon: "people-outline", key: "care_hub", route: "/family", bg: "#F0FDF4" },
+  { icon: "people-outline", key: "add_family", route: "/family", bg: "#F0FDF4" },
   {
     icon: "chatbubble-ellipses-outline",
     key: "ask_ai",

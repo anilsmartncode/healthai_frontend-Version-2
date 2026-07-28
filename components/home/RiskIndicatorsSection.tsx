@@ -19,6 +19,11 @@ interface Props {
 export function RiskIndicatorsSection({ riskIndicators, hasReports }: Props) {
   const { t } = useLang();
 
+  // Hide section completely when no risk data is available
+  if (!riskIndicators || riskIndicators.length === 0) {
+    return null;
+  }
+
   // Primary list to display when no reports/data are available
   const defaultRisks = [
     { label: "Diabetes", level: null, icon: "analytics-outline" },

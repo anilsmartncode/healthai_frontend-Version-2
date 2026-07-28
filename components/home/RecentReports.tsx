@@ -11,7 +11,7 @@ interface CategoryStyle {
   color: string;
 }
 
-function getCategoryStyle(category?: string): CategoryStyle {
+function getCategoryStyle(category?: string, fileType?: string): CategoryStyle {
   const cat = category ? category.toLowerCase() : "";
   if (cat.includes("cbc") || cat.includes("blood")) {
     return { icon: "water", bg: "#FEE2E2", color: "#EF4444" }; // Red
@@ -28,11 +28,14 @@ function getCategoryStyle(category?: string): CategoryStyle {
   if (cat.includes("vitamin")) {
     return { icon: "sunny", bg: "#FEF9C3", color: "#EAB308" }; // Yellow
   }
+  if (fileType === "IMAGE") {
+    return { icon: "image", bg: "#E0F2FE", color: "#0284C7" }; // Light Blue
+  }
   return { icon: "document-text", bg: "#F3E8FF", color: "#8B5CF6" }; // Purple
 }
 
 function ReportRow({ report }: { report: ReportListItem }) {
-  const catStyle = getCategoryStyle(report.category || report.reportType);
+  const catStyle = getCategoryStyle(report.category || report.reportType, report.fileType);
   const isGood = report.status === "good";
   const statusColor = isGood ? "#16A34A" : "#F97316";
   const statusBg = isGood ? "#DCFCE7" : "#FFEDD5";

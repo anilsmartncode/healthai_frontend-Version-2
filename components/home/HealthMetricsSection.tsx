@@ -117,6 +117,47 @@ export function HealthMetricsSection({ reports, phone }: Props) {
     };
   };
 
+  const activeMetrics = metrics.filter((m) => !!m.extracted);
+
+  if (activeMetrics.length === 0) {
+    const onboardDesc = reports.length > 0
+      ? t("metric_no_biomarkers_desc")
+      : t("metric_onboard_desc");
+
+    return (
+      <View style={styles.wrapper}>
+        <View style={styles.headerRow}>
+          <Text style={styles.heading}>{t("key_health_metrics")}</Text>
+        </View>
+
+        <Pressable
+          style={({ pressed }) => [styles.onboardCard, pressed && styles.pressed]}
+          onPress={() => router.push("/upload")}
+        >
+          <View style={styles.onboardLeft}>
+            <View style={styles.onboardTitleRow}>
+              <Ionicons name="analytics-outline" size={18} color={Colors.primary} />
+              <Text style={styles.onboardTitle}>{t("metric_onboard_title")}</Text>
+            </View>
+            <Text style={styles.onboardText}>
+              {onboardDesc}
+            </Text>
+
+            <View style={styles.miniIconsRow}>
+              {metrics.map((m) => (
+                <View key={m.key} style={styles.miniIconBg}>
+                  <Ionicons name={m.icon} size={14} color={m.color} />
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} style={styles.chevron} />
+        </Pressable>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.wrapper}>
       <View style={styles.headerRow}>
@@ -125,17 +166,21 @@ export function HealthMetricsSection({ reports, phone }: Props) {
       </View>
 
       <View style={styles.grid}>
-        {metrics.map((m) => {
-          const hasData = !!m.extracted;
-          const displayVal = hasData ? m.extracted!.value : m.defaultVal;
-          const displayUnit = hasData ? "" : m.defaultUnit; // units are usually included in parsed values
-          const status = hasData ? m.extracted!.status : null;
+        {activeMetrics.map((m) => {
+          const displayVal = m.extracted!.value;
+          const displayUnit = ""; // parsed values have units built-in
+          const status = m.extracted!.status;
           const statusStyle = status ? getStatusStyle(status) : null;
+          const isSingle = activeMetrics.length === 1;
 
           return (
             <Pressable
               key={m.key}
-              style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.card,
+                isSingle && styles.fullWidthCard,
+                pressed && styles.pressed,
+              ]}
               onPress={handlePress}
             >
               <View style={styles.cardHeader}>
@@ -196,6 +241,9 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     gap: 6,
   },
+  fullWidthCard: {
+    width: "100%",
+  },
   pressed: {
     opacity: 0.75,
   },
@@ -241,5 +289,52 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textMuted,
     fontWeight: "600",
+  },
+  onboardCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 12,
+    width: "100%",
+  },
+  onboardLeft: {
+    flex: 1,
+    minWidth: 0,
+    gap: 8,
+  },
+  onboardTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  onboardTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: Colors.text,
+  },
+  onboardText: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    lineHeight: 18,
+  },
+  miniIconsRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 2,
+  },
+  miniIconBg: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  chevron: {
+    flexShrink: 0,
   },
 });
