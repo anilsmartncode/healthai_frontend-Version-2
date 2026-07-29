@@ -19,6 +19,7 @@ import Svg, { Path, G, ClipPath, Rect, Defs } from "react-native-svg";
 import { Colors, Radius } from "@/constants/Colors";
 import { firebaseLoginApi } from "@/services/authapi/apiService";
 import { signInWithGoogle } from "@/utils/googleAuth";
+import { signInWithApple } from "@/utils/appleAuth";
 // Lazy-load Firebase Auth so the page still opens in Expo Go
 function getAuth() {
   const mod = require('@react-native-firebase/auth');
@@ -171,7 +172,7 @@ function OtpInput({
           onChangeText={(t) => handleChange(t, i)}
           onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, i)}
           keyboardType="number-pad"
-          maxLength={i === 0 ? 4 : 1}
+          maxLength={i === 0 ? OTP_LENGTH : 1}
           textAlign="center"
           textAlignVertical="center"
           selectTextOnFocus
@@ -398,16 +399,27 @@ export default function Phonelogin() {
     }
   };
 
-  // 🟢 MOCK — Apple Sign-In
   const handleAppleSignIn = async () => {
     try {
       setLoading(true);
-      await new Promise((r) => setTimeout(r, 1000)); // fake network delay
-      console.log("[MOCK] Apple Sign-In success → mock-apple-user@privaterelay.appleid.com");
-      await signIn("mock-token-apple", "mock-apple-user@privaterelay.appleid.com");
-      router.replace("/(tabs)/home");
-    } catch (e: any) {
-      setErrors({ phone: e.message || "Apple Sign-In failed" });
+      setErrors({});
+      const result = await signInWithApple();
+      
+      if (!result) {
+        setLoading(false);
+        return; // user cancelled
+      }
+      
+      const data = await firebaseLoginApi(result.idToken);
+      if (data?.token) {
+        await signIn(data.token, data.email || result.user.email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
+        router.replace("/(tabs)/home");
+      } else {
+        setErrors({ phone: data?.message || "Failed to sign in via backend" });
+      }
+    } catch (error: any) {
+      console.error("Apple sign-in error:", error);
+      setErrors({ phone: "Apple sign-in failed. Please try again." });
     } finally {
       setLoading(false);
     }

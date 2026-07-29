@@ -37,6 +37,7 @@ interface UsageContextType {
   setShowPaywall: (show: boolean) => void;
   upgradeToPremium: () => Promise<void>;
   upgradeToFamily: () => Promise<void>;
+  restorePurchases: () => Promise<boolean>;
 }
 
 const UsageContext = createContext<UsageContextType | undefined>(undefined);
@@ -160,6 +161,26 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const restorePurchases = async () => {
+    try {
+      const customerInfo = await Purchases.restorePurchases();
+      let restored = false;
+      if (typeof customerInfo.entitlements.active[ENTITLEMENTS.FAMILY] !== "undefined") {
+        setActivePlan('FAMILY');
+        await AsyncStorage.setItem('@healthai_active_plan', 'FAMILY');
+        restored = true;
+      } else if (typeof customerInfo.entitlements.active[ENTITLEMENTS.PREMIUM] !== "undefined") {
+        setActivePlan('PREMIUM');
+        await AsyncStorage.setItem('@healthai_active_plan', 'PREMIUM');
+        restored = true;
+      }
+      return restored;
+    } catch (e) {
+      console.error('Failed to restore purchases:', e);
+      throw e;
+    }
+  };
+
   // --- AI Chat ---
   const canSendAiChat = () => {
     return stats.aiChatsToday < PLAN_LIMITS[activePlan].maxDailyAiChats;
@@ -209,6 +230,7 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
         setShowPaywall,
         upgradeToPremium,
         upgradeToFamily,
+        restorePurchases,
       }}
     >
       {children}

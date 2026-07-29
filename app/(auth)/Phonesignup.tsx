@@ -18,7 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Svg, { Path, G, ClipPath, Rect, Defs } from "react-native-svg";
 import { firebaseLoginApi } from "@/services/authapi/apiService";
 import { signInWithGoogle } from "@/utils/googleAuth";
-// Lazy-load Firebase Auth so the page still opens in Expo Go
+import { signInWithApple } from "@/utils/appleAuth";
 function getAuth() {
   const mod = require('@react-native-firebase/auth');
   return (mod.default || mod)();
@@ -172,7 +172,7 @@ function OtpInput({
           onChangeText={(t) => handleChange(t, i)}
           onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, i)}
           keyboardType="number-pad"
-          maxLength={i === 0 ? 4 : 1} // first box can receive full OTP from autofill
+          maxLength={i === 0 ? OTP_LENGTH : 1} // first box can receive full OTP from autofill
           textAlign="center"
           textAlignVertical="center"
           selectTextOnFocus
@@ -427,9 +427,6 @@ export default function PhoneSignup() {
 
   const phoneInputRef = useRef<TextInput>(null);
 
-  // 🟢 MOCK — account picker state (remove when using real SDK)
-  const [accountPicker, setAccountPicker] = useState<"google" | "apple" | null>(null);
-
   // Auto-focus phone input when screen mounts
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -518,36 +515,58 @@ export default function PhoneSignup() {
   };
   */
 
-  // 🟢 MOCK — Google Sign-In: shows fake account picker
-  // 🔴 REAL: delete handleGoogleSignIn entirely and replace onPress with your SDK call
-  const handleGoogleSignIn = () => {
-    console.log("[DEBUG] Google button tapped");
-    Alert.alert("Debug", "Google tapped"); // remove after confirming tap works
-    setAccountPicker("google");
-  };
-
-  // 🟢 MOCK — Apple Sign-In: shows fake account picker
-  // 🔴 REAL: delete handleAppleSignIn entirely and replace onPress with your SDK call
-  const handleAppleSignIn = () => {
-    console.log("[DEBUG] Apple button tapped");
-    Alert.alert("Debug", "Apple tapped"); // remove after confirming tap works
-    setAccountPicker("apple");
-  };
-
-  // 🟢 MOCK — called when user picks an account from the fake picker
-  // 🔴 REAL: this whole function goes away — the SDK gives you the token directly
-  const handleMockAccountSelect = async (email: string) => {
-    setAccountPicker(null);
-    const isGoogle = email.includes("gmail") || email.includes("googlemail");
+  const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
-      await new Promise((r) => setTimeout(r, 900));            // fake network delay
-      const mockToken = isGoogle ? "mock-token-google" : "mock-token-apple";
-      console.log("[MOCK] Account selected →", email, "token →", mockToken);
-      await signIn(mockToken, email);
-      router.replace("/(auth)/PersonOnboardingScreen");
-    } catch (e: any) {
-      setErrors({ phone: e.message || "Sign-In failed" });
+      setErrors({});
+      const result = await signInWithGoogle();
+      
+      if (!result.success) {
+        if (result.error !== 'Sign-in cancelled') {
+          setErrors({ phone: result.error });
+        }
+        setLoading(false);
+        return;
+      }
+      
+      if (result.idToken) {
+        const data = await firebaseLoginApi(result.idToken);
+        if (data?.token) {
+          await signIn(data.token, data.email || result.user?.email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
+          router.replace("/(auth)/PersonOnboardingScreen");
+        } else {
+          setErrors({ phone: data?.message || "Google Sign-Up failed on backend" });
+        }
+      }
+    } catch (error: any) {
+      console.error("Google sign-in error:", error);
+      setErrors({ phone: "Google sign-in failed. Please try again." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    try {
+      setLoading(true);
+      setErrors({});
+      const result = await signInWithApple();
+      
+      if (!result) {
+        setLoading(false);
+        return; // user cancelled
+      }
+      
+      const data = await firebaseLoginApi(result.idToken);
+      if (data?.token) {
+        await signIn(data.token, data.email || result.user.email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
+        router.replace("/(auth)/PersonOnboardingScreen");
+      } else {
+        setErrors({ phone: data?.message || "Failed to sign in via backend" });
+      }
+    } catch (error: any) {
+      console.error("Apple sign-in error:", error);
+      setErrors({ phone: "Apple sign-in failed. Please try again." });
     } finally {
       setLoading(false);
     }
@@ -879,13 +898,6 @@ export default function PhoneSignup() {
         onClose={() => setPickerVisible(false)}
       />
 
-      {/* 🟢 MOCK account picker — delete when using real SDK */}
-      <MockAccountPicker
-        visible={accountPicker !== null}
-        type={accountPicker}
-        onSelect={handleMockAccountSelect}
-        onClose={() => setAccountPicker(null)}
-      />
     </>
   );
 }

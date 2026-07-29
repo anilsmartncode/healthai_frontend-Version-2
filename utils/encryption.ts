@@ -34,7 +34,7 @@ const ENCRYPTION_SALT = "law_ai_secure_salt";
 // fully compatible with whatever the backend already does — it just skips
 // recomputing it every time. If ENCRYPTION_KEY/ENCRYPTION_SALT ever change
 // on the backend, regenerate this constant with the same PBKDF2 formula.
-const PRECOMPUTED_KEY_B64 = "CDvQQZCeUytc+ST/2rQEJqgRUyfIi+ZmG06krZo9WRY=";
+const PRECOMPUTED_KEY_B64 = process.env.EXPO_PUBLIC_ENCRYPTION_KEY_B64 || "CDvQQZCeUytc+ST/2rQEJqgRUyfIi+ZmG06krZo9WRY=";
 
 let cachedKey: CryptoJS.lib.WordArray | null = null;
 

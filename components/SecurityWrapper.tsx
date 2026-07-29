@@ -19,9 +19,15 @@ export function SecurityWrapper({ children }: { children: React.ReactNode }) {
   const lastBackgroundTime = useRef<number | null>(null);
 
   useEffect(() => {
-    // If the user logs out, make sure we unlock the screen so they can see the login page
-    if (ready && !token) {
-      setIsLocked(false);
+    if (ready) {
+      if (!token) {
+        // If the user logs out or isn't logged in, unlock the screen so they can see the login page
+        setIsLocked(false);
+      } else {
+        // Cold Start Lock: If they are logged in and opening the app fresh, lock it immediately.
+        setIsLocked(true);
+        promptBiometrics();
+      }
     }
   }, [token, ready]);
 

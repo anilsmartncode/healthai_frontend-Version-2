@@ -19,9 +19,10 @@ import { useLang } from "@/context/Languagecontext";
 import { useAuth } from "@/context/AuthContext";
 import { firebaseLoginApi, loginApi } from "@/services/authapi/apiService";
 import { signInWithGoogle } from "@/utils/googleAuth";
+import { signInWithApple } from "@/utils/appleAuth";
 
 // 🎛️ Toggle Switch for Authentication
-const USE_FIREBASE_AUTH = false;
+const USE_FIREBASE_AUTH = true;
 // Lazy-load Firebase Auth so the page still opens in Expo Go
 function getAuth() {
   const mod = require('@react-native-firebase/auth');
@@ -148,6 +149,32 @@ export default function Login() {
     }
   };
 
+  const handleAppleSignIn = async () => {
+    try {
+      setLoading(true);
+      setErrors({});
+      const result = await signInWithApple();
+
+      if (!result) {
+        setLoading(false);
+        return; // user cancelled
+      }
+
+      const data = await firebaseLoginApi(result.idToken);
+      if (data?.token) {
+        await signIn(data.token, data.email || result.user.email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
+        router.replace("/(tabs)/home");
+      } else {
+        setErrors({ email: data?.message || "Failed to sign in via backend" });
+      }
+    } catch (error: any) {
+      console.error("Apple sign-in error:", error);
+      setErrors({ email: "Apple sign-in failed. Please try again." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <KeyboardAwareScrollView
       style={styles.container}
@@ -217,7 +244,7 @@ export default function Login() {
           <Pressable
             style={({ pressed }) => [styles.socialBtn, pressed && { opacity: 0.82 }]}
             disabled={loading}
-            onPress={() => Alert.alert('Apple Sign-In is not supported')}
+            onPress={handleAppleSignIn}
           >
             <AppleIcon />
             <Text style={styles.socialText}>Apple</Text>

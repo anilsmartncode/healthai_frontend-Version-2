@@ -8,7 +8,7 @@ import { PLAN_LIMITS } from '@/constants/plans';
 import { router } from 'expo-router';
 
 export default function PlansScreen() {
-  const { activePlan, upgradeToPremium, upgradeToFamily } = useUsage();
+  const { activePlan, upgradeToPremium, upgradeToFamily, restorePurchases } = useUsage();
   const [isProcessingPremium, setIsProcessingPremium] = useState(false);
   const [isProcessingFamily, setIsProcessingFamily] = useState(false);
 
@@ -157,6 +157,25 @@ export default function PlansScreen() {
             </View>
           )}
         </View>
+
+        {/* Restore Purchases Button */}
+        <Pressable 
+          style={{ paddingVertical: 20, alignItems: 'center', marginTop: 10 }}
+          onPress={async () => {
+            try {
+              const restored = await restorePurchases();
+              if (restored) {
+                alert('Purchases restored successfully!');
+              } else {
+                alert('No active subscriptions found to restore.');
+              }
+            } catch(e) {
+              alert('Failed to restore purchases.');
+            }
+          }}
+        >
+          <Text style={{ color: Colors.primary, fontWeight: '600', fontSize: 15 }}>Restore Purchases</Text>
+        </Pressable>
 
       </ScrollView>
     </SafeAreaView>

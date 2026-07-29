@@ -1,4 +1,4 @@
-export const BASE_URL = "https://healthai.smartncode.com";
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://healthai.smartncode.com";
 
 // ─── URL-PREFIX NOTE ──────────────────────────────────────────────────────────
 // Auth endpoints:    BASE_URL + /api/auth/...       (single /api)

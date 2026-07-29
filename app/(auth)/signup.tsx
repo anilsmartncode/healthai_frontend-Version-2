@@ -19,6 +19,7 @@ import { useLang } from "@/context/Languagecontext";
 import { useAuth } from "@/context/AuthContext";
 import { firebaseLoginApi } from "@/services/authapi/apiService";
 import { signInWithGoogle } from "@/utils/googleAuth";
+import { signInWithApple } from "@/utils/appleAuth";
 // Lazy-load Firebase Auth so the page still opens in Expo Go
 function getAuth() {
   const mod = require('@react-native-firebase/auth');
@@ -280,22 +281,6 @@ export default function SignUp() {
     }
   };
 
-  // 🟢 MOCK — uncomment this function and comment out REAL above to use mock
-  // const handleCreateAccount = async () => {
-  //   if (!validate()) return;
-  //   try {
-  //     setLoading(true);
-  //     await new Promise((r) => setTimeout(r, 900));        // fake network delay
-  //     // simulate taken email: if (email === "taken@test.com") throw new Error("Email already in use");
-  //     await signIn("mock-token-signup", email);
-  //     router.replace("/(auth)/PersonOnboardingScreen");
-  //   } catch (error: any) {
-  //     setErrors({ email: error.message || "Network error. Check connection." });
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
   // ── Google Sign Up ─────────────────────────────────
 
   const handleGoogleSignUp = async () => {
@@ -322,34 +307,30 @@ export default function SignUp() {
     }
   };
 
-  // ── Apple Sign Up ──────────────────────────────────
-
-  // 🔴 REAL — uncomment this and comment out MOCK below when Apple SDK is ready
-  // const handleAppleSignUp = async () => {
-  //   try {
-  //     const credential = await AppleAuthentication.signInAsync({
-  //       requestedScopes: [
-  //         AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-  //         AppleAuthentication.AppleAuthenticationScope.EMAIL,
-  //       ],
-  //     });
-  //     // exchange identityToken with your backend
-  //     const data = await appleSignupApi(credential.identityToken);
-  //     if (data?.token) {
-  //       await signIn(data.token, credential.email ?? "");
-  //       router.replace("/(auth)/PersonOnboardingScreen");
-  //     }
-  //   } catch (error: any) {
-  //     if (error.code !== "ERR_CANCELED") {
-  //       setErrors({ email: error.message || "Apple Sign-Up failed" });
-  //     }
-  //   }
-  // };
-
-  // 🟢 MOCK — comment out this and uncomment REAL above when Apple SDK is ready
-  const handleAppleSignUp = () => {
-    console.log("[DEBUG] Apple button tapped");
-    setAccountPicker("apple");
+  const handleAppleSignUp = async () => {
+    try {
+      setLoading(true);
+      setErrors({});
+      const result = await signInWithApple();
+      
+      if (!result) {
+        setLoading(false);
+        return; // user cancelled
+      }
+      
+      const data = await firebaseLoginApi(result.idToken);
+      if (data?.token) {
+        await signIn(data.token, data.email || result.user.email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
+        router.replace("/(auth)/PersonOnboardingScreen");
+      } else {
+        setErrors({ email: data?.message || "Failed to sign in via backend" });
+      }
+    } catch (error: any) {
+      console.error("Apple sign-in error:", error);
+      setErrors({ email: "Apple sign-in failed. Please try again." });
+    } finally {
+      setLoading(false);
+    }
   };
 
   // 🟢 MOCK — called when user picks an account from the fake picker
@@ -436,8 +417,8 @@ export default function SignUp() {
             {/* Apple */}
             <Pressable
               style={({ pressed }) => [styles.socialBtn, pressed && { opacity: 0.82 }]}
-              onPress={() => Alert.alert('Apple Sign-In is not supported')}
               disabled={loading}
+              onPress={handleAppleSignUp}
             >
               <AppleIcon />
               <Text style={styles.socialText}>Apple</Text>
