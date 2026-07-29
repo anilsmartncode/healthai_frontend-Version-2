@@ -316,23 +316,6 @@ export default function NearbyScreen() {
             </Text>
           </Pressable>
 
-          {/* Doctors Tab */}
-          <Pressable
-            onPress={() => handleConfigChange("doctors", radius)}
-            style={[styles.catTab, activeTab === "doctors" && styles.catTabActive]}
-          >
-            <Ionicons
-              name="people"
-              size={16}
-              color={activeTab === "doctors" ? "#FFFFFF" : "#64748B"}
-            />
-            <Text style={[styles.catText, activeTab === "doctors" && styles.catTextActive]}>
-              {t("doctors")}
-            </Text>
-            <View style={styles.soonBadge}>
-              <Text style={styles.soonText}>SOON</Text>
-            </View>
-          </Pressable>
         </ScrollView>
       </View>
 
