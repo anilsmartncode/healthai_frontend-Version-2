@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet, Share } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/Colors";
 import { useAuth } from "@/context/AuthContext";
 import { SecureAsyncStorage as AsyncStorage } from '@/utils/storage';
+import { useLang } from "@/context/Languagecontext";
+import { Strings } from "@/constants/Strings";
 
 interface Props {
   attentionCount?: number;
@@ -29,6 +31,7 @@ export function HomeHeader({ attentionCount = 0 }: Props) {
   const { phone } = useAuth();
   const [userName, setUserName] = useState(formatName(phone ?? "User"));
   const greetingText = getGreeting();
+  const { t } = useLang();
 
   useEffect(() => {
     const cacheKey = `healthai_profile_name_${phone ?? 'guest'}`;
@@ -36,6 +39,16 @@ export function HomeHeader({ attentionCount = 0 }: Props) {
       if (name && name.trim()) setUserName(name.trim());
     });
   }, [phone]);
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: t("share_message") + Strings.appDownloadLink,
+      });
+    } catch (err: any) {
+      console.log("[HomeHeader] Native sharing failed:", err.message);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -47,19 +60,29 @@ export function HomeHeader({ attentionCount = 0 }: Props) {
         </Text>
       </View>
 
-      {/* ── Notification bell with badge (right) ── */}
-      <Pressable
-        onPress={() => router.push("/notifications")}
-        hitSlop={8}
-        style={styles.bellWrap}
-      >
-        <Ionicons name="notifications-outline" size={22} color={Colors.text} />
-        {attentionCount > 0 && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{attentionCount}</Text>
-          </View>
-        )}
-      </Pressable>
+      {/* ── Action Buttons (right) ── */}
+      <View style={styles.actionsRow}>
+        <Pressable
+          onPress={handleShare}
+          hitSlop={8}
+          style={styles.actionBtn}
+        >
+          <Ionicons name="share-outline" size={20} color={Colors.text} />
+        </Pressable>
+
+        <Pressable
+          onPress={() => router.push("/notifications")}
+          hitSlop={8}
+          style={styles.actionBtn}
+        >
+          <Ionicons name="notifications-outline" size={20} color={Colors.text} />
+          {attentionCount > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{attentionCount}</Text>
+            </View>
+          )}
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -83,10 +106,15 @@ const styles = StyleSheet.create({
     color: "#1E293B",
     letterSpacing: -0.5,
   },
-  bellWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+  actionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  actionBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: "#F8F9FF",
     borderWidth: 1,
     borderColor: "#ECEEFF",

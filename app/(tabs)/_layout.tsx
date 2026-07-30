@@ -23,12 +23,16 @@ export default function TabsLayout() {
         options={{ title: t('nav_reports'), tabBarIcon: ({ color, size }) => <Ionicons name="document-text-outline" size={size} color={color} /> }}
       />
       <Tabs.Screen
-        name="ai"
-        options={{ title: t('nav_ai'), tabBarIcon: ({ color, size }) => <Ionicons name="chatbubbles-outline" size={size} color={color} /> }}
-      />
-      <Tabs.Screen
         name="medicines"
         options={{ title: t('nav_medicines'), tabBarIcon: ({ color, size }) => <Ionicons name="medkit-outline" size={size} color={color} /> }}
+      />
+      <Tabs.Screen
+        name="nearby"
+        options={{ title: t('nav_nearby'), tabBarIcon: ({ color, size }) => <Ionicons name="location-outline" size={size} color={color} /> }}
+      />
+      <Tabs.Screen
+        name="ai"
+        options={{ title: t('nav_ai'), tabBarIcon: ({ color, size }) => <Ionicons name="chatbubbles-outline" size={size} color={color} /> }}
       />
       <Tabs.Screen
         name="profile"

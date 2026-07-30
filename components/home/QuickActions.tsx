@@ -23,12 +23,24 @@ const ACTIONS: {
     route: "/interactions",
     bg: "#FEF3C7",
   },
-  { icon: "people-outline", key: "care_hub", route: "/family", bg: "#F0FDF4" },
+  { icon: "people-outline", key: "add_family", route: "/family", bg: "#F0FDF4" },
   {
     icon: "chatbubble-ellipses-outline",
     key: "ask_ai",
     route: "/(tabs)/ai",
     bg: "#FDF4FF",
+  },
+  {
+    icon: "location-outline",
+    key: "nav_nearby",
+    route: "/(tabs)/nearby",
+    bg: "#ECFDF5",
+  },
+  {
+    icon: "medkit-outline",
+    key: "nav_medicines",
+    route: "/(tabs)/medicines",
+    bg: "#FFF1F2",
   },
 ];
 

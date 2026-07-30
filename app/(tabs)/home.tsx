@@ -9,12 +9,19 @@ import { useEffect, useState } from "react";
 import { reportsApi } from "@/services/reportsApi";
 import { useAuth } from "@/context/AuthContext";
 import { useMedicines } from "@/hooks/useMedicines";
+import { useLang } from "@/context/Languagecontext";
 
 import { HomeHeader } from "@/components/home/HomeHeader";
 import { HealthScoreCard } from "@/components/home/Healthscorecard";
 import { FamilyHealthCard } from "@/components/home/Familyhealthcard";
 import { RecentReports } from "@/components/home/RecentReports";
 import { AskAIButton } from "@/components/ai/AskAIButton";
+import { QuickActions } from "@/components/home/QuickActions";
+import { HealthTipCard } from "@/components/home/HealthTipCard";
+import { HealthMetricsSection } from "@/components/home/HealthMetricsSection";
+import { RiskIndicatorsSection } from "@/components/home/RiskIndicatorsSection";
+import { MedicineReminderCard } from "@/components/home/MedicineReminderCard";
+import { ShareAppCard } from "@/components/home/ShareAppCard";
 
 
 function EmptyState() {
@@ -48,10 +55,12 @@ export default function Home() {
     totalReports: number;
     aiSummary: string;
     averageMetrics: any[];
+    riskIndicators: any[];
   } | null>(null);
   const { phone } = useAuth();
   const [navigating, setNavigating] = useState(false);
   const { todayBanner } = useMedicines();
+  const { t } = useLang();
 
   useEffect(() => {
     reportsApi.getScorecard().then(s => {
@@ -128,7 +137,7 @@ export default function Home() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <HomeHeader attentionCount={0} />
+        <HomeHeader attentionCount={overallAttentionCount} />
       </View>
 
       <ScrollView
@@ -157,44 +166,30 @@ export default function Home() {
           onAttentionPress={handleAttentionPress}
         />
 
-        <Button
-          title="+ Upload New Report"
-          onPress={() => router.push('/upload')}
-          style={styles.uploadBtn}
+        <QuickActions />
+
+        <HealthMetricsSection reports={reports} phone={phone} />
+
+        <RiskIndicatorsSection
+          riskIndicators={scorecard?.riskIndicators ?? []}
+          hasReports={hasReports}
         />
 
-        <FamilyHealthCard />
+        <View style={styles.sectionGroup}>
+          <Text style={styles.sectionHeading}>{t("family_health")}</Text>
+          <FamilyHealthCard />
+        </View>
 
-        {/* ── Today's Reminder Banner ── */}
-        <Pressable style={styles.reminderBanner} onPress={() => router.push('/medicines/reminders')}>
-          <View style={styles.reminderLeft}>
-            <Text style={styles.reminderEyebrow}>TODAY'S REMINDER</Text>
-            <Text style={styles.reminderTitle}>
-              {todayBanner && todayBanner.count > 0 
-                ? `${todayBanner.count} medicine${todayBanner.count !== 1 ? 's' : ''} due` 
-                : "No medicines due"}
-            </Text>
-            {todayBanner && todayBanner.count > 0 ? (
-              <Text style={styles.reminderSub}>
-                Next: {todayBanner.nextName} at {todayBanner.nextTime}
-              </Text>
-            ) : (
-              <Text style={styles.reminderSub}>
-                Set up a schedule
-              </Text>
-            )}
-            {todayBanner && todayBanner.count > 0 && (
-              <View style={styles.dotRow}>
-                <View style={[styles.dot, styles.dotActive]} />
-                <View style={styles.dot} />
-                <View style={styles.dot} />
-              </View>
-            )}
+        {todayBanner && todayBanner.count > 0 && (
+          <View style={styles.sectionGroup}>
+            <Text style={styles.sectionHeading}>{t("medicines_title")}</Text>
+            <MedicineReminderCard todayBanner={todayBanner} />
           </View>
-          <View style={styles.reminderBtn}>
-            <Text style={styles.reminderBtnText}>{todayBanner && todayBanner.count > 0 ? "View" : "Add"}</Text>
-          </View>
-        </Pressable>
+        )}
+
+        <HealthTipCard />
+
+        <ShareAppCard />
 
         {hasReports ? <RecentReports reports={reports} /> : <EmptyState />}
       </ScrollView>
@@ -224,42 +219,12 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     paddingVertical: 16,
   },
-  reminderBanner: {
-    backgroundColor: Colors.primary,
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  reminderLeft:    { flex: 1, paddingRight: 12 },
-  reminderEyebrow: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.75)',
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    marginBottom: 2,
-  },
-  reminderTitle: {
+  sectionHeading: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 2,
+    fontWeight: "700",
+    color: Colors.text,
   },
-  reminderSub: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
-    marginBottom: 10,
+  sectionGroup: {
+    gap: 8,
   },
-  dotRow:   { flexDirection: 'row', gap: 5 },
-  dot:      { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.35)' },
-  dotActive:{ width: 18, backgroundColor: '#fff' },
-  reminderBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    flexShrink: 0,
-  },
-  reminderBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 });
