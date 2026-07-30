@@ -190,7 +190,7 @@ export default function RootLayout() {
                     />
                     <Stack.Screen
                       name="analysis"
-                      options={{ headerShown: true, title: "Report Analysis" }}
+                      options={{ headerShown: false, title: "Full Results" }}
                     />
 
                     <Stack.Screen

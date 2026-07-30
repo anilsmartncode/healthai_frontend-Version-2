@@ -1,20 +1,6 @@
 /**
- * useMedicines.ts  —  React hook for the Medicine Hub tab
- *
- * Wraps services/Medicinesapi.ts the same way useReports.ts wraps
- * reportsApi.ts and useFamily.ts wraps familyApi.ts, so every top-level
- * tab follows the same data-fetching convention:
- *   screen → useXxx() hook → service layer → mock/real API
- *
- * Currently covers the data (tabs)/medicines.tsx needs on load:
- *   - categories
- *   - recently viewed medicines
- *   - today's reminders (collapsed into a single banner-friendly shape)
- *
- * Extend this hook (rather than calling Medicinesapi directly in screens)
- * as more medicine-tab screens are wired up.
+ * useMedicines.ts — Medicine Hub tab data
  */
-
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
@@ -23,6 +9,7 @@ import {
   getTodaysReminders,
   type Category,
   type Medicine,
+  type Reminder,
 } from '@/services/Medicinesapi';
 
 export interface TodayReminderBanner {
@@ -34,6 +21,7 @@ export interface TodayReminderBanner {
 export function useMedicines() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [recentlyViewed, setRecentlyViewed] = useState<Medicine[]>([]);
+  const [todayReminders, setTodayReminders] = useState<Reminder[]>([]);
   const [todayBanner, setTodayBanner] = useState<TodayReminderBanner | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +30,7 @@ export function useMedicines() {
     setLoading(true);
     setError(null);
     try {
-      const [cats, recent, todayReminders] = await Promise.all([
+      const [cats, recent, reminders] = await Promise.all([
         getCategories(),
         getRecentlyViewed(1, 5),
         getTodaysReminders(),
@@ -50,13 +38,14 @@ export function useMedicines() {
 
       setCategories(cats);
       setRecentlyViewed(recent);
+      setTodayReminders(reminders);
 
-      const upcoming = todayReminders.filter((r) => r.status === 'upcoming');
-      if (todayReminders.length > 0) {
+      const upcoming = reminders.filter((r) => r.status === 'upcoming');
+      if (reminders.length > 0) {
         setTodayBanner({
           count: upcoming.length,
-          nextName: upcoming[0]?.medicineName ?? todayReminders[0].medicineName,
-          nextTime: upcoming[0]?.time ?? todayReminders[0].time,
+          nextName: upcoming[0]?.medicineName ?? reminders[0].medicineName,
+          nextTime: upcoming[0]?.time ?? reminders[0].time,
         });
       } else {
         setTodayBanner(null);
@@ -69,21 +58,22 @@ export function useMedicines() {
     }
   }, []);
 
-  // Re-fetch every time the tab comes into focus (mirrors the screen's
-  // previous useFocusEffect behaviour, now centralized in the hook).
   useFocusEffect(
     useCallback(() => {
       let active = true;
       (async () => {
         if (active) await fetchAll();
       })();
-      return () => { active = false; };
+      return () => {
+        active = false;
+      };
     }, [fetchAll]),
   );
 
   return {
     categories,
     recentlyViewed,
+    todayReminders,
     todayBanner,
     loading,
     error,

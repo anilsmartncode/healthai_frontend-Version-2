@@ -1,16 +1,21 @@
 /**
- * app/(tabs)/reports.tsx  — Reports List Screen
- *
- * Changes:
- *  - Filter chips are category-driven from actual report data (dynamic)
- *  - Each chip shows a count badge
- *  - FAB + empty state CTA both go to upload
+ * app/(tabs)/reports.tsx — Reports tab (Care Hub style UI)
+ * Keeps useReports: search, filters, delete, refresh, upload, detail nav.
  */
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, SectionList, Pressable,
-  TextInput, RefreshControl, ActivityIndicator, ScrollView, Animated, Alert,
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Pressable,
+  TextInput,
+  RefreshControl,
+  ActivityIndicator,
+  ScrollView,
+  Animated,
+  Alert,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,10 +25,13 @@ import { Colors, Radius } from '@/constants/Colors';
 import { useReports, type FilterType } from '@/hooks/useReports';
 import type { ReportListItem } from '@/services/reportsApi';
 
-// ── Swipe-to-delete wrapper ───────────────────────────────────────────────────
 function DeleteAction({
-  progress, onPress,
-}: { progress: Animated.AnimatedInterpolation<number>; onPress: () => void }) {
+  progress,
+  onPress,
+}: {
+  progress: Animated.AnimatedInterpolation<number>;
+  onPress: () => void;
+}) {
   const scale = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [0.6, 1],
@@ -31,7 +39,7 @@ function DeleteAction({
   });
   return (
     <Pressable style={styles.deleteAction} onPress={onPress}>
-      <Animated.View style={{ transform: [{ scale }] }}>
+      <Animated.View style={{ transform: [{ scale }], alignItems: 'center' }}>
         <Ionicons name="trash-outline" size={22} color="#fff" />
         <Text style={styles.deleteActionText}>Delete</Text>
       </Animated.View>
@@ -39,25 +47,51 @@ function DeleteAction({
   );
 }
 
-function SwipeableReportCard({ item, onDelete }: { item: ReportListItem; onDelete: (id: string) => void }) {
+function statusTag(item: ReportListItem) {
+  if (item.status === 'attention') {
+    return { label: 'Active', bg: '#FFEDD5', color: '#C2410C' };
+  }
+  if (item.healthScore >= 80) {
+    return { label: 'Analyzed', bg: '#DCFCE7', color: '#15803D' };
+  }
+  return { label: 'Reviewed', bg: '#DBEAFE', color: '#1D4ED8' };
+}
+
+function iconColorFor(item: ReportListItem) {
+  if (item.fileType === 'IMAGE') return { bg: '#DBEAFE', color: '#2563EB' };
+  if (item.status === 'attention') return { bg: '#FFEDD5', color: '#EA580C' };
+  return { bg: '#DCFCE7', color: '#16A34A' };
+}
+
+function ReportRow({
+  item,
+  onDelete,
+}: {
+  item: ReportListItem;
+  onDelete: (id: string) => void;
+}) {
   const swipeRef = React.useRef<Swipeable>(null);
+  const tag = statusTag(item);
+  const icon = iconColorFor(item);
+  const scoreColor =
+    item.healthScore >= 80
+      ? Colors.success
+      : item.healthScore >= 60
+        ? Colors.warning
+        : Colors.danger;
 
   const handleDelete = () => {
-    Alert.alert(
-      'Delete Report',
-      `Remove "${item.title}" from your reports?`,
-      [
-        { text: 'Cancel', style: 'cancel', onPress: () => swipeRef.current?.close() },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            swipeRef.current?.close();
-            onDelete(item.id);
-          },
+    Alert.alert('Delete Report', `Remove "${item.title}" from your reports?`, [
+      { text: 'Cancel', style: 'cancel', onPress: () => swipeRef.current?.close() },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          swipeRef.current?.close();
+          onDelete(item.id);
         },
-      ]
-    );
+      },
+    ]);
   };
 
   return (
@@ -68,291 +102,584 @@ function SwipeableReportCard({ item, onDelete }: { item: ReportListItem; onDelet
       )}
       overshootRight={false}
     >
-      <ReportCard item={item} />
+      <Pressable
+        style={({ pressed }) => [styles.reportRow, pressed && { opacity: 0.85 }]}
+        onPress={() =>
+          router.push({ pathname: '/report-detail', params: { id: item.id } })
+        }
+      >
+        <View style={[styles.reportIcon, { backgroundColor: icon.bg }]}>
+          <Ionicons name="document-text-outline" size={20} color={icon.color} />
+        </View>
+        <View style={styles.reportInfo}>
+          <Text style={styles.reportTitle} numberOfLines={1}>
+            {item.title}
+          </Text>
+          <Text style={styles.reportMeta} numberOfLines={1}>
+            {item.date} • {item.labName || item.category}
+          </Text>
+        </View>
+        <View style={[styles.statusPill, { backgroundColor: tag.bg }]}>
+          <Text style={[styles.statusPillText, { color: tag.color }]}>{tag.label}</Text>
+        </View>
+        {item.healthScore > 0 && (
+          <View style={[styles.scoreCircle, { borderColor: scoreColor + '55' }]}>
+            <Text style={[styles.scoreCircleText, { color: scoreColor }]}>
+              {item.healthScore}
+            </Text>
+          </View>
+        )}
+        <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+      </Pressable>
     </Swipeable>
   );
 }
 
-// ── Report card ────────────────────────────────────────────────────────────────
-function ReportCard({ item }: { item: ReportListItem }) {
-  const isAttention = item.status === 'attention';
-  const scoreColor  = item.healthScore >= 80 ? Colors.success : item.healthScore >= 60 ? Colors.warning : Colors.danger;
-
+function FilterTab({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
   return (
     <Pressable
-      style={({ pressed }) => [styles.card, pressed && { opacity: 0.75 }]}
-      onPress={() =>
-        router.push({ pathname: '/report-detail', params: { id: item.id } })
-      }
-    >
-      {/* Left: icon */}
-      <View style={[styles.iconWrap, { backgroundColor: isAttention ? '#FEF3C7' : '#DCFCE7' }]}>
-        <Ionicons
-          name="document-text-outline"
-          size={22}
-          color={isAttention ? Colors.warning : Colors.success}
-        />
-      </View>
-
-      {/* Center: info */}
-      <View style={styles.cardInfo}>
-        <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-        <Text style={styles.cardMeta}>{item.date} · {item.labName}</Text>
-        <View style={styles.cardStats}>
-          {/* Category badge */}
-          <View style={[styles.statChip, { backgroundColor: Colors.primary + '15' }]}>
-            <Text style={[styles.statChipText, { color: Colors.primary }]}>{item.category}</Text>
-          </View>
-          {item.abnormalCount > 0 && (
-            <View style={styles.statChipDanger}>
-              <Text style={styles.statChipDangerText}>{item.abnormalCount} Abnormal</Text>
-            </View>
-          )}
-          {item.borderlineCount > 0 && (
-            <View style={[styles.statChip, { backgroundColor: '#FEF3C7' }]}>
-              <Text style={[styles.statChipText, { color: Colors.warning }]}>
-                {item.borderlineCount} Borderline
-              </Text>
-            </View>
-          )}
-        </View>
-      </View>
-
-      {/* Right: score + badge */}
-      <View style={styles.cardRight}>
-        <Text style={[styles.scoreText, { color: scoreColor }]}>{item.healthScore}</Text>
-        <Text style={styles.scoreLabel}>/100</Text>
-        <View style={styles.fileBadge}>
-          <Text style={styles.fileBadgeText}>{item.fileType}</Text>
-        </View>
-      </View>
-    </Pressable>
-  );
-}
-
-// ── Filter chip ────────────────────────────────────────────────────────────────
-function FilterChip({
-  label, active, count, onPress,
-}: { label: string; active: boolean; count: number; onPress: () => void }) {
-  return (
-    <Pressable
-      style={[styles.chip, active && styles.chipActive]}
+      style={[styles.tab, active && styles.tabActive]}
       onPress={onPress}
     >
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
-      <View style={[styles.chipBadge, active && styles.chipBadgeActive]}>
-        <Text style={[styles.chipBadgeText, active && styles.chipBadgeTextActive]}>{count}</Text>
-      </View>
+      <Text style={[styles.tabText, active && styles.tabTextActive]}>
+        {label === 'All' ? 'All Reports' : label}
+      </Text>
     </Pressable>
   );
 }
 
-// ChipBar — renders filter chips inside a ScrollView without inline .map()
-// Uses a helper that builds children imperatively to avoid reconciler key warnings
-function ChipBar({
-  filters, activeFilter, categoryCounts, onSelect,
-}: {
-  filters: string[];
-  activeFilter: string;
-  categoryCounts: Record<string, number>;
-  onSelect: (f: string) => void;
-}) {
-  const children: React.ReactNode[] = [];
-  for (let i = 0; i < filters.length; i++) {
-    const f = filters[i];
-    children.push(
-      <FilterChip
-        key={f}
-        label={f}
-        active={activeFilter === f}
-        count={categoryCounts[f] ?? 0}
-        onPress={() => onSelect(f)}
-      />
-    );
-  }
-  return React.createElement(
-    ScrollView,
-    {
-      horizontal: true,
-      showsHorizontalScrollIndicator: false,
-      contentContainerStyle: styles.filtersRow,
-      style: styles.filtersScroll,
-    },
-    ...children
-  );
-}
-
-function ReportSeparator() { return <View style={{ height: 10 }} />; }
-function ReportListFooter() { return <View style={{ height: 20 }} />; }
-
-function EmptyState({ searchQuery, activeFilter }: { searchQuery: string; activeFilter: string }) {
-  return (
-    <View style={styles.emptyState}>
-      <Ionicons name="folder-open-outline" size={48} color="#D1D5DB" />
-      <Text style={styles.emptyTitle}>No reports found</Text>
-      <Text style={styles.emptySub}>
-        {searchQuery
-          ? 'Try a different search term'
-          : activeFilter !== 'All'
-            ? `No ${activeFilter} reports yet`
-            : 'Upload a report to get started'}
-      </Text>
-    </View>
-  );
-}
-
-// ── Main screen ────────────────────────────────────────────────────────────────
 export default function ReportsScreen() {
   const {
-    reports, sections, groupByMonth, setGroupByMonth, loading, refreshing, refresh,
-    searchQuery, setSearchQuery,
-    activeFilter, setActiveFilter,
-    availableFilters, categoryCounts,
+    reports,
+    allReports,
+    loading,
+    refreshing,
+    refresh,
+    searchQuery,
+    setSearchQuery,
+    activeFilter,
+    setActiveFilter,
+    availableFilters,
     deleteReport,
   } = useReports();
 
-  return (
-    <SafeAreaView style={styles.safe}>
+  const [showSearch, setShowSearch] = useState(false);
+  const [showAllRecent, setShowAllRecent] = useState(false);
+
+  const summary = useMemo(() => {
+    const total = allReports.length;
+    const imaging = allReports.filter((r) => r.fileType === 'IMAGE').length;
+    const prescriptions = allReports.filter(
+      (r) =>
+        /prescrip|rx|medicine/i.test(r.title) ||
+        /prescrip|rx/i.test(r.category) ||
+        /prescrip|rx/i.test(r.reportTypeFull)
+    ).length;
+    const lab = Math.max(0, total - imaging - prescriptions);
+    return { total, lab, prescriptions, imaging };
+  }, [allReports]);
+
+  const recent = showAllRecent ? reports : reports.slice(0, 5);
+  const improvingCount = useMemo(
+    () => allReports.filter((r) => r.healthScore >= 75 && r.status === 'good').length,
+    [allReports]
+  );
+
+  const tools = [
+    {
+      key: 'trends',
+      title: 'Trends',
+      sub: 'Track your health trends',
+      icon: 'bar-chart-outline' as const,
+      bg: '#ECFDF5',
+      color: '#16A34A',
+      onPress: () => router.push('/(tabs)/home' as any),
+    },
+    {
+      key: 'compare',
+      title: 'Compare',
+      sub: 'Compare reports side by side',
+      icon: 'pie-chart-outline' as const,
+      bg: '#F3E8FF',
+      color: '#7C3AED',
+      onPress: () => router.push('/all-values' as any),
+    },
+    {
+      key: 'insights',
+      title: 'Insights',
+      sub: 'AI-powered health insights',
+      icon: 'bulb-outline' as const,
+      bg: '#FFF7ED',
+      color: '#EA580C',
+      onPress: () => router.push('/(tabs)/ai' as any),
+    },
+    {
+      key: 'export',
+      title: 'Export',
+      sub: 'Download reports as PDF',
+      icon: 'download-outline' as const,
+      bg: '#EFF6FF',
+      color: '#2563EB',
+      onPress: () => {
+        if (reports[0]) {
+          router.push({ pathname: '/report-detail', params: { id: reports[0].id } });
+        } else {
+          Alert.alert('No reports', 'Upload a report first to export.');
+        }
+      },
+    },
+  ];
+
+  const ListHeader = (
+    <View>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Reports</Text>
-        <View style={{ flexDirection: 'row', gap: 4 }}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Reports</Text>
+          <Text style={styles.headerSub}>Manage and analyze your health reports</Text>
+        </View>
+        <Pressable style={styles.headerBtn} onPress={() => setShowSearch((s) => !s)} hitSlop={8}>
+          <Ionicons name="search-outline" size={20} color={Colors.text} />
+        </Pressable>
+        <Pressable
+          style={styles.headerBtn}
+          onPress={() => setActiveFilter('All')}
+          hitSlop={8}
+        >
+          <Ionicons name="options-outline" size={20} color={Colors.text} />
+        </Pressable>
+      </View>
+
+      {showSearch && (
+        <View style={styles.searchRow}>
+          <Ionicons name="search-outline" size={18} color={Colors.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search reports..."
+            placeholderTextColor={Colors.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="search"
+            autoFocus
+          />
+          {searchQuery.length > 0 && (
+            <Pressable onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
+            </Pressable>
+          )}
+        </View>
+      )}
+
+      {/* Upload card */}
+      <View style={styles.uploadCard}>
+        <View style={styles.uploadLeft}>
+          {/* <View style={styles.uploadFolder}>
+            <Ionicons name="folder-open" size={28} color={Colors.primary} />
+            <View style={styles.uploadPlus}>
+              <Ionicons name="add" size={12} color="#fff" />
+            </View>
+          </View> */}
+          <Text style={styles.uploadTitle}>Upload your health reports</Text>
+          <Text style={styles.uploadSub}>
+            Get AI insights, health score and personalized recommendations.
+          </Text>
           <Pressable
-            style={styles.bellBtn}
-            onPress={() => setGroupByMonth(g => !g)}
+            style={styles.uploadBtn}
+            onPress={() => router.push('/upload')}
           >
-            <Ionicons
-              name={groupByMonth ? 'list' : 'calendar-outline'}
-              size={22}
-              color={Colors.text}
-            />
+            <Ionicons name="add" size={16} color="#fff" />
+            <Text style={styles.uploadBtnText}>Upload Report</Text>
           </Pressable>
-          <Pressable
-            style={styles.bellBtn}
-            onPress={() => router.push('/notifications')}
-          >
-            <Ionicons name="notifications-outline" size={22} color={Colors.text} />
-          </Pressable>
+        </View>
+        <Pressable style={styles.dropZone} onPress={() => router.push('/upload')}>
+          <Ionicons name="cloud-upload-outline" size={28} color={Colors.primary} />
+          <Text style={styles.dropText}>
+            Drag & drop or <Text style={styles.dropBrowse}>browse</Text>
+          </Text>
+        </Pressable>
+      </View>
+
+      {/* Tabs */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabsRow}
+        style={styles.tabsScroll}
+      >
+        {availableFilters.map((f) => (
+          <FilterTab
+            key={f}
+            label={f}
+            active={activeFilter === f}
+            onPress={() => setActiveFilter(f as FilterType)}
+          />
+        ))}
+      </ScrollView>
+
+      {/* Summary */}
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>Reports Summary</Text>
+        <View style={styles.summaryRow}>
+          <View style={styles.summaryItem}>
+            <View style={[styles.summaryIcon, { backgroundColor: '#DCFCE7' }]}>
+              <Ionicons name="document-text" size={16} color="#16A34A" />
+            </View>
+            <Text style={[styles.summaryNum, { color: '#16A34A' }]}>
+              {summary.total}
+              {summary.total > 0 ? '+' : ''}
+            </Text>
+            <Text style={styles.summaryLabel}>Total Reports</Text>
+            <Text style={styles.summaryHint}>All time</Text>
+          </View>
+          <View style={styles.summaryItem}>
+            <View style={[styles.summaryIcon, { backgroundColor: '#F3E8FF' }]}>
+              <Ionicons name="flask" size={16} color="#7C3AED" />
+            </View>
+            <Text style={[styles.summaryNum, { color: '#7C3AED' }]}>{summary.lab}</Text>
+            <Text style={styles.summaryLabel}>Lab Reports</Text>
+            <Text style={styles.summaryHint}>This year</Text>
+          </View>
+          <View style={styles.summaryItem}>
+            <View style={[styles.summaryIcon, { backgroundColor: '#FFEDD5' }]}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: '#EA580C' }}>Rx</Text>
+            </View>
+            <Text style={[styles.summaryNum, { color: '#EA580C' }]}>{summary.prescriptions}</Text>
+            <Text style={styles.summaryLabel}>Prescriptions</Text>
+            <Text style={styles.summaryHint}>This year</Text>
+          </View>
+          <View style={styles.summaryItem}>
+            <View style={[styles.summaryIcon, { backgroundColor: '#DBEAFE' }]}>
+              <Ionicons name="image" size={16} color="#2563EB" />
+            </View>
+            <Text style={[styles.summaryNum, { color: '#2563EB' }]}>{summary.imaging}</Text>
+            <Text style={styles.summaryLabel}>Imaging</Text>
+            <Text style={styles.summaryHint}>This year</Text>
+          </View>
         </View>
       </View>
 
-      {/* Search */}
-      <View style={styles.searchRow}>
-        <Ionicons name="search-outline" size={18} color={Colors.textMuted} style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search reports..."
-          placeholderTextColor={Colors.textMuted}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          returnKeyType="search"
-        />
-        {searchQuery.length > 0 && (
-          <Pressable onPress={() => setSearchQuery('')}>
-            <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
+      {/* Recent header */}
+      <View style={styles.recentHeader}>
+        <Text style={styles.sectionTitle}>Recent Reports</Text>
+        {reports.length > 5 && (
+          <Pressable onPress={() => setShowAllRecent((v) => !v)} hitSlop={8}>
+            <Text style={styles.viewAll}>
+              {showAllRecent ? 'Show less' : 'View all'} ›
+            </Text>
           </Pressable>
         )}
       </View>
+    </View>
+  );
 
-      {/* Dynamic filter chips */}
-      <ChipBar
-        filters={availableFilters}
-        activeFilter={activeFilter}
-        categoryCounts={categoryCounts}
-        onSelect={(f) => setActiveFilter(f as FilterType)}
-      />
-
-      {/* List */}
-      <View style={styles.listContainer}>
-      {loading ? (
-        <ActivityIndicator style={{ marginTop: 48 }} size="large" color={Colors.primary} />
-      ) : groupByMonth ? (
-        <SectionList
-          sections={sections}
-          keyExtractor={r => r.id}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={Colors.primary} />
-          }
-          ItemSeparatorComponent={ReportSeparator}
-          ListEmptyComponent={<EmptyState searchQuery={searchQuery} activeFilter={activeFilter} />}
-          renderItem={({ item }) => <SwipeableReportCard item={item} onDelete={deleteReport} />}
-          renderSectionHeader={({ section }) => (
-            <Text style={styles.sectionHeader}>{section.title}</Text>
-          )}
-          ListFooterComponent={ReportListFooter}
-          stickySectionHeadersEnabled
-        />
-      ) : (
-        <FlatList
-          data={reports}
-          keyExtractor={r => r.id}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={Colors.primary} />
-          }
-          ItemSeparatorComponent={ReportSeparator}
-          ListEmptyComponent={<EmptyState searchQuery={searchQuery} activeFilter={activeFilter} />}
-          renderItem={({ item }) => <SwipeableReportCard item={item} onDelete={deleteReport} />}
-          ListFooterComponent={ReportListFooter}
-        />
-      )}
-
+  const ListFooter = (
+    <View style={{ paddingBottom: 28 }}>
+      {/* AI insight */}
+      <View style={styles.aiBanner}>
+        <Ionicons name="sparkles" size={18} color="#16A34A" />
+        <Text style={styles.aiText}>
+          AI Insight:{' '}
+          {improvingCount > 0
+            ? `${improvingCount} report${improvingCount === 1 ? '' : 's'} look good! Keep up the good work.`
+            : 'Upload reports to unlock personalized AI insights.'}{' '}
+          <Text
+            style={styles.aiLink}
+            onPress={() => router.push('/(tabs)/ai' as any)}
+          >
+            View details →
+          </Text>
+        </Text>
+        <Ionicons name="stats-chart-outline" size={18} color="#16A34A" />
       </View>
 
-      {/* FAB */}
-      <Pressable
-        style={styles.fab}
-        onPress={() => router.push('/upload')}
-      >
-        <Ionicons name="add" size={26} color="#fff" />
-        <Text style={styles.fabText}>Upload New Report</Text>
-      </Pressable>
+      {/* Tools */}
+      <View style={[styles.sectionCard, { marginTop: 14 }]}>
+        <Text style={styles.sectionTitle}>Tools & Insights</Text>
+        <View style={styles.toolsGrid}>
+          {tools.map((t) => (
+            <Pressable
+              key={t.key}
+              style={[styles.toolCard, { backgroundColor: t.bg }]}
+              onPress={t.onPress}
+            >
+              <Ionicons name={t.icon} size={22} color={t.color} />
+              <Text style={styles.toolTitle}>{t.title}</Text>
+              <Text style={styles.toolSub}>{t.sub}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      {loading ? (
+        <ActivityIndicator style={{ marginTop: 48 }} size="large" color={Colors.primary} />
+      ) : (
+        <FlatList
+          data={recent}
+          keyExtractor={(r) => r.id}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={Colors.primary} />
+          }
+          ListHeaderComponent={ListHeader}
+          ListFooterComponent={ListFooter}
+          ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Ionicons name="folder-open-outline" size={44} color="#D1D5DB" />
+              <Text style={styles.emptyTitle}>No reports found</Text>
+              <Text style={styles.emptySub}>
+                {searchQuery
+                  ? 'Try a different search term'
+                  : activeFilter !== 'All'
+                    ? `No ${activeFilter} reports yet`
+                    : 'Upload a report to get started'}
+              </Text>
+            </View>
+          }
+          renderItem={({ item }) => (
+            <ReportRow item={item} onDelete={deleteReport} />
+          )}
+        />
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe:               { flex: 1, backgroundColor: Colors.bg },
-  header:             { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 4, paddingBottom: 10 },
-  headerTitle:        { fontSize: 24, fontWeight: '700', color: Colors.text },
-  bellBtn:            { padding: 6 },
-  searchRow:          { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, backgroundColor: Colors.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12, marginBottom: 10 },
-  searchIcon:         { marginRight: 8 },
-  searchInput:        { flex: 1, height: 44, fontSize: 15, color: Colors.text },
-  filtersScroll:      { maxHeight: 48, marginBottom: 12 },
-  filtersRow:         { flexDirection: 'row', gap: 8, paddingHorizontal: 16 },
-  chip:               { flexDirection: 'row', alignItems: 'center', gap: 5, paddingLeft: 12, paddingRight: 8, paddingVertical: 7, borderRadius: Radius.pill, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
-  chipActive:         { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  chipText:           { fontSize: 13, fontWeight: '500', color: Colors.textMuted },
-  chipTextActive:     { color: '#fff' },
-  chipBadge:          { backgroundColor: Colors.border, borderRadius: 10, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
-  chipBadgeActive:    { backgroundColor: 'rgba(255,255,255,0.25)' },
-  chipBadgeText:      { fontSize: 11, fontWeight: '700', color: Colors.textMuted },
-  chipBadgeTextActive:{ color: '#fff' },
-  listContent:        { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 90 },
-  card:               { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, padding: 12, gap: 12 },
-  iconWrap:           { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  cardInfo:           { flex: 1, gap: 3, minWidth: 0 },
-  cardTitle:          { fontSize: 14, fontWeight: '600', color: Colors.text },
-  cardMeta:           { fontSize: 12, color: Colors.textMuted },
-  cardStats:          { flexDirection: 'row', gap: 6, marginTop: 4, flexWrap: 'wrap' },
-  statChip:           { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 },
-  statChipText:       { fontSize: 11, fontWeight: '600' },
-  statChipDanger:     { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, backgroundColor: '#FEE2E2' },
-  statChipDangerText: { fontSize: 11, fontWeight: '600', color: Colors.danger },
-  cardRight:          { alignItems: 'center', gap: 4, flexShrink: 0 },
-  scoreText:          { fontSize: 20, fontWeight: '700' },
-  scoreLabel:         { fontSize: 10, color: Colors.textMuted, marginTop: -4 },
-  fileBadge:          { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: '#EDE9FE' },
-  fileBadgeText:      { fontSize: 10, fontWeight: '700', color: '#7C3AED' },
-  emptyState:         { alignItems: 'center', paddingVertical: 60, gap: 8 },
-  emptyTitle:         { fontSize: 16, fontWeight: '700', color: Colors.text },
-  emptySub:           { fontSize: 13, color: Colors.textMuted, textAlign: 'center' },
-  listContainer:        { flex: 1 },
-  fab:                { position: 'absolute', bottom: 20, left: 16, right: 16, backgroundColor: Colors.primary, borderRadius: Radius.pill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, gap: 8, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
-  fabText:            { color: '#fff', fontSize: 15, fontWeight: '700' },
-  sectionHeader:      { fontSize: 13, fontWeight: '700', color: Colors.textMuted, backgroundColor: Colors.bg, paddingVertical: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
-  deleteAction:       { backgroundColor: Colors.danger, justifyContent: 'center', alignItems: 'center', width: 76, borderRadius: Radius.md, marginLeft: 8 },
-  deleteActionText:   { color: '#fff', fontSize: 12, fontWeight: '700', marginTop: 4, textAlign: 'center' },
+  safe: { flex: 1, backgroundColor: '#F8FAFC' },
+  listContent: { paddingHorizontal: 16, paddingBottom: 24 },
+
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    paddingTop: 4,
+    marginBottom: 14,
+  },
+  headerTitle: { fontSize: 26, fontWeight: '800', color: Colors.text, letterSpacing: -0.3 },
+  headerSub: { marginTop: 2, fontSize: 13, color: Colors.textMuted },
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+  },
+  searchInput: { flex: 1, height: 44, fontSize: 15, color: Colors.text },
+
+  uploadCard: {
+    flexDirection: 'row',
+    gap: 12,
+    backgroundColor: '#ECFDF5',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    padding: 14,
+    marginBottom: 14,
+  },
+  uploadLeft: { flex: 1.2 },
+  uploadFolder: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#DCFCE7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  uploadPlus: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#ECFDF5',
+  },
+  uploadTitle: { fontSize: 15, fontWeight: '700', color: '#166534' },
+  uploadSub: { marginTop: 4, fontSize: 12, color: Colors.textMuted, lineHeight: 17 },
+  uploadBtn: {
+    alignSelf: 'flex-start',
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  uploadBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  dropZone: {
+    flex: 0.9,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: '#86EFAC',
+    borderRadius: 14,
+    backgroundColor: '#F0FDF4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 10,
+    gap: 6,
+  },
+  dropText: { fontSize: 11, color: Colors.textMuted, textAlign: 'center' },
+  dropBrowse: { color: Colors.primary, fontWeight: '700' },
+
+  tabsScroll: { marginBottom: 14, maxHeight: 44 },
+  tabsRow: { flexDirection: 'row', gap: 8, paddingRight: 8 },
+  tab: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: Radius.pill,
+    backgroundColor: 'transparent',
+  },
+  tabActive: { backgroundColor: '#DCFCE7' },
+  tabText: { fontSize: 13, fontWeight: '600', color: Colors.textMuted },
+  tabTextActive: { color: '#166534' },
+
+  sectionCard: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 14,
+    marginBottom: 14,
+  },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: Colors.text, marginBottom: 12 },
+
+  summaryRow: { flexDirection: 'row', gap: 6 },
+  summaryItem: { flex: 1, alignItems: 'center', gap: 4 },
+  summaryIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  summaryNum: { fontSize: 20, fontWeight: '800' },
+  summaryLabel: { fontSize: 10, fontWeight: '600', color: Colors.text, textAlign: 'center' },
+  summaryHint: { fontSize: 9, color: Colors.textMuted, textAlign: 'center' },
+
+  recentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  viewAll: { fontSize: 13, fontWeight: '600', color: Colors.primary, marginBottom: 12 },
+
+  reportRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 12,
+  },
+  reportIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reportInfo: { flex: 1, minWidth: 0 },
+  reportTitle: { fontSize: 14, fontWeight: '700', color: Colors.text },
+  reportMeta: { marginTop: 2, fontSize: 11, color: Colors.textMuted },
+  statusPill: {
+    borderRadius: Radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  statusPillText: { fontSize: 10, fontWeight: '700' },
+  scoreCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  scoreCircleText: { fontSize: 11, fontWeight: '800' },
+
+  emptyState: { alignItems: 'center', paddingVertical: 36, gap: 8 },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: Colors.text },
+  emptySub: { fontSize: 13, color: Colors.textMuted, textAlign: 'center' },
+
+  aiBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#ECFDF5',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    padding: 12,
+    marginTop: 12,
+  },
+  aiText: { flex: 1, fontSize: 12, color: '#166534', lineHeight: 17, fontWeight: '500' },
+  aiLink: { fontWeight: '700', color: Colors.primary },
+
+  toolsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  toolCard: {
+    width: '47.5%',
+    flexGrow: 1,
+    borderRadius: 14,
+    padding: 14,
+    gap: 6,
+    minHeight: 100,
+  },
+  toolTitle: { fontSize: 14, fontWeight: '700', color: Colors.text },
+  toolSub: { fontSize: 11, color: Colors.textMuted, lineHeight: 15 },
+
+  deleteAction: {
+    backgroundColor: Colors.danger,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 76,
+    borderRadius: 14,
+    marginLeft: 8,
+  },
+  deleteActionText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 4,
+    textAlign: 'center',
+  },
 });

@@ -15,7 +15,7 @@ interface Props {
   abnormalCount: number;
   totalCount: number;
   abnormalValues?: LabValue[];
-  healthScore?: string;
+  healthScore?: string | number;
   conditionSeverity?: string;
   conditionColor?: string;
 }
@@ -48,12 +48,21 @@ export function AnalysisSummaryCard({
   const RADIUS = (SIZE - STROKE) / 2;
   const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-  // Score from "85/100" or fallback from abnormal ratio
-  const scoreNum = healthScore
-    ? parseInt(healthScore.split("/")[0])
-    : Math.round(((totalCount - abnormalCount) / Math.max(totalCount, 1)) * 100);
-  const scoreMax = healthScore ? parseInt(healthScore.split("/")[1]) : 100;
-  const scorePercent = scoreNum / scoreMax;
+  // Score from "85/100" (or a bare number) — never call .split on a non-string
+  const scoreStr =
+    healthScore == null
+      ? ''
+      : typeof healthScore === 'string'
+        ? healthScore
+        : String(healthScore);
+  const scoreMatch = scoreStr.match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
+  const scoreNum = scoreMatch
+    ? Math.round(parseFloat(scoreMatch[1]))
+    : Number.isFinite(Number(scoreStr))
+      ? Math.round(Number(scoreStr))
+      : Math.round(((totalCount - abnormalCount) / Math.max(totalCount, 1)) * 100);
+  const scoreMax = scoreMatch ? Math.round(parseFloat(scoreMatch[2])) : 100;
+  const scorePercent = Math.min(1, Math.max(0, scoreNum / Math.max(scoreMax, 1)));
   const gaugeOffset = CIRCUMFERENCE - scorePercent * CIRCUMFERENCE;
 
   const gaugeColor =
@@ -99,11 +108,10 @@ export function AnalysisSummaryCard({
               stroke={gaugeColor}
               strokeWidth={STROKE}
               fill="none"
-              strokeDasharray={CIRCUMFERENCE}
-              strokeDashoffset={gaugeOffset}
+              strokeDasharray={`${CIRCUMFERENCE}`}
+              strokeDashoffset={`${gaugeOffset}`}
               strokeLinecap="round"
-              rotation="-90"
-              origin={`${SIZE / 2}, ${SIZE / 2}`}
+              transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
             />
           </Svg>
 
@@ -268,7 +276,8 @@ export function AnalysisSummaryCard({
                     <Text style={styles.chipName}>{v.name}</Text>
                     <View style={styles.chipDivider} />
                     <Text style={styles.chipStatus}>
-                      {v.status.charAt(0).toUpperCase() + v.status.slice(1)}
+                      {String(v.status || 'unknown').charAt(0).toUpperCase() +
+                        String(v.status || 'unknown').slice(1)}
                     </Text>
                   </View>
                 ))}
@@ -285,7 +294,8 @@ export function AnalysisSummaryCard({
                     <Text style={styles.chipName}>{v.name}</Text>
                     <View style={styles.chipDivider} />
                     <Text style={styles.chipStatus}>
-                      {v.status.charAt(0).toUpperCase() + v.status.slice(1)}
+                      {String(v.status || 'unknown').charAt(0).toUpperCase() +
+                        String(v.status || 'unknown').slice(1)}
                     </Text>
                   </View>
                 ))}

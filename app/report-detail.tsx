@@ -1,29 +1,42 @@
 /**
- * app/report-detail.tsx  — Report Details Screen
- *
- * Shows: report preview card, health score, key findings.
- * "View Report" button opens the original PDF/image file.
- * Nav: Back → Reports List | Forward → Health Scorecard (/scorecard)
+ * app/report-detail.tsx — Report Details (Summary / Results / Trends / About)
+ * UI matched to Care Hub design. Keeps open file, rename, analysis navigation.
  */
 
 import {
-  View, Text, StyleSheet, ScrollView, Pressable,
-  ActivityIndicator, Alert, TextInput, Modal, KeyboardAvoidingView, Platform
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  ActivityIndicator,
+  Alert,
+  TextInput,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import * as Sharing from 'expo-sharing';
 import * as WebBrowser from 'expo-web-browser';
 import { Colors, Radius } from '@/constants/Colors';
 import { useAuth } from '@/context/AuthContext';
-import { reportsApi, renameReport, type ReportListItem, type AnalyzeResult } from '@/services/reportsApi';
-import { AskAIButton } from '@/components/ai/AskAIButton';
-import { AnalysisSummaryCard } from '@/components/reports/AnalysisSummaryCard';
+import {
+  reportsApi,
+  renameReport,
+  type ReportListItem,
+  type AnalyzeResult,
+} from '@/services/reportsApi';
 import type { ApiSummary, LabValue } from '@/types/Report/reportype';
 
-// ── View report helper ────────────────────────────────────────────────────────
+type TabKey = 'Summary' | 'Results' | 'Trends' | 'About Test';
+
+const TABS: TabKey[] = ['Summary', 'Results', 'Trends', 'About Test'];
+
 async function openReportFile(
   fileUri: string | null | undefined,
   fileType: 'PDF' | 'IMAGE',
@@ -31,14 +44,11 @@ async function openReportFile(
   if (!fileUri) {
     Alert.alert(
       'File not available',
-      'The original file for this report is no longer stored on this device. ' +
-      'Re-upload the report to view it again.',
+      'The original file for this report is no longer stored on this device. Re-upload the report to view it again.',
     );
     return;
   }
-
   try {
-    // expo-sharing: opens the native share sheet (viewer + share options)
     const canShare = await Sharing.isAvailableAsync();
     if (canShare) {
       await Sharing.shareAsync(fileUri, {
@@ -47,7 +57,6 @@ async function openReportFile(
         UTI: fileType === 'PDF' ? 'com.adobe.pdf' : 'public.image',
       });
     } else {
-      // Fallback for web / simulators — open in browser
       await WebBrowser.openBrowserAsync(fileUri);
     }
   } catch (e: any) {
@@ -55,31 +64,68 @@ async function openReportFile(
   }
 }
 
-// ── Main screen ───────────────────────────────────────────────────────────────
+function statusLabel(status: LabValue['status']) {
+  if (status === 'high') return { label: 'High', bg: '#FEE2E2', color: '#DC2626' };
+  if (status === 'low') return { label: 'Low', bg: '#FEF3C7', color: '#D97706' };
+  return { label: 'Normal', bg: '#DCFCE7', color: '#15803D' };
+}
+
 export default function ReportDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { phone } = useAuth();
   const [report, setReport] = useState<(ReportListItem & Partial<AnalyzeResult>) | null>(null);
   const [loading, setLoading] = useState(true);
   const [opening, setOpening] = useState(false);
+  const [tab, setTab] = useState<TabKey>('Summary');
 
-  // Rename state
   const [showRename, setShowRename] = useState(false);
   const [newName, setNewName] = useState('');
   const [savingRename, setSavingRename] = useState(false);
 
   useEffect(() => {
-    reportsApi.getById(id ?? '', phone).then(r => {
+    reportsApi.getById(id ?? '', phone).then((r) => {
       setReport(r);
       setLoading(false);
     });
-  }, [id]);
+  }, [id, phone]);
 
   const handleViewReport = async () => {
     if (!report) return;
     setOpening(true);
     await openReportFile(report.fileUri, report.fileType);
     setOpening(false);
+  };
+
+  const handleShare = async () => {
+    if (!report) return;
+    try {
+      if (report.fileUri) {
+        await openReportFile(report.fileUri, report.fileType);
+      } else {
+        await Share.share({
+          message: `${report.title}\n${report.date} • ${report.labName}\nHealth score: ${report.healthScore}/100`,
+        });
+      }
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const handleMore = () => {
+    Alert.alert(report?.title ?? 'Report', undefined, [
+      {
+        text: 'Rename',
+        onPress: () => {
+          setNewName(report?.title ?? '');
+          setShowRename(true);
+        },
+      },
+      {
+        text: opening ? 'Opening…' : 'View original file',
+        onPress: handleViewReport,
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   };
 
   const handleSaveRename = async () => {
@@ -90,6 +136,34 @@ export default function ReportDetailScreen() {
     setSavingRename(false);
     setShowRename(false);
   };
+
+  const goFullResults = () => {
+    if (!report) return;
+    if (report.values) {
+      router.push({
+        pathname: '/analysis',
+        params: {
+          reportId: String(report.reportId ?? ''),
+          patientName: report.patientName ?? '',
+          hospitalName: report.hospitalName ?? report.labName,
+          summary: report.summary ?? '',
+          values: JSON.stringify(report.values ?? []),
+          detectedMedicines: JSON.stringify(report.detectedMedicines ?? []),
+        },
+      });
+    } else {
+      router.push({ pathname: '/scorecard', params: { id: report.id } });
+    }
+  };
+
+  const parsed = useMemo(() => {
+    if (!report?.summary) return null;
+    try {
+      return JSON.parse(report.summary as unknown as string) as ApiSummary;
+    } catch {
+      return null;
+    }
+  }, [report]);
 
   if (loading) {
     return (
@@ -107,171 +181,279 @@ export default function ReportDetailScreen() {
     );
   }
 
-  const hasFile = !!report.fileUri;
-
-  // Parse summary (JSON-stringified ApiSummary) the same way analysis.tsx does
-  let parsedSummary: ApiSummary | null = null;
-  if (report.summary) {
-    try { parsedSummary = JSON.parse(report.summary as unknown as string); } catch { /* plain string */ }
-  }
   const values: LabValue[] = report.values ?? [];
-  const abnormalValues = values.filter(v => v.status === 'high' || v.status === 'low');
-  const totalCount = report.totalValues ?? values.length;
-  // Prefer the count derived directly from `values` when we have them — the
-  // top-level report.abnormalCount has been observed to come back as 0 from
-  // the API even when values clearly contain abnormal entries.
-  const abnormalCount = values.length > 0 ? abnormalValues.length : (report.abnormalCount ?? 0);
+  const normalValues = values.filter((v) => v.status === 'normal');
+  const abnormalValues = values.filter((v) => v.status === 'high' || v.status === 'low');
+  const overallNormal = abnormalValues.length === 0 && (report.status === 'good' || values.length > 0);
 
-  // health_score sometimes comes back from the API with extra trailing text
-  // appended (e.g. "85/100, reflecting mostly normal results..."). Extract
-  // just the "N/100" portion so downstream parsing stays reliable.
-  const rawHealthScore = parsedSummary?.health_score ?? `${report.healthScore}/100`;
-  const healthScoreMatch = rawHealthScore.match(/\d+\s*\/\s*\d+/);
-  const healthScore = healthScoreMatch ? healthScoreMatch[0].replace(/\s+/g, '') : rawHealthScore;
+  const aiText =
+    parsed?.patient_friendly_explanation ||
+    parsed?.ai_summary ||
+    parsed?.overall_health ||
+    (typeof report.summary === 'string' && !report.summary.trim().startsWith('{')
+      ? report.summary
+      : null) ||
+    (overallNormal
+      ? `Your ${report.title} looks good! Most of your values are within the normal range.`
+      : `Your ${report.title} has ${abnormalValues.length} value${abnormalValues.length === 1 ? '' : 's'} outside the normal range.`);
+
+  const checklist: string[] = [];
+  if (parsed?.abnormal_findings?.length) {
+    // Show positive/normal notes from normal values when available
+  }
+  if (normalValues.length > 0) {
+    normalValues.slice(0, 3).forEach((v) => {
+      checklist.push(`${v.name} is normal.`);
+    });
+  }
+  if (abnormalValues.length === 0 && checklist.length < 4) {
+    checklist.push('No major abnormal findings detected.');
+  }
+  abnormalValues.slice(0, 2).forEach((v) => {
+    checklist.push(`${v.name} is ${v.status} (${v.value}).`);
+  });
+  if (checklist.length === 0) {
+    checklist.push('Open Results for a full parameter breakdown.');
+  }
+
+  const highlights = (values.length > 0 ? values : []).slice(0, 4);
+  const normalCount = normalValues.length || Math.max(0, (report.totalValues ?? 0) - (report.abnormalCount ?? 0));
+  const totalCount = values.length || report.totalValues || highlights.length;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+        <Pressable onPress={() => router.back()} style={styles.iconBtn} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle} numberOfLines={1}>Report Details</Text>
-        <Pressable style={styles.editBtn} onPress={() => { setNewName(report.title); setShowRename(true); }}>
-          <Ionicons name="pencil" size={20} color={Colors.text} />
+        <Text style={styles.headerTitle}>Report Details</Text>
+        <Pressable onPress={handleShare} style={styles.iconBtn} hitSlop={8}>
+          <Ionicons name="share-outline" size={20} color={Colors.text} />
+        </Pressable>
+        <Pressable onPress={handleMore} style={styles.iconBtn} hitSlop={8}>
+          <Ionicons name="ellipsis-vertical" size={18} color={Colors.text} />
         </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-
-        {/* Report Preview Card */}
-        <View style={styles.previewCard}>
-          {/* File type thumbnail */}
-          <Pressable
-            style={[styles.previewIcon, !hasFile && styles.previewIconDim]}
-            onPress={handleViewReport}
-            disabled={opening}
-          >
-            {opening ? (
-              <ActivityIndicator color={Colors.primary} />
-            ) : (
-              <>
-                <Ionicons
-                  name={report.fileType === 'PDF' ? 'document-text' : 'image'}
-                  size={28}
-                  color={hasFile ? Colors.primary : Colors.textMuted}
-                />
-                <Text style={[styles.fileTypeLabel, !hasFile && { color: Colors.textMuted }]}>
-                  {report.fileType}
-                </Text>
-              </>
-            )}
-          </Pressable>
-
-          <View style={styles.previewInfo}>
-            <Text style={styles.previewTitle}>{report.title}</Text>
-            <Text style={styles.previewMeta}>{report.date} · {report.labName}</Text>
-            <View style={[styles.typeBadge, { backgroundColor: Colors.primary + '15' }]}>
-              <Text style={[styles.typeBadgeText, { color: Colors.primary }]}>
-                {report.reportTypeFull}
+        {/* Overview card */}
+        <View style={styles.overviewCard}>
+          <View style={styles.flaskIcon}>
+            <Ionicons name="flask-outline" size={22} color="#E11D48" />
+          </View>
+          <View style={styles.overviewInfo}>
+            <Text style={styles.overviewTitle}>
+              {report.reportTypeFull || report.title}
+            </Text>
+            <Text style={styles.overviewMeta}>{report.date}</Text>
+            <Text style={styles.overviewLab}>{report.labName || 'Lab report'}</Text>
+            <View
+              style={[
+                styles.statusBadge,
+                {
+                  backgroundColor: overallNormal ? '#DCFCE7' : '#FEE2E2',
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.statusBadgeText,
+                  { color: overallNormal ? '#15803D' : '#DC2626' },
+                ]}
+              >
+                {overallNormal ? 'Normal' : 'Attention'}
               </Text>
             </View>
+          </View>
+        </View>
 
-            {/* ── View Report button ── */}
-            <Pressable
-              style={[styles.viewFileBtn, !hasFile && styles.viewFileBtnDim]}
-              onPress={handleViewReport}
-              disabled={opening}
-            >
-              <Ionicons
-                name={report.fileType === 'PDF' ? 'document-outline' : 'image-outline'}
-                size={15}
-                color={hasFile ? Colors.primary : Colors.textMuted}
-              />
-              <Text style={[styles.viewFileBtnText, !hasFile && { color: Colors.textMuted }]}>
-                {opening ? 'Opening…' : hasFile ? 'View Report' : 'File not on device'}
-              </Text>
-              {hasFile && (
-                <Ionicons name="open-outline" size={13} color={Colors.primary} />
+        {/* Tabs */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabsRow}
+          style={styles.tabsScroll}
+        >
+          {TABS.map((t) => {
+            const active = tab === t;
+            return (
+              <Pressable key={t} style={styles.tab} onPress={() => setTab(t)}>
+                <Text style={[styles.tabText, active && styles.tabTextActive]}>{t}</Text>
+                {active && <View style={styles.tabUnderline} />}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
+        {tab === 'Summary' && (
+          <>
+            {/* AI Summary */}
+            <View style={styles.card}>
+              <View style={styles.aiHeader}>
+                <Text style={styles.cardTitle}>AI Summary</Text>
+                <View style={styles.aiBadge}>
+                  <Ionicons name="sparkles" size={12} color="#fff" />
+                  <Text style={styles.aiBadgeText}>HealthAI</Text>
+                </View>
+              </View>
+              <Text style={styles.aiBody}>{aiText}</Text>
+              <View style={styles.checkList}>
+                {checklist.slice(0, 4).map((line, i) => {
+                  const isAlert = /high|low|abnormal|outside/i.test(line);
+                  return (
+                    <View key={`${i}-${line}`} style={styles.checkRow}>
+                      <Ionicons
+                        name={isAlert ? 'alert-circle' : 'checkmark-circle'}
+                        size={18}
+                        color={isAlert ? Colors.warning : Colors.success}
+                      />
+                      <Text style={styles.checkText}>{line}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+              <View style={styles.consultNote}>
+                <Text style={styles.consultNoteText}>
+                  Always consult your doctor for personalized advice.
+                </Text>
+              </View>
+            </View>
+
+            {/* Key Highlights */}
+            <View style={styles.card}>
+              <View style={styles.hlHeader}>
+                <Text style={styles.cardTitle}>Key Highlights</Text>
+                <Text style={styles.hlMeta}>
+                  {normalCount} of {totalCount || '—'} parameters normal
+                </Text>
+              </View>
+
+              {highlights.length === 0 ? (
+                <Text style={styles.emptyHint}>
+                  Detailed parameters will appear after analysis completes.
+                </Text>
+              ) : (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.hlRow}
+                >
+                  {highlights.map((v) => {
+                    const st = statusLabel(v.status);
+                    return (
+                      <View key={v.name} style={styles.hlCard}>
+                        <Text style={styles.hlName} numberOfLines={1}>
+                          {v.name}
+                        </Text>
+                        <Text style={styles.hlValue}>
+                          {v.value}
+                          {v.range ? '' : ''}
+                        </Text>
+                        <View style={[styles.hlBadge, { backgroundColor: st.bg }]}>
+                          <Text style={[styles.hlBadgeText, { color: st.color }]}>{st.label}</Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </ScrollView>
               )}
+
+              <Pressable style={styles.primaryBtn} onPress={goFullResults}>
+                <Text style={styles.primaryBtnText}>View Full Results</Text>
+              </Pressable>
+            </View>
+          </>
+        )}
+
+        {tab === 'Results' && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>All Results</Text>
+            {values.length === 0 ? (
+              <Text style={styles.emptyHint}>No lab values available for this report.</Text>
+            ) : (
+              values.map((v, i) => {
+                const st = statusLabel(v.status);
+                return (
+                  <View
+                    key={`${v.name}-${i}`}
+                    style={[styles.resultRow, i > 0 && styles.resultDivider]}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.resultName}>{v.name}</Text>
+                      <Text style={styles.resultRange}>Range: {v.range || '—'}</Text>
+                    </View>
+                    <Text style={styles.resultValue}>{v.value}</Text>
+                    <View style={[styles.hlBadge, { backgroundColor: st.bg }]}>
+                      <Text style={[styles.hlBadgeText, { color: st.color }]}>{st.label}</Text>
+                    </View>
+                  </View>
+                );
+              })
+            )}
+            <Pressable style={[styles.primaryBtn, { marginTop: 16 }]} onPress={goFullResults}>
+              <Text style={styles.primaryBtnText}>View Full Results</Text>
             </Pressable>
           </View>
-        </View>
+        )}
 
-        {/* Health Score */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Health Score</Text>
-          <AnalysisSummaryCard
-            abnormalCount={abnormalCount}
-            totalCount={totalCount}
-            abnormalValues={abnormalValues}
-            healthScore={healthScore}
-            conditionSeverity={parsedSummary?.condition_severity}
-            conditionColor={parsedSummary?.condition_color}
-          />
-        </View>
-
-        {/* Key Findings */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Key Findings</Text>
-          <View style={styles.findingsRow}>
-            <View style={styles.findingPill}>
-              <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
-              <Text style={styles.findingText}>{report.totalValues - report.abnormalCount} Normal</Text>
+        {tab === 'Trends' && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Trends</Text>
+            <View style={styles.trendScore}>
+              <Text style={styles.trendScoreNum}>{report.healthScore}</Text>
+              <Text style={styles.trendScoreLabel}>/ 100 health score</Text>
             </View>
-            {report.abnormalCount > 0 && (
-              <View style={[styles.findingPill, { backgroundColor: '#FEE2E2' }]}>
-                <Ionicons name="alert-circle" size={16} color={Colors.danger} />
-                <Text style={[styles.findingText, { color: Colors.danger }]}>
-                  {report.abnormalCount} Abnormal
-                </Text>
-              </View>
-            )}
-            {(report.borderlineCount ?? 0) > 0 && (
-              <View style={[styles.findingPill, { backgroundColor: '#FEF3C7' }]}>
-                <Ionicons name="warning" size={16} color={Colors.warning} />
-                <Text style={[styles.findingText, { color: Colors.warning }]}>
-                  {report.borderlineCount} Borderline
-                </Text>
-              </View>
-            )}
+            <Text style={styles.emptyHint}>
+              Trend charts appear as you upload more reports of the same type over time.
+            </Text>
+            <Pressable
+              style={[styles.secondaryBtn, { marginTop: 12 }]}
+              onPress={() => router.push('/(tabs)/home' as any)}
+            >
+              <Text style={styles.secondaryBtnText}>View health overview</Text>
+            </Pressable>
           </View>
-        </View>
+        )}
 
-        {/* View Full Analysis CTA */}
-        <Pressable
-          style={styles.primaryBtn}
-          onPress={() =>
-            report.values
-              ? router.push({
-                  pathname: '/analysis',
-                  params: {
-                    reportId:         String(report.reportId ?? ''),
-                    patientName:      report.patientName ?? '',
-                    hospitalName:     report.hospitalName ?? report.labName,
-                    summary:          report.summary ?? '',
-                    values:           JSON.stringify(report.values ?? []),
-                    detectedMedicines: JSON.stringify(report.detectedMedicines ?? []),
-                  },
-                })
-              : router.push({ pathname: '/scorecard', params: { id: report.id } })
-          }
-        >
-          <Text style={styles.primaryBtnText}>View Full Analysis</Text>
-          <Ionicons name="arrow-forward" size={18} color="#fff" />
-        </Pressable>
-
-        {/* Ask AI */}
-        <AskAIButton
-          variant="banner"
-          label="Ask AI about this report"
-          prefill={`My ${report.title} report (score: ${report.healthScore ?? '?'}/100) has ${report.abnormalCount ?? 0} abnormal values. What should I know about this?`}
-        />
+        {tab === 'About Test' && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>About this test</Text>
+            <Text style={styles.aiBody}>
+              {parsed?.report_description?.what_this_report_is ||
+                `${report.reportTypeFull || report.title} helps your clinician assess related biomarkers and overall health status.`}
+            </Text>
+            {!!parsed?.report_description?.what_was_checked && (
+              <>
+                <Text style={[styles.cardTitle, { marginTop: 14, fontSize: 14 }]}>
+                  What was checked
+                </Text>
+                <Text style={styles.aiBody}>{parsed.report_description.what_was_checked}</Text>
+              </>
+            )}
+            <Pressable
+              style={[styles.secondaryBtn, { marginTop: 14 }]}
+              onPress={handleViewReport}
+            >
+              <Text style={styles.secondaryBtnText}>
+                {opening ? 'Opening…' : 'View original report file'}
+              </Text>
+            </Pressable>
+          </View>
+        )}
       </ScrollView>
 
-      {/* RENAME MODAL */}
-      <Modal visible={showRename} transparent animationType="fade" onRequestClose={() => setShowRename(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+      {/* Rename modal */}
+      <Modal
+        visible={showRename}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowRename(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Rename Report</Text>
             <TextInput
@@ -283,59 +465,238 @@ export default function ReportDetailScreen() {
               selectTextOnFocus
             />
             <View style={styles.modalActions}>
-              <Pressable style={styles.modalBtnCancel} onPress={() => setShowRename(false)} disabled={savingRename}>
+              <Pressable
+                style={styles.modalBtnCancel}
+                onPress={() => setShowRename(false)}
+                disabled={savingRename}
+              >
                 <Text style={styles.modalBtnCancelText}>Cancel</Text>
               </Pressable>
-              <Pressable style={styles.modalBtnSave} onPress={handleSaveRename} disabled={savingRename || !newName.trim()}>
-                {savingRename ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalBtnSaveText}>Save Name</Text>}
+              <Pressable
+                style={styles.modalBtnSave}
+                onPress={handleSaveRename}
+                disabled={savingRename || !newName.trim()}
+              >
+                {savingRename ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.modalBtnSaveText}>Save Name</Text>
+                )}
               </Pressable>
             </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
-
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe:             { flex: 1, backgroundColor: Colors.bg },
-  header:           { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 10 },
-  backBtn:          { padding: 4 },
-  headerTitle:      { flex: 1, fontSize: 18, fontWeight: '700', color: Colors.text },
-  editBtn:          { padding: 4 },
-  body:             { padding: 16, gap: 16, paddingBottom: 40 },
+  safe: { flex: 1, backgroundColor: '#F8FAFC' },
+  errorText: { textAlign: 'center', marginTop: 60, color: Colors.textMuted },
 
-  previewCard:      { flexDirection: 'row', gap: 14, backgroundColor: Colors.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, padding: 16, alignItems: 'flex-start' },
-  previewIcon:      { width: 60, height: 72, backgroundColor: '#EDE9FE', borderRadius: 10, justifyContent: 'center', alignItems: 'center', gap: 4 },
-  previewIconDim:   { backgroundColor: Colors.surface },
-  fileTypeLabel:    { fontSize: 10, fontWeight: '700', color: Colors.primary, letterSpacing: 0.5 },
-  previewInfo:      { flex: 1, gap: 4 },
-  previewTitle:     { fontSize: 16, fontWeight: '700', color: Colors.text },
-  previewMeta:      { fontSize: 12, color: Colors.textMuted },
-  typeBadge:        { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: Radius.pill, marginTop: 2 },
-  typeBadgeText:    { fontSize: 12, fontWeight: '600' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 4,
+    backgroundColor: '#fff',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.border,
+  },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.text,
+  },
 
-  viewFileBtn:      { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, paddingVertical: 7, paddingHorizontal: 12, backgroundColor: '#EDE9FE', borderRadius: Radius.pill, alignSelf: 'flex-start' },
-  viewFileBtnDim:   { backgroundColor: Colors.surface },
-  viewFileBtnText:  { fontSize: 12, fontWeight: '600', color: Colors.primary },
+  body: { padding: 16, paddingBottom: 40, gap: 14 },
 
-  section:          { gap: 10 },
-  sectionTitle:     { fontSize: 15, fontWeight: '700', color: Colors.text },
-  findingsRow:      { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
-  findingPill:      { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#DCFCE7', paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.pill },
-  findingText:      { fontSize: 13, fontWeight: '600', color: Colors.success },
-  primaryBtn:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.primary, borderRadius: Radius.pill, paddingVertical: 16, marginTop: 8 },
-  primaryBtnText:   { color: '#fff', fontSize: 16, fontWeight: '700' },
-  errorText:        { textAlign: 'center', marginTop: 60, color: Colors.textMuted },
+  overviewCard: {
+    flexDirection: 'row',
+    gap: 12,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 14,
+  },
+  flaskIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#FFE4E6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  overviewInfo: { flex: 1, gap: 3 },
+  overviewTitle: { fontSize: 16, fontWeight: '700', color: Colors.text },
+  overviewMeta: { fontSize: 12, color: Colors.textMuted },
+  overviewLab: { fontSize: 12, color: Colors.textMuted },
+  statusBadge: {
+    alignSelf: 'flex-start',
+    marginTop: 6,
+    borderRadius: Radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  statusBadgeText: { fontSize: 11, fontWeight: '700' },
 
-  modalOverlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-  modalContent:     { backgroundColor: '#fff', padding: 24, borderRadius: Radius.lg, gap: 16 },
-  modalTitle:       { fontSize: 18, fontWeight: '700', color: Colors.text },
-  modalInput:       { borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.sm, paddingHorizontal: 14, height: 48, fontSize: 16 },
-  modalActions:     { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 8 },
-  modalBtnCancel:   { paddingVertical: 10, paddingHorizontal: 16 },
+  tabsScroll: { marginHorizontal: -4 },
+  tabsRow: { gap: 18, paddingHorizontal: 4, paddingBottom: 2 },
+  tab: { paddingVertical: 8 },
+  tabText: { fontSize: 14, fontWeight: '600', color: Colors.textMuted },
+  tabTextActive: { color: Colors.primary },
+  tabUnderline: {
+    marginTop: 6,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: Colors.primary,
+  },
+
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 16,
+  },
+  cardTitle: { fontSize: 16, fontWeight: '700', color: Colors.text },
+
+  aiHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  aiBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#7C3AED',
+    borderRadius: Radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  aiBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  aiBody: { fontSize: 14, color: Colors.text, lineHeight: 21 },
+  checkList: { marginTop: 14, gap: 10 },
+  checkRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  checkText: { flex: 1, fontSize: 13, color: Colors.text, lineHeight: 19 },
+  consultNote: {
+    marginTop: 14,
+    backgroundColor: '#ECFDF5',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+  },
+  consultNoteText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#166534',
+    textAlign: 'center',
+  },
+
+  hlHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    gap: 8,
+  },
+  hlMeta: { fontSize: 11, color: Colors.textMuted, fontWeight: '600' },
+  hlRow: { gap: 10, paddingBottom: 4 },
+  hlCard: {
+    width: 130,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 12,
+    gap: 6,
+  },
+  hlName: { fontSize: 12, fontWeight: '700', color: Colors.primary },
+  hlValue: { fontSize: 15, fontWeight: '800', color: Colors.text },
+  hlBadge: {
+    alignSelf: 'flex-start',
+    borderRadius: Radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  hlBadgeText: { fontSize: 10, fontWeight: '700' },
+
+  primaryBtn: {
+    marginTop: 16,
+    backgroundColor: Colors.primary,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  primaryBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  secondaryBtn: {
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  secondaryBtnText: { color: Colors.primary, fontSize: 14, fontWeight: '700' },
+
+  emptyHint: { fontSize: 13, color: Colors.textMuted, lineHeight: 19, marginTop: 8 },
+
+  resultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+  },
+  resultDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.border,
+  },
+  resultName: { fontSize: 14, fontWeight: '600', color: Colors.text },
+  resultRange: { marginTop: 2, fontSize: 11, color: Colors.textMuted },
+  resultValue: { fontSize: 14, fontWeight: '700', color: Colors.text },
+
+  trendScore: { alignItems: 'center', paddingVertical: 16, gap: 4 },
+  trendScoreNum: { fontSize: 40, fontWeight: '800', color: Colors.primary },
+  trendScoreLabel: { fontSize: 13, color: Colors.textMuted, fontWeight: '600' },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: { backgroundColor: '#fff', padding: 24, borderRadius: Radius.lg, gap: 16 },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: Colors.text },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.sm,
+    paddingHorizontal: 14,
+    height: 48,
+    fontSize: 16,
+  },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 8 },
+  modalBtnCancel: { paddingVertical: 10, paddingHorizontal: 16 },
   modalBtnCancelText: { fontSize: 15, fontWeight: '600', color: Colors.textMuted },
-  modalBtnSave:     { paddingVertical: 10, paddingHorizontal: 20, backgroundColor: Colors.primary, borderRadius: Radius.md, minWidth: 100, alignItems: 'center' },
+  modalBtnSave: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.md,
+    minWidth: 100,
+    alignItems: 'center',
+  },
   modalBtnSaveText: { fontSize: 15, fontWeight: '700', color: '#fff' },
 });
