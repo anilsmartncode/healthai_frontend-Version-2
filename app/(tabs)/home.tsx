@@ -137,7 +137,7 @@ export default function Home() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <HomeHeader attentionCount={overallAttentionCount} />
+        <HomeHeader />
       </View>
 
       <ScrollView

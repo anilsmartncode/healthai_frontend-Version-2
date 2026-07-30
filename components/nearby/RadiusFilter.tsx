@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: "#F8FAFC",
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: Colors.border,
   },
   radiusPillActive: {
     backgroundColor: "#EEF2FF",
@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
   radiusPillText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#64748B",
+    color: Colors.textMuted,
   },
   radiusPillTextActive: {
     color: "#4F46E5",

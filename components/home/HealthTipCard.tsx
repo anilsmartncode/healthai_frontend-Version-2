@@ -24,7 +24,7 @@ export function HealthTipCard() {
           style={styles.icon}
         />
         <Text style={styles.title} numberOfLines={1}>
-          Today's Health Tip
+          Today&apos;s Health Tip
         </Text>
       </View>
 

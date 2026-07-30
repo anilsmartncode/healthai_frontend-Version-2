@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   ScrollView, Text, StyleSheet, View,
   Pressable, ActivityIndicator, RefreshControl,
@@ -8,21 +8,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors, Radius, Spacing } from '@/constants/Colors';
 import { useLang } from '@/context/Languagecontext';
-import {
-  getFamilyNotifications,
-  markNotificationsRead,
-  type FamilyNotification,
-} from '@/services/familyApi';
+import { useNotifications } from '@/hooks/useNotifications';
+import { UnifiedNotification, NotificationCategory } from '@/types/notifications';
 
-type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+const CATEGORIES: { id: NotificationCategory | 'all', label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'report', label: 'Reports' },
+  { id: 'medicine', label: 'Medicines' },
+  { id: 'family', label: 'Family' },
+];
 
-const ICON_MAP: Record<string, { icon: IoniconName; bg: string; color: string }> = {
-  invite_accepted: { icon: 'person-add-outline', bg: '#E1F5EE', color: Colors.primary },
-  invite_pending: { icon: 'mail-outline', bg: '#E6F1FB', color: '#185FA5' },
-  health_alert: { icon: 'alert-circle-outline', bg: '#FCEBEB', color: Colors.danger },
-  medicine_alert: { icon: 'medkit-outline', bg: '#FAEEDA', color: '#854F0B' },
-  report_ready: { icon: 'document-text-outline', bg: '#E1F5EE', color: Colors.primary },
-  default: { icon: 'notifications-outline', bg: Colors.surface, color: Colors.textMuted },
+const ICON_MAP: Record<NotificationCategory, { icon: any; bg: string; color: string }> = {
+  report: { icon: 'document-text-outline', bg: '#FCEBEB', color: Colors.danger },
+  medicine: { icon: 'medkit-outline', bg: '#FAEEDA', color: '#854F0B' },
+  family: { icon: 'people-outline', bg: '#E1F5EE', color: Colors.primary },
+  system: { icon: 'information-circle-outline', bg: Colors.surface, color: Colors.textMuted },
 };
 
 function timeAgo(iso: string): string {
@@ -35,68 +35,56 @@ function timeAgo(iso: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-function NotifRow({ item, onPress }: { item: FamilyNotification; onPress: () => void }) {
-  const cfg = ICON_MAP[item.type] ?? ICON_MAP.default;
+function NotifRow({ item, onPress }: { item: UnifiedNotification; onPress: () => void }) {
+  const cfg = ICON_MAP[item.category] ?? ICON_MAP.system;
+  const isUnread = item.status === 'unread';
+  const isArchived = item.status === 'archived';
   return (
     <Pressable
-      style={[styles.row, !item.read && styles.rowUnread]}
+      style={[styles.row, isUnread && styles.rowUnread, isArchived && { opacity: 0.5 }]}
       onPress={onPress}
     >
-      {!item.read && <View style={styles.unreadDot} />}
+      {isUnread && <View style={styles.unreadDot} />}
       <View style={[styles.iconWrap, { backgroundColor: cfg.bg }]}>
         <Ionicons name={cfg.icon} size={20} color={cfg.color} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={[styles.rowTitle, !item.read && { fontWeight: '700' }]}>
-          {item.title}
-        </Text>
-        {item.body ? <Text style={styles.rowBody}>{item.body}</Text> : null}
+        <View style={styles.rowHeader}>
+           <Text style={[styles.rowTitle, isUnread && { fontWeight: '700' }]}>
+             {item.title}
+           </Text>
+           {item.priority === 'HIGH' && <Ionicons name="warning" size={14} color={Colors.danger} style={{marginLeft: 4}} />}
+        </View>
+        {item.message ? <Text style={styles.rowBody}>{item.message}</Text> : null}
       </View>
-      <Text style={styles.rowTime}>{timeAgo(item.created_at)}</Text>
+      <Text style={styles.rowTime}>{timeAgo(item.timestamp)}</Text>
     </Pressable>
   );
 }
 
 export default function Notifications() {
   const { t } = useLang();
-  const [items, setItems] = useState<FamilyNotification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { notifications, loading, refresh, unreadCount, markAllRead, markAsRead } = useNotifications();
+  const [filter, setFilter] = useState<NotificationCategory | 'all'>('all');
   const [refreshing, setRefreshing] = useState(false);
-  const [unread, setUnread] = useState(0);
 
-  const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    try {
-      const data = await getFamilyNotifications();
-      setItems(data.notifications);
-      setUnread(data.unread_count);
-    } catch (e) {
-      console.error('[Notifications] load error', e);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+  const filteredItems = notifications.filter(n => filter === 'all' || n.category === filter);
+
+  const handlePress = (item: UnifiedNotification) => {
+    markAsRead(item.id);
+    if (item.action.type === 'navigate' && item.action.route) {
+      if (item.action.params) {
+        router.push({ pathname: item.action.route, params: item.action.params });
+      } else {
+        router.push(item.action.route);
+      }
     }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  const handlePress = async (item: FamilyNotification) => {
-    if (!item.read) {
-      await markNotificationsRead([item.notif_id]);
-      setItems(prev => prev.map(n => n.notif_id === item.notif_id ? { ...n, read: true } : n));
-      setUnread(prev => Math.max(0, prev - 1));
-    }
-    if (item.type === 'invite_pending') router.push('/family/invitations');
-    if (item.type === 'invite_accepted') router.push('/family');
-    if (item.type === 'health_alert') router.push('/family');
   };
 
-  const markAllRead = async () => {
-    const unreadIds = items.filter(n => !n.read).map(n => n.notif_id);
-    if (!unreadIds.length) return;
-    await markNotificationsRead(unreadIds);
-    setItems(prev => prev.map(n => ({ ...n, read: true })));
-    setUnread(0);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refresh();
+    setRefreshing(false);
   };
 
   return (
@@ -106,15 +94,30 @@ export default function Notifications() {
           <Ionicons name="arrow-back" size={20} color={Colors.text} />
         </Pressable>
         <Text style={styles.title}>{t('notif_title')}</Text>
-        {unread > 0 && (
+        {unreadCount > 0 && (
           <Pressable onPress={markAllRead}>
             <Text style={styles.markAll}>Mark all read</Text>
           </Pressable>
         )}
       </View>
 
-      {loading ? (
-        <ActivityIndicator style={{ flex: 1 }} size="large" color={Colors.primary} />
+      {/* Category Filters */}
+      <View style={styles.filterOuter}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
+          {CATEGORIES.map(c => (
+             <Pressable 
+               key={c.id} 
+               style={[styles.filterTab, filter === c.id && styles.filterTabActive]}
+               onPress={() => setFilter(c.id)}
+             >
+               <Text style={[styles.filterText, filter === c.id && styles.filterTextActive]}>{c.label}</Text>
+             </Pressable>
+          ))}
+        </ScrollView>
+      </View>
+
+      {loading && notifications.length === 0 ? (
+        <ActivityIndicator style={{ flex: 1, marginTop: 40 }} size="large" color={Colors.primary} />
       ) : (
         <ScrollView
           contentContainerStyle={styles.body}
@@ -122,21 +125,21 @@ export default function Notifications() {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={() => { setRefreshing(true); load(true); }}
+              onRefresh={onRefresh}
               tintColor={Colors.primary}
             />
           }
         >
-          {items.length === 0 ? (
+          {filteredItems.length === 0 ? (
             <View style={styles.empty}>
               <Ionicons name="notifications-off-outline" size={48} color={Colors.border} />
               <Text style={styles.emptyTitle}>No notifications yet</Text>
-              <Text style={styles.emptySub}>We'll let you know when something important happens.</Text>
+              <Text style={styles.emptySub}>We&apos;ll let you know when something important happens.</Text>
             </View>
           ) : (
             <View style={styles.list}>
-              {items.map(item => (
-                <NotifRow key={item.notif_id} item={item} onPress={() => handlePress(item)} />
+              {filteredItems.map(item => (
+                <NotifRow key={item.id} item={item} onPress={() => handlePress(item)} />
               ))}
             </View>
           )}
@@ -152,12 +155,21 @@ const styles = StyleSheet.create({
   backBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: Colors.surface, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
   title: { flex: 1, fontSize: 17, fontWeight: '600', color: Colors.text },
   markAll: { fontSize: 13, color: Colors.primary, fontWeight: '500' },
+  
+  filterOuter: { paddingVertical: 10, borderBottomWidth: 1, borderColor: Colors.border },
+  filterContainer: { paddingHorizontal: 16, gap: 8 },
+  filterTab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: Colors.border },
+  filterTabActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  filterText: { fontSize: 13, fontWeight: '600', color: Colors.textMuted },
+  filterTextActive: { color: '#FFFFFF' },
+
   body: { padding: Spacing.lg, gap: Spacing.sm, paddingBottom: 40, flexGrow: 1 },
   list: { gap: 8 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.card, borderRadius: Radius.lg, padding: 14, borderWidth: 1, borderColor: Colors.border },
   rowUnread: { backgroundColor: '#F0FDF9', borderColor: '#9FE1CB' },
   unreadDot: { position: 'absolute', top: 14, left: 6, width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.primary },
   iconWrap: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  rowHeader: { flexDirection: 'row', alignItems: 'center' },
   rowTitle: { fontSize: 14, fontWeight: '500', color: Colors.text },
   rowBody: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
   rowTime: { fontSize: 11, color: Colors.textMuted, flexShrink: 0 },

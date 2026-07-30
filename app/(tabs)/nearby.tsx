@@ -400,7 +400,7 @@ export default function NearbyScreen() {
             ))}
           </MapView>
           <MapBottomSheet
-            bottomSheetRef={bottomSheetRef}
+            bottomSheetRef={bottomSheetRef as any}
             selectedPlace={selectedMarker}
             activeTab={activeTab}
             onClose={() => setSelectedMarker(null)}
@@ -423,19 +423,19 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
+    marginTop: 8,
+    marginBottom: 20,
   },
   title: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "800",
-    color: "#1E293B",
+    color: Colors.text,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 13,
-    color: "#64748B",
-    marginTop: 2,
+    color: Colors.textMuted,
+    marginTop: 4,
   },
   warningBanner: {
     flexDirection: "row",
@@ -454,13 +454,13 @@ const styles = StyleSheet.create({
   toggleContainer: {
     flexDirection: "row",
     paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingBottom: 16,
     gap: 8,
   },
   toggleBtn: {
     flex: 1,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 20,
     backgroundColor: "#F1F5F9",
     alignItems: "center",
   },
@@ -470,7 +470,7 @@ const styles = StyleSheet.create({
   toggleText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#64748B",
+    color: Colors.textMuted,
   },
   toggleTextActive: {
     color: "#FFFFFF",

@@ -30,7 +30,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { Colors } from '@/constants/Colors';
+import { NotificationCenter } from '@/services/NotificationService';
 import { scheduleReminderNotification, parseTimeStringToNextDate } from '@/utils/notifications';
 import {
   getUserMedicines,
@@ -280,6 +282,18 @@ export default function AddReminderScreen() {
           frequency === 'daily' || frequency === 'weekly' ? frequency : 'once'
         );
 
+        // Instantly publish a local notification for global sync
+        NotificationCenter.publish({
+          id: `med_${res.reminderId}_${time}`,
+          category: 'medicine',
+          priority: 'MEDIUM',
+          status: 'unread',
+          title: 'Medicine Reminder',
+          message: `It's time to take ${selectedMed.name}`,
+          timestamp: new Date().toISOString(),
+          action: { type: 'navigate', route: '/medicines/reminders' }
+        });
+
         setSuccess(true);
       } else {
         Alert.alert('Error', res.message || 'Failed to save reminder.');
@@ -301,7 +315,7 @@ export default function AddReminderScreen() {
         </View>
         <Text style={styles.successTitle}>Reminder Set!</Text>
         <Text style={styles.successSub}>
-          You'll be reminded to take{'\n'}
+          You&apos;ll be reminded to take{'\n'}
           <Text style={{ fontWeight: '700' }}>{selectedMed?.name}</Text> at {time}
         </Text>
         <View style={{ width: '100%', gap: 16, alignItems: 'center', marginTop: 10 }}>

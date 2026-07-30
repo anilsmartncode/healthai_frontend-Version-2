@@ -7,10 +7,9 @@ import { useAuth } from "@/context/AuthContext";
 import { SecureAsyncStorage as AsyncStorage } from '@/utils/storage';
 import { useLang } from "@/context/Languagecontext";
 import { Strings } from "@/constants/Strings";
+import { useNotifications } from "@/hooks/useNotifications";
 
-interface Props {
-  attentionCount?: number;
-}
+interface Props {}
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -27,11 +26,12 @@ function formatName(raw: string): string {
     .join(" ");
 }
 
-export function HomeHeader({ attentionCount = 0 }: Props) {
+export function HomeHeader({}: Props) {
   const { phone } = useAuth();
   const [userName, setUserName] = useState(formatName(phone ?? "User"));
   const greetingText = getGreeting();
   const { t } = useLang();
+  const { unreadCount } = useNotifications();
 
   useEffect(() => {
     const cacheKey = `healthai_profile_name_${phone ?? 'guest'}`;
@@ -76,9 +76,9 @@ export function HomeHeader({ attentionCount = 0 }: Props) {
           style={styles.actionBtn}
         >
           <Ionicons name="notifications-outline" size={20} color={Colors.text} />
-          {attentionCount > 0 && (
+          {unreadCount > 0 && (
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>{attentionCount}</Text>
+              <Text style={styles.badgeText}>{unreadCount}</Text>
             </View>
           )}
         </Pressable>

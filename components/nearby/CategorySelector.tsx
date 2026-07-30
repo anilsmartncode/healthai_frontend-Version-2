@@ -26,7 +26,7 @@ export default function CategorySelector({ activeTab, onTabChange }: CategorySel
           <Ionicons
             name="business"
             size={16}
-            color={activeTab === "hospital" ? "#FFFFFF" : "#64748B"}
+            color={activeTab === "hospital" ? "#FFFFFF" : Colors.textMuted}
           />
           <Text style={[styles.catText, activeTab === "hospital" && styles.catTextActive]}>
             {t("hospitals")}
@@ -40,7 +40,7 @@ export default function CategorySelector({ activeTab, onTabChange }: CategorySel
           <Ionicons
             name="flask"
             size={16}
-            color={activeTab === "pharmacy" ? "#FFFFFF" : "#64748B"}
+            color={activeTab === "pharmacy" ? "#FFFFFF" : Colors.textMuted}
           />
           <Text style={[styles.catText, activeTab === "pharmacy" && styles.catTextActive]}>
             {t("pharmacies")}
@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
   categoriesOuter: {
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: Colors.border,
   },
   categoriesContainer: {
     paddingHorizontal: 16,
@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     gap: 6,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: Colors.border,
   },
   catTabActive: {
     backgroundColor: Colors.primary,
@@ -79,9 +79,10 @@ const styles = StyleSheet.create({
   catText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#64748B",
+    color: Colors.textMuted,
   },
   catTextActive: {
     color: "#FFFFFF",
   },
 });
+

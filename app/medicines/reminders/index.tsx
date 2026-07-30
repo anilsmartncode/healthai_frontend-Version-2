@@ -31,6 +31,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors, Radius, Spacing } from '@/constants/Colors';
+import { NotificationCenter } from '@/services/NotificationService';
 import { CustomTimePicker } from '@/components/medicines/CustomTimePicker';
 import { ENDPOINTS } from '@/constants/api';
 import { medicineApiCall } from '@/services/Medicineapiclient';
@@ -298,6 +299,7 @@ export default function RemindersScreen() {
       await medicineApiCall(ENDPOINTS.reminderTaken(markingReminder.id), { method: 'POST' });
       setReminders((prev) => prev.map((r) => r.id === markingReminder.id ? { ...r, status: 'taken' } : r));
       await cancelReminderNotification(markingReminder.id).catch(console.warn);
+      NotificationCenter.archive(`med_${markingReminder.id}_${markingReminder.time}`);
     } catch (e: any) {
       Alert.alert('Error', 'Failed to mark as taken');
     }
@@ -310,6 +312,7 @@ export default function RemindersScreen() {
       await medicineApiCall(ENDPOINTS.reminderMissed(markingReminder.id), { method: 'POST' });
       setReminders((prev) => prev.map((r) => r.id === markingReminder.id ? { ...r, status: 'missed' } : r));
       await cancelReminderNotification(markingReminder.id).catch(console.warn);
+      NotificationCenter.archive(`med_${markingReminder.id}_${markingReminder.time}`);
     } catch (e: any) {
       Alert.alert('Error', 'Failed to mark as missed');
     }

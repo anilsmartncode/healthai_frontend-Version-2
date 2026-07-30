@@ -14,6 +14,7 @@ import { Colors, Radius } from '@/constants/Colors';
 import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/Languagecontext';
 import { useUsage } from '@/context/UsageContext';
+import { useNotifications } from '@/hooks/useNotifications';
 import { SecureAsyncStorage as AsyncStorage } from '@/utils/storage';
 import { api } from '@/services/api';
 import { ENDPOINTS, BASE_URL } from '@/constants/api';
@@ -63,6 +64,7 @@ export default function Profile() {
   const { phone, signOut } = useAuth();
   const { t } = useLang();
   const { activePlan } = useUsage();
+  const { unreadCount } = useNotifications();
 
   const [profile, setProfile] = useState<ProfileData>({
     name: '',
@@ -282,7 +284,11 @@ export default function Profile() {
             hitSlop={8}
           >
             <Ionicons name="notifications-outline" size={20} color={Colors.text} />
-            <View style={styles.notifDot} />
+            {unreadCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unreadCount}</Text>
+              </View>
+            )}
           </Pressable>
         </View>
 
@@ -460,16 +466,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  notifDot: {
-    position: 'absolute',
-    top: 10,
-    right: 11,
-    width: 7,
-    height: 7,
-    borderRadius: 4,
+  badge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
     backgroundColor: Colors.danger,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
     borderWidth: 1.5,
     borderColor: '#fff',
+  },
+  badgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "800",
   },
 
   profileCard: {

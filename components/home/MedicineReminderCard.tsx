@@ -32,7 +32,7 @@ export function MedicineReminderCard({ todayBanner }: Props) {
         </View>
 
         <View style={styles.info}>
-          <Text style={styles.title}>Today's Medications</Text>
+          <Text style={styles.title}>Today&apos;s Medications</Text>
           <Text style={styles.subtitle}>
             {todayBanner.count} due today • Next: {todayBanner.nextName} at {todayBanner.nextTime}
           </Text>

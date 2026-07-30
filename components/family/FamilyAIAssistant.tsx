@@ -22,7 +22,7 @@ export function FamilyAIAssistant() {
         <View style={styles.aiAvatar}>
           <Ionicons name="sparkles" size={32} color={Colors.primary} />
         </View>
-        <Text style={styles.heroTitle}>Ask anything about your{'\n'}family's health</Text>
+        <Text style={styles.heroTitle}>Ask anything about your{'\n'}family&apos;s health</Text>
       </View>
 
       {/* Input row */}

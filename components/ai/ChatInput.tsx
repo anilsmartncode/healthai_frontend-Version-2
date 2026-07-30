@@ -21,7 +21,7 @@ export function ChatInput({ value, onChangeText, onSend, loading, bottomInset = 
     return (
       <TextInput
         style={inlineStyles.input}
-        placeholder="Type a message..."
+        placeholder="Ask anything about your health..."
         placeholderTextColor={Colors.textMuted}
         value={value}
         onChangeText={onChangeText}

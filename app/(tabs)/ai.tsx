@@ -15,14 +15,14 @@ import { useAuth } from '@/context/AuthContext';
 import { SecureAsyncStorage as AsyncStorage } from '@/utils/storage';
 
 const C = {
-  primary:   '#2563EB',
+  primary: '#2563EB',
   primaryBg: '#EFF6FF',
-  text:      '#0F172A',
+  text: '#0F172A',
   textMuted: '#64748B',
-  border:    '#E2E8F0',
-  bg:        '#FFFFFF',
-  surface:   '#F8FAFC',
-  success:   '#16A34A',
+  border: '#E2E8F0',
+  bg: '#FFFFFF',
+  surface: '#F8FAFC',
+  success: '#16A34A',
 };
 
 function formatName(raw: string): string {
@@ -42,14 +42,14 @@ function getGreeting(): string {
 }
 
 const QUICK_ACTIONS = [
-  { icon: 'pulse-outline' as const,          label: 'Symptom\nChecker',   bg: '#F3F0FF', color: '#7C3AED', prefill: 'I have these symptoms, can you help me understand what they might mean?' },
-  { icon: 'calendar-outline' as const,       label: 'Book\nDoctor',       bg: '#EFF6FF', color: '#2563EB', prefill: 'I would like to book a doctor appointment.' },
-  { icon: 'medkit-outline' as const,         label: 'Order\nMedicine',    bg: '#FFF7ED', color: '#EA580C', prefill: 'I want to order my recommended medicines.' },
-  { icon: 'document-text-outline' as const,  label: 'Upload\nReports',    bg: '#F0FDF4', color: '#16A34A', route: '/upload' as any },
-  { icon: 'folder-open-outline' as const,    label: 'Health\nRecords',    bg: '#FDF4FF', color: '#C026D3', route: '/reports' as any },
-  { icon: 'alarm-outline' as const,          label: 'Medicine\nReminder', bg: '#FFFBEB', color: '#D97706', route: '/medicines/reminders' as any },
-  { icon: 'flask-outline' as const,          label: 'Lab\nTests',         bg: '#ECFEFF', color: '#0891B2', prefill: 'What lab tests should I consider getting done?' },
-  { icon: 'alert-circle-outline' as const,   label: 'Emergency\nSOS',     bg: '#FEF2F2', color: '#DC2626', route: '/family/emergency' as any },
+  { icon: 'pulse-outline' as const, label: 'Symptom\nChecker', bg: '#F3F0FF', color: '#7C3AED', prefill: 'I have these symptoms, can you help me understand what they might mean?' },
+  { icon: 'calendar-outline' as const, label: 'Book\nDoctor', bg: '#EFF6FF', color: '#2563EB', prefill: 'I would like to book a doctor appointment.' },
+  { icon: 'medkit-outline' as const, label: 'Order\nMedicine', bg: '#FFF7ED', color: '#EA580C', prefill: 'I want to order my recommended medicines.' },
+  { icon: 'document-text-outline' as const, label: 'Upload\nReports', bg: '#F0FDF4', color: '#16A34A', route: '/upload' as any },
+  { icon: 'folder-open-outline' as const, label: 'Health\nRecords', bg: '#FDF4FF', color: '#C026D3', route: '/reports' as any },
+  { icon: 'alarm-outline' as const, label: 'Medicine\nReminder', bg: '#FFFBEB', color: '#D97706', route: '/medicines/reminders' as any },
+  { icon: 'flask-outline' as const, label: 'Lab\nTests', bg: '#ECFEFF', color: '#0891B2', prefill: 'What lab tests should I consider getting done?' },
+  { icon: 'alert-circle-outline' as const, label: 'Emergency\nSOS', bg: '#FEF2F2', color: '#DC2626', route: '/family/emergency' as any },
 ];
 
 export default function AIHomeScreen() {
@@ -120,10 +120,10 @@ export default function AIHomeScreen() {
               <Pressable style={styles.innerPlusBtn}>
                 <Ionicons name="add" size={24} color={C.textMuted} />
               </Pressable>
-              
+
               <TextInput
                 style={styles.input}
-                placeholder="Message HealthAI..."
+                placeholder="Ask anything about your health"
                 placeholderTextColor={C.textMuted}
                 value={input}
                 onChangeText={setInput}
@@ -186,7 +186,7 @@ export default function AIHomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: C.bg },
+  safe: { flex: 1, backgroundColor: C.bg },
   scroll: { paddingHorizontal: 20, paddingTop: 14 },
 
   brandRow: {
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between', marginBottom: 14,
   },
   brandName: { fontSize: 26, fontWeight: '800', color: C.primary, letterSpacing: -0.3 },
-  brandSub:  { fontSize: 12, color: C.textMuted, marginTop: 1 },
+  brandSub: { fontSize: 12, color: C.textMuted, marginTop: 1 },
   historyBtn: {
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: C.surface, borderWidth: 1, borderColor: C.border,
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
   inputWrap: {
     flexDirection: 'row', alignItems: 'flex-end',
     backgroundColor: '#FFFFFF',
-    borderWidth: 1.5, 
+    borderWidth: 1.5,
     borderColor: '#E2E8F0',
     borderRadius: 28,
     paddingLeft: 8,
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   input: {
-    flex: 1, fontSize: 15, color: C.text,
+    flex: 1, fontSize: 12, color: C.text,
     maxHeight: 100, minHeight: 36,
     paddingTop: Platform.OS === 'ios' ? 8 : 4,
     paddingBottom: Platform.OS === 'ios' ? 8 : 4,
@@ -303,6 +303,5 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   privacyTitle: { fontSize: 13, fontWeight: '700', color: C.text },
-  privacySub:   { fontSize: 11, color: C.textMuted, marginTop: 2, lineHeight: 16 },
+  privacySub: { fontSize: 11, color: C.textMuted, marginTop: 2, lineHeight: 16 },
 });
- 

@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors, Radius } from '@/constants/Colors';
 import { useMedicines } from '@/hooks/useMedicines';
+import { useNotifications } from '@/hooks/useNotifications';
 import type { Category, Medicine, Reminder } from '@/services/Medicinesapi';
 
 const H_PAD = 16;
@@ -75,6 +76,7 @@ function LibraryCard({
 export default function Medicines() {
   const [searchQ, setSearchQ] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const { unreadCount } = useNotifications();
 
   const {
     categories,
@@ -154,7 +156,11 @@ export default function Medicines() {
         </View>
         <Pressable style={styles.iconBtn} onPress={() => router.push('/notifications')} hitSlop={8}>
           <Ionicons name="notifications-outline" size={20} color={Colors.text} />
-          <View style={styles.notifDot} />
+          {unreadCount > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{unreadCount}</Text>
+            </View>
+          )}
         </Pressable>
         <Pressable style={styles.scanBtn} onPress={handleScanMedicine}>
           <Ionicons name="scan-outline" size={16} color="#fff" />
@@ -491,16 +497,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  notifDot: {
-    position: 'absolute',
-    top: 10,
-    right: 11,
-    width: 7,
-    height: 7,
-    borderRadius: 4,
+  badge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
     backgroundColor: Colors.danger,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
     borderWidth: 1.5,
     borderColor: '#fff',
+  },
+  badgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "800",
   },
   scanBtn: {
     flexDirection: 'row',
