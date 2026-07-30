@@ -95,7 +95,7 @@ export async function requestNotificationPermissions() {
 
   if (Platform.OS === 'android') {
     try {
-      await Notifications.setNotificationChannelAsync('reminders', {
+      await Notifications.setNotificationChannelAsync('reminders-v2', {
         name: 'Medicine Reminders',
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 500, 500, 500],
@@ -249,7 +249,7 @@ export async function scheduleReminderNotification(
       },
       trigger: {
         ...(trigger as any),
-        channelId: 'reminders',
+        channelId: 'reminders-v2',
       },
     });
 
@@ -260,9 +260,9 @@ export async function scheduleReminderNotification(
     console.log(`[Notifications] Total scheduled alarms: ${all.length}`);
 
     return notifId;
-  } catch (e) {
-    console.error('[Notifications] ❌ Error scheduling notification:', e);
-    return null;
+  } catch (e: any) {
+    console.error('[Notifications] Error scheduling alarm:', e);
+    throw new Error(e.message || 'The operating system blocked the alarm. Please check app permissions in settings.');
   }
 }
 
@@ -327,7 +327,7 @@ export async function testNotification() {
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
         seconds: 5,
-        channelId: 'reminders',
+        channelId: 'reminders-v2',
       },
     });
     console.log('[Notifications] ✅ Test notification scheduled in 5 seconds, ID:', id);

@@ -14,13 +14,10 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Colors, Radius, Spacing } from '@/constants/Colors';
 
-// TODO: Replace with real App Store / Play Store URLs once the app is published.
-// iOS  → https://apps.apple.com/app/<app-name>/id<YOUR_APP_STORE_ID>
-// Android → https://play.google.com/store/apps/details?id=<YOUR_BUNDLE_ID>
 const STORE_URL =
   Platform.OS === 'ios'
-    ? 'https://apps.apple.com/app/healthai/id000000000'   // ← replace id
-    : 'https://play.google.com/store/apps/details?id=com.yourcompany.healthai'; // ← replace bundle id
+    ? 'https://apps.apple.com/app/healthai/id6794323149'
+    : 'https://play.google.com/store/apps/details?id=com.healthai.app';
 
 const LABELS = ['', 'Poor', 'Fair', 'Good', 'Really good', 'Excellent!'];
 

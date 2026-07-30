@@ -286,7 +286,7 @@ export default function AddReminderScreen() {
       }
     } catch (e) {
       console.error('[ReminderNew] createReminder error', e);
-      Alert.alert('Error', 'Could not save reminder. Please try again.');
+      Alert.alert('Error', e instanceof Error ? e.message : 'Could not save reminder. Please try again.');
     } finally {
       setSaving(false);
     }

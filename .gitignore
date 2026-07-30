@@ -20,3 +20,5 @@ expo-env.d.ts
 AuthKey_QKF4UXM4BD.p8
 HealthAI_API_integration_status (1).xlsx
 homescreen (5).jpeg
+*.jks
+*.crdownload

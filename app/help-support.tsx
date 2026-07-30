@@ -45,7 +45,7 @@ export default function HelpSupport() {
       icon: 'chatbubble-ellipses-outline',
       label: 'Chat with support',
       sub: 'Avg. response in 2 min',
-      action: () => Linking.openURL('https://healthai.app/chat'),
+      action: () => Linking.openURL('https://healthai.smartncode.com/chat'),
     },
     {
       icon: 'mail-outline',
