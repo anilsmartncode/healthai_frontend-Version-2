@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors, Radius, Spacing } from '@/constants/Colors';
+import Constants from 'expo-constants';
 
 const SECTIONS = [
   {
@@ -27,10 +28,10 @@ const SECTIONS = [
 ];
 
 const LINKS = [
-  { label: 'Privacy Policy',        url: 'https://healthai.app/privacy'  },
-  { label: 'Terms of Service',      url: 'https://healthai.app/terms'    },
-  { label: 'Cookie Policy',         url: 'https://healthai.app/cookies'  },
-  { label: 'Data deletion request', url: 'https://healthai.app/delete'   },
+  { label: 'Privacy Policy',        url: 'https://healthai.smartncode.com/privacy'  },
+  { label: 'Terms of Service',      url: 'https://healthai.smartncode.com/terms'    },
+  { label: 'Cookie Policy',         url: 'https://healthai.smartncode.com/cookies'  },
+  { label: 'Data deletion request', url: 'https://healthai.smartncode.com/delete'   },
 ];
 
 export default function LegalPrivacy() {
@@ -75,7 +76,7 @@ export default function LegalPrivacy() {
           ))}
         </View>
 
-        <Text style={styles.version}>HealthAI · v2.4.1 · © 2026</Text>
+        <Text style={styles.version}>HealthAI · v{Constants.expoConfig?.version ?? '1.0.0'} · © 2026</Text>
       </ScrollView>
     </SafeAreaView>
   );

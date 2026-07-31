@@ -86,7 +86,7 @@ function MedicinePicker({
       setIsSearching(true);
       const delayDebounce = setTimeout(() => {
         searchMedicines(customName.trim(), 1, 15)
-          .then((res) => setSearchResults(res))
+          .then((res) => setSearchResults(res.medicines))
           .catch(() => setSearchResults([]))
           .finally(() => setIsSearching(false));
       }, 500);
@@ -300,7 +300,7 @@ export default function AddReminderScreen() {
       }
     } catch (e) {
       console.error('[ReminderNew] createReminder error', e);
-      Alert.alert('Error', 'Could not save reminder. Please try again.');
+      Alert.alert('Error', e instanceof Error ? e.message : 'Could not save reminder. Please try again.');
     } finally {
       setSaving(false);
     }

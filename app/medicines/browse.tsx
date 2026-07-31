@@ -111,6 +111,8 @@ function MedicineDetailModal({
   const [translatedUses, setTranslatedUses] = useState<string | null>(null);
   const [translatedDosage, setTranslatedDosage] = useState<string | null>(null);
   const [translatedSideEffects, setTranslatedSideEffects] = useState<string[] | null>(null);
+  const [translatedDescription, setTranslatedDescription] = useState<string | null>(null);
+  const [translatedWarnings, setTranslatedWarnings] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible) setSaved(false);
@@ -159,6 +161,8 @@ function MedicineDetailModal({
 
       if (med.uses) { texts.push(med.uses); keys.push({ key: 'uses' }); }
       if (med.dosage) { texts.push(med.dosage); keys.push({ key: 'dosage' }); }
+      if (med.description) { texts.push(med.description); keys.push({ key: 'description' }); }
+      if (med.warnings) { texts.push(med.warnings); keys.push({ key: 'warnings' }); }
       if (med.sideEffects) {
         med.sideEffects.forEach((se, i) => {
           texts.push(se); keys.push({ key: 'sideEffect', index: i });
@@ -180,6 +184,8 @@ function MedicineDetailModal({
             const translated = pieces[idx];
             if (meta.key === 'uses') setTranslatedUses(translated);
             if (meta.key === 'dosage') setTranslatedDosage(translated);
+            if (meta.key === 'description') setTranslatedDescription(translated);
+            if (meta.key === 'warnings') setTranslatedWarnings(translated);
             if (meta.key === 'sideEffect') newSideEffects.push(translated);
           });
           if (newSideEffects.length > 0) setTranslatedSideEffects(newSideEffects);
@@ -252,6 +258,12 @@ function MedicineDetailModal({
           </View>
 
           {/* Detail rows */}
+          {med.description && (
+            <View style={styles.infoBlock}>
+              <Text style={styles.infoLabel}>Description</Text>
+              <Text style={styles.infoValue}>{translatedDescription ?? med.description}</Text>
+            </View>
+          )}
           {med.uses && (
             <View style={styles.infoBlock}>
               <Text style={styles.infoLabel}>Uses</Text>
@@ -262,6 +274,12 @@ function MedicineDetailModal({
             <View style={styles.infoBlock}>
               <Text style={styles.infoLabel}>Dosage</Text>
               <Text style={styles.infoValue}>{translatedDosage ?? med.dosage}</Text>
+            </View>
+          )}
+          {med.warnings && (
+            <View style={styles.infoBlock}>
+              <Text style={styles.infoLabel}>Warnings</Text>
+              <Text style={[styles.infoValue, { color: '#B91C1C' }]}>{translatedWarnings ?? med.warnings}</Text>
             </View>
           )}
           {(translatedSideEffects || med.sideEffects) && (translatedSideEffects || med.sideEffects)!.length > 0 && (
@@ -456,6 +474,8 @@ export default function BrowseMedicinesScreen() {
   const [detailVisible, setDetailVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [listLoading, setListLoading] = useState(false);
+  const [searchReason, setSearchReason] = useState<string | null>(null);
+  const [searchDisclaimer, setSearchDisclaimer] = useState<string | null>(null);
 
   // ── Load categories + popular + recently viewed on mount ─────────────────
   useEffect(() => {
@@ -501,6 +521,8 @@ export default function BrowseMedicinesScreen() {
   useEffect(() => {
     if (!searchQ.trim()) {
       setMedicines([]);
+      setSearchReason(null);
+      setSearchDisclaimer(null);
       return;
     }
     let cancelled = false;
@@ -509,10 +531,18 @@ export default function BrowseMedicinesScreen() {
       try {
         // API 2 — GET /api/medicines/search?q=searchQ
         const results = await searchMedicines(searchQ, 1, 20);
-        if (!cancelled) setMedicines(results);
+        if (!cancelled) {
+          setMedicines(results.medicines);
+          setSearchReason(results.reason || null);
+          setSearchDisclaimer(results.disclaimer || null);
+        }
       } catch (e) {
         console.error('[Browse] search error', e);
-        if (!cancelled) setMedicines([]);
+        if (!cancelled) {
+          setMedicines([]);
+          setSearchReason(null);
+          setSearchDisclaimer(null);
+        }
       } finally {
         if (!cancelled) setListLoading(false);
       }
@@ -675,15 +705,28 @@ export default function BrowseMedicinesScreen() {
                     <Text style={styles.emptyText}>
                       No results for "{searchQ}"
                     </Text>
+                    {searchReason && (
+                      <Text style={{ textAlign: 'center', color: '#64748B', fontSize: 13, marginTop: 8, paddingHorizontal: 20 }}>
+                        {searchReason}
+                      </Text>
+                    )}
                   </View>
                 ) : (
-                  medicines.map((m) => (
+                  medicines.map((m, idx) => (
                     <MedicineRow
-                      key={m.id}
+                      key={`${m.id}_${idx}`}
                       med={m}
                       onPress={() => openDetailFromMed(m)}
                     />
                   ))
+                )}
+
+                {searchDisclaimer && medicines.length > 0 && (
+                  <View style={{ marginTop: 8, marginBottom: 12, paddingHorizontal: 12 }}>
+                    <Text style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', fontStyle: 'italic' }}>
+                      {searchDisclaimer}
+                    </Text>
+                  </View>
                 )}
 
                 {/* Add Manually Button */}
@@ -723,9 +766,9 @@ export default function BrowseMedicinesScreen() {
                     </Text>
                   </View>
                 ) : (
-                  medicines.map((m) => (
+                  medicines.map((m, idx) => (
                     <MedicineRow
-                      key={m.id}
+                      key={`${m.id}_${idx}`}
                       med={m}
                       onPress={() => openDetailFromMed(m)}
                     />
@@ -745,9 +788,9 @@ export default function BrowseMedicinesScreen() {
                   <Text style={styles.viewAll}>View All</Text>
                 </View>
                 <View style={styles.medList}>
-                  {popular.map((m) => (
+                  {popular.map((m, idx) => (
                     <MedicineRow
-                      key={m.id}
+                      key={`pop_${m.id}_${idx}`}
                       med={m}
                       onPress={() => openDetailFromMed(m)}
                     />
@@ -764,9 +807,9 @@ export default function BrowseMedicinesScreen() {
                     <Text style={styles.viewAll}>View All</Text>
                   </View>
                   <View style={styles.medList}>
-                    {recently.map((m) => (
+                    {recently.map((m, idx) => (
                       <MedicineRow
-                        key={m.id}
+                        key={`rec_${m.id}_${idx}`}
                         med={m}
                         onPress={() => openDetailFromMed(m)}
                       />

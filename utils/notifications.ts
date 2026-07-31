@@ -64,6 +64,10 @@ export function defineBackgroundNotificationTask() {
           snoozeDate,
           'once'
         );
+        // Dismiss the currently ringing notification to stop the sound
+        if (notification?.request?.identifier) {
+          await Notifications.dismissNotificationAsync(notification.request.identifier);
+        }
       } else if (actionIdentifier === 'take') {
         // Mark as taken (will hook into backend later)
         console.log(`[Notifications] Medicine ${reminderId} marked as taken in background.`);
@@ -79,6 +83,11 @@ export function defineBackgroundNotificationTask() {
         
         // Just clear the snooze alarm if it exists
         await cancelReminderNotification(`${reminderId}-snooze`);
+        
+        // Dismiss the currently ringing notification to stop the sound
+        if (notification?.request?.identifier) {
+          await Notifications.dismissNotificationAsync(notification.request.identifier);
+        }
       }
     }
   });
@@ -95,12 +104,15 @@ export async function requestNotificationPermissions() {
 
   if (Platform.OS === 'android') {
     try {
-      await Notifications.setNotificationChannelAsync('reminders', {
+      await Notifications.setNotificationChannelAsync('reminders-v3', {
         name: 'Medicine Reminders',
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 500, 500, 500],
         lightColor: '#0066FF',
         sound: 'alarm.wav',
+        audioAttributes: {
+          usage: Notifications.AndroidAudioUsage.ALARM,
+        },
       });
     } catch (e) {
       console.warn('[Notifications] Could not set Android channel', e);
@@ -249,7 +261,7 @@ export async function scheduleReminderNotification(
       },
       trigger: {
         ...(trigger as any),
-        channelId: 'reminders',
+        channelId: 'reminders-v3',
       },
     });
 
@@ -260,9 +272,9 @@ export async function scheduleReminderNotification(
     console.log(`[Notifications] Total scheduled alarms: ${all.length}`);
 
     return notifId;
-  } catch (e) {
-    console.error('[Notifications] ❌ Error scheduling notification:', e);
-    return null;
+  } catch (e: any) {
+    console.error('[Notifications] Error scheduling alarm:', e);
+    throw new Error(e.message || 'The operating system blocked the alarm. Please check app permissions in settings.');
   }
 }
 
@@ -327,7 +339,7 @@ export async function testNotification() {
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
         seconds: 5,
-        channelId: 'reminders',
+        channelId: 'reminders-v3',
       },
     });
     console.log('[Notifications] ✅ Test notification scheduled in 5 seconds, ID:', id);

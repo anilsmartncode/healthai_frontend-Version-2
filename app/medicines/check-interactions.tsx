@@ -273,7 +273,8 @@ export default function CheckInteractionsScreen() {
       console.log('[CheckInteractions] searchMedicines REQUEST', { query: text.trim() });
       const t0 = Date.now();
       try {
-        const meds = await searchMedicines(text.trim());
+        const res = await searchMedicines(text.trim());
+        const meds = res.medicines;
         const filtered = meds.filter((m) => !selectedMedicines.find((s) => s.id === m.id));
         console.log('[CheckInteractions] searchMedicines RESPONSE', { total: meds.length, afterFilter: filtered.length, ms: Date.now() - t0 });
         setSearchResults(filtered);
@@ -649,8 +650,8 @@ export default function CheckInteractionsScreen() {
           {selectedMedicines.length > 0 && (
             <View style={styles.chipsSection}>
               <Text style={styles.chipsSectionLabel}>Selected Medicines ({selectedMedicines.length})</Text>
-              {selectedMedicines.map((med) => (
-                <View key={med.id} style={styles.selectedChip}>
+              {selectedMedicines.map((med, idx) => (
+                <View key={`sel_${med.id}_${idx}`} style={styles.selectedChip}>
                   <Ionicons name="medical-outline" size={16} color={Colors.primary} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.selectedChipName}>{med.name}</Text>
@@ -685,8 +686,8 @@ export default function CheckInteractionsScreen() {
 
             {searchVisible && searchResults.length > 0 && (
               <View style={styles.dropdown}>
-                {searchResults.slice(0, 6).map((m) => (
-                  <Pressable key={m.id} style={styles.dropdownItem} onPress={() => handleSelectMedicine(m)}>
+                {searchResults.slice(0, 6).map((m, idx) => (
+                  <Pressable key={`sr_${m.id}_${idx}`} style={styles.dropdownItem} onPress={() => handleSelectMedicine(m)}>
                     <Ionicons name="medical-outline" size={15} color={Colors.primary} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.dropdownName}>{m.name}</Text>

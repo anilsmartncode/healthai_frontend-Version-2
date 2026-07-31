@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PLAN_LIMITS, DEFAULT_TESTING_PLAN, PlanType } from '../constants/plans';
-import Purchases from 'react-native-purchases';
-import { ENTITLEMENTS, STORE_PRODUCTS } from '@/config/purchases';
+import Purchases, { LOG_LEVEL } from 'react-native-purchases';
+import { ENTITLEMENTS, STORE_PRODUCTS, getRevenueCatKey } from '@/config/purchases';
 
 interface UsageStats {
   aiChatsToday: number;
@@ -54,6 +54,17 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
     loadStats();
   }, []);
 
+  const ensureRevenueCat = async () => {
+    const isConfigured = await Purchases.isConfigured();
+    if (!isConfigured) {
+      Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+      const apiKey = getRevenueCatKey();
+      if (apiKey) {
+        Purchases.configure({ apiKey });
+      }
+    }
+  };
+
   const loadStats = async () => {
     try {
       const stored = await AsyncStorage.getItem(USAGE_STORAGE_KEY);
@@ -85,6 +96,7 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
       
       // Fetch RevenueCat status
       try {
+        await ensureRevenueCat();
         const customerInfo = await Purchases.getCustomerInfo();
         if (typeof customerInfo.entitlements.active[ENTITLEMENTS.FAMILY] !== "undefined") {
           setActivePlan('FAMILY');
@@ -115,6 +127,7 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
 
   const upgradeToPremium = async () => {
     try {
+      await ensureRevenueCat();
       // In a real flow, you would fetch offerings and purchase the specific package.
       // Here we simulate picking the Premium product for testing integration.
       const offerings = await Purchases.getOfferings();
@@ -140,6 +153,7 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
 
   const upgradeToFamily = async () => {
     try {
+      await ensureRevenueCat();
       const offerings = await Purchases.getOfferings();
       if (offerings.current !== null && offerings.current.availablePackages.length !== 0) {
         // Find package mapping to family
@@ -163,6 +177,7 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
 
   const restorePurchases = async () => {
     try {
+      await ensureRevenueCat();
       const customerInfo = await Purchases.restorePurchases();
       let restored = false;
       if (typeof customerInfo.entitlements.active[ENTITLEMENTS.FAMILY] !== "undefined") {

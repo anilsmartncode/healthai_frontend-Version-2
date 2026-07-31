@@ -231,8 +231,8 @@ export default function RemindersScreen() {
           id: String(r.id),
           medicineName: r.medicine_name ?? r.medicineName ?? '',
           time: r.reminder_time ?? r.time ?? '',
-          frequency: r.frequency ?? 'daily',
-          whenToTake: r.when_to_take ?? r.whenToTake ?? 'after_food',
+          frequency: (r.frequency || 'daily').toLowerCase(),
+          whenToTake: (r.when_to_take || r.whenToTake || 'after_food').toLowerCase().replace(' ', '_').replace('at_', ''),
           enabled: r.is_active ?? true,
           status: (['taken', 'missed', 'cancelled'].includes(String(r.status || '').toLowerCase())) 
             ? (String(r.status).toLowerCase() as ReminderStatus)

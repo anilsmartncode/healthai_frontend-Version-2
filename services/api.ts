@@ -13,7 +13,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   
   const headers: Record<string, string> = {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(init?.headers ?? {}),
+    ...((init?.headers ?? {}) as Record<string, string>),
   };
 
   // Only force application/json if we are NOT sending FormData

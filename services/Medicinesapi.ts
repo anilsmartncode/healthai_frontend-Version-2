@@ -40,6 +40,32 @@ function unwrapList<T>(raw: any, ...keys: string[]): T[] {
   return [];
 }
 
+// Helper: normalise a raw API medicine object onto the Medicine interface.
+// The backend may return snake_case fields (ai_summary, side_effects, etc.)
+// that don't match our camelCase type — this ensures .aiSummary, .isVerified,
+// etc. are always populated regardless of which key the server uses.
+function mapMedicine(raw: any): Medicine {
+  return {
+    id: String(raw.id ?? raw.medicine_id ?? ''),
+    name: raw.name ?? raw.medicine_name ?? '',
+    form: raw.form ?? raw.type ?? raw.medicine_type ?? 'Tablet',
+    category: raw.category ?? raw.category_name ?? '',
+    rx: raw.rx ?? (raw.prescription_type === 'Prescription') ?? false,
+    uses: raw.uses ?? raw.use ?? undefined,
+    dosage: raw.dosage ?? raw.dose ?? undefined,
+    sideEffects: Array.isArray(raw.sideEffects) ? raw.sideEffects
+      : Array.isArray(raw.side_effects) ? raw.side_effects
+        : undefined,
+    description: raw.description ?? undefined,
+    warnings: raw.warnings ?? undefined,
+    aiSummary: raw.aiSummary ?? raw.ai_summary ?? undefined,
+    aiSummaryDetails: raw.aiSummaryDetails ?? raw.ai_summary_details ?? undefined,
+    patientSummary: raw.patientSummary ?? raw.patient_summary ?? undefined,
+    aiGenerated: raw.aiGenerated ?? raw.ai_generated ?? undefined,
+    isVerified: raw.isVerified ?? raw.is_verified ?? undefined,
+  };
+}
+
 // ─── Shared types ─────────────────────────────────────────────────────────────
 
 export interface Category {
@@ -59,6 +85,36 @@ export interface Medicine {
   uses?: string;
   dosage?: string;
   sideEffects?: string[];
+  description?: string;
+  warnings?: string;
+  aiSummary?: string;
+  aiSummaryDetails?: {
+    uses?: string;
+    howItHelps?: string;
+    dosageNote?: string;
+    safetyNote?: string;
+    sideEffects?: string;
+  };
+  patientSummary?: {
+    overview?: string;
+    howItWorks?: string;
+    administration?: string;
+    safety?: string;
+    whenToSeekMedicalHelp?: string;
+  };
+  aiGenerated?: boolean;
+  isVerified?: boolean;
+}
+
+export interface SearchMedicinesResponse {
+  success: boolean;
+  status: 'success' | 'no_match';
+  query: string;
+  country: string;
+  count: number;
+  medicines: Medicine[];
+  reason?: string;
+  disclaimer?: string;
 }
 
 export interface Reminder {
@@ -272,18 +328,31 @@ export async function getCategories(): Promise<Category[]> {
  * Expected:  ~0.4 – 0.8 sec
  * Params:    q (string), page (number), limit (number)
  */
-export async function searchMedicines(q: string, page = 1, limit = 20): Promise<Medicine[]> {
+export async function searchMedicines(
+  q: string, 
+  page = 1, 
+  limit = 20,
+  country = 'Global',
+  asOfDate?: string
+): Promise<SearchMedicinesResponse> {
   // 🔴 REAL — active
-  const url = `${ENDPOINTS.medicineSearch}?q=${encodeURIComponent(q)}&page=${page}&limit=${limit}`;
+  let url = `${ENDPOINTS.medicineSearch}?q=${encodeURIComponent(q)}&page=${page}&limit=${limit}&country=${encodeURIComponent(country)}`;
+  if (asOfDate) {
+    url += `&as_of_date=${encodeURIComponent(asOfDate)}`;
+  }
   const raw = await medicineApiCall<any>(url);
-  return unwrapList<Medicine>(raw, 'medicines', 'data', 'results');
-
-  // 🟢 MOCK
-  // await delay(500);
-  // const query = q.toLowerCase();
-  // return MOCK_MEDICINES.filter(
-  //   (m) => m.name.toLowerCase().includes(query) || m.category.toLowerCase().includes(query),
-  // ).slice((page - 1) * limit, page * limit);
+  const mappedMedicines = unwrapList<any>(raw, 'medicines', 'data', 'results').map(mapMedicine);
+  
+  return {
+    success: raw.success ?? true,
+    status: raw.status ?? (mappedMedicines.length > 0 ? 'success' : 'no_match'),
+    query: raw.query ?? q,
+    country: raw.country ?? country,
+    count: raw.count ?? mappedMedicines.length,
+    medicines: mappedMedicines,
+    reason: raw.reason,
+    disclaimer: raw.disclaimer,
+  };
 }
 
 /**
@@ -296,7 +365,7 @@ export async function getMedicinesByCategory(categoryId: string, page = 1, limit
   // 🔴 REAL — active
   const url = `${ENDPOINTS.medicinesByCategory}?category=${categoryId}&page=${page}&limit=${limit}`;
   const raw = await medicineApiCall<any>(url);
-  return unwrapList<Medicine>(raw, 'medicines', 'data', 'results');
+  return unwrapList<any>(raw, 'medicines', 'data', 'results').map(mapMedicine);
 
   // 🟢 MOCK
   // await delay(600);
@@ -313,7 +382,10 @@ export async function getMedicinesByCategory(categoryId: string, page = 1, limit
 export async function getMedicineDetails(medicineId: string): Promise<Medicine | null> {
   // 🔴 REAL — active
   try {
-    return await medicineApiCall<Medicine>(ENDPOINTS.medicineDetails(medicineId));
+    const raw = await medicineApiCall<any>(ENDPOINTS.medicineDetails(medicineId));
+    // Backend wraps response as { success, medicine: { ... }, disclaimer }
+    const payload = raw?.medicine ?? raw?.data ?? raw;
+    return mapMedicine(payload);
   } catch {
     return null;
   }
@@ -351,7 +423,7 @@ export async function getRecentlyViewed(page = 1, limit = 10): Promise<Medicine[
   // 🔴 REAL — active
   const url = `${ENDPOINTS.medicineRecent}?page=${page}&limit=${limit}`;
   const raw = await medicineApiCall<any>(url);
-  return unwrapList<Medicine>(raw, 'medicines', 'data', 'results');
+  return unwrapList<any>(raw, 'medicines', 'data', 'results').map(mapMedicine);
 
   // 🟢 MOCK
   // await delay(400);
@@ -368,7 +440,7 @@ export async function getPopularMedicines(limit = 6): Promise<Medicine[]> {
   // 🔴 REAL — active
   const url = `${ENDPOINTS.medicinePopular}?limit=${limit}`;
   const raw = await medicineApiCall<any>(url);
-  return unwrapList<Medicine>(raw, 'medicines', 'data', 'results');
+  return unwrapList<any>(raw, 'medicines', 'data', 'results').map(mapMedicine);
 
   // 🟢 MOCK
   // await delay(400);

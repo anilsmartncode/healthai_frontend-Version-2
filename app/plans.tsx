@@ -125,7 +125,7 @@ export default function PlansScreen() {
               <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 2 }}>Up to {PLAN_LIMITS.FAMILY.maxFamilyMembers} Members</Text>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6 }}>
-              <Text style={[styles.price, { color: '#fff' }]}>₹199 <Text style={[styles.period, { color: 'rgba(255,255,255,0.7)' }]}>/mo</Text></Text>
+              <Text style={[styles.price, { color: '#fff' }]}>₹299 <Text style={[styles.period, { color: 'rgba(255,255,255,0.7)' }]}>/mo</Text></Text>
             </View>
           </View>
 
@@ -159,7 +159,7 @@ export default function PlansScreen() {
         </View>
 
         {/* Restore Purchases Button */}
-        <Pressable 
+        <Pressable
           style={{ paddingVertical: 20, alignItems: 'center', marginTop: 10 }}
           onPress={async () => {
             try {
@@ -169,7 +169,7 @@ export default function PlansScreen() {
               } else {
                 alert('No active subscriptions found to restore.');
               }
-            } catch(e) {
+            } catch (e) {
               alert('Failed to restore purchases.');
             }
           }}

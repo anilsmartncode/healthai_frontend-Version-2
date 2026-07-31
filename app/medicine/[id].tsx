@@ -35,6 +35,8 @@ export default function MedicineDetail() {
   const [translatedUses, setTranslatedUses] = useState<string | null>(null);
   const [translatedDosage, setTranslatedDosage] = useState<string | null>(null);
   const [translatedSideEffects, setTranslatedSideEffects] = useState<string[] | null>(null);
+  const [translatedDescription, setTranslatedDescription] = useState<string | null>(null);
+  const [translatedWarnings, setTranslatedWarnings] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -70,6 +72,8 @@ export default function MedicineDetail() {
 
       if (medicine.uses) { texts.push(medicine.uses); keys.push({ key: 'uses' }); }
       if (medicine.dosage) { texts.push(medicine.dosage); keys.push({ key: 'dosage' }); }
+      if (medicine.description) { texts.push(medicine.description); keys.push({ key: 'description' }); }
+      if (medicine.warnings) { texts.push(medicine.warnings); keys.push({ key: 'warnings' }); }
       if (medicine.sideEffects) {
         medicine.sideEffects.forEach((se, i) => {
           texts.push(se); keys.push({ key: 'sideEffect', index: i });
@@ -91,6 +95,8 @@ export default function MedicineDetail() {
             const translated = pieces[idx];
             if (meta.key === 'uses') setTranslatedUses(translated);
             if (meta.key === 'dosage') setTranslatedDosage(translated);
+            if (meta.key === 'description') setTranslatedDescription(translated);
+            if (meta.key === 'warnings') setTranslatedWarnings(translated);
             if (meta.key === 'sideEffect') newSideEffects.push(translated);
           });
           if (newSideEffects.length > 0) setTranslatedSideEffects(newSideEffects);
@@ -168,6 +174,14 @@ export default function MedicineDetail() {
           </Pressable>
         </View>
 
+        {/* ── Description ── */}
+        {medicine.description ? (
+          <View style={styles.infoBlock}>
+            <Text style={styles.infoLabel}>DESCRIPTION</Text>
+            <Text style={styles.infoBody}>{translatedDescription ?? medicine.description}</Text>
+          </View>
+        ) : null}
+
         {/* ── Uses ── */}
         {medicine.uses ? (
           <View style={styles.infoBlock}>
@@ -183,6 +197,62 @@ export default function MedicineDetail() {
             <Text style={styles.infoBody}>{translatedDosage ?? medicine.dosage}</Text>
           </View>
         ) : null}
+
+        {/* ── Warnings ── */}
+        {medicine.warnings ? (
+          <View style={styles.infoBlock}>
+            <Text style={styles.infoLabel}>WARNINGS</Text>
+            <Text style={[styles.infoBody, { color: '#B91C1C' }]}>{translatedWarnings ?? medicine.warnings}</Text>
+          </View>
+        ) : null}
+
+        {/* ── AI Summary ── */}
+        {medicine.aiSummary ? (
+          <View style={[styles.infoBlock, { backgroundColor: '#F0FDF4', padding: 12, borderRadius: 8, marginTop: 4, borderWidth: 1, borderColor: '#DCFCE7' }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <Ionicons name="sparkles" size={16} color="#16A34A" />
+              <Text style={[styles.infoLabel, { color: '#16A34A', marginBottom: 0 }]}>AI SUMMARY</Text>
+            </View>
+            <Text style={[styles.infoBody, { color: '#064E3B' }]}>{medicine.aiSummary}</Text>
+          </View>
+        ) : null}
+
+        {/* ── Patient Summary ── */}
+        {medicine.patientSummary && expanded && (
+          <View style={[styles.infoBlock, { backgroundColor: '#F0F9FF', padding: 16, borderRadius: 12, marginTop: 8 }]}>
+            <Text style={[styles.infoLabel, { color: '#0369A1', marginBottom: 12 }]}>AI PATIENT SUMMARY</Text>
+            {medicine.patientSummary.overview && (
+              <View style={{ marginBottom: 12 }}>
+                <Text style={{ fontWeight: '600', color: '#0C4A6E', marginBottom: 4 }}>Overview</Text>
+                <Text style={{ color: '#0F172A', lineHeight: 20 }}>{medicine.patientSummary.overview}</Text>
+              </View>
+            )}
+            {medicine.patientSummary.howItWorks && (
+              <View style={{ marginBottom: 12 }}>
+                <Text style={{ fontWeight: '600', color: '#0C4A6E', marginBottom: 4 }}>How It Works</Text>
+                <Text style={{ color: '#0F172A', lineHeight: 20 }}>{medicine.patientSummary.howItWorks}</Text>
+              </View>
+            )}
+            {medicine.patientSummary.administration && (
+              <View style={{ marginBottom: 12 }}>
+                <Text style={{ fontWeight: '600', color: '#0C4A6E', marginBottom: 4 }}>Administration</Text>
+                <Text style={{ color: '#0F172A', lineHeight: 20 }}>{medicine.patientSummary.administration}</Text>
+              </View>
+            )}
+            {medicine.patientSummary.safety && (
+              <View style={{ marginBottom: 12 }}>
+                <Text style={{ fontWeight: '600', color: '#0C4A6E', marginBottom: 4 }}>Safety & Precautions</Text>
+                <Text style={{ color: '#0F172A', lineHeight: 20 }}>{medicine.patientSummary.safety}</Text>
+              </View>
+            )}
+            {medicine.patientSummary.whenToSeekMedicalHelp && (
+              <View style={{ marginBottom: 4 }}>
+                <Text style={{ fontWeight: '600', color: '#991B1B', marginBottom: 4 }}>When to Seek Medical Help</Text>
+                <Text style={{ color: '#0F172A', lineHeight: 20 }}>{medicine.patientSummary.whenToSeekMedicalHelp}</Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* ── Side Effects ── */}
         {(translatedSideEffects || medicine.sideEffects) && (translatedSideEffects || medicine.sideEffects)!.length > 0 && (

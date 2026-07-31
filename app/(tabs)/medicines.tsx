@@ -451,11 +451,32 @@ export default function Medicines() {
             <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
           </Pressable>
 
+          {/* ── Recently Viewed ── */}
+          {/* @ts-ignore - recentlyViewed might be defined in the original branch */}
+          {typeof recentlyViewed !== 'undefined' && recentlyViewed.length > 0 && (
+            <View style={[styles.section, { marginTop: 20 }]}>
+              <View style={styles.secHeader}>
+                <Text style={styles.secTitle}>Recently Viewed</Text>
+                <Pressable onPress={handleBrowseAll}>
+                  <Text style={styles.viewAll}>View All</Text>
+                </Pressable>
+              </View>
+              <View style={styles.medList}>
+                {recentlyViewed.slice(0, 5).map((med: any, idx: number) => (
+                  <MedicineRow
+                    key={`recent_${med.id}_${idx}`}
+                    med={med}
+                    onPress={() => handleMedicinePress(med)}
+                  />
+                ))}
+              </View>
+            </View>
+          )}
+
           {/* Safety banner */}
           <View style={styles.safetyBanner}>
             <View style={styles.safetyIcon}>
               <Ionicons name="shield-checkmark" size={18} color={Colors.primary} />
-            </View>
             <Text style={styles.safetyText}>
               <Text style={styles.safetyBold}>Safety First. </Text>
               We never share your medicine information. Your health data is 100% secure.
