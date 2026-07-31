@@ -25,21 +25,9 @@ const ACTIONS: {
   },
   { icon: "people-outline", key: "add_family", route: "/family", bg: "#F0FDF4" },
   {
-    icon: "chatbubble-ellipses-outline",
-    key: "ask_ai",
-    route: "/(tabs)/ai",
-    bg: "#FDF4FF",
-  },
-  {
-    icon: "location-outline",
-    key: "nav_nearby",
-    route: "/(tabs)/nearby",
-    bg: "#ECFDF5",
-  },
-  {
-    icon: "medkit-outline",
-    key: "nav_medicines",
-    route: "/(tabs)/medicines",
+    icon: "alarm-outline",
+    key: "medicine_reminder",
+    route: "/medicines/reminders",
     bg: "#FFF1F2",
   },
 ];
@@ -51,22 +39,17 @@ export function QuickActions() {
     <View style={styles.wrapper}>
       <Text style={styles.heading}>{t("quick_actions")}</Text>
 
-      {/* 
-        Two-column grid using flex row + wrap.
-        Each card is ~48% wide so two fit per row with the gap accounted for.
-        Using percentage width is responsive across all screen sizes.
-      */}
-      <View style={styles.grid}>
+      <View style={styles.list}>
         {ACTIONS.map((a) => (
           <Pressable
             key={a.key}
-            style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.listItem, pressed && styles.pressed]}
             onPress={() => router.push(a.route as any)}
           >
             <View style={[styles.iconWrap, { backgroundColor: a.bg }]}>
               <Ionicons name={a.icon as any} size={22} color={Colors.primary} />
             </View>
-            <Text style={styles.label} numberOfLines={2}>
+            <Text style={styles.label} numberOfLines={1}>
               {t(a.key)}
             </Text>
           </Pressable>
@@ -85,20 +68,18 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: Colors.text,
   },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+  list: {
     gap: 10,
   },
-  card: {
-    // ~48% keeps two cards per row regardless of screen width
-    // The 10px gap between them is handled by parent's gap
-    width: "48%",
-    flexGrow: 1, // allows slight stretch on wide screens
+  listItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: Colors.surface,
     borderRadius: Radius.lg,
-    padding: 14,
-    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    gap: 10,
     borderWidth: 1,
     borderColor: Colors.border,
   },
@@ -106,15 +87,15 @@ const styles = StyleSheet.create({
     opacity: 0.75,
   },
   iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
     flexShrink: 0,
   },
   label: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "600",
     color: Colors.text,
   },

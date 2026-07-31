@@ -55,7 +55,7 @@ export function FamilyHealthCard() {
           <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
         </View>
 
-        {!loading && members.length > 0 && (
+        {!loading && (
           <View style={styles.avatarsRow}>
             {members.map((member) => {
               const initials = getInitials(member.name);
@@ -68,11 +68,23 @@ export function FamilyHealthCard() {
                     <View style={[styles.scoreDot, { backgroundColor: color }]} />
                   </View>
                   <Text style={styles.memberName} numberOfLines={1}>
-                    {member.relationship}
+                    {member.name}
                   </Text>
                 </View>
               );
             })}
+            
+            <Pressable 
+              style={styles.avatarContainer}
+              onPress={() => router.push('/family/add-member')}
+            >
+              <View style={[styles.avatar, { borderColor: '#CBD5E1', borderStyle: 'dashed', backgroundColor: '#F8FAFC' }]}>
+                <Ionicons name="add" size={22} color="#94A3B8" />
+              </View>
+              <Text style={styles.memberName} numberOfLines={1}>
+                Add
+              </Text>
+            </Pressable>
           </View>
         )}
       </Card>

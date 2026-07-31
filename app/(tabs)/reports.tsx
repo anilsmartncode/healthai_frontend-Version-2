@@ -280,30 +280,19 @@ export default function ReportsScreen() {
 
       {/* Upload card */}
       <View style={styles.uploadCard}>
-        <View style={styles.uploadLeft}>
-          {/* <View style={styles.uploadFolder}>
-            <Ionicons name="folder-open" size={28} color={Colors.primary} />
-            <View style={styles.uploadPlus}>
-              <Ionicons name="add" size={12} color="#fff" />
-            </View>
-          </View> */}
-          <Text style={styles.uploadTitle}>Upload your health reports</Text>
-          <Text style={styles.uploadSub}>
-            Get AI insights, health score and personalized recommendations.
-          </Text>
-          <Pressable
-            style={styles.uploadBtn}
-            onPress={() => router.push('/upload')}
-          >
-            <Ionicons name="add" size={16} color="#fff" />
-            <Text style={styles.uploadBtnText}>Upload Report</Text>
-          </Pressable>
+        <View style={styles.uploadIconWrap}>
+          <Ionicons name="document-text" size={32} color={Colors.primary} />
         </View>
-        <Pressable style={styles.dropZone} onPress={() => router.push('/upload')}>
-          <Ionicons name="cloud-upload-outline" size={28} color={Colors.primary} />
-          <Text style={styles.dropText}>
-            Drag & drop or <Text style={styles.dropBrowse}>browse</Text>
-          </Text>
+        <Text style={styles.uploadTitle}>Upload your health reports</Text>
+        <Text style={styles.uploadSub}>
+          Get AI insights, health score and personalized recommendations.
+        </Text>
+        <Pressable
+          style={styles.uploadBtn}
+          onPress={() => router.push('/upload')}
+        >
+          <Ionicons name="add" size={18} color="#fff" />
+          <Text style={styles.uploadBtnText}>Upload Report</Text>
         </Pressable>
       </View>
 
@@ -495,66 +484,38 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, height: 44, fontSize: 15, color: Colors.text },
 
   uploadCard: {
-    flexDirection: 'row',
-    gap: 12,
     backgroundColor: '#ECFDF5',
-    borderRadius: 18,
+    borderRadius: Radius.xl,
     borderWidth: 1,
     borderColor: '#BBF7D0',
-    padding: 14,
+    padding: 24,
     marginBottom: 14,
+    alignItems: 'center',
   },
-  uploadLeft: { flex: 1.2 },
-  uploadFolder: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+  uploadIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: '#DCFCE7',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
-  uploadPlus: {
-    position: 'absolute',
-    right: -2,
-    bottom: -2,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#ECFDF5',
-  },
-  uploadTitle: { fontSize: 15, fontWeight: '700', color: '#166534' },
-  uploadSub: { marginTop: 4, fontSize: 12, color: Colors.textMuted, lineHeight: 17 },
+  uploadTitle: { fontSize: 18, fontWeight: '700', color: '#166534', textAlign: 'center' },
+  uploadSub: { marginTop: 6, fontSize: 13, color: Colors.textMuted, lineHeight: 18, textAlign: 'center', paddingHorizontal: 10 },
   uploadBtn: {
-    alignSelf: 'flex-start',
-    marginTop: 12,
+    marginTop: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.primary,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-  },
-  uploadBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
-  dropZone: {
-    flex: 0.9,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: '#86EFAC',
-    borderRadius: 14,
-    backgroundColor: '#F0FDF4',
-    alignItems: 'center',
     justifyContent: 'center',
-    padding: 10,
     gap: 6,
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.pill,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    width: '100%',
   },
-  dropText: { fontSize: 11, color: Colors.textMuted, textAlign: 'center' },
-  dropBrowse: { color: Colors.primary, fontWeight: '700' },
+  uploadBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 
   tabsScroll: { marginBottom: 14, maxHeight: 44 },
   tabsRow: { flexDirection: 'row', gap: 8, paddingRight: 8 },

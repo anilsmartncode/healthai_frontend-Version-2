@@ -87,12 +87,10 @@ export default function AIHomeScreen() {
         >
           {/* Brand row */}
           <View style={styles.brandRow}>
-            <View>
-              <Text style={styles.brandName}>HealthAI</Text>
-              <Text style={styles.brandSub}>Your AI Health Companion</Text>
-            </View>
+            <Text style={styles.brandName}>HealthAI</Text>
+            <Text style={styles.brandSub}>Your AI Health Companion</Text>
             <Pressable style={styles.historyBtn} onPress={() => router.push('/ai-history')} hitSlop={8}>
-              <Ionicons name="time-outline" size={24} color={C.text} />
+              <Ionicons name="time-outline" size={20} color={C.text} />
             </Pressable>
           </View>
 
@@ -142,13 +140,14 @@ export default function AIHomeScreen() {
                 }
               </Pressable>
             </View>
+            <Text style={styles.disclaimerText}>Your health matters. Use these insights as a guide and reach out to a healthcare professional when needed.</Text>
           </View>
 
           {/* Section label */}
-          <Text style={styles.sectionLabel}>Or try one of these</Text>
+          {/* <Text style={styles.sectionLabel}>Or try one of these</Text> */}
 
           {/* Quick actions grid — 4 columns */}
-          <View style={styles.grid}>
+          {/* <View style={styles.grid}>
             {QUICK_ACTIONS.map((a) => (
               <Pressable
                 key={a.label}
@@ -164,20 +163,15 @@ export default function AIHomeScreen() {
                 <Text style={styles.gridLabel} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>{a.label}</Text>
               </Pressable>
             ))}
-          </View>
+          </View> */}
 
           {/* Privacy Promise banner */}
           <Pressable style={styles.privacyBanner}>
-            <View style={styles.privacyIconWrap}>
-              <Ionicons name="shield-checkmark-outline" size={20} color={C.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.privacyTitle}>HealthAI Privacy Promise</Text>
-              <Text style={styles.privacySub}>
-                Your health data is 100% safe and secure with end-to-end encryption.
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color={C.textMuted} />
+            <Ionicons name="shield-checkmark-outline" size={24} color={C.primary} style={{ marginBottom: 6 }} />
+            <Text style={styles.privacyTitle}>HealthAI Privacy Promise</Text>
+            <Text style={styles.privacySub}>
+              Your health data is 100% safe and secure with end-to-end encryption.
+            </Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -190,19 +184,19 @@ const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 20, paddingTop: 14 },
 
   brandRow: {
-    flexDirection: 'row', alignItems: 'flex-start',
-    justifyContent: 'space-between', marginBottom: 14,
+    alignItems: 'center', marginBottom: 24, position: 'relative',
   },
-  brandName: { fontSize: 26, fontWeight: '800', color: C.primary, letterSpacing: -0.3 },
-  brandSub: { fontSize: 12, color: C.textMuted, marginTop: 1 },
+  brandName: { fontSize: 26, fontWeight: '800', color: C.primary, letterSpacing: -0.3, textAlign: 'center' },
+  brandSub: { fontSize: 12, color: C.textMuted, marginTop: 1, textAlign: 'center' },
   historyBtn: {
-    width: 44, height: 44, borderRadius: 22,
+    position: 'absolute', right: 0, top: 0,
+    width: 40, height: 40, borderRadius: 20,
     backgroundColor: C.surface, borderWidth: 1, borderColor: C.border,
     alignItems: 'center', justifyContent: 'center',
   },
 
-  greeting: { fontSize: 20, fontWeight: '700', color: C.text, marginBottom: 2 },
-  subtitle: { fontSize: 14, color: C.textMuted, marginBottom: 16 },
+  greeting: { fontSize: 20, fontWeight: '700', color: C.text, marginBottom: 4, textAlign: 'center' },
+  subtitle: { fontSize: 14, color: C.textMuted, marginBottom: 24, textAlign: 'center' },
 
   heroWrap: {
     alignItems: 'center', justifyContent: 'center',
@@ -229,8 +223,15 @@ const styles = StyleSheet.create({
   nurseImage: { width: 200, height: 200 },
 
   inputRow: {
-    marginBottom: 24,
+    marginBottom: 20,
     paddingHorizontal: 16,
+  },
+  disclaimerText: {
+    fontSize: 11,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginTop: 10,
+    paddingHorizontal: 12,
   },
   inputWrap: {
     flexDirection: 'row', alignItems: 'flex-end',
@@ -290,18 +291,14 @@ const styles = StyleSheet.create({
   gridLabel: { fontSize: 11, fontWeight: '600', color: C.text, textAlign: 'center', lineHeight: 15 },
 
   privacyBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
+    alignItems: 'center',
     backgroundColor: '#EFF6FF',
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1, borderColor: '#BFDBFE',
-    padding: 14,
+    padding: 20,
+    marginHorizontal: 16,
+    marginTop: 10,
   },
-  privacyIconWrap: {
-    width: 38, height: 38, borderRadius: 10,
-    backgroundColor: '#DBEAFE',
-    alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0,
-  },
-  privacyTitle: { fontSize: 13, fontWeight: '700', color: C.text },
-  privacySub: { fontSize: 11, color: C.textMuted, marginTop: 2, lineHeight: 16 },
+  privacyTitle: { fontSize: 14, fontWeight: '700', color: C.text, textAlign: 'center' },
+  privacySub: { fontSize: 12, color: C.textMuted, marginTop: 4, lineHeight: 18, textAlign: 'center' },
 });

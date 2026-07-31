@@ -576,6 +576,7 @@ export default function AIChatScreen() {
               }
             </Pressable>
           </View>
+          <Text style={styles.disclaimerText}>Your health matters. Use these insights as a guide and reach out to a healthcare professional when needed.</Text>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -616,6 +617,14 @@ const styles = StyleSheet.create({
   inputBar: {
     paddingHorizontal: 16, paddingTop: 12,
     backgroundColor: C.chatBg,
+  },
+  disclaimerText: {
+    fontSize: 10,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginTop: 10,
+    paddingHorizontal: 8,
+    lineHeight: 14,
   },
   inputWrap: { 
     flexDirection: 'row', alignItems: 'flex-end',
