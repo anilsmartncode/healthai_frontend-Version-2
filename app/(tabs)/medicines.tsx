@@ -73,6 +73,40 @@ function LibraryCard({
   );
 }
 
+// ─── MEDICINE ROW ─────────────────────────────────────────────────────────────
+function MedicineRow({
+  med,
+  onPress,
+}: {
+  med: Medicine;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.medRow, pressed && { opacity: 0.75 }]}
+      onPress={onPress}
+    >
+      <View style={[styles.medIcon, { backgroundColor: Colors.primary + '15' }]}>
+        <Ionicons name="medical-outline" size={18} color={Colors.primary} />
+      </View>
+      <View style={styles.medInfo}>
+        <Text style={styles.medName}>{med.name}</Text>
+        <Text style={styles.medSub}>
+          {med.form} · {med.category}
+        </Text>
+      </View>
+      <View style={styles.medRight}>
+        {med.rx && (
+          <View style={styles.rxPill}>
+            <Text style={styles.rxText}>Rx</Text>
+          </View>
+        )}
+        <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+      </View>
+    </Pressable>
+  );
+}
+
 export default function Medicines() {
   const [searchQ, setSearchQ] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -477,6 +511,7 @@ export default function Medicines() {
           <View style={styles.safetyBanner}>
             <View style={styles.safetyIcon}>
               <Ionicons name="shield-checkmark" size={18} color={Colors.primary} />
+            </View>
             <Text style={styles.safetyText}>
               <Text style={styles.safetyBold}>Safety First. </Text>
               We never share your medicine information. Your health data is 100% secure.
@@ -595,6 +630,36 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   secTitle: { fontSize: 16, fontWeight: '700', color: Colors.text },
+  viewAll: { fontSize: 13, fontWeight: '600', color: Colors.primary },
+  medList: { gap: 12 },
+  medRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 0.5,
+    borderColor: '#E2E8F0',
+    padding: 12,
+  },
+  medIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  medInfo: { flex: 1 },
+  medSub: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
+  medRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  rxPill: {
+    backgroundColor: '#FEE2E2',
+    borderRadius: 99,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  rxText: { fontSize: 10, fontWeight: '700', color: '#B91C1C' },
   linkRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   linkTxt: { fontSize: 13, fontWeight: '600', color: Colors.primary },
 
