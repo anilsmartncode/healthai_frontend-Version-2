@@ -313,7 +313,8 @@ export default function BrowseAllMedicines() {
     const fetch = async () => {
       let data: Medicine[];
       if (query) {
-        data = await searchMedicines(query);
+        const res = await searchMedicines(query);
+        data = res.medicines;
       } else {
         data = await getMedicinesByCategory(selectedCat!);
       }

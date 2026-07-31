@@ -143,7 +143,7 @@ export default function CheckInteraction() {
     let cancelled = false;
     const t = setTimeout(async () => {
       const results = await searchMedicinesForInteraction(query);
-      if (!cancelled) setSuggestions(results.slice(0, 5));
+      if (!cancelled) setSuggestions(results.medicines.slice(0, 5));
     }, 350);
     return () => { cancelled = true; clearTimeout(t); };
   }, [query]);

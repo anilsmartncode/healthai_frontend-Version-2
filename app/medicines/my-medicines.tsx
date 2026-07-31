@@ -193,9 +193,9 @@ export default function MyMedicinesScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
           <Text style={styles.countLabel}>{medicines.length} medicine{medicines.length !== 1 ? 's' : ''} saved</Text>
-          {medicines.map((med) => (
+          {medicines.map((med, idx) => (
             <MedicineCard
-              key={med.id}
+              key={`${med.id}_${idx}`}
               med={med}
               onRemove={() => handleRemove(med)}
               onReminder={() => handleReminder(med)}

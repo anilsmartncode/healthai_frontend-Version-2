@@ -45,6 +45,13 @@ function mapMedicine(raw: any): Medicine {
     prescriptionType: (raw.rx !== undefined) ? (raw.rx ? 'Rx' : 'OTC') : (raw.prescriptionType ?? raw.prescription_type ?? 'OTC'),
     isSaved: raw.isSaved ?? raw.is_saved,
     imageUrl: raw.imageUrl ?? raw.image_url,
+    description: raw.description,
+    warnings: raw.warnings,
+    aiSummary: raw.aiSummary ?? raw.ai_summary,
+    aiSummaryDetails: raw.aiSummaryDetails ?? raw.ai_summary_details,
+    patientSummary: raw.patientSummary ?? raw.patient_summary,
+    aiGenerated: raw.ai_generated ?? raw.aiGenerated,
+    isVerified: raw.is_verified ?? raw.isVerified,
   };
 }
 
@@ -92,6 +99,36 @@ export interface Medicine {
   prescriptionType: PrescriptionType;
   isSaved?: boolean;
   imageUrl?: string;
+  description?: string;
+  warnings?: string;
+  aiSummary?: string;
+  aiSummaryDetails?: {
+    uses?: string;
+    howItHelps?: string;
+    dosageNote?: string;
+    safetyNote?: string;
+    sideEffects?: string;
+  };
+  patientSummary?: {
+    overview?: string;
+    howItWorks?: string;
+    administration?: string;
+    safety?: string;
+    whenToSeekMedicalHelp?: string;
+  };
+  aiGenerated?: boolean;
+  isVerified?: boolean;
+}
+
+export interface SearchMedicinesResponse {
+  success: boolean;
+  status: 'success' | 'no_match';
+  query: string;
+  country: string;
+  count: number;
+  medicines: Medicine[];
+  reason?: string;
+  disclaimer?: string;
 }
 
 export interface Reminder {
@@ -165,14 +202,38 @@ export async function getCategories(): Promise<Category[]> {
 
 /**
  * API 2 – Search Medicines
- * GET /api/medicines/search?q={query}&page=1&limit=20
+ * GET /api/medicines/search?q={query}&page=1&limit=20&country=Global
  * Expected time: ~0.4 – 0.8 s
  */
-export async function searchMedicines(query: string, page = 1, limit = 20): Promise<Medicine[]> {
+export async function searchMedicines(
+  query: string, 
+  page = 1, 
+  limit = 20, 
+  country = 'Global',
+  asOfDate?: string
+): Promise<SearchMedicinesResponse> {
   // 🔴 REAL — active
-  const url = `${ENDPOINTS.medicineSearch}?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`;
+  let url = `${ENDPOINTS.medicineSearch}?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}&country=${encodeURIComponent(country)}`;
+  if (asOfDate) {
+    url += `&as_of_date=${encodeURIComponent(asOfDate)}`;
+  }
+  
   const raw = await medicineApiCall<any>(url);
-  return unwrapList<any>(raw, 'medicines', 'data', 'results').map(mapMedicine);
+  
+  // Map medicines array
+  const rawMeds = unwrapList<any>(raw, 'medicines', 'data', 'results');
+  const mappedMedicines = rawMeds.map(mapMedicine);
+  
+  return {
+    success: raw.success ?? true,
+    status: raw.status ?? (mappedMedicines.length > 0 ? 'success' : 'no_match'),
+    query: raw.query ?? query,
+    country: raw.country ?? country,
+    count: raw.count ?? mappedMedicines.length,
+    medicines: mappedMedicines,
+    reason: raw.reason,
+    disclaimer: raw.disclaimer,
+  };
 
   // 🟢 MOCK
   // await delay(500);
@@ -430,8 +491,14 @@ export async function updateReminder(
   // 🔴 REAL — active
   const body: Record<string, unknown> = {};
   if (payload.time !== undefined) body.reminder_time = payload.time;
-  if (payload.frequency !== undefined) body.frequency = FREQ_API_MAP[payload.frequency];
-  if (payload.whenToTake !== undefined) body.when_to_take = WHEN_API_MAP[payload.whenToTake];
+  if (payload.frequency !== undefined) {
+    const fKey = payload.frequency.toLowerCase() as ReminderFrequency;
+    body.frequency = FREQ_API_MAP[fKey] || payload.frequency;
+  }
+  if (payload.whenToTake !== undefined) {
+    const wKey = payload.whenToTake.toLowerCase().replace(' ', '_').replace('at_', '') as WhenToTake;
+    body.when_to_take = WHEN_API_MAP[wKey] || payload.whenToTake;
+  }
   if (payload.enabled !== undefined) body.is_active = payload.enabled;
   return medicineApiCall(ENDPOINTS.reminderUpdate(reminderId), { method: 'PUT', body });
 

@@ -114,24 +114,7 @@ export default function RootLayout() {
     }
   }, [pathname, params]);
 
-  // Initialize RevenueCat
-  useEffect(() => {
-    const initPurchases = async () => {
-      try {
-        Purchases.setLogLevel(LOG_LEVEL.DEBUG);
-        const apiKey = getRevenueCatKey();
-        if (apiKey) {
-          Purchases.configure({ apiKey });
-          console.log('[RevenueCat] Initialized successfully.');
-        } else {
-          console.warn('[RevenueCat] No API key found for this platform.');
-        }
-      } catch (e) {
-        console.error('[RevenueCat] Initialization failed:', e);
-      }
-    };
-    initPurchases();
-  }, []);
+
 
   // Global Notification Listener setup
   useEffect(() => {
@@ -150,6 +133,7 @@ export default function RootLayout() {
         try {
           await medicineApiCall(ENDPOINTS.reminderTaken(reminderId), { method: 'POST' });
           await cancelReminderNotification(reminderId);
+          await Notifications.dismissNotificationAsync(response.notification.request.identifier);
         } catch (e) {
           console.warn('[Notifications] Background taken API failed:', e);
         }
@@ -157,6 +141,7 @@ export default function RootLayout() {
         try {
           const snoozeDate = new Date(Date.now() + 10 * 60 * 1000); // 10 mins from now
           await scheduleReminderNotification(reminderId, title, body, snoozeDate);
+          await Notifications.dismissNotificationAsync(response.notification.request.identifier);
         } catch (e) {
           console.warn('[Notifications] Background snooze failed:', e);
         }

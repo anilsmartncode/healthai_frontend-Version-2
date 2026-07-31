@@ -362,9 +362,9 @@ export default function Medicines() {
                 </Pressable>
               </View>
               <View style={styles.medList}>
-                {recentlyViewed.slice(0, 5).map((med) => (
+                {recentlyViewed.slice(0, 5).map((med, idx) => (
                   <MedicineRow
-                    key={med.id}
+                    key={`recent_${med.id}_${idx}`}
                     med={med}
                     onPress={() => handleMedicinePress(med)}
                   />

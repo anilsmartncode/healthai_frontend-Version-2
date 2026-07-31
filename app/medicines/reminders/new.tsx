@@ -84,7 +84,7 @@ function MedicinePicker({
       setIsSearching(true);
       const delayDebounce = setTimeout(() => {
         searchMedicines(customName.trim(), 1, 15)
-          .then((res) => setSearchResults(res))
+          .then((res) => setSearchResults(res.medicines))
           .catch(() => setSearchResults([]))
           .finally(() => setIsSearching(false));
       }, 500);
