@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PLAN_LIMITS, DEFAULT_TESTING_PLAN, PlanType } from '../constants/plans';
 import Purchases, { LOG_LEVEL } from 'react-native-purchases';
@@ -125,52 +126,88 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(USAGE_STORAGE_KEY, JSON.stringify(newStats));
   };
 
+  const traceAlert = (title: string, msg: string): Promise<void> => {
+    return new Promise(resolve => {
+      Alert.alert(title, msg, [{ text: 'Next', onPress: () => resolve() }]);
+    });
+  };
+
   const upgradeToPremium = async () => {
     try {
+      await traceAlert('Trace 1/4', 'Connecting to RevenueCat...');
       await ensureRevenueCat();
-      // In a real flow, you would fetch offerings and purchase the specific package.
-      // Here we simulate picking the Premium product for testing integration.
+      
+      await traceAlert('Trace 2/4', 'RevenueCat connected. Fetching packages from Apple...');
       const offerings = await Purchases.getOfferings();
+      
       if (offerings.current !== null && offerings.current.availablePackages.length !== 0) {
-        // Find package mapping to premium
         const premiumPackage = offerings.current.availablePackages.find(p => 
           p.product.identifier === STORE_PRODUCTS.premium.ios || p.product.identifier === STORE_PRODUCTS.premium.android
         ) || offerings.current.availablePackages[0];
         
+        await traceAlert('Trace 3/4', `Found package: ${premiumPackage.product.identifier}.\n\nSending request to App Store. Please authenticate when prompted...`);
+        
         const { customerInfo } = await Purchases.purchasePackage(premiumPackage);
+        
+        await traceAlert('Trace 4/4', 'App Store purchase successful!\n\nVerifying entitlements with RevenueCat...');
+        
         if (typeof customerInfo.entitlements.active[ENTITLEMENTS.PREMIUM] !== "undefined") {
           setActivePlan('PREMIUM');
           await AsyncStorage.setItem('@healthai_active_plan', 'PREMIUM');
+          Alert.alert('Success', 'Upgraded to Premium!');
+        } else {
+          Alert.alert('Entitlement Failed', 'App Store purchase succeeded, but RevenueCat did not grant the Premium entitlement. Check your RevenueCat Entitlement mapping.');
         }
+      } else {
+        Alert.alert('Configuration Error', 'No offerings found in RevenueCat. Check App Store Connect agreements and product IDs.');
       }
     } catch (e: any) {
       if (!e.userCancelled) {
         console.error('Purchase failed:', e);
+        Alert.alert('Payment Failed', `The process stopped here with this error:\n\nCode: ${e.code}\nMessage: ${e.message}\n\nUnderlying Error: ${e.underlyingErrorMessage || 'None'}`);
         throw e;
+      } else {
+        Alert.alert('Cancelled', 'Payment was cancelled by the user.');
       }
     }
   };
 
   const upgradeToFamily = async () => {
     try {
+      await traceAlert('Trace 1/4', 'Connecting to RevenueCat...');
       await ensureRevenueCat();
+      
+      await traceAlert('Trace 2/4', 'RevenueCat connected. Fetching packages from Apple...');
       const offerings = await Purchases.getOfferings();
+      
       if (offerings.current !== null && offerings.current.availablePackages.length !== 0) {
-        // Find package mapping to family
         const familyPackage = offerings.current.availablePackages.find(p => 
           p.product.identifier === STORE_PRODUCTS.family.ios || p.product.identifier === STORE_PRODUCTS.family.android
         ) || offerings.current.availablePackages[1] || offerings.current.availablePackages[0];
         
+        await traceAlert('Trace 3/4', `Found package: ${familyPackage.product.identifier}.\n\nSending request to App Store. Please authenticate when prompted...`);
+        
         const { customerInfo } = await Purchases.purchasePackage(familyPackage);
+        
+        await traceAlert('Trace 4/4', 'App Store purchase successful!\n\nVerifying entitlements with RevenueCat...');
+        
         if (typeof customerInfo.entitlements.active[ENTITLEMENTS.FAMILY] !== "undefined") {
           setActivePlan('FAMILY');
           await AsyncStorage.setItem('@healthai_active_plan', 'FAMILY');
+          Alert.alert('Success', 'Upgraded to Family Plan!');
+        } else {
+          Alert.alert('Entitlement Failed', 'App Store purchase succeeded, but RevenueCat did not grant the Family entitlement. Check your RevenueCat Entitlement mapping.');
         }
+      } else {
+        Alert.alert('Configuration Error', 'No offerings found in RevenueCat.');
       }
     } catch (e: any) {
       if (!e.userCancelled) {
         console.error('Purchase failed:', e);
+        Alert.alert('Payment Failed', `The process stopped here with this error:\n\nCode: ${e.code}\nMessage: ${e.message}\n\nUnderlying Error: ${e.underlyingErrorMessage || 'None'}`);
         throw e;
+      } else {
+        Alert.alert('Cancelled', 'Payment was cancelled by the user.');
       }
     }
   };
