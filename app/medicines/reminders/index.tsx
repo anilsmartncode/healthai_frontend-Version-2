@@ -34,7 +34,7 @@ import { Colors, Radius, Spacing } from '@/constants/Colors';
 import { CustomTimePicker } from '@/components/medicines/CustomTimePicker';
 import { ENDPOINTS } from '@/constants/api';
 import { medicineApiCall } from '@/services/Medicineapiclient';
-import { requestNotificationPermissions, cancelReminderNotification } from '@/utils/notifications';
+import { requestNotificationPermissions, cancelReminderNotification, scheduleReminderNotification, parseTimeStringToNextDate } from '@/utils/notifications';
 import { updateReminder } from '@/services/medicineTabApi';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
@@ -226,7 +226,13 @@ export default function RemindersScreen() {
         console.log('=== REMINDERS SCREEN API RESPONSE (TODAY) ===', JSON.stringify(res, null, 2));
         const data = res?.data || res?.reminders || res || [];
         const list = Array.isArray(data) ? data : [];
-        setReminders(list.map((r: any) => ({
+        const activeList = list.filter((r: any) => 
+          r.is_active !== false && 
+          r.is_deleted !== true && 
+          r.deleted_at == null &&
+          r.status !== 'deleted'
+        );
+        setReminders(activeList.map((r: any) => ({
           id: String(r.id),
           medicineName: r.medicine_name ?? r.medicineName ?? '',
           time: r.reminder_time ?? r.time ?? '',
@@ -336,6 +342,20 @@ export default function RemindersScreen() {
         enabled: r.enabled
       });
       setReminders((prev) => prev.map((rem) => rem.id === r.id ? r : rem));
+      
+      // Update local notification scheduling
+      if (r.enabled === false) {
+        await cancelReminderNotification(r.id).catch(console.warn);
+      } else {
+        const nextDate = parseTimeStringToNextDate(r.time);
+        await scheduleReminderNotification(
+          r.id,
+          `Medicine Time: ${r.medicineName}`,
+          `${WHEN_LABELS[r.whenToTake]}`,
+          nextDate,
+          r.frequency
+        ).catch(console.warn);
+      }
     } catch (e: any) {
       Alert.alert('Error', 'Failed to update reminder');
     }
