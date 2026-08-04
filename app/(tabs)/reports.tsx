@@ -392,16 +392,24 @@ export default function ReportsScreen() {
       {/* Tools */}
       <View style={[styles.sectionCard, { marginTop: 14 }]}>
         <Text style={styles.sectionTitle}>Tools & Insights</Text>
-        <View style={styles.toolsGrid}>
+        <View style={styles.toolsList}>
           {tools.map((t) => (
             <Pressable
               key={t.key}
-              style={[styles.toolCard, { backgroundColor: t.bg }]}
+              style={({ pressed }) => [
+                styles.toolCard,
+                { backgroundColor: t.bg },
+                pressed && styles.toolCardPressed,
+              ]}
               onPress={t.onPress}
             >
-              <Ionicons name={t.icon} size={22} color={t.color} />
-              <Text style={styles.toolTitle}>{t.title}</Text>
-              <Text style={styles.toolSub}>{t.sub}</Text>
+              <View style={styles.toolIconWrap}>
+                <Ionicons name={t.icon} size={22} color={t.color} />
+              </View>
+              <View style={styles.toolInfo}>
+                <Text style={styles.toolTitle}>{t.title}</Text>
+                <Text style={styles.toolSub}>{t.sub}</Text>
+              </View>
             </Pressable>
           ))}
         </View>
@@ -616,17 +624,53 @@ const styles = StyleSheet.create({
   aiText: { flex: 1, fontSize: 12, color: '#166534', lineHeight: 17, fontWeight: '500' },
   aiLink: { fontWeight: '700', color: Colors.primary },
 
-  toolsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  toolCard: {
-    width: '47.5%',
-    flexGrow: 1,
-    borderRadius: 14,
-    padding: 14,
-    gap: 6,
-    minHeight: 100,
+  toolsList: {
+    gap: 10,
+    marginTop: 10,
   },
-  toolTitle: { fontSize: 14, fontWeight: '700', color: Colors.text },
-  toolSub: { fontSize: 11, color: Colors.textMuted, lineHeight: 15 },
+  toolCard: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
+  },
+  toolCardPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.99 }],
+  },
+  toolIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  toolInfo: {
+    justifyContent: 'center',
+    gap: 2,
+  },
+  toolTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  toolSub: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    lineHeight: 16,
+  },
 
   deleteAction: {
     backgroundColor: Colors.danger,

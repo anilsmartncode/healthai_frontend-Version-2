@@ -20,6 +20,7 @@ import type { ChatMessage } from '@/types';
 import { api } from '@/services/api';
 import { ENDPOINTS } from '@/constants/api';
 import { LanguageSelectModal } from '@/components/ui/LanguageSelectModal';
+import * as Clipboard from 'expo-clipboard';
 
 const C = {
   primary:   '#2563EB',
@@ -68,6 +69,20 @@ function ChatBubble({ message }: { message: ChatMessage }) {
   const [langModalOpen, setLangModalOpen] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [translatedText, setTranslatedText] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const textToCopy = translatedText ?? message.text;
+
+  const handleCopy = async () => {
+    if (!textToCopy) return;
+    try {
+      await Clipboard.setStringAsync(textToCopy);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.warn('[Clipboard] Failed to copy text:', err);
+    }
+  };
 
   const handleTranslate = async (langCode: string, langName: string) => {
     setTranslating(true);
@@ -92,30 +107,104 @@ function ChatBubble({ message }: { message: ChatMessage }) {
   return (
     <View style={[bubbleStyles.row, isUser && bubbleStyles.rowUser]}>
       {!isUser && <NurseAvatar />}
-      <View style={[bubbleStyles.bubble, isUser ? bubbleStyles.bubbleUser : bubbleStyles.bubbleAI]}>
-        <Text style={[bubbleStyles.text, isUser && { color: '#fff' }]}>{translatedText ?? message.text}</Text>
-        <View style={[bubbleStyles.timeRow, isUser && { justifyContent: 'flex-end' }]}>
-          <Text style={[bubbleStyles.time, isUser && { color: 'rgba(255,255,255,0.65)' }]}>{time}</Text>
-          {isUser && <Ionicons name="checkmark-done" size={13} color="rgba(255,255,255,0.8)" />}
-          {!isUser && (
-            <Pressable 
-              onPress={() => setLangModalOpen(true)}
+      <Pressable
+        onLongPress={handleCopy}
+        delayLongPress={300}
+        style={[bubbleStyles.bubble, isUser ? bubbleStyles.bubbleUser : bubbleStyles.bubbleAI]}
+      >
+        <Text style={[bubbleStyles.text, isUser && { color: '#fff' }]}>{textToCopy}</Text>
+
+        {/* Footer row: Actions on Left, Timestamp on Right */}
+        <View style={bubbleStyles.footerRow}>
+          {/* Left Actions (Copy & Translate) */}
+          <View style={bubbleStyles.actionsLeft}>
+            <Pressable
+              onPress={handleCopy}
               hitSlop={8}
-              style={{ marginLeft: 8, flexDirection: 'row', alignItems: 'center', gap: 3 }}
-              disabled={translating}
+              style={[
+                bubbleStyles.actionBtn,
+                isUser ? bubbleStyles.actionBtnUser : bubbleStyles.actionBtnAI,
+              ]}
             >
-              {translating ? (
-                <ActivityIndicator size="small" color={C.primary} style={{ transform: [{ scale: 0.7 }] }} />
-              ) : (
-                <Ionicons name="language" size={12} color={C.primary} />
-              )}
-              <Text style={{ fontSize: 10, color: C.primary, fontWeight: '600' }}>
-                {translating ? 'Translating...' : 'Translate'}
+              <Ionicons
+                name={copied ? 'checkmark' : 'copy-outline'}
+                size={12}
+                color={
+                  isUser
+                    ? copied
+                      ? '#A7F3D0'
+                      : 'rgba(255,255,255,0.85)'
+                    : copied
+                    ? C.success
+                    : C.textMuted
+                }
+              />
+              <Text
+                style={[
+                  bubbleStyles.actionText,
+                  {
+                    color: isUser
+                      ? copied
+                        ? '#A7F3D0'
+                        : 'rgba(255,255,255,0.85)'
+                      : copied
+                      ? C.success
+                      : C.textMuted,
+                  },
+                ]}
+              >
+                {copied ? 'Copied' : 'Copy'}
               </Text>
             </Pressable>
-          )}
+
+            {!isUser && (
+              <Pressable
+                onPress={() => setLangModalOpen(true)}
+                hitSlop={8}
+                style={[bubbleStyles.actionBtn, bubbleStyles.actionBtnAI]}
+                disabled={translating}
+              >
+                {translating ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={C.primary}
+                    style={{ transform: [{ scale: 0.7 }] }}
+                  />
+                ) : (
+                  <Ionicons name="language" size={12} color={C.primary} />
+                )}
+                <Text
+                  style={[
+                    bubbleStyles.actionText,
+                    { color: C.primary, fontWeight: '600' },
+                  ]}
+                >
+                  {translating ? 'Translating...' : 'Translate'}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+
+          {/* Right Timestamp (+ checkmark for user) */}
+          <View style={bubbleStyles.timeRight}>
+            <Text
+              style={[
+                bubbleStyles.time,
+                isUser && { color: 'rgba(255,255,255,0.7)' },
+              ]}
+            >
+              {time}
+            </Text>
+            {isUser && (
+              <Ionicons
+                name="checkmark-done"
+                size={13}
+                color="rgba(255,255,255,0.85)"
+              />
+            )}
+          </View>
         </View>
-      </View>
+      </Pressable>
 
       <LanguageSelectModal
         visible={langModalOpen}
@@ -127,23 +216,79 @@ function ChatBubble({ message }: { message: ChatMessage }) {
 }
 
 const bubbleStyles = StyleSheet.create({
-  row:      { flexDirection: 'row', alignItems: 'flex-end', gap: 8, maxWidth: '86%', marginBottom: 8 },
-  rowUser:  { alignSelf: 'flex-end', flexDirection: 'row-reverse' },
-  bubble:   { padding: 12, borderRadius: 18, gap: 4, flexShrink: 1 },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+    maxWidth: '88%',
+    marginBottom: 8,
+  },
+  rowUser: {
+    alignSelf: 'flex-end',
+    flexDirection: 'row-reverse',
+  },
+  bubble: {
+    paddingHorizontal: 13,
+    paddingTop: 10,
+    paddingBottom: 8,
+    borderRadius: 18,
+    gap: 6,
+    flexShrink: 1,
+    minWidth: 140,
+  },
   bubbleAI: {
     backgroundColor: C.bg,
-    borderWidth: 1, borderColor: C.border,
+    borderWidth: 1,
+    borderColor: C.border,
     borderBottomLeftRadius: 4,
-    shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, shadowOffset: { width: 0, height: 1 },
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
     elevation: 1,
   },
   bubbleUser: {
     backgroundColor: C.primary,
     borderBottomRightRadius: 4,
   },
-  text:    { fontSize: 14, color: C.text, lineHeight: 21 },
-  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
-  time:    { fontSize: 10, color: C.textMuted },
+  text: { fontSize: 14, color: C.text, lineHeight: 21 },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 2,
+    gap: 8,
+  },
+  actionsLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3.5,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+  },
+  actionBtnUser: {
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+  },
+  actionBtnAI: {
+    backgroundColor: '#F1F5F9',
+  },
+  actionText: {
+    fontSize: 10.5,
+    fontWeight: '600',
+  },
+  timeRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginLeft: 'auto',
+  },
+  time: { fontSize: 10, color: C.textMuted },
 });
 
 // ── Typing indicator ──────────────────────────────────────────────────────────
