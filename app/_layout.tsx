@@ -116,7 +116,8 @@ export default function RootLayout() {
 
   // --- WEB LOCKDOWN SECURITY ---
   // If we are on the web, block everything except the legal/contact pages.
-  if (Platform.OS === 'web') {
+  // TEMPORARILY DISABLED FOR SCREENSHOTS
+  if (false && Platform.OS === 'web') {
     const allowedWebPaths = ['/privacy', '/terms', '/cookies', '/contact', '/support'];
     // Allow the path if it exactly matches, or if they are at the root (redirecting to an allowed path later? No, block root)
     if (!allowedWebPaths.includes(pathname)) {
