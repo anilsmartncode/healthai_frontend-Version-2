@@ -283,7 +283,7 @@ export const translations: Record<LangCode, TranslationKeys> = {
     metric_no_biomarkers_desc: 'No biomarker trends (Blood Sugar, Cholesterol, Vitamin D, or Hemoglobin) were detected in your uploaded reports. Tap here to upload another report.',
     add_family: 'Add Family member',
     share_message: "Hi! I'm using HealthAI to track my blood reports, monitor key health indicators, and manage my medications. Try it out to take control of your health: ",
-    share_card_title: 'Refer your friends',
+    share_card_title: 'Refer your FRIENDS',
     share_card_desc: 'Invite your friends to join HealthAI and help them stay on top of their health with smart reminders, health tracking, and personalized AI insights.',
     nav_nearby: 'Nearby',
     hospitals: 'Hospitals',

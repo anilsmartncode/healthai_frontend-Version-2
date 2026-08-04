@@ -73,8 +73,8 @@ export function FamilyHealthCard() {
                 </View>
               );
             })}
-            
-            <Pressable 
+
+            <Pressable
               style={styles.avatarContainer}
               onPress={() => router.push('/family/add-member')}
             >
@@ -82,7 +82,7 @@ export function FamilyHealthCard() {
                 <Ionicons name="add" size={22} color="#94A3B8" />
               </View>
               <Text style={styles.memberName} numberOfLines={1}>
-                Add
+                Add family
               </Text>
             </Pressable>
           </View>
