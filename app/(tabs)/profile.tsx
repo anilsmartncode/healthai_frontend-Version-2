@@ -10,6 +10,8 @@ import { useUsage } from '@/context/UsageContext';
 import { SecureAsyncStorage as AsyncStorage } from '@/utils/storage';
 import { api } from '@/services/api';
 import { ENDPOINTS } from '@/constants/api';
+import { Alert } from 'react-native';
+import { medicineApiCall } from '@/services/Medicineapiclient';
 
 export default function Profile() {
   const { phone, signOut } = useAuth();
@@ -52,6 +54,35 @@ export default function Profile() {
       return () => { cancelled = true; };
     }, [phone])
   );
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure you want to permanently delete your account and all associated health data? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Permanently',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Call the delete account API endpoint
+              await medicineApiCall(ENDPOINTS.deleteAccount, { method: 'DELETE' });
+              
+              Alert.alert('Account Deleted', 'Your account and data have been permanently deleted.', [
+                { text: 'OK', onPress: () => {
+                    signOut().then(() => router.replace('/(auth)/onboarding'));
+                  } 
+                }
+              ]);
+            } catch (error: any) {
+              Alert.alert('Error', 'Failed to delete account. Please contact support.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const items = [
     { icon: 'person-outline',           label: t('account_info'),  href: '/account'         },
@@ -105,6 +136,15 @@ export default function Profile() {
         >
           <Ionicons name="log-out-outline" size={22} color={Colors.danger} />
           <Text style={[styles.rowLabel, { color: Colors.danger }]}>{t('log_out')}</Text>
+          <View />
+        </Pressable>
+
+        <Pressable
+          style={styles.row}
+          onPress={handleDeleteAccount}
+        >
+          <Ionicons name="trash-outline" size={22} color={Colors.danger} />
+          <Text style={[styles.rowLabel, { color: Colors.danger }]}>Delete Account</Text>
           <View />
         </Pressable>
       </View>

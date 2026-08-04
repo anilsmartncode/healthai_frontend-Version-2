@@ -9,7 +9,7 @@ import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { PaywallModal } from "@/components/PaywallModal";
 import { useEffect, useState } from "react";
 import { checkHealthAlerts, type HealthAlert } from "@/services/aiService";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
 import { router, usePathname, useGlobalSearchParams } from "expo-router";
 import { Colors, Radius } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
@@ -113,6 +113,44 @@ export default function RootLayout() {
       console.log(`[Navigation] -> ${pathname}`, Object.keys(params).length ? JSON.stringify(params) : '');
     }
   }, [pathname, params]);
+
+  // --- WEB LOCKDOWN SECURITY ---
+  // If we are on the web, block everything except the legal/contact pages.
+  if (Platform.OS === 'web') {
+    const allowedWebPaths = ['/privacy', '/terms', '/cookies', '/contact', '/support'];
+    // Allow the path if it exactly matches, or if they are at the root (redirecting to an allowed path later? No, block root)
+    if (!allowedWebPaths.includes(pathname)) {
+      return (
+        <View style={{ flex: 1, backgroundColor: Colors.bg }}>
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+            <Ionicons name="phone-portrait-outline" size={64} color={Colors.primary} style={{ marginBottom: 16 }} />
+            <Text style={{ fontSize: 24, fontWeight: '800', color: Colors.text, marginBottom: 8, textAlign: 'center' }}>
+              Get the App
+            </Text>
+            <Text style={{ fontSize: 15, color: Colors.textMuted, textAlign: 'center', lineHeight: 22, maxWidth: 400 }}>
+              HealthcareAI is designed exclusively for mobile devices. Please download our app on iOS or Android to access your health dashboard.
+            </Text>
+          </View>
+          
+          {/* Footer Legal Links */}
+          <View style={{ paddingBottom: 40, flexDirection: 'row', justifyContent: 'center', gap: 20 }}>
+            <Text 
+              style={{ color: Colors.primary, fontSize: 13, fontWeight: '600' }}
+              onPress={() => window.location.href = '/privacy'}
+            >
+              Privacy Policy
+            </Text>
+            <Text 
+              style={{ color: Colors.primary, fontSize: 13, fontWeight: '600' }}
+              onPress={() => window.location.href = '/terms'}
+            >
+              Terms of Service
+            </Text>
+          </View>
+        </View>
+      );
+    }
+  }
 
 
 

@@ -47,11 +47,11 @@ export function defineBackgroundNotificationTask() {
       console.warn('[Notifications] Background task error:', error);
       return;
     }
-    
+
     if (data) {
       const { actionIdentifier, notification } = data as any;
       const reminderId = notification?.request?.content?.data?.reminderId || 'unknown';
-      
+
       console.log(`[Notifications] Background action received! ID: ${actionIdentifier}, Reminder: ${reminderId}`);
 
       if (actionIdentifier === 'snooze') {
@@ -71,7 +71,7 @@ export function defineBackgroundNotificationTask() {
       } else if (actionIdentifier === 'take') {
         // Mark as taken (will hook into backend later)
         console.log(`[Notifications] Medicine ${reminderId} marked as taken in background.`);
-        
+
         // Notify the backend
         if (reminderId && reminderId !== 'unknown') {
           try {
@@ -80,10 +80,10 @@ export function defineBackgroundNotificationTask() {
             console.warn('[Notifications] Background API call failed:', apiErr);
           }
         }
-        
+
         // Just clear the snooze alarm if it exists
         await cancelReminderNotification(`${reminderId}-snooze`);
-        
+
         // Dismiss the currently ringing notification to stop the sound
         if (notification?.request?.identifier) {
           await Notifications.dismissNotificationAsync(notification.request.identifier);
@@ -193,9 +193,9 @@ export async function setupNotificationCategories() {
  * @param frequency 'once', 'daily', or 'weekly'
  */
 export async function scheduleReminderNotification(
-  id: string, 
-  title: string, 
-  body: string, 
+  id: string,
+  title: string,
+  body: string,
   triggerTime: Date,
   frequency: 'once' | 'daily' | 'weekly' | 'monthly' = 'daily'
 ) {
@@ -282,11 +282,11 @@ export async function scheduleReminderNotification(
  * Cancel a specific notification by its identifier
  * @param id The reminder ID used when scheduling
  */
-export async function cancelReminderNotification(id: string) {
+export async function cancelReminderNotification(id: string | number) {
   if (isExpoGo) return;
 
   try {
-    await Notifications.cancelScheduledNotificationAsync(id);
+    await Notifications.cancelScheduledNotificationAsync(String(id));
   } catch (e) {
     console.warn('[Notifications] Error cancelling notification', e);
   }

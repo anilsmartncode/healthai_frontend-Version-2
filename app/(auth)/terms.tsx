@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, Linking, Platform } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Radius } from "@/constants/Colors";
@@ -55,29 +55,55 @@ const SECTIONS = [
       "All content, features, and functionality of the App — including but not limited to text, graphics, logos, icons, and software — are the exclusive property of SmartNCode Technologies and are protected by applicable intellectual property laws. You may not reproduce, distribute, or create derivative works without express written permission from SmartNCode Technologies.",
   },
   {
-    title: "11. Limitation of Liability",
+    title: "11. Payments, Subscriptions, and Refunds",
+    content:
+      "Certain features of the App may require a paid subscription or one-time purchase. Subscriptions automatically renew unless canceled at least 24 hours before the end of the current billing period. Payments are charged to your Apple ID or Google Play account at confirmation of purchase. You may manage or cancel your subscriptions in your device account settings. All purchases are final, and SmartNCode Technologies does not provide refunds for unused portions of a subscription term, except as required by applicable law or the respective app store policies.",
+  },
+  {
+    title: "12. Limitation of Liability",
     content:
       "To the maximum extent permitted by law, SmartNCode Technologies shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use or inability to use the App. Our total liability to you for any claims arising out of or related to these Terms or the App shall not exceed the amount you paid to us in the twelve months preceding the claim.",
   },
   {
-    title: "12. Termination",
+    title: "13. Termination",
     content:
       "SmartNCode Technologies reserves the right to suspend or terminate your account and access to the App at any time, with or without cause or notice, including for violation of these Terms. Upon termination, your right to use the App will immediately cease. Provisions of these Terms that by their nature should survive termination shall remain in effect.",
   },
   {
-    title: "13. Changes to Terms",
+    title: "14. Changes to Terms",
     content:
       "We may update these Terms and Conditions from time to time. We will notify you of significant changes via the App or by email. Your continued use of the App after any changes constitutes your acceptance of the new Terms. We encourage you to review these Terms periodically.",
   },
   {
-    title: "14. Governing Law",
+    title: "15. Governing Law",
     content:
       "These Terms shall be governed by and construed in accordance with the laws of India. Any disputes arising under these Terms shall be subject to the exclusive jurisdiction of the courts located in Hyderabad, Telangana, India.",
   },
   {
-    title: "15. Contact Us",
-    content:
-      "If you have any questions about these Terms and Conditions, please contact us at:\n\nSmartNCode Technologies\nEmail: legal@smartncode.com\nWebsite: www.smartncode.com\nAddress: Hyderabad, Telangana, India",
+    title: "16. Contact Us",
+    content: (
+      <Text style={{ fontSize: 12, color: Colors.textMuted, lineHeight: 19, fontWeight: "400" }}>
+        If you have any questions about these Terms and Conditions, please contact us at:{"\n\n"}
+        SmartNCode Technologies{"\n"}
+        Email:{" "}
+        <Text
+          style={{ color: Colors.primary, textDecorationLine: "underline" }}
+          onPress={() => Linking.openURL("mailto:support@healthai.com")}
+        >
+          support@healthai.com
+        </Text>
+        {"\n"}
+        Website:{" "}
+        <Text
+          style={{ color: Colors.primary, textDecorationLine: "underline" }}
+          onPress={() => Linking.openURL("https://www.smartncode.com")}
+        >
+          www.smartncode.com
+        </Text>
+        {"\n"}
+        Address: Hyderabad, Telangana, India
+      </Text>
+    ),
   },
 ];
 
@@ -86,7 +112,15 @@ export default function TermsAndConditions() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable style={styles.backBtn} onPress={() => router.back()}>
+        <Pressable style={styles.backBtn} onPress={() => {
+          if (Platform.OS === 'web') {
+            window.location.href = '/';
+          } else if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace("/");
+          }
+        }}>
           <Ionicons name="arrow-back" size={18} color="#fff" />
         </Pressable>
         <View style={styles.headerText}>
@@ -104,7 +138,7 @@ export default function TermsAndConditions() {
       <View style={styles.updatedRow}>
         <Ionicons name="time-outline" size={13} color={Colors.textMuted} />
         <Text style={styles.updatedText}>
-          Last updated: May 2026 · Version 1.0
+          Last updated: August 2026 · Version 1.0
         </Text>
       </View>
 
@@ -133,7 +167,11 @@ export default function TermsAndConditions() {
               <View style={styles.sectionDot} />
               <Text style={styles.sectionTitle}>{section.title}</Text>
             </View>
-            <Text style={styles.sectionContent}>{section.content}</Text>
+            {typeof section.content === 'string' ? (
+              <Text style={styles.sectionContent}>{section.content}</Text>
+            ) : (
+              section.content
+            )}
           </View>
         ))}
 

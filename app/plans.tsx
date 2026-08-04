@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Linking } from 'react-native';
 import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -160,7 +160,7 @@ export default function PlansScreen() {
 
         {/* Restore Purchases Button */}
         <Pressable
-          style={{ paddingVertical: 20, alignItems: 'center', marginTop: 10 }}
+          style={{ paddingVertical: 10, alignItems: 'center', marginTop: 10 }}
           onPress={async () => {
             try {
               const restored = await restorePurchases();
@@ -176,6 +176,16 @@ export default function PlansScreen() {
         >
           <Text style={{ color: Colors.primary, fontWeight: '600', fontSize: 15 }}>Restore Purchases</Text>
         </Pressable>
+
+        {/* Legal Links for App Store Compliance */}
+        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 20, paddingBottom: 20 }}>
+          <Pressable onPress={() => Linking.openURL('https://healthai.smartncode.com/terms')}>
+            <Text style={{ color: Colors.textMuted, fontSize: 13, textDecorationLine: 'underline' }}>Terms of Service</Text>
+          </Pressable>
+          <Pressable onPress={() => Linking.openURL('https://healthai.smartncode.com/privacy')}>
+            <Text style={{ color: Colors.textMuted, fontSize: 13, textDecorationLine: 'underline' }}>Privacy Policy</Text>
+          </Pressable>
+        </View>
 
       </ScrollView>
     </SafeAreaView>
