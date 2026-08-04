@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
 // ── MMKV — lazy + crash-safe initialization ───────────────────────────────────
 // We wrap this in a try/catch so a native module failure never crashes the app.
@@ -29,12 +30,29 @@ export const mmkvStorage = { get: getMmkv };
 // ── Secure auth token storage (SecureStore — hardware encrypted) ──────────────
 export const storage = {
   get: async <T>(key: string): Promise<T | null> => {
+    if (Platform.OS === 'web') {
+      try {
+        const v = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+        return v ? (JSON.parse(v) as T) : null;
+      } catch (e) { return null; }
+    }
     const v = await SecureStore.getItemAsync(key);
     return v ? (JSON.parse(v) as T) : null;
   },
-  set: async (key: string, value: unknown) =>
-    SecureStore.setItemAsync(key, JSON.stringify(value)),
-  remove: (key: string) => SecureStore.deleteItemAsync(key),
+  set: async (key: string, value: unknown) => {
+    if (Platform.OS === 'web') {
+      if (typeof localStorage !== 'undefined') localStorage.setItem(key, JSON.stringify(value));
+      return;
+    }
+    return SecureStore.setItemAsync(key, JSON.stringify(value));
+  },
+  remove: async (key: string) => {
+    if (Platform.OS === 'web') {
+      if (typeof localStorage !== 'undefined') localStorage.removeItem(key);
+      return;
+    }
+    return SecureStore.deleteItemAsync(key);
+  },
 };
 
 // ── MMKV Polyfill with AsyncStorage fallback ──────────────────────────────────
