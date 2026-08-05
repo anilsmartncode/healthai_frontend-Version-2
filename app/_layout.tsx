@@ -373,9 +373,9 @@ export default function RootLayout() {
                         </Text>
                         <Text 
                           style={{ color: Colors.primary, fontSize: 13, fontWeight: '600' }}
-                          onPress={() => window.location.href = '/contact'}
+                          onPress={() => window.location.href = '/support'}
                         >
-                          Contact Us
+                          Support
                         </Text>
                       </View>
                     </View>
