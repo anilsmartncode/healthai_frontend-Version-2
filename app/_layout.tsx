@@ -58,6 +58,7 @@ function AlertOverlay() {
   const { phone } = useAuth();
   const [alert, setAlert] = useState<HealthAlert | null>(null);
   useEffect(() => {
+    if (Platform.OS === 'web') return; // No health alerts on web
     if (sessionAlertShown) return;
     const timer = setTimeout(() => {
       checkHealthAlerts(phone).then(a => {
@@ -132,8 +133,9 @@ export default function RootLayout() {
 
 
 
-  // Global Notification Listener setup
+  // Global Notification Listener setup (skip on web — notifications not available)
   useEffect(() => {
+    if (Platform.OS === 'web') return;
     setupNotificationCategories();
 
     const sub = Notifications.addNotificationResponseReceivedListener(async (response) => {

@@ -4,7 +4,7 @@ import { reportStorageKey, reportDetailsStorageKey } from '@/services/reportsApi
 import { medicineStorageKey, reminderStorageKey } from '@/services/medicineTabApi';
 import { STORAGE_KEYS as AI_STORAGE_KEYS } from '@/services/aiService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DeviceEventEmitter } from 'react-native';
+import { DeviceEventEmitter, Platform } from 'react-native';
 import { router } from 'expo-router';
 
 interface AuthState {
@@ -133,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    if (Platform.OS === 'web') return; // No session management on web
     const sub = DeviceEventEmitter.addListener('SESSION_EXPIRED', async () => {
       await signOut();
       router.replace('/(auth)/onboarding');
