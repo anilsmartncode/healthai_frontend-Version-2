@@ -47,6 +47,13 @@ export default function AIHomeScreen() {
   const { phone } = useAuth();
   const [userName, setUserName] = useState(formatName(phone ?? 'Rahul'));
   const [input, setInput] = useState('');
+  const [inputHeight, setInputHeight] = useState(36);
+
+  useEffect(() => {
+    if (!input || input.trim().length === 0) {
+      setInputHeight(36);
+    }
+  }, [input]);
 
   useEffect(() => {
     const cacheKey = `healthai_profile_name_${phone ?? 'guest'}`;
@@ -125,15 +132,23 @@ export default function AIHomeScreen() {
                 </Pressable>
 
                 <TextInput
-                  style={styles.input}
+                  style={[
+                    styles.input,
+                    { height: Math.min(Math.max(36, inputHeight), 76) },
+                  ]}
                   placeholder="Ask anything about your health..."
                   placeholderTextColor={C.textMuted}
                   value={input}
                   onChangeText={setInput}
+                  onContentSizeChange={(e) => {
+                    const h = e.nativeEvent.contentSize.height;
+                    if (h > 0) setInputHeight(h);
+                  }}
                   onSubmitEditing={() => goToChat(input)}
                   returnKeyType="send"
                   multiline
-                  blurOnSubmit={false}
+                  scrollEnabled={inputHeight >= 76}
+                  maxLength={1000}
                 />
 
                 <Pressable
@@ -301,6 +316,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 6,
     minHeight: 48,
+    maxHeight: 88,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -325,12 +341,12 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 14,
+    lineHeight: 20,
     color: C.text,
-    maxHeight: 100,
-    minHeight: 36,
-    paddingTop: Platform.OS === 'ios' ? 8 : 4,
-    paddingBottom: Platform.OS === 'ios' ? 8 : 4,
+    paddingTop: Platform.OS === 'ios' ? 8 : 6,
+    paddingBottom: Platform.OS === 'ios' ? 8 : 6,
     paddingHorizontal: 6,
+    textAlignVertical: 'center',
   },
   innerActionBtn: {
     width: 36,

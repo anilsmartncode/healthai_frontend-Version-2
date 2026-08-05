@@ -551,6 +551,14 @@ export default function AIChatScreen() {
     suggestions, alert, send, clearConversation, dismissAlert,
   } = useAI(prefill, context, openSessionId);
 
+  const [inputHeight, setInputHeight] = useState(36);
+
+  useEffect(() => {
+    if (!input || input.trim().length === 0) {
+      setInputHeight(36);
+    }
+  }, [input]);
+
   const { canSendAiChat, incrementAiChat, setShowPaywall } = useUsage();
 
   const handleSend = async () => {
@@ -677,16 +685,17 @@ export default function AIChatScreen() {
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false}
-            style={{ maxHeight: 44, borderTopWidth: 1, borderColor: C.border, backgroundColor: C.surface, flexShrink: 0 }}
-            contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 8, gap: 8 }}
+            style={styles.suggestionsContainer}
+            contentContainerStyle={styles.suggestionsContent}
             keyboardShouldPersistTaps="always"
           >
             {filteredSuggestions.map(s => (
               <Pressable 
                 key={s} 
-                style={({pressed}) => [styles.suggestionChip, pressed && {opacity: 0.7}]}
+                style={({ pressed }) => [styles.suggestionChip, pressed && { opacity: 0.7 }]}
                 onPress={() => setInput(s)}
               >
+                <Ionicons name="sparkles-outline" size={13} color={C.primary} style={{ marginRight: 5 }} />
                 <Text style={styles.suggestionText}>{s}</Text>
               </Pressable>
             ))}
@@ -700,16 +709,23 @@ export default function AIChatScreen() {
               <Ionicons name="add" size={24} color={C.textMuted} />
             </Pressable>
             
-            <View style={{ flex: 1, paddingVertical: Platform.OS === 'ios' ? 8 : 4 }}>
-              <ChatInput
-                value={input}
-                onChangeText={setInput}
-                onSend={handleSend}
-                loading={loading}
-                bottomInset={0}
-                inline
-              />
-            </View>
+            <TextInput
+              style={[
+                styles.input,
+                { height: Math.min(Math.max(36, inputHeight), 76) }
+              ]}
+              value={input}
+              onChangeText={setInput}
+              onContentSizeChange={(e) => {
+                const h = e.nativeEvent.contentSize.height;
+                if (h > 0) setInputHeight(h);
+              }}
+              placeholder="Ask anything about your health..."
+              placeholderTextColor={C.textMuted}
+              multiline
+              scrollEnabled={inputHeight >= 76}
+              maxLength={1000}
+            />
 
             <Pressable 
               style={[styles.innerMicBtn, input.trim() ? { backgroundColor: C.primary } : { backgroundColor: '#F1F5F9' }]} 
@@ -760,14 +776,14 @@ const styles = StyleSheet.create({
   list: { padding: 16, gap: 2, paddingBottom: 10 },
 
   inputBar: {
-    paddingHorizontal: 16, paddingTop: 12,
+    paddingHorizontal: 16, paddingTop: 10,
     backgroundColor: C.chatBg,
   },
   disclaimerText: {
     fontSize: 10,
     color: '#94A3B8',
     textAlign: 'center',
-    marginTop: 10,
+    marginTop: 8,
     paddingHorizontal: 8,
     lineHeight: 14,
   },
@@ -776,37 +792,69 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderWidth: 1.5, 
     borderColor: '#E2E8F0',
-    borderRadius: 28,
-    paddingLeft: 8,
-    paddingRight: 8,
-    paddingTop: 8,
-    paddingBottom: 8,
-    minHeight: 52,
+    borderRadius: 24,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    minHeight: 48,
+    maxHeight: 88,
     shadowColor: C.text,
     shadowOpacity: 0.03,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
+  input: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+    color: C.text,
+    paddingTop: Platform.OS === 'ios' ? 8 : 6,
+    paddingBottom: Platform.OS === 'ios' ? 8 : 6,
+    paddingHorizontal: 6,
+    textAlignVertical: 'center',
+  },
   innerPlusBtn: {
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: '#F8FAFC',
     alignItems: 'center', justifyContent: 'center',
-    marginRight: 6,
+    marginRight: 4,
   },
   innerMicBtn: {
     width: 36, height: 36, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center',
-    marginLeft: 6,
+    marginLeft: 4,
+  },
+  suggestionsContainer: {
+    height: 52,
+    borderTopWidth: 1,
+    borderColor: C.border,
+    backgroundColor: C.surface,
+    flexShrink: 0,
+  },
+  suggestionsContent: {
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    gap: 8,
   },
   suggestionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#EFF6FF',
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1, borderColor: '#BFDBFE',
-    justifyContent: 'center'
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    shadowColor: C.primary,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   suggestionText: {
-    fontSize: 13, color: '#1D4ED8', fontWeight: '500'
-  }
+    fontSize: 13,
+    color: '#1D4ED8',
+    fontWeight: '600',
+    lineHeight: 18,
+  },
 });

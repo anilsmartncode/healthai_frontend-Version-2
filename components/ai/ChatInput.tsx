@@ -1,4 +1,5 @@
-import { TextInput, StyleSheet, ActivityIndicator, Pressable } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { TextInput, StyleSheet, ActivityIndicator, Pressable, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius } from '@/constants/Colors';
 
@@ -13,23 +14,39 @@ interface Props {
   inline?: boolean;
 }
 
+const MIN_INPUT_HEIGHT = 36;
+const MAX_INPUT_HEIGHT = 76; // Holds 3 lines comfortably
+
 export function ChatInput({ value, onChangeText, onSend, loading, bottomInset = 0, inline = false }: Props) {
-  const canSend = value.trim().length > 0 && !loading;
+  const [contentHeight, setContentHeight] = useState(MIN_INPUT_HEIGHT);
+
+  useEffect(() => {
+    if (!value || value.trim().length === 0) {
+      setContentHeight(MIN_INPUT_HEIGHT);
+    }
+  }, [value]);
+
+  const currentHeight = Math.min(Math.max(MIN_INPUT_HEIGHT, contentHeight), MAX_INPUT_HEIGHT);
 
   if (inline) {
     // Slim, borderless — parent handles the outer pill/card
     return (
       <TextInput
-        style={inlineStyles.input}
+        style={[inlineStyles.input, { height: currentHeight }]}
         placeholder="Ask anything about your health..."
         placeholderTextColor={Colors.textMuted}
         value={value}
         onChangeText={onChangeText}
+        onContentSizeChange={(e) => {
+          const h = e.nativeEvent.contentSize.height;
+          if (h > 0) setContentHeight(h);
+        }}
         onSubmitEditing={onSend}
         returnKeyType="send"
         editable={!loading}
         multiline
-        maxLength={500}
+        scrollEnabled={contentHeight >= MAX_INPUT_HEIGHT}
+        maxLength={1000}
       />
     );
   }
@@ -37,16 +54,21 @@ export function ChatInput({ value, onChangeText, onSend, loading, bottomInset = 
   // ── Standalone (used on other screens) ──────────────────────────────────────
   return (
     <TextInput
-      style={[standaloneStyles.input, { paddingBottom: 10 + bottomInset }]}
+      style={[standaloneStyles.input, { height: Math.max(44, currentHeight), paddingBottom: 10 + bottomInset }]}
       placeholder="Ask about your health…"
       placeholderTextColor={Colors.textMuted}
       value={value}
       onChangeText={onChangeText}
+      onContentSizeChange={(e) => {
+        const h = e.nativeEvent.contentSize.height;
+        if (h > 0) setContentHeight(h);
+      }}
       onSubmitEditing={onSend}
       returnKeyType="send"
       editable={!loading}
       multiline
-      maxLength={500}
+      scrollEnabled={contentHeight >= MAX_INPUT_HEIGHT}
+      maxLength={1000}
     />
   );
 }
@@ -55,10 +77,12 @@ const inlineStyles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 14,
+    lineHeight: 20,
     color: Colors.text,
-    paddingVertical: 0,
-    maxHeight: 100,
-    minHeight: 20,
+    paddingTop: Platform.OS === 'ios' ? 8 : 6,
+    paddingBottom: Platform.OS === 'ios' ? 8 : 6,
+    paddingHorizontal: 6,
+    textAlignVertical: 'center',
   },
 });
 
@@ -71,6 +95,5 @@ const standaloneStyles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 10,
     fontSize: 15, color: Colors.text,
-    maxHeight: 100,
   },
 });
