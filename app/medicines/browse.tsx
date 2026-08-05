@@ -239,8 +239,8 @@ function MedicineDetailModal({
                 <Text style={styles.rxBadgeText}>Prescription Required</Text>
               </View>
             )}
-            
-            <Pressable 
+
+            <Pressable
               onPress={() => setLangModalOpen(true)}
               hitSlop={10}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, backgroundColor: Colors.primary + '10', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 99 }}
@@ -381,6 +381,28 @@ function CategoryGrid({
 
   return (
     <View style={styles.catGridWrapper}>
+      {/* Category Section Header */}
+      <View style={styles.catHeader}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.catSectionTitle}>Browse by Health Condition</Text>
+          <Text style={styles.catSectionSubtitle}>
+            {selectedCategory
+              ? `Filtered by ${selectedCategory.name} · Tap to unselect`
+              : 'Tap a condition to filter medicines'}
+          </Text>
+        </View>
+        {selectedCategory && (
+          <Pressable
+            onPress={() => onSelect(selectedCategory)}
+            style={styles.clearCatBtn}
+            hitSlop={8}
+          >
+            <Ionicons name="close-circle" size={14} color={Colors.primary} />
+            <Text style={styles.clearCatText}>Clear</Text>
+          </Pressable>
+        )}
+      </View>
+
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -483,15 +505,15 @@ export default function BrowseMedicinesScreen() {
       setLoading(true);
       try {
         // API 1 — GET /api/medicines/categories
-        // API 7 — GET /api/medicines/popular
+        // API 7 — GET /api/medicines/popular (commented out as requested)
         // API 6 — GET /api/medicines/recent
-        const [cats, pop, rec] = await Promise.all([
+        const [cats, rec] = await Promise.all([
           getCategories(),
-          getPopularMedicines(6),
+          // getPopularMedicines(6),
           getRecentlyViewed(1, 5),
         ]);
         setCategories(cats);
-        setPopular(pop);
+        // setPopular(pop);
         setRecently(rec);
 
         // Handle deep-link params
@@ -754,9 +776,23 @@ export default function BrowseMedicinesScreen() {
           {/* ── Category filtered results ── */}
           {isFiltered && !listLoading && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                {selectedCategory!.name} Medicines
-              </Text>
+              <View style={styles.secHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sectionTitle}>
+                    {selectedCategory!.name} Medicines
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#64748B', marginTop: -8, marginBottom: 12 }}>
+                    Showing available medicines for {selectedCategory!.name.toLowerCase()}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => setSelectedCategory(null)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#F1F5F9', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, marginBottom: 8 }}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#475569' }}>Reset filter</Text>
+                  <Ionicons name="close" size={14} color="#475569" />
+                </Pressable>
+              </View>
               <View style={styles.medList}>
                 {medicines.length === 0 ? (
                   <View style={styles.empty}>
@@ -782,21 +818,23 @@ export default function BrowseMedicinesScreen() {
           {!isSearching && !isFiltered && !listLoading && (
             <>
               {/* Popular */}
-              <View style={styles.section}>
-                <View style={styles.secHeader}>
-                  <Text style={styles.sectionTitle}>Popular Medicines</Text>
-                  <Text style={styles.viewAll}>View All</Text>
+              {popular.length > 0 && (
+                <View style={styles.section}>
+                  <View style={styles.secHeader}>
+                    <Text style={styles.sectionTitle}>Popular Medicines</Text>
+                    <Text style={styles.viewAll}>View All</Text>
+                  </View>
+                  <View style={styles.medList}>
+                    {popular.map((m, idx) => (
+                      <MedicineRow
+                        key={`pop_${m.id}_${idx}`}
+                        med={m}
+                        onPress={() => openDetailFromMed(m)}
+                      />
+                    ))}
+                  </View>
                 </View>
-                <View style={styles.medList}>
-                  {popular.map((m, idx) => (
-                    <MedicineRow
-                      key={`pop_${m.id}_${idx}`}
-                      med={m}
-                      onPress={() => openDetailFromMed(m)}
-                    />
-                  ))}
-                </View>
-              </View>
+              )}
 
               {/* Recently Viewed */}
               {recently.length > 0 && (
@@ -894,6 +932,37 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontSize: 14, color: '#0F172A', padding: 0 },
 
   catGridWrapper: { paddingVertical: 12 },
+  catHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginBottom: 10,
+  },
+  catSectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  catSectionSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  clearCatBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.primary + '15',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  clearCatText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.primary,
+  },
   catPage: { flexDirection: 'column', gap: 10, paddingHorizontal: 16 },
   catRow2: { flexDirection: 'row', gap: 10 },
   catCard: {
