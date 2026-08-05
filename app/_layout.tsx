@@ -119,51 +119,14 @@ export default function RootLayout() {
     setIsMounted(true);
   }, []);
 
-  // --- WEB LOCKDOWN SECURITY ---
-  // If we are on the web, block everything except the legal/contact pages.
-  // We use `isMounted` to prevent React hydration errors (Error #418) when SSR and client differ.
+  let isWebLocked = false;
   if (Platform.OS === 'web' && isMounted) {
     const allowedWebPaths = ['/privacy', '/terms', '/cookies', '/contact', '/support'];
     const isAllowed = pathname && allowedWebPaths.some(p => 
       pathname === p || pathname === `${p}/` || pathname?.startsWith(`${p}?`)
     );
-    // Allow the path if it exactly matches, or if they are at the root (redirecting to an allowed path later? No, block root)
     if (!isAllowed) {
-      return (
-        <View style={{ flex: 1, backgroundColor: Colors.bg }}>
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-            <Ionicons name="phone-portrait-outline" size={64} color={Colors.primary} style={{ marginBottom: 16 }} />
-            <Text style={{ fontSize: 24, fontWeight: '800', color: Colors.text, marginBottom: 8, textAlign: 'center' }}>
-              Get the App
-            </Text>
-            <Text style={{ fontSize: 15, color: Colors.textMuted, textAlign: 'center', lineHeight: 22, maxWidth: 400 }}>
-              HealthcareAI is designed exclusively for mobile devices. Please download our app on iOS or Android to access your health dashboard.
-            </Text>
-          </View>
-          
-          {/* Footer Legal Links */}
-          <View style={{ paddingBottom: 40, flexDirection: 'row', justifyContent: 'center', gap: 20 }}>
-            <Text 
-              style={{ color: Colors.primary, fontSize: 13, fontWeight: '600' }}
-              onPress={() => window.location.href = '/privacy'}
-            >
-              Privacy Policy
-            </Text>
-            <Text 
-              style={{ color: Colors.primary, fontSize: 13, fontWeight: '600' }}
-              onPress={() => window.location.href = '/terms'}
-            >
-              Terms of Service
-            </Text>
-            <Text 
-              style={{ color: Colors.primary, fontSize: 13, fontWeight: '600' }}
-              onPress={() => window.location.href = '/contact'}
-            >
-              Contact Us
-            </Text>
-          </View>
-        </View>
-      );
+      isWebLocked = true;
     }
   }
 
@@ -380,6 +343,41 @@ export default function RootLayout() {
                   </Stack>
                   <AlertOverlay />
                   <PaywallModal />
+                  {isWebLocked && (
+                    <View style={[StyleSheet.absoluteFillObject, { backgroundColor: Colors.bg, zIndex: 999999 }]}>
+                      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                        <Ionicons name="phone-portrait-outline" size={64} color={Colors.primary} style={{ marginBottom: 16 }} />
+                        <Text style={{ fontSize: 24, fontWeight: '800', color: Colors.text, marginBottom: 8, textAlign: 'center' }}>
+                          Get the App
+                        </Text>
+                        <Text style={{ fontSize: 15, color: Colors.textMuted, textAlign: 'center', lineHeight: 22, maxWidth: 400 }}>
+                          HealthcareAI is designed exclusively for mobile devices. Please download our app on iOS or Android to access your health dashboard.
+                        </Text>
+                      </View>
+                      
+                      {/* Footer Legal Links */}
+                      <View style={{ paddingBottom: 40, flexDirection: 'row', justifyContent: 'center', gap: 20 }}>
+                        <Text 
+                          style={{ color: Colors.primary, fontSize: 13, fontWeight: '600' }}
+                          onPress={() => window.location.href = '/privacy'}
+                        >
+                          Privacy Policy
+                        </Text>
+                        <Text 
+                          style={{ color: Colors.primary, fontSize: 13, fontWeight: '600' }}
+                          onPress={() => window.location.href = '/terms'}
+                        >
+                          Terms of Service
+                        </Text>
+                        <Text 
+                          style={{ color: Colors.primary, fontSize: 13, fontWeight: '600' }}
+                          onPress={() => window.location.href = '/contact'}
+                        >
+                          Contact Us
+                        </Text>
+                      </View>
+                    </View>
+                  )}
                 </ErrorBoundary>
               </SecurityWrapper>
             </AuthProvider>
