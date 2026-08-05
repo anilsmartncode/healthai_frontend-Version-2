@@ -24,7 +24,7 @@ export default function EmptyState({
     return (
       <View style={styles.loaderCenter}>
         <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loaderText}>Searching medical nodes...</Text>
+        <Text style={styles.loaderText}>Finding nearby healthcare facilities...</Text>
       </View>
     );
   }
@@ -63,7 +63,7 @@ export default function EmptyState({
     <View style={styles.emptyCenter}>
       <Ionicons name="location-outline" size={48} color="#CBD5E1" />
       <Text style={styles.emptyText}>
-        No hospitals or pharmacies found within {radius / 1000} km of your location.
+        No healthcare facilities found within {radius / 1000} km of your location.
       </Text>
       {onRetry && (
         <Pressable onPress={onRetry} style={styles.retryBtn}>
