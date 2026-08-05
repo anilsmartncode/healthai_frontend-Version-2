@@ -50,7 +50,7 @@ function mapMedicine(raw: any): Medicine {
     name: raw.name ?? raw.medicine_name ?? '',
     form: raw.form ?? raw.type ?? raw.medicine_type ?? 'Tablet',
     category: raw.category ?? raw.category_name ?? '',
-    rx: raw.rx ?? (raw.prescription_type === 'Prescription') ?? false,
+    rx: raw.rx ?? (raw.prescription_type === 'Prescription'),
     uses: raw.uses ?? raw.use ?? undefined,
     dosage: raw.dosage ?? raw.dose ?? undefined,
     sideEffects: Array.isArray(raw.sideEffects) ? raw.sideEffects
@@ -119,7 +119,7 @@ export interface SearchMedicinesResponse {
 
 export interface Reminder {
   id: string;
-  medicineId: string;
+  medicineId?: string;
   medicineName: string;
   time: string;         // "08:00 AM"
   frequency: 'daily' | 'weekly' | 'monthly' | 'custom';
@@ -130,10 +130,19 @@ export interface Reminder {
 
 export interface ScanResult {
   scanId: string;
-  medicineId: string;
-  name: string;
-  form: string;
-  confidence: number;   // 0–100
+  medicineId?: string;
+  name?: string;
+  medicineName?: string;
+  form?: string;
+  medicineType?: string;
+  category?: string;
+  dosage?: string;
+  manufacturer?: string;
+  uses?: string;
+  confidence?: number;   // 0–100 normalized
+  medicineFound?: boolean;
+  noTextDetected?: boolean;
+  failureReason?: string;
 }
 
 export interface ScanHistoryItem {
@@ -511,6 +520,7 @@ export async function getTodaysReminders(): Promise<Reminder[]> {
   // The backend returns 'medicine_name', 'reminder_time', and 'is_active'.
   return list.map((r: any) => ({
     id: String(r.id),
+    medicineId: r.medicine_id ? String(r.medicine_id) : undefined,
     medicineName: r.medicine_name ?? r.medicineName ?? '',
     time: r.reminder_time ?? r.time ?? '',
     frequency: r.frequency ?? 'daily',
@@ -649,12 +659,56 @@ export async function uploadMedicineImage(imageUri: string): Promise<{ scanId: s
 export async function getScanResult(scanId: string): Promise<ScanResult> {
   // 🔴 REAL — active
   const data = await medicineApiCall<any>(ENDPOINTS.scannerResult(scanId));
+  const payload = data.decrypted_data ?? data.data ?? data;
+
+  const rawMedId = payload.medicine_id ?? payload.medicine?.medicine_id ?? payload.medicine?.id;
+  const medicineId = rawMedId ? String(rawMedId) : undefined;
+
+  const rawMedName = payload.medicine?.medicine_name ?? payload.medicine_name ?? payload.medicine?.name;
+  const isMeaningfulName = typeof rawMedName === 'string' &&
+    rawMedName.trim().length > 0 &&
+    !['unknown', 'null', 'undefined', 'not identified', 'none', 'n/a', 'no text', 'not found', 'unidentified'].includes(rawMedName.trim().toLowerCase());
+  const medicineName = isMeaningfulName ? rawMedName.trim() : undefined;
+
+  const rawFound = payload.medicine_found ?? payload.medicineFound;
+  const medicineFound = (rawFound !== false && rawFound !== 'false') && Boolean(medicineName || medicineId);
+
+  const extractedText = payload.ocr_info?.extracted_text ?? payload.extracted_text ?? payload.ocr_text ?? '';
+  const noTextDetected = payload.no_text_detected ?? (!extractedText || extractedText.trim().length === 0);
+
+  const rawConfidence = payload.confidence ?? payload.medicine?.confidence ?? payload.ocr_info?.ocr_confidence ?? payload.ocr_info?.confidence;
+  let normalizedConfidence: number | undefined = undefined;
+  if (typeof rawConfidence === 'number') {
+    if (rawConfidence > 0 && rawConfidence <= 1) {
+      normalizedConfidence = Math.round(rawConfidence * 100);
+    } else if (rawConfidence > 1 && rawConfidence <= 100) {
+      normalizedConfidence = Math.round(rawConfidence);
+    } else {
+      normalizedConfidence = Math.round(rawConfidence);
+    }
+  }
+
+  const form = payload.form ?? payload.medicine?.type ?? payload.medicine?.medicine_type ?? payload.type ?? 'Tablet';
+  const category = payload.category ?? payload.medicine?.category;
+  const dosage = payload.dosage ?? payload.medicine?.dosage;
+  const manufacturer = payload.manufacturer ?? payload.medicine?.manufacturer;
+  const uses = payload.uses ?? payload.medicine?.uses ?? payload.ai_summary ?? payload.summary;
+
   return {
-    scanId: data.scan_id,
-    medicineId: data.medicine_id,
-    name: data.medicine_name,
-    form: data.form ?? 'Tablet',
-    confidence: data.confidence,
+    scanId: payload.scan_id ?? scanId,
+    medicineId: medicineId,
+    name: medicineName,
+    medicineName: medicineName,
+    form: form,
+    medicineType: form,
+    category: category,
+    dosage: dosage,
+    manufacturer: manufacturer,
+    uses: uses,
+    confidence: normalizedConfidence,
+    medicineFound: medicineFound,
+    noTextDetected: noTextDetected,
+    failureReason: payload.reason ?? payload.message ?? (noTextDetected ? 'No readable text was detected in this image.' : undefined),
   };
 
   // 🟢 MOCK

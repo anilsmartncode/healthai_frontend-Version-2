@@ -148,18 +148,29 @@ export interface ScanResult {
   medicineFound: boolean;
   medicineId?: string;
   medicineName?: string;
-  confidence?: number; // 0–100
+  medicineType?: string;
+  category?: string;
+  dosage?: string;
+  manufacturer?: string;
+  uses?: string;
+  confidence?: number; // 0–100 normalized
   status: 'processing' | 'done' | 'failed';
+  extractedText?: string;
+  noTextDetected?: boolean;
+  failureReason?: string;
 }
 
 export interface ScanHistoryItem {
   scanId: string;
   medicineName: string;
-  medicineType: string;
+  medicineType?: string;
   scannedAt: string;
   imageUrl?: string;
   medicineId?: string;
   aiSummary?: string;
+  createdAt?: string;
+  status?: string;
+  confidence?: number;
 }
 
 export interface InteractionResult {
@@ -559,16 +570,60 @@ export async function getScanResult(scanId: string): Promise<ScanResult> {
 
   const payload = data.decrypted_data ?? data.data ?? data;
   let status = payload.status ?? 'done';
-  // Normalize backend's "identified" status to "done" so the polling loop breaks
-  if (status === 'identified') status = 'done';
+  // Normalize backend's "identified" or "completed" status to "done" so the polling loop breaks
+  if (status === 'identified' || status === 'completed' || status === 'success') status = 'done';
+
+  // Robust field extraction
+  const rawMedId = payload.medicine_id ?? payload.medicine?.medicine_id ?? payload.medicine?.id;
+  const medicineId = rawMedId ? String(rawMedId) : undefined;
+
+  const rawMedName = payload.medicine?.medicine_name ?? payload.medicine_name ?? payload.medicine?.name;
+  const isMeaningfulName = typeof rawMedName === 'string' &&
+    rawMedName.trim().length > 0 &&
+    !['unknown', 'null', 'undefined', 'not identified', 'none', 'n/a', 'no text', 'not found', 'unidentified'].includes(rawMedName.trim().toLowerCase());
+  const medicineName = isMeaningfulName ? rawMedName.trim() : undefined;
+  const rawConfidence = payload.confidence ?? payload.medicine?.confidence;
+  let normalizedConfidence: number | undefined = undefined;
+  if (typeof rawConfidence === 'number') {
+    if (rawConfidence > 0 && rawConfidence <= 1) {
+      normalizedConfidence = Math.round(rawConfidence * 100);
+    } else if (rawConfidence > 1 && rawConfidence <= 100) {
+      normalizedConfidence = Math.round(rawConfidence);
+    } else {
+      normalizedConfidence = Math.round(rawConfidence);
+    }
+  }
+
+  const medicineType = payload.medicine?.type ?? payload.medicine?.medicine_type ?? payload.type ?? payload.form;
+  const category = payload.medicine?.category ?? payload.category;
+  const dosage = payload.medicine?.dosage ?? payload.dosage;
+  const manufacturer = payload.medicine?.manufacturer ?? payload.manufacturer;
+  const uses = payload.medicine?.uses ?? payload.uses ?? payload.ai_summary ?? payload.summary;
+
+  const extractedText = payload.ocr_info?.extracted_text ?? payload.extracted_text ?? payload.ocr_text ?? '';
+  const noTextDetected = payload.no_text_detected ?? (!extractedText || extractedText.trim().length === 0);
+
+  const rawFound = payload.medicine_found ?? payload.medicineFound;
+  // A medicine is truly found only if it has a meaningful medicineName or valid medicineId, and backend did not explicitly flag false
+  const medicineFound = (rawFound !== false && rawFound !== 'false') && Boolean(medicineName || medicineId);
+
+  const failureReason = payload.reason ?? payload.message ?? (noTextDetected ? 'No readable text was detected in this image.' : 'Could not identify a recognized medicine.');
 
   return {
     scanId: payload.scan_id ?? scanId,
-    medicineFound: !!(payload.medicine_id ?? payload.medicine_found ?? payload.medicine),
-    medicineId: payload.medicine_id ? String(payload.medicine_id) : undefined,
-    medicineName: payload.medicine?.medicine_name ?? payload.medicine_name,
-    confidence: payload.medicine?.confidence ?? payload.confidence ?? payload.ocr_info?.ocr_confidence,
-    status: status,
+    medicineFound: medicineFound,
+    medicineId: medicineId,
+    medicineName: medicineName,
+    medicineType: medicineType,
+    category: category,
+    dosage: dosage,
+    manufacturer: manufacturer,
+    uses: uses,
+    confidence: normalizedConfidence,
+    status: (status === 'failed' || payload.success === false) ? 'failed' : status,
+    extractedText: extractedText,
+    noTextDetected: noTextDetected,
+    failureReason: failureReason,
   };
 
   // 🟢 MOCK
@@ -611,6 +666,8 @@ export async function getScanHistory(page = 1, limit = 10): Promise<ScanHistoryI
     status: item.status ?? 'done',
     medicineId: item.medicine_id ? String(item.medicine_id) : undefined,
     medicineName: item.medicine_name ?? item.medicineName ?? 'Unknown Medicine',
+    medicineType: item.medicine_type ?? item.medicineType ?? item.type ?? 'Tablet',
+    scannedAt: item.scanned_at ?? item.scannedAt ?? item.created_at ?? item.createdAt ?? new Date().toISOString(),
     confidence: item.confidence ?? 0,
     aiSummary: item.ai_summary ?? item.aiSummary ?? '',
     imageUrl: item.image_url ?? item.imageUrl,

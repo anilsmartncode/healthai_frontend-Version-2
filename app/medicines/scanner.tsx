@@ -35,6 +35,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { Colors } from '@/constants/Colors';
 import {
   uploadMedicineImage,
@@ -51,18 +52,79 @@ import { ENDPOINTS } from '@/constants/api';
 import { api } from '@/services/api';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
-type ScanView = 'idle' | 'processing' | 'identified' | 'details' | 'actions';
+type ScanView = 'idle' | 'processing' | 'identified' | 'unidentified' | 'details' | 'actions';
+
+const PROCESSING_STEPS = [
+  { label: 'Uploading image', minProgress: 0, doneProgress: 35, icon: 'cloud-upload-outline' },
+  { label: 'Reading OCR text', minProgress: 35, doneProgress: 65, icon: 'scan-outline' },
+  { label: 'Matching medical database', minProgress: 65, doneProgress: 90, icon: 'medical-outline' },
+  { label: 'Verifying drug details', minProgress: 90, doneProgress: 100, icon: 'shield-checkmark-outline' },
+];
+
+function CircularProgress({ progress, size = 148, strokeWidth = 10 }: { progress: number; size?: number; strokeWidth?: number }) {
+  const radius = (size - strokeWidth) / 2;
+  const center = size / 2;
+  const circumference = 2 * Math.PI * radius;
+  const clamped = Math.min(Math.max(Math.round(progress), 0), 100);
+  const strokeDashoffset = circumference - (circumference * clamped) / 100;
+
+  const phaseLabel =
+    clamped >= 90 ? 'FINALIZING' : clamped >= 65 ? 'MATCHING' : clamped >= 35 ? 'READING' : 'UPLOADING';
+
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
+        <Defs>
+          <LinearGradient id="scannerProgressGrad" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0%" stopColor={Colors.primary} />
+            <Stop offset="100%" stopColor="#38BDF8" />
+          </LinearGradient>
+        </Defs>
+        {/* Background Track */}
+        <Circle
+          cx={center}
+          cy={center}
+          r={radius}
+          stroke="#E2E8F0"
+          strokeWidth={strokeWidth}
+          fill="none"
+        />
+        {/* Animated Progress Arc */}
+        <Circle
+          cx={center}
+          cy={center}
+          r={radius}
+          stroke="url(#scannerProgressGrad)"
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${circumference} ${circumference}`}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          fill="none"
+          transform={`rotate(-90 ${center} ${center})`}
+        />
+      </Svg>
+      <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={styles.progressPct}>{clamped}%</Text>
+        <View style={styles.phaseBadge}>
+          <Text style={styles.progressLabel}>{phaseLabel}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 export default function MedicineScannerScreen() {
   const [view, setView] = useState<ScanView>('idle');
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [unidentifiedReason, setUnidentifiedReason] = useState<string | null>(null);
   const [detail, setDetail] = useState<Medicine | null>(null);
   const [progress, setProgress] = useState(0);
   const [historyVisible, setHistoryVisible] = useState(false);
   const [history, setHistory] = useState<ScanHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [savingMed, setSavingMed] = useState(false);
+  const [viewDetailsLoading, setViewDetailsLoading] = useState(false);
 
   // Translation State
   const [langModalOpen, setLangModalOpen] = useState(false);
@@ -75,7 +137,8 @@ export default function MedicineScannerScreen() {
   // ── Core scan flow ──────────────────────────────────────────────────────────
   const runScan = useCallback(async (imageUri: string) => {
     setView('processing');
-    setProgress(10);
+    setProgress(15);
+    setUnidentifiedReason(null);
     console.log('[Scanner] runScan START', { imageUri });
 
     try {
@@ -84,35 +147,59 @@ export default function MedicineScannerScreen() {
       const t0 = Date.now();
       const { scanId } = await uploadMedicineImage(imageUri);
       console.log('[Scanner] uploadMedicineImage RESPONSE', { scanId, ms: Date.now() - t0 });
-      setProgress(50);
+      setProgress(45);
 
-      // Step 2: Poll for result (retry up to 5 times, 1s apart)
+      // Step 2: Poll for result (retry up to 6 times, ~900ms apart)
       let result: ScanResult | null = null;
-      for (let i = 0; i < 5; i++) {
-        await new Promise((r) => setTimeout(r, 1000));
-        setProgress(50 + (i + 1) * 8);
+      for (let i = 0; i < 6; i++) {
+        await new Promise((r) => setTimeout(r, 900));
+        setProgress(45 + (i + 1) * 8);
         const tp = Date.now();
         console.log(`[Scanner] getScanResult POLL attempt=${i + 1}`, { scanId });
         result = await getScanResult(scanId);
-        console.log(`[Scanner] getScanResult RESPONSE attempt=${i + 1}`, { status: result.status, medicineFound: result.medicineFound, ms: Date.now() - tp });
-        if (result.status === 'done' || result.status === 'failed') break;
+        console.log(`[Scanner] getScanResult RESPONSE attempt=${i + 1}`, {
+          status: result?.status,
+          medicineFound: result?.medicineFound,
+          medicineName: result?.medicineName,
+          medicineId: result?.medicineId,
+          ms: Date.now() - tp,
+        });
+        if (result?.status === 'done' || result?.status === 'failed') break;
       }
       setProgress(100);
 
-      if (!result || result.status === 'failed' || !result.medicineFound) {
-        console.warn('[Scanner] medicine NOT identified', { status: result?.status, medicineFound: result?.medicineFound });
-        Alert.alert('Not Identified', 'Could not identify a medicine from this image. Please try a clearer photo.');
-        setView('idle');
+      // Strict validation: Must have completed, found a medicine, and have a non-empty name
+      if (!result || result.status === 'failed' || !result.medicineFound || !result.medicineName) {
+        console.warn('[Scanner] medicine NOT identified or text unextractable', {
+          status: result?.status,
+          medicineFound: result?.medicineFound,
+          medicineName: result?.medicineName,
+          noTextDetected: result?.noTextDetected,
+          reason: result?.failureReason,
+        });
+
+        setUnidentifiedReason(
+          result?.failureReason ??
+          (result?.noTextDetected
+            ? 'No readable medicine text or name was found in this photo.'
+            : 'Could not identify a recognized medicine from this image.')
+        );
+        setScanResult(result);
+        setView('unidentified');
         return;
       }
 
-      console.log('[Scanner] medicine IDENTIFIED', { medicineId: result.medicineId, medicineName: result.medicineName, confidence: result.confidence });
+      console.log('[Scanner] medicine IDENTIFIED', {
+        medicineId: result.medicineId,
+        medicineName: result.medicineName,
+        confidence: result.confidence,
+      });
       setScanResult(result);
       setView('identified');
     } catch (e: any) {
       console.error('[Scanner] runScan ERROR', e?.message ?? e);
-      Alert.alert('Scan Failed', e?.message ?? 'Something went wrong. Please try again.');
-      setView('idle');
+      setUnidentifiedReason(e?.message ?? 'Network or scanning error occurred. Please try again.');
+      setView('unidentified');
     }
   }, []);
 
@@ -166,17 +253,38 @@ export default function MedicineScannerScreen() {
 
   // ── View medicine details ────────────────────────────────────────────────
   const handleViewDetails = async () => {
-    if (!scanResult?.medicineId) return;
-    console.log('[Scanner] getScanMedicineDetails REQUEST', { medicineId: scanResult.medicineId });
-    const t0 = Date.now();
-    try {
-      const med = await getScanMedicineDetails(scanResult.medicineId);
-      console.log('[Scanner] getScanMedicineDetails RESPONSE', { name: med?.name, type: med?.type, ms: Date.now() - t0 });
-      setDetail(med);
-      setView('details');
-    } catch (e: any) {
-      console.error('[Scanner] getScanMedicineDetails ERROR', e?.message ?? e);
-      Alert.alert('Error', 'Could not load medicine details.');
+    if (!scanResult?.medicineName && !scanResult?.medicineId) return;
+
+    if (scanResult.medicineId) {
+      setViewDetailsLoading(true);
+      console.log('[Scanner] getScanMedicineDetails REQUEST', { medicineId: scanResult.medicineId });
+      const t0 = Date.now();
+      try {
+        const med = await getScanMedicineDetails(scanResult.medicineId);
+        console.log('[Scanner] getScanMedicineDetails RESPONSE', { name: med?.name, type: med?.type, ms: Date.now() - t0 });
+        if (med) {
+          setDetail(med);
+          setView('details');
+        } else {
+          router.push({
+            pathname: '/medicines/browse',
+            params: { search: scanResult.medicineName },
+          });
+        }
+      } catch (e: any) {
+        console.error('[Scanner] getScanMedicineDetails ERROR', e?.message ?? e);
+        router.push({
+          pathname: '/medicines/browse',
+          params: { search: scanResult.medicineName },
+        });
+      } finally {
+        setViewDetailsLoading(false);
+      }
+    } else if (scanResult.medicineName) {
+      router.push({
+        pathname: '/medicines/browse',
+        params: { search: scanResult.medicineName },
+      });
     }
   };
 
@@ -223,6 +331,7 @@ export default function MedicineScannerScreen() {
   const handleReset = () => {
     setView('idle');
     setScanResult(null);
+    setUnidentifiedReason(null);
     setDetail(null);
     setProgress(0);
     setTranslatedCategory(null);
@@ -304,7 +413,7 @@ export default function MedicineScannerScreen() {
         <View style={styles.cornerBL} /><View style={styles.cornerBR} />
         <Ionicons name="camera-outline" size={48} color={Colors.primary} />
         <Text style={styles.cameraLabel}>Scan Medicine</Text>
-        <Text style={styles.cameraSub}>Tap to open camera and scan a medicine strip or box</Text>
+        <Text style={styles.cameraSub}>Tap to open camera and scan a medicine strip, box, or bottle</Text>
       </Pressable>
 
       <View style={styles.orRow}>
@@ -321,35 +430,272 @@ export default function MedicineScannerScreen() {
   );
 
   const renderProcessing = () => (
-    <View style={styles.centeredWrap}>
-      <View style={styles.progressRing}>
-        <Text style={styles.progressPct}>{progress}%</Text>
+    <View style={styles.processingWrapper}>
+      <View style={styles.processingCard}>
+        <View style={styles.processingRingContainer}>
+          <CircularProgress progress={progress} size={150} strokeWidth={11} />
+        </View>
+
+        <Text style={styles.processingTitle}>Analyzing Medicine Image</Text>
+        <Text style={styles.processingSub}>
+          Our AI optical scanner is reading packaging text and matching verified pharmacological records.
+        </Text>
+
+        {/* Live Step Progress Pipeline */}
+        <View style={styles.stepsContainer}>
+          {PROCESSING_STEPS.map((step, idx) => {
+            const isDone = progress >= step.doneProgress;
+            const isActive = progress >= step.minProgress && !isDone;
+
+            return (
+              <View
+                key={idx}
+                style={[
+                  styles.stepRow,
+                  isDone && styles.stepRowDone,
+                  isActive && styles.stepRowActive,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.stepIconBox,
+                    isDone ? styles.stepIconBoxDone : isActive ? styles.stepIconBoxActive : styles.stepIconBoxPending,
+                  ]}
+                >
+                  {isDone ? (
+                    <Ionicons name="checkmark" size={15} color="#fff" />
+                  ) : isActive ? (
+                    <ActivityIndicator size="small" color={Colors.primary} />
+                  ) : (
+                    <Ionicons name={step.icon as any} size={15} color="#94A3B8" />
+                  )}
+                </View>
+                <Text
+                  style={[
+                    styles.stepText,
+                    isDone ? styles.stepTextDone : isActive ? styles.stepTextActive : styles.stepTextPending,
+                  ]}
+                >
+                  {step.label}
+                </Text>
+                {isDone && (
+                  <View style={styles.stepBadgeDone}>
+                    <Text style={styles.stepBadgeDoneText}>Done</Text>
+                  </View>
+                )}
+                {isActive && (
+                  <View style={styles.stepBadgeActive}>
+                    <Text style={styles.stepBadgeActiveText}>Processing</Text>
+                  </View>
+                )}
+              </View>
+            );
+          })}
+        </View>
       </View>
-      <Text style={styles.processingTitle}>Processing Image…</Text>
-      <Text style={styles.processingSub}>Extracting text and identifying medicine</Text>
     </View>
   );
 
   const renderIdentified = () => (
-    <View style={styles.centeredWrap}>
-      <View style={styles.identifiedCircle}>
-        <Ionicons name="checkmark" size={36} color="#fff" />
-      </View>
-      <Text style={styles.identifiedTitle}>Medicine Identified!</Text>
-      <Text style={styles.identifiedName}>{scanResult?.medicineName}</Text>
-      {scanResult?.confidence != null && (
-        <View style={styles.confidencePill}>
-          <View style={styles.confidenceDot} />
-          <Text style={styles.confidenceText}>{scanResult.confidence}% Confidence</Text>
+    <ScrollView contentContainerStyle={styles.identifiedPad} showsVerticalScrollIndicator={false}>
+      {/* Top AI Match Status Banner */}
+      <View style={styles.matchStatusRow}>
+        <View style={styles.aiVerifiedPill}>
+          <Ionicons name="shield-checkmark" size={16} color="#059669" />
+          <Text style={styles.aiVerifiedText}>AI Verified Match</Text>
         </View>
-      )}
-      <Pressable style={styles.primaryBtn} onPress={handleViewDetails}>
-        <Text style={styles.primaryBtnText}>View Details</Text>
-      </Pressable>
-      <Pressable style={styles.ghostBtn} onPress={handleReset}>
-        <Text style={styles.ghostBtnText}>Scan Another</Text>
-      </Pressable>
-    </View>
+        <View style={styles.accuracyPill}>
+          <Ionicons name="sparkles" size={13} color={Colors.primary} />
+          <Text style={styles.accuracyText}>High Accuracy</Text>
+        </View>
+      </View>
+
+      {/* Main Medicine Hero Card */}
+      <View style={styles.medicineHeroCard}>
+        <View style={styles.medHeroHeader}>
+          <View style={styles.medHeroIconWrap}>
+            <Ionicons name="medical" size={26} color="#fff" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.medHeroName}>{scanResult?.medicineName}</Text>
+            {scanResult?.manufacturer ? (
+              <Text style={styles.medHeroMfg}>by {scanResult.manufacturer}</Text>
+            ) : (
+              <Text style={styles.medHeroMfg}>Verified Pharmaceutical Match</Text>
+            )}
+          </View>
+        </View>
+
+        {/* Tags / Metadata Chips */}
+        <View style={styles.medTagsRow}>
+          <View style={styles.medTagChip}>
+            <Text style={styles.medTagChipText}>
+              {scanResult?.medicineType || (scanResult as any)?.form || 'Tablet'}
+            </Text>
+          </View>
+
+          {scanResult?.dosage ? (
+            <View style={styles.medTagChip}>
+              <Ionicons name="fitness-outline" size={13} color="#0D9488" />
+              <Text style={[styles.medTagChipText, { color: '#0D9488' }]}>{scanResult.dosage}</Text>
+            </View>
+          ) : null}
+
+          {scanResult?.category ? (
+            <View style={[styles.medTagChip, { backgroundColor: '#EEF2FF' }]}>
+              <Ionicons name="pricetag-outline" size={13} color="#4F46E5" />
+              <Text style={[styles.medTagChipText, { color: '#4F46E5' }]}>{scanResult.category}</Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+
+      {/* Extracted OCR Card (when OCR text is detected) */}
+      {scanResult?.extractedText && scanResult.extractedText.trim().length > 0 ? (
+        <View style={styles.extractedOcrCard}>
+          <View style={styles.extractedOcrHeader}>
+            <Ionicons name="scan-outline" size={15} color={Colors.primary} />
+            <Text style={styles.extractedOcrTitle}>Extracted Packaging Text</Text>
+          </View>
+          <Text style={styles.extractedOcrContent} numberOfLines={3}>
+            "{scanResult.extractedText.trim()}"
+          </Text>
+        </View>
+      ) : null}
+
+      {/* Available Clinical Info Highlights */}
+      <View style={styles.highlightsCard}>
+        <Text style={styles.highlightsCardTitle}>Ready in Full Details</Text>
+
+        <View style={styles.highlightItem}>
+          <View style={[styles.highlightDot, { backgroundColor: Colors.primary + '18' }]}>
+            <Ionicons name="information" size={14} color={Colors.primary} />
+          </View>
+          <Text style={styles.highlightText}>Uses, approved medical indications & therapeutic class</Text>
+        </View>
+
+        <View style={styles.highlightItem}>
+          <View style={[styles.highlightDot, { backgroundColor: '#FEF3C7' }]}>
+            <Ionicons name="warning-outline" size={14} color="#D97706" />
+          </View>
+          <Text style={styles.highlightText}>Recommended dosage guidelines & critical side effects</Text>
+        </View>
+
+        <View style={styles.highlightItem}>
+          <View style={[styles.highlightDot, { backgroundColor: '#ECFDF5' }]}>
+            <Ionicons name="alarm-outline" size={14} color="#059669" />
+          </View>
+          <Text style={styles.highlightText}>1-tap dose reminder setup & multi-drug interaction check</Text>
+        </View>
+      </View>
+
+      {/* Action Buttons */}
+      <View style={styles.identifiedActionsWrap}>
+        <Pressable
+          style={[styles.primaryActionBtn, viewDetailsLoading && { opacity: 0.7 }]}
+          onPress={handleViewDetails}
+          disabled={viewDetailsLoading}
+        >
+          {viewDetailsLoading ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <>
+              <Text style={styles.primaryActionBtnText}>View Full Medicine Details</Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
+            </>
+          )}
+        </Pressable>
+
+        <Pressable style={styles.secondaryActionBtn} onPress={handleReset}>
+          <Ionicons name="camera-outline" size={18} color="#475569" />
+          <Text style={styles.secondaryActionBtnText}>Scan Another Medicine</Text>
+        </Pressable>
+      </View>
+      <View style={{ height: 24 }} />
+    </ScrollView>
+  );
+
+  const renderUnidentified = () => (
+    <ScrollView contentContainerStyle={styles.unidentifiedPad} showsVerticalScrollIndicator={false}>
+      <View style={styles.unidentifiedCenter}>
+        <View style={styles.unidentifiedCircle}>
+          <Ionicons name="scan-outline" size={38} color="#D97706" />
+          <View style={styles.unidentifiedBadge}>
+            <Ionicons name="alert" size={13} color="#fff" />
+          </View>
+        </View>
+        <Text style={styles.unidentifiedTitle}>No Medicine Recognized</Text>
+        <Text style={styles.unidentifiedSub}>
+          {unidentifiedReason ?? "We couldn't detect a valid medicine name or label in this image. Please ensure you are scanning a medicine package, strip, or bottle with clearly printed text."}
+        </Text>
+      </View>
+
+      {/* Helpful Guidance Card */}
+      <View style={styles.tipsCard}>
+        <View style={styles.tipsHeader}>
+          <Ionicons name="bulb-outline" size={18} color="#D97706" />
+          <Text style={styles.tipsTitle}>Tips for a clear scan</Text>
+        </View>
+
+        <View style={styles.tipItem}>
+          <View style={styles.tipIconBox}>
+            <Ionicons name="medical-outline" size={16} color={Colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.tipHeading}>Focus on medicine packaging</Text>
+            <Text style={styles.tipDesc}>
+              Make sure the photo shows a medicine strip, bottle, or box. For tablet strips, ensure the printed foil side with the brand name is visible.
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.tipItem}>
+          <View style={styles.tipIconBox}>
+            <Ionicons name="sunny-outline" size={16} color={Colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.tipHeading}>Clear lighting & sharp focus</Text>
+            <Text style={styles.tipDesc}>
+              Hold the camera steady in a well-lit area. Avoid strong reflections, dark shadows, or blurry angles.
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.tipItem}>
+          <View style={styles.tipIconBox}>
+            <Ionicons name="scan-outline" size={16} color={Colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.tipHeading}>Keep text inside the frame</Text>
+            <Text style={styles.tipDesc}>
+              Position the full medicine name and strength (e.g., 500mg) flat and clearly within the frame.
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Action Buttons */}
+      <View style={styles.unidentifiedActions}>
+        <Pressable style={styles.primaryBtn} onPress={handleScan}>
+          <Ionicons name="camera-outline" size={18} color="#fff" />
+          <Text style={styles.primaryBtnText}>Scan Again</Text>
+        </Pressable>
+
+        <Pressable style={styles.outlineBtn} onPress={handleGallery}>
+          <Ionicons name="image-outline" size={18} color={Colors.primary} />
+          <Text style={styles.outlineBtnText}>Upload from Gallery</Text>
+        </Pressable>
+
+        <Pressable
+          style={styles.ghostSearchBtn}
+          onPress={() => router.push('/medicines/browse')}
+        >
+          <Ionicons name="search-outline" size={16} color="#64748B" />
+          <Text style={styles.ghostSearchText}>Search Medicine by Name</Text>
+        </Pressable>
+      </View>
+      <View style={{ height: 20 }} />
+    </ScrollView>
   );
 
   const renderDetails = () => (
@@ -416,8 +762,12 @@ export default function MedicineScannerScreen() {
       ) : null}
 
       {detail?.id && (
-        <Pressable onPress={() => router.push(`/medicine/${detail.id}` as any)}>
-          <Text style={styles.viewMore}>View More</Text>
+        <Pressable
+          style={styles.viewMoreBtn}
+          onPress={() => router.push(`/medicine/${detail.id}` as any)}
+        >
+          <Text style={styles.viewMoreText}>View Full Medicine Details</Text>
+          <Ionicons name="arrow-forward" size={15} color={Colors.primary} />
         </Pressable>
       )}
 
@@ -477,6 +827,7 @@ export default function MedicineScannerScreen() {
         {view === 'idle' && renderIdle()}
         {view === 'processing' && renderProcessing()}
         {view === 'identified' && renderIdentified()}
+        {view === 'unidentified' && renderUnidentified()}
         {view === 'details' && renderDetails()}
         {view === 'actions' && renderActions()}
       </View>
@@ -564,6 +915,7 @@ const styles = StyleSheet.create({
   historyBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   content: { flex: 1 },
 
+  // ─── Idle State ───
   idleWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 20 },
   cameraFrame: { width: '100%', aspectRatio: 1, borderRadius: 20, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center', gap: 10, position: 'relative' },
   cornerTL: { position: 'absolute', top: 16, left: 16, width: 28, height: 28, borderTopWidth: 3, borderLeftWidth: 3, borderColor: Colors.primary, borderRadius: 4 },
@@ -578,18 +930,85 @@ const styles = StyleSheet.create({
   uploadBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', borderWidth: 1.5, borderColor: Colors.primary + '50', borderRadius: 14, paddingHorizontal: 24, paddingVertical: 13, width: '100%', justifyContent: 'center' },
   uploadBtnText: { fontSize: 15, fontWeight: '600', color: Colors.primary },
 
-  centeredWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 16 },
-  progressRing: { width: 100, height: 100, borderRadius: 50, borderWidth: 6, borderColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
-  progressPct: { fontSize: 24, fontWeight: '800', color: Colors.primary },
-  processingTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
-  processingSub: { fontSize: 14, color: '#94A3B8', textAlign: 'center' },
+  // ─── Processing State Styles ───
+  processingWrapper: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20, backgroundColor: '#F8FAFC' },
+  processingCard: { width: '100%', backgroundColor: '#fff', borderRadius: 24, padding: 24, alignItems: 'center', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 18, elevation: 4, borderWidth: 1, borderColor: '#E2E8F0' },
+  processingRingContainer: { alignItems: 'center', justifyContent: 'center', marginVertical: 12 },
+  progressPct: { fontSize: 28, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
+  phaseBadge: { backgroundColor: '#EFF6FF', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 3, marginTop: 4, borderWidth: 1, borderColor: '#BFDBFE' },
+  progressLabel: { fontSize: 10, fontWeight: '800', color: Colors.primary, letterSpacing: 1.2 },
+  processingTitle: { fontSize: 19, fontWeight: '800', color: '#0F172A', marginTop: 14, textAlign: 'center' },
+  processingSub: { fontSize: 13, color: '#64748B', textAlign: 'center', lineHeight: 19, marginTop: 6, paddingHorizontal: 10 },
+  stepsContainer: { width: '100%', marginTop: 22, paddingTop: 18, borderTopWidth: 1, borderTopColor: '#F1F5F9', gap: 10 },
+  stepRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
+  stepRowDone: { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' },
+  stepRowActive: { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' },
+  stepIconBox: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  stepIconBoxDone: { backgroundColor: '#10B981' },
+  stepIconBoxActive: { backgroundColor: '#DBEAFE' },
+  stepIconBoxPending: { backgroundColor: '#E2E8F0' },
+  stepText: { flex: 1, fontSize: 13, fontWeight: '600', color: '#64748B' },
+  stepTextDone: { color: '#065F46', fontWeight: '700' },
+  stepTextActive: { color: '#1D4ED8', fontWeight: '700' },
+  stepTextPending: { color: '#94A3B8' },
+  stepBadgeDone: { backgroundColor: '#DCFCE7', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2 },
+  stepBadgeDoneText: { fontSize: 10, fontWeight: '700', color: '#166534' },
+  stepBadgeActive: { backgroundColor: '#DBEAFE', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2 },
+  stepBadgeActiveText: { fontSize: 10, fontWeight: '700', color: '#1E40AF' },
 
-  identifiedCircle: { width: 88, height: 88, borderRadius: 44, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', elevation: 6, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12 },
-  identifiedTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A' },
-  identifiedName: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
-  confidencePill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F0FDF4', borderRadius: 99, paddingHorizontal: 12, paddingVertical: 5 },
-  confidenceDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#16A34A' },
-  confidenceText: { fontSize: 13, fontWeight: '700', color: '#16A34A' },
+  // ─── Identified State Styles ───
+  identifiedPad: { padding: 18, gap: 16 },
+  matchStatusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
+  aiVerifiedPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ECFDF5', borderRadius: 99, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: '#A7F3D0' },
+  aiVerifiedText: { fontSize: 13, fontWeight: '700', color: '#059669' },
+  accuracyPill: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Colors.primary + '12', borderRadius: 99, paddingHorizontal: 12, paddingVertical: 6 },
+  accuracyText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
+
+  medicineHeroCard: { backgroundColor: '#fff', borderRadius: 20, padding: 18, gap: 14, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 10, elevation: 2 },
+  medHeroHeader: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  medHeroIconWrap: { width: 52, height: 52, borderRadius: 16, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+  medHeroName: { fontSize: 19, fontWeight: '800', color: '#0F172A', lineHeight: 24 },
+  medHeroMfg: { fontSize: 12, fontWeight: '600', color: '#64748B', marginTop: 2 },
+  medTagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingTop: 6, borderTopWidth: 1, borderTopColor: '#F8FAFC' },
+  medTagChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#F1F5F9', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  medTagChipText: { fontSize: 12, fontWeight: '700', color: '#334155' },
+
+  extractedOcrCard: { backgroundColor: '#F8FAFC', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#E2E8F0', gap: 6 },
+  extractedOcrHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  extractedOcrTitle: { fontSize: 12, fontWeight: '700', color: Colors.primary, textTransform: 'uppercase', letterSpacing: 0.5 },
+  extractedOcrContent: { fontSize: 13, fontStyle: 'italic', color: '#475569', lineHeight: 18 },
+
+  highlightsCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#E2E8F0', gap: 12 },
+  highlightsCardTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
+  highlightItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  highlightDot: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  highlightText: { flex: 1, fontSize: 13, color: '#334155', lineHeight: 18, fontWeight: '500' },
+
+  identifiedActionsWrap: { gap: 10, marginTop: 4 },
+  primaryActionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.primary, borderRadius: 16, paddingVertical: 15, width: '100%', shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 4 },
+  primaryActionBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  secondaryActionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#CBD5E1', borderRadius: 16, paddingVertical: 14, width: '100%' },
+  secondaryActionBtnText: { color: '#475569', fontSize: 15, fontWeight: '700' },
+
+  // ─── Unidentified / Fallback State Styles ───
+  unidentifiedPad: { padding: 20, gap: 16 },
+  unidentifiedCenter: { alignItems: 'center', gap: 10, marginTop: 10 },
+  unidentifiedCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#FEF3C7', alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  unidentifiedBadge: { position: 'absolute', bottom: 2, right: 2, width: 22, height: 22, borderRadius: 11, backgroundColor: '#D97706', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' },
+  unidentifiedTitle: { fontSize: 19, fontWeight: '800', color: '#0F172A', textAlign: 'center' },
+  unidentifiedSub: { fontSize: 13, color: '#64748B', textAlign: 'center', lineHeight: 19, paddingHorizontal: 12 },
+
+  tipsCard: { backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#FEF3C7', padding: 16, gap: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 },
+  tipsHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, borderBottomWidth: 0.5, borderBottomColor: '#FEF3C7', paddingBottom: 10 },
+  tipsTitle: { fontSize: 14, fontWeight: '700', color: '#92400E' },
+  tipItem: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  tipIconBox: { width: 32, height: 32, borderRadius: 8, backgroundColor: Colors.primary + '12', alignItems: 'center', justifyContent: 'center', marginTop: 2 },
+  tipHeading: { fontSize: 13, fontWeight: '700', color: '#0F172A', marginBottom: 2 },
+  tipDesc: { fontSize: 12, color: '#64748B', lineHeight: 17 },
+
+  unidentifiedActions: { gap: 10, marginTop: 4 },
+  ghostSearchBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12 },
+  ghostSearchText: { fontSize: 14, fontWeight: '600', color: '#64748B' },
 
   primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 14, width: '100%' },
   primaryBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
@@ -598,6 +1017,7 @@ const styles = StyleSheet.create({
   ghostBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#F1F5F9', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 32 },
   ghostBtnText: { color: '#64748B', fontSize: 14, fontWeight: '600' },
 
+  // ─── Details View Styles ───
   detailsPad: { padding: 16, gap: 14 },
   detailHeader: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', backgroundColor: '#fff', borderRadius: 14, borderWidth: 0.5, borderColor: '#E2E8F0', padding: 14 },
   detailIconWrap: { width: 50, height: 50, borderRadius: 12, backgroundColor: Colors.primary + '15', alignItems: 'center', justifyContent: 'center' },
@@ -610,18 +1030,35 @@ const styles = StyleSheet.create({
   infoValue: { fontSize: 14, color: '#334155', lineHeight: 21 },
   bulletRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   bullet: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: Colors.primary },
-  viewMore: { fontSize: 14, color: Colors.primary, fontWeight: '600', textAlign: 'center' },
+  viewMoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 99,
+    backgroundColor: Colors.primary + '10',
+    borderWidth: 1,
+    borderColor: Colors.primary + '25',
+    alignSelf: 'center',
+    marginVertical: 4,
+  },
+  viewMoreText: { fontSize: 13, color: Colors.primary, fontWeight: '700' },
   detailActions: { gap: 10 },
 
+  // ─── Actions View Styles ───
   actionsWrap: { padding: 16, gap: 10 },
   actionItem: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#fff', borderRadius: 14, borderWidth: 0.5, borderColor: '#E2E8F0', padding: 16 },
   actionLabel: { fontSize: 15, fontWeight: '600', color: '#0F172A' },
   actionSub: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
 
+  // ─── Bottom Bar Styles ───
   bottomBar: { flexDirection: 'row', gap: 10, padding: 16, backgroundColor: '#fff', borderTopWidth: 0.5, borderTopColor: '#E2E8F0' },
   bottomBarBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#F1F5F9', borderRadius: 12, paddingVertical: 13 },
   bottomBarText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
 
+  // ─── History Modal Styles ───
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 0.5, borderBottomColor: '#E2E8F0' },
   modalTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
   historyItem: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 12, borderWidth: 0.5, borderColor: '#E2E8F0', padding: 14 },

@@ -19,6 +19,9 @@ import {
   ActivityIndicator,
   Modal,
   Alert,
+  Platform,
+  UIManager,
+  LayoutAnimation,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -108,6 +111,14 @@ function MedDetailSheet({
     setExpanded(false);
   }, [medicine?.id]);
 
+  const toggleExpanded = () => {
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpanded((v) => !v);
+  };
+
   const handleSave = async () => {
     if (!medicine || saved) return;
     setSaving(true);
@@ -186,9 +197,25 @@ function MedDetailSheet({
           )}
 
           {/* View More / View Less */}
-          <Pressable style={styles.viewMoreWrap} onPress={() => setExpanded((v) => !v)}>
-            <Text style={styles.viewMoreText}>{expanded ? 'View Less' : 'View More'}</Text>
-          </Pressable>
+          {sideEffects.length > 2 && (
+            <Pressable
+              style={({ pressed }) => [
+                styles.viewMoreWrap,
+                expanded && styles.viewMoreWrapActive,
+                pressed && { opacity: 0.8 },
+              ]}
+              onPress={toggleExpanded}
+            >
+              <Text style={[styles.viewMoreText, expanded && styles.viewMoreTextActive]}>
+                {expanded ? 'View Less' : 'View More'}
+              </Text>
+              <Ionicons
+                name={expanded ? 'chevron-up' : 'chevron-down'}
+                size={14}
+                color={expanded ? '#047857' : Colors.primary}
+              />
+            </Pressable>
+          )}
 
           {/* 4 action rows */}
           <View style={styles.actionList}>
@@ -553,8 +580,27 @@ const styles = StyleSheet.create({
   bulletDot: { fontSize: 14, color: Colors.text, lineHeight: 21 },
 
   // ── View More ──
-  viewMoreWrap: { alignItems: 'center', paddingVertical: 8, marginBottom: 4 },
-  viewMoreText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+  viewMoreWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 99,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignSelf: 'center',
+    marginBottom: 12,
+    marginTop: 4,
+  },
+  viewMoreWrapActive: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+  },
+  viewMoreText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
+  viewMoreTextActive: { color: '#047857' },
 
   // ── Action rows ──
   actionList: {
