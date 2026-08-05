@@ -195,7 +195,13 @@ export default function TermsAndConditions() {
             styles.btnPrimary,
             pressed && { opacity: 0.85 },
           ]}
-          onPress={() => router.back()}
+          onPress={() => {
+            if (Platform.OS === 'web') {
+              window.location.href = '/';
+            } else {
+              router.back();
+            }
+          }}
         >
           <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
           <Text style={styles.btnText}>I Understand & Accept</Text>
