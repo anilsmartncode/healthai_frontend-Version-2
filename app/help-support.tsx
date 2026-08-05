@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors, Radius, Spacing } from '@/constants/Colors';
+import Constants from 'expo-constants';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -102,7 +103,7 @@ export default function HelpSupport() {
 
         {/* App version */}
         <View style={styles.versionBadge}>
-          <Text style={styles.versionTitle}>App version 2.4.1</Text>
+          <Text style={styles.versionTitle}>App version {Constants.expoConfig?.version ?? '1.0.0'}</Text>
           <Text style={styles.versionSub}>You're on the latest version</Text>
         </View>
       </ScrollView>
