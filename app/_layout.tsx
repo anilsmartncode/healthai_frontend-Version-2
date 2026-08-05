@@ -116,8 +116,7 @@ export default function RootLayout() {
 
   // --- WEB LOCKDOWN SECURITY ---
   // If we are on the web, block everything except the legal/contact pages.
-  // TEMPORARILY DISABLED FOR SCREENSHOTS
-  if (false && Platform.OS === 'web') {
+  if (Platform.OS === 'web') {
     const allowedWebPaths = ['/privacy', '/terms', '/cookies', '/contact', '/support'];
     // Allow the path if it exactly matches, or if they are at the root (redirecting to an allowed path later? No, block root)
     if (!allowedWebPaths.includes(pathname)) {
@@ -146,6 +145,12 @@ export default function RootLayout() {
               onPress={() => window.location.href = '/terms'}
             >
               Terms of Service
+            </Text>
+            <Text 
+              style={{ color: Colors.primary, fontSize: 13, fontWeight: '600' }}
+              onPress={() => window.location.href = '/contact'}
+            >
+              Contact Us
             </Text>
           </View>
         </View>

@@ -22,7 +22,7 @@ import { signInWithGoogle } from "@/utils/googleAuth";
 import { signInWithApple } from "@/utils/appleAuth";
 
 // 🎛️ Toggle Switch for Authentication
-const USE_FIREBASE_AUTH = false;
+const USE_FIREBASE_AUTH = true;
 // Lazy-load Firebase Auth so the page still opens in Expo Go
 function getAuth() {
   const mod = require('@react-native-firebase/auth');
