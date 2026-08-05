@@ -114,9 +114,15 @@ export default function RootLayout() {
     }
   }, [pathname, params]);
 
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   // --- WEB LOCKDOWN SECURITY ---
   // If we are on the web, block everything except the legal/contact pages.
-  if (Platform.OS === 'web') {
+  // We use `isMounted` to prevent React hydration errors (Error #418) when SSR and client differ.
+  if (Platform.OS === 'web' && isMounted) {
     const allowedWebPaths = ['/privacy', '/terms', '/cookies', '/contact', '/support'];
     const isAllowed = pathname && allowedWebPaths.some(p => 
       pathname === p || pathname === `${p}/` || pathname?.startsWith(`${p}?`)
