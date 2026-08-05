@@ -68,7 +68,7 @@ jobs:
       - name: Push Latest Image
         run: |
           docker push pradeepsmartncode/lawairepo:healthai-frontend-latest
-      # test1
+      ## test1
       # - name: Deploy Application
       #   run: |
       #     /home/snc/Downloads/health_care_ai/deploy.sh
