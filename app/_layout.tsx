@@ -212,6 +212,13 @@ export default function RootLayout() {
                     <Stack.Screen name="index" />
                     <Stack.Screen name="(auth)" />
                     <Stack.Screen name="(tabs)" />
+                    {/* Explicitly add legal pages so Expo router doesn't fall back to index */}
+                    <Stack.Screen name="privacy" options={{ headerShown: false }} />
+                    <Stack.Screen name="terms" options={{ headerShown: false }} />
+                    <Stack.Screen name="contact" options={{ headerShown: false }} />
+                    <Stack.Screen name="cookies" options={{ headerShown: false }} />
+                    <Stack.Screen name="support" options={{ headerShown: false }} />
+                    
                     <Stack.Screen
                       name="upload"
                       options={{ headerShown: true, title: "Upload Report" }}
