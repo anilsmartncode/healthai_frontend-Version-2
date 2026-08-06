@@ -7,12 +7,12 @@ const SECTIONS = [
   {
     title: "1. Acceptance of Terms",
     content:
-      'By downloading, installing, or using the HealthcareAI application ("App"), you agree to be bound by these Terms and Conditions. If you do not agree to these terms, please do not use the App. These terms constitute a legally binding agreement between you and SmartNCode Technologies.',
+      'By downloading, installing, or using the HealthcareAI application ("App"), you agree to be bound by these Terms and Conditions. If you do not agree to these terms, please do not use the App. These terms constitute a legally binding agreement between you and SMARTnCODE Technologies.',
   },
   {
     title: "2. About HealthcareAI",
     content:
-      "HealthcareAI is an AI-powered healthcare platform developed and maintained by SmartNCode Technologies. The App provides health information, appointment management, symptom analysis, and wellness guidance. The App is intended for informational purposes only and does not replace professional medical advice, diagnosis, or treatment.",
+      "HealthcareAI is an AI-powered healthcare platform developed and maintained by SMARTnCODE Technologies. The App provides health information, appointment management, symptom analysis, and wellness guidance. The App is intended for informational purposes only and does not replace professional medical advice, diagnosis, or treatment.",
   },
   {
     title: "3. Medical Disclaimer",
@@ -32,7 +32,7 @@ const SECTIONS = [
   {
     title: "6. Privacy & Data Collection",
     content:
-      "SmartNCode Technologies takes your privacy seriously. We collect personal and health-related data including name, date of birth, contact information, and health records solely to provide and improve our services. Your data is encrypted and stored securely. We do not sell your personal health data to third parties. Our full Privacy Policy is incorporated into these Terms by reference.",
+      "SMARTnCODE Technologies takes your privacy seriously. We collect personal and health-related data including name, date of birth, contact information, and health records solely to provide and improve our services. Your data is encrypted and stored securely. We do not sell your personal health data to third parties. Our full Privacy Policy is incorporated into these Terms by reference.",
   },
   {
     title: "7. Health Data Usage",
@@ -42,7 +42,7 @@ const SECTIONS = [
   {
     title: "8. AI-Powered Features",
     content:
-      "The App uses artificial intelligence to provide health insights and recommendations. While our AI models are designed to be accurate and helpful, they are not infallible. AI-generated content should be treated as a starting point for discussion with healthcare professionals, not as definitive medical advice. SmartNCode Technologies is not liable for decisions made solely based on AI recommendations.",
+      "The App uses artificial intelligence to provide health insights and recommendations. While our AI models are designed to be accurate and helpful, they are not infallible. AI-generated content should be treated as a starting point for discussion with healthcare professionals, not as definitive medical advice. SMARTnCODE Technologies is not liable for decisions made solely based on AI recommendations.",
   },
   {
     title: "9. Prohibited Activities",
@@ -52,22 +52,22 @@ const SECTIONS = [
   {
     title: "10. Intellectual Property",
     content:
-      "All content, features, and functionality of the App — including but not limited to text, graphics, logos, icons, and software — are the exclusive property of SmartNCode Technologies and are protected by applicable intellectual property laws. You may not reproduce, distribute, or create derivative works without express written permission from SmartNCode Technologies.",
+      "All content, features, and functionality of the App — including but not limited to text, graphics, logos, icons, and software — are the exclusive property of SMARTnCODE Technologies and are protected by applicable intellectual property laws. You may not reproduce, distribute, or create derivative works without express written permission from SMARTnCODE Technologies.",
   },
   {
     title: "11. Payments, Subscriptions, and Refunds",
     content:
-      "Certain features of the App may require a paid subscription or one-time purchase. Subscriptions automatically renew unless canceled at least 24 hours before the end of the current billing period. Payments are charged to your Apple ID or Google Play account at confirmation of purchase. You may manage or cancel your subscriptions in your device account settings. All purchases are final, and SmartNCode Technologies does not provide refunds for unused portions of a subscription term, except as required by applicable law or the respective app store policies.",
+      "Certain features of the App may require a paid subscription or one-time purchase. Subscriptions automatically renew unless canceled at least 24 hours before the end of the current billing period. Payments are charged to your Apple ID or Google Play account at confirmation of purchase. You may manage or cancel your subscriptions in your device account settings. All purchases are final, and SMARTnCODE Technologies does not provide refunds for unused portions of a subscription term, except as required by applicable law or the respective app store policies.",
   },
   {
     title: "12. Limitation of Liability",
     content:
-      "To the maximum extent permitted by law, SmartNCode Technologies shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use or inability to use the App. Our total liability to you for any claims arising out of or related to these Terms or the App shall not exceed the amount you paid to us in the twelve months preceding the claim.",
+      "To the maximum extent permitted by law, SMARTnCODE Technologies shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use or inability to use the App. Our total liability to you for any claims arising out of or related to these Terms or the App shall not exceed the amount you paid to us in the twelve months preceding the claim.",
   },
   {
     title: "13. Termination",
     content:
-      "SmartNCode Technologies reserves the right to suspend or terminate your account and access to the App at any time, with or without cause or notice, including for violation of these Terms. Upon termination, your right to use the App will immediately cease. Provisions of these Terms that by their nature should survive termination shall remain in effect.",
+      "SMARTnCODE Technologies reserves the right to suspend or terminate your account and access to the App at any time, with or without cause or notice, including for violation of these Terms. Upon termination, your right to use the App will immediately cease. Provisions of these Terms that by their nature should survive termination shall remain in effect.",
   },
   {
     title: "14. Changes to Terms",
@@ -84,7 +84,7 @@ const SECTIONS = [
     content: (
       <Text style={{ fontSize: 12, color: Colors.textMuted, lineHeight: 19, fontWeight: "400" }}>
         If you have any questions about these Terms and Conditions, please contact us at:{"\n\n"}
-        SmartNCode Technologies{"\n"}
+        SMARTnCODE Technologies{"\n"}
         Email:{" "}
         <Text
           style={{ color: Colors.primary, textDecorationLine: "underline" }}
@@ -126,7 +126,7 @@ export default function TermsAndConditions() {
         <View style={styles.headerText}>
           <Text style={styles.headerTitle}>Terms & Conditions</Text>
           <Text style={styles.headerSub}>
-            HealthcareAI by SmartNCode Technologies
+            HealthcareAI by SMARTnCODE Technologies
           </Text>
         </View>
         <View style={styles.shieldIcon}>
@@ -178,12 +178,12 @@ export default function TermsAndConditions() {
         {/* Footer */}
         <View style={styles.footer}>
           <Ionicons name="shield-checkmark-outline" size={28} color="#2D9C8E" />
-          <Text style={styles.footerTitle}>SmartNCode Technologies</Text>
+          <Text style={styles.footerTitle}>SMARTnCODE Technologies</Text>
           <Text style={styles.footerSub}>
             Powering HealthcareAI with trust, security, and innovation.
           </Text>
           <Text style={styles.footerCopy}>
-            © 2026 SmartNCode Technologies. All rights reserved.
+            © 2026 SMARTnCODE Technologies. All rights reserved.
           </Text>
         </View>
       </ScrollView>

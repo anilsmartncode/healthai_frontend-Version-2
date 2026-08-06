@@ -33,7 +33,7 @@ const SECTIONS = [
     content: (
       <Text style={{ fontSize: 12, color: Colors.textMuted, lineHeight: 19, fontWeight: "400" }}>
         If you have any questions about this Privacy Policy, please contact us at:{"\n\n"}
-        SmartNCode Technologies{"\n"}
+        SMARTnCODE Technologies{"\n"}
         Email:{" "}
         <Text
           style={{ color: Colors.primary, textDecorationLine: "underline" }}
@@ -73,7 +73,7 @@ export default function PrivacyPolicy() {
         <View style={styles.headerText}>
           <Text style={styles.headerTitle}>Privacy Policy</Text>
           <Text style={styles.headerSub}>
-            HealthcareAI by SmartNCode Technologies
+            HealthcareAI by SMARTnCODE Technologies
           </Text>
         </View>
         <View style={styles.shieldIcon}>
@@ -101,7 +101,7 @@ export default function PrivacyPolicy() {
             color="#2D9C8E"
           />
           <Text style={styles.introText}>
-            SmartNCode Technologies respects your privacy. This Privacy Policy explains how we collect, use, and protect your personal and health information.
+            SMARTnCODE Technologies respects your privacy. This Privacy Policy explains how we collect, use, and protect your personal and health information.
           </Text>
         </View>
 
@@ -123,12 +123,12 @@ export default function PrivacyPolicy() {
         {/* Footer */}
         <View style={styles.footer}>
           <Ionicons name="shield-checkmark-outline" size={28} color="#2D9C8E" />
-          <Text style={styles.footerTitle}>SmartNCode Technologies</Text>
+          <Text style={styles.footerTitle}>SMARTnCODE Technologies</Text>
           <Text style={styles.footerSub}>
             Powering HealthcareAI with trust, security, and innovation.
           </Text>
           <Text style={styles.footerCopy}>
-            © 2026 SmartNCode Technologies. All rights reserved.
+            © 2026 SMARTnCODE Technologies. All rights reserved.
           </Text>
         </View>
       </ScrollView>

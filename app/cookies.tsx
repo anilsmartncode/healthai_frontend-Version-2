@@ -29,7 +29,7 @@ export default function CookiePolicy() {
         <View style={styles.headerText}>
           <Text style={styles.headerTitle}>Cookie Policy</Text>
           <Text style={styles.headerSub}>
-            HealthcareAI by SmartNCode Technologies
+            HealthcareAI by SMARTnCODE Technologies
           </Text>
         </View>
         <View style={styles.shieldIcon}>
@@ -49,7 +49,7 @@ export default function CookiePolicy() {
             color="#2D9C8E"
           />
           <Text style={styles.introText}>
-            This Cookie Policy explains how SmartNCode Technologies uses cookies and similar technologies to recognize you when you visit HealthcareAI.
+            This Cookie Policy explains how SMARTnCODE Technologies uses cookies and similar technologies to recognize you when you visit HealthcareAI.
           </Text>
         </View>
 
