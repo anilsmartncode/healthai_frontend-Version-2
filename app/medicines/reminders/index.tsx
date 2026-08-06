@@ -304,12 +304,11 @@ export default function RemindersScreen() {
     try {
       await medicineApiCall(ENDPOINTS.reminderTaken(markingReminder.id), { method: 'POST' });
       setReminders((prev) => prev.map((r) => r.id === markingReminder.id ? { ...r, status: 'taken' } : r));
-      await cancelReminderNotification(markingReminder.id).catch(console.warn);
-      NotificationCenter.archive(`med_${markingReminder.id}_${markingReminder.time}`);
     } catch (e: any) {
       Alert.alert('Error', 'Failed to mark as taken');
+    } finally {
+      setMarkingReminder(null);
     }
-    setMarkingReminder(null);
   };
 
   const handleMissed = async () => {
@@ -317,12 +316,11 @@ export default function RemindersScreen() {
     try {
       await medicineApiCall(ENDPOINTS.reminderMissed(markingReminder.id), { method: 'POST' });
       setReminders((prev) => prev.map((r) => r.id === markingReminder.id ? { ...r, status: 'missed' } : r));
-      await cancelReminderNotification(markingReminder.id).catch(console.warn);
-      NotificationCenter.archive(`med_${markingReminder.id}_${markingReminder.time}`);
     } catch (e: any) {
       Alert.alert('Error', 'Failed to mark as missed');
+    } finally {
+      setMarkingReminder(null);
     }
-    setMarkingReminder(null);
   };
 
   const handleDelete = async (id: string) => {
@@ -356,7 +354,7 @@ export default function RemindersScreen() {
           `Medicine Time: ${r.medicineName}`,
           `${WHEN_LABELS[r.whenToTake]}`,
           nextDate,
-          r.frequency
+          (r.frequency as any)
         ).catch(console.warn);
       }
     } catch (e: any) {
@@ -441,7 +439,7 @@ export default function RemindersScreen() {
               <View style={styles.historyCard}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.historyDate}>{item.date}</Text>
-                  <Text style={styles.historyName}>{item.medicineName}{item.dosage ? ` (${item.dosage})` : ''}</Text>
+                  <Text style={styles.historyName}>{item.medicineName}{(item as any).dosage ? ` (${(item as any).dosage})` : ''}</Text>
                   <Text style={styles.historyTime}>{item.time}</Text>
                 </View>
                 <View style={[styles.statusPill, { backgroundColor: st?.bg ?? '#E2E8F0' }]}>

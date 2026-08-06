@@ -192,8 +192,8 @@ export default function MemberReportsScreen() {
                       : kv.status === 'Elevated' || kv.status === 'High' ? Colors.warning
                         : Colors.danger;
                     return (
-                      <View key={kv.label || kv.name || Math.random().toString()} style={styles.kvItem}>
-                        <Text style={styles.kvLabel}>{kv.label || kv.name}</Text>
+                      <View key={kv.label || Math.random().toString()} style={styles.kvItem}>
+                        <Text style={styles.kvLabel}>{kv.label}</Text>
                         <Text style={[styles.kvVal, { color: vc }]}>
                           {kv.value} <Text style={styles.kvUnit}>{kv.unit}</Text>
                         </Text>

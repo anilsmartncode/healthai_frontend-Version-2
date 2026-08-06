@@ -220,9 +220,44 @@ export default function Profile() {
     }, [phone, memberId])
   );
 
-  const currentPlan = (profile.plan || activePlan || 'FREE').toUpperCase();
-  const isPremium = currentPlan === 'PREMIUM' || currentPlan === 'FAMILY';
-  const planLabel = currentPlan === 'FAMILY' ? 'Family Plan' : (currentPlan === 'PREMIUM' ? 'Premium' : 'Free');
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure you want to permanently delete your account and all associated health data? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Permanently',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Call the delete account API endpoint
+              await medicineApiCall(ENDPOINTS.deleteAccount, { method: 'DELETE' });
+              
+              Alert.alert('Account Deleted', 'Your account and data have been permanently deleted.', [
+                { text: 'OK', onPress: () => {
+                    signOut().then(() => router.replace('/(auth)/onboarding'));
+                  } 
+                }
+              ]);
+            } catch (error: any) {
+              Alert.alert('Error', 'Failed to delete account. Please contact support.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const items = [
+    { icon: 'person-outline',           label: t('account_info'),  href: '/account'         },
+    { icon: 'star',                     label: 'Subscription & Plans', href: '/plans'       },
+    { icon: 'people-outline',           label: t('family_health'), href: '/family'          },
+    { icon: 'notifications-outline',    label: t('notifications'), href: '/notifications'   },
+    { icon: 'shield-checkmark-outline', label: t('legal_privacy'), href: '/legal-privacy'   },
+    { icon: 'help-circle-outline',      label: t('help_support'),  href: '/help-support'    },
+    { icon: 'star-outline',             label: t('rate_app'),      href: '/rate-app'        },
+  ] as const;
 
   const age = calcAge(profile.dob);
   const dobLabel = formatDob(profile.dob);
@@ -539,7 +574,16 @@ export default function Profile() {
           <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
           <Text style={styles.logoutText}>{t('log_out')}</Text>
         </Pressable>
-      </ScrollView>
+
+        <Pressable
+          style={styles.row}
+          onPress={handleDeleteAccount}
+        >
+          <Ionicons name="trash-outline" size={22} color={Colors.danger} />
+          <Text style={[styles.rowLabel, { color: Colors.danger }]}>Delete Account</Text>
+          <View />
+        </Pressable>
+      </View>
     </SafeAreaView>
   );
 }

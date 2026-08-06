@@ -9,6 +9,9 @@ import { Ionicons } from '@expo/vector-icons';
 // 🔴 Set to 10 seconds for testing. Change to 5 * 60 * 1000 (5 minutes) for production.
 const INACTIVITY_TIMEOUT_MS = 10000; 
 
+// 🔥 Toggle this to false when you want to re-enable biometrics
+const DISABLE_SECURITY = false; 
+
 export function SecurityWrapper({ children }: { children: React.ReactNode }) {
   // 1. Prevent Screen Capture globally (Temporarily disabled for testing)
   // usePreventScreenCapture();
@@ -25,8 +28,10 @@ export function SecurityWrapper({ children }: { children: React.ReactNode }) {
         setIsLocked(false);
       } else {
         // Cold Start Lock: If they are logged in and opening the app fresh, lock it immediately.
-        setIsLocked(true);
-        promptBiometrics();
+        if (!DISABLE_SECURITY) {
+          setIsLocked(true);
+          promptBiometrics();
+        }
       }
     }
   }, [token, ready]);
@@ -48,7 +53,7 @@ export function SecurityWrapper({ children }: { children: React.ReactNode }) {
       ) {
         if (lastBackgroundTime.current && token) {
           const timeInBackground = Date.now() - lastBackgroundTime.current;
-          if (timeInBackground > INACTIVITY_TIMEOUT_MS) {
+          if (timeInBackground > INACTIVITY_TIMEOUT_MS && !DISABLE_SECURITY) {
             setIsLocked(true);
             // Auto-prompt FaceID/TouchID right when they return
             promptBiometrics();
@@ -94,6 +99,9 @@ export function SecurityWrapper({ children }: { children: React.ReactNode }) {
       console.warn('[SecurityWrapper] Biometric error:', e);
     }
   };
+
+  // On web, we only show public legal pages, so security lock isn't needed.
+  if (Platform.OS === 'web') return <>{children}</>;
 
   return (
     <View style={styles.container}>

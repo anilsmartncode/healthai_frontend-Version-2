@@ -452,7 +452,7 @@ const styles = StyleSheet.create({
   },
 
   bulletBlock: { gap: 7, marginTop: 10 },
-  stepBlock:   { gap: 10, marginTop: 10 },
+  stepBlock: { gap: 10, marginTop: 10 },
 
   waterRow: {
     flexDirection: "row",
@@ -467,18 +467,18 @@ const styles = StyleSheet.create({
 });
 
 const sh = StyleSheet.create({
-  row:   { flexDirection: "row", alignItems: "center", gap: 7 },
+  row: { flexDirection: "row", alignItems: "center", gap: 7 },
   label: { fontSize: 14, fontWeight: "700", color: Colors.text },
 });
 
 const bul = StyleSheet.create({
-  row:  { flexDirection: "row", alignItems: "flex-start", gap: 8 },
-  dot:  { width: 6, height: 6, borderRadius: 3, marginTop: 8, flexShrink: 0 },
+  row: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  dot: { width: 6, height: 6, borderRadius: 3, marginTop: 8, flexShrink: 0 },
   text: { flex: 1, fontSize: 14, color: Colors.text, lineHeight: 21 },
 });
 
 const tag = StyleSheet.create({
-  row:  { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 },
+  row: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 },
   wrap: {
     backgroundColor: Colors.surface,
     borderRadius: 99,
@@ -491,14 +491,14 @@ const tag = StyleSheet.create({
 });
 
 const sr = StyleSheet.create({
-  row:    { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  row: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
   circle: { width: 22, height: 22, borderRadius: 11, backgroundColor: Colors.primary, alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 },
-  num:    { color: "#fff", fontSize: 11, fontWeight: "700" },
-  text:   { flex: 1, fontSize: 14, color: Colors.text, lineHeight: 22 },
+  num: { color: "#fff", fontSize: 11, fontWeight: "700" },
+  text: { flex: 1, fontSize: 14, color: Colors.text, lineHeight: 22 },
 });
 
 const cb = StyleSheet.create({
-  wrap:   { },
+  wrap: {},
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 4 },
-  body:   { paddingTop: 4, paddingBottom: 8 },
+  body: { paddingTop: 4, paddingBottom: 8 },
 });

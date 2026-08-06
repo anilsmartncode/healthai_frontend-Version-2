@@ -875,4 +875,4 @@ const perm = StyleSheet.create({
   confirmText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   cancelBtn: { alignItems: 'center', paddingVertical: 10 },
   cancelText: { color: Colors.textMuted, fontSize: 15, fontWeight: '500' },
-});
+});

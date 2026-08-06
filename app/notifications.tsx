@@ -49,13 +49,10 @@ function NotifRow({ item, onPress }: { item: UnifiedNotification; onPress: () =>
         <Ionicons name={cfg.icon} size={20} color={cfg.color} />
       </View>
       <View style={{ flex: 1 }}>
-        <View style={styles.rowHeader}>
-           <Text style={[styles.rowTitle, isUnread && { fontWeight: '700' }]}>
-             {item.title}
-           </Text>
-           {item.priority === 'HIGH' && <Ionicons name="warning" size={14} color={Colors.danger} style={{marginLeft: 4}} />}
-        </View>
-        {item.message ? <Text style={styles.rowBody}>{item.message}</Text> : null}
+        <Text style={[styles.rowTitle, !item.read && { fontWeight: '700' }]}>
+          {item.title}
+        </Text>
+        {(item as any).body ? <Text style={styles.rowBody}>{(item as any).body}</Text> : null}
       </View>
       <Text style={styles.rowTime}>{timeAgo(item.timestamp)}</Text>
     </Pressable>

@@ -550,7 +550,7 @@ export default function SignUp() {
                 Terms &amp; Conditions
               </Text>{" "}
               and{" "}
-              <Text style={styles.termsLink} onPress={() => router.push("/(auth)/terms")}>
+              <Text style={styles.termsLink} onPress={() => router.push("/privacy")}>
                 Privacy Policy
               </Text>
               .

@@ -11,6 +11,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors, Radius, Spacing } from '@/constants/Colors';
 import Constants from 'expo-constants';
+import { Alert } from 'react-native';
+import { useAuth } from '@/context/AuthContext';
 
 const SECTIONS = [
   {
@@ -28,10 +30,9 @@ const SECTIONS = [
 ];
 
 const LINKS = [
-  { label: 'Privacy Policy',        url: 'https://healthai.smartncode.com/privacy'  },
-  { label: 'Terms of Service',      url: 'https://healthai.smartncode.com/terms'    },
-  { label: 'Cookie Policy',         url: 'https://healthai.smartncode.com/cookies'  },
-  { label: 'Data deletion request', url: 'https://healthai.smartncode.com/delete'   },
+  { label: 'Privacy Policy',        route: '/privacy'  },
+  { label: 'Terms of Service',      route: '/terms'    },
+  { label: 'Cookie Policy',         route: '/cookies'  },
 ];
 
 export default function LegalPrivacy() {
@@ -68,7 +69,7 @@ export default function LegalPrivacy() {
             <Pressable
               key={l.label}
               style={[styles.linkRow, i < LINKS.length - 1 && styles.linkBorder]}
-              onPress={() => Linking.openURL(l.url)}
+              onPress={() => router.push(l.route as any)}
             >
               <Text style={styles.linkLabel}>{l.label}</Text>
               <Ionicons name="open-outline" size={16} color={Colors.textMuted} />

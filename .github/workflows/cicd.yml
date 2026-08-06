@@ -6,7 +6,7 @@ permissions:
 on:
   push:
     branches:
-      - mains
+      - main
 
 jobs:
   build-push-deploy:
@@ -68,7 +68,10 @@ jobs:
       - name: Push Latest Image
         run: |
           docker push pradeepsmartncode/lawairepo:healthai-frontend-latest
-
+      # test1
       # - name: Deploy Application
       #   run: |
       #     /home/snc/Downloads/health_care_ai/deploy.sh
+      - name: Deploy Application
+        run: |
+          /opt/healthai/deploy.sh

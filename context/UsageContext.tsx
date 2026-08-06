@@ -127,9 +127,11 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
   };
 
   const traceAlert = (title: string, msg: string): Promise<void> => {
-    return new Promise(resolve => {
-      Alert.alert(title, msg, [{ text: 'Next', onPress: () => resolve() }]);
-    });
+    return Promise.resolve();
+    // Uncomment the below code to re-enable debug trace popups
+    // return new Promise(resolve => {
+    //   Alert.alert(title, msg, [{ text: 'Next', onPress: () => resolve() }]);
+    // });
   };
 
   const upgradeToPremium = async () => {

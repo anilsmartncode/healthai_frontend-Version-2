@@ -9,7 +9,7 @@ import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { PaywallModal } from "@/components/PaywallModal";
 import { useEffect, useState } from "react";
 import { checkHealthAlerts, type HealthAlert } from "@/services/aiService";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
 import { router, usePathname, useGlobalSearchParams } from "expo-router";
 import { Colors, Radius } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
@@ -58,6 +58,7 @@ function AlertOverlay() {
   const { phone } = useAuth();
   const [alert, setAlert] = useState<HealthAlert | null>(null);
   useEffect(() => {
+    if (Platform.OS === 'web') return; // No health alerts on web
     if (sessionAlertShown) return;
     const timer = setTimeout(() => {
       checkHealthAlerts(phone).then(a => {
@@ -114,10 +115,27 @@ export default function RootLayout() {
     }
   }, [pathname, params]);
 
-
-
-  // Global Notification Listener setup
+  const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  let isWebLocked = false;
+  if (Platform.OS === 'web' && isMounted) {
+    const allowedWebPaths = ['/privacy', '/terms', '/cookies', '/contact', '/support'];
+    const isAllowed = pathname && allowedWebPaths.some(p => 
+      pathname === p || pathname === `${p}/` || pathname?.startsWith(`${p}?`)
+    );
+    if (!isAllowed) {
+      isWebLocked = true;
+    }
+  }
+
+
+
+  // Global Notification Listener setup (skip on web — notifications not available)
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
     setupNotificationCategories();
 
     const sub = Notifications.addNotificationResponseReceivedListener(async (response) => {
@@ -132,7 +150,6 @@ export default function RootLayout() {
       if (actionId === 'take') {
         try {
           await medicineApiCall(ENDPOINTS.reminderTaken(reminderId), { method: 'POST' });
-          await cancelReminderNotification(reminderId);
           await Notifications.dismissNotificationAsync(response.notification.request.identifier);
         } catch (e) {
           console.warn('[Notifications] Background taken API failed:', e);
@@ -165,6 +182,13 @@ export default function RootLayout() {
                     <Stack.Screen name="index" />
                     <Stack.Screen name="(auth)" />
                     <Stack.Screen name="(tabs)" />
+                    {/* Explicitly add legal pages so Expo router doesn't fall back to index */}
+                    <Stack.Screen name="privacy" options={{ headerShown: false }} />
+                    <Stack.Screen name="terms" options={{ headerShown: false }} />
+                    <Stack.Screen name="contact" options={{ headerShown: false }} />
+                    <Stack.Screen name="cookies" options={{ headerShown: false }} />
+                    <Stack.Screen name="support" options={{ headerShown: false }} />
+                    
                     <Stack.Screen
                       name="upload"
                       options={{ headerShown: true, title: "Upload Report" }}
@@ -320,6 +344,41 @@ export default function RootLayout() {
                   </Stack>
                   <AlertOverlay />
                   <PaywallModal />
+                  {isWebLocked && (
+                    <View style={[StyleSheet.absoluteFillObject, { backgroundColor: Colors.bg, zIndex: 999999 }]}>
+                      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                        <Ionicons name="phone-portrait-outline" size={64} color={Colors.primary} style={{ marginBottom: 16 }} />
+                        <Text style={{ fontSize: 24, fontWeight: '800', color: Colors.text, marginBottom: 8, textAlign: 'center' }}>
+                          Get the App
+                        </Text>
+                        <Text style={{ fontSize: 15, color: Colors.textMuted, textAlign: 'center', lineHeight: 22, maxWidth: 400 }}>
+                          HealthcareAI is designed exclusively for mobile devices. Please download our app on iOS or Android to access your health dashboard.
+                        </Text>
+                      </View>
+                      
+                      {/* Footer Legal Links */}
+                      <View style={{ paddingBottom: 40, flexDirection: 'row', justifyContent: 'center', gap: 20 }}>
+                        <Text 
+                          style={{ color: Colors.primary, fontSize: 13, fontWeight: '600' }}
+                          onPress={() => window.location.href = '/privacy'}
+                        >
+                          Privacy Policy
+                        </Text>
+                        <Text 
+                          style={{ color: Colors.primary, fontSize: 13, fontWeight: '600' }}
+                          onPress={() => window.location.href = '/terms'}
+                        >
+                          Terms of Service
+                        </Text>
+                        <Text 
+                          style={{ color: Colors.primary, fontSize: 13, fontWeight: '600' }}
+                          onPress={() => window.location.href = '/support'}
+                        >
+                          Support
+                        </Text>
+                      </View>
+                    </View>
+                  )}
                 </ErrorBoundary>
               </SecurityWrapper>
             </AuthProvider>
