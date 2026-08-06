@@ -3,16 +3,24 @@
  *
  * Permission fix: camera / gallery / document permissions are requested
  * BEFORE the picker launches, not after.
+ * Also supports:
+ *   - Camera photo
+ *   - Gallery picker
+ *   - Document picker (PDF / DOCX)
+ *   - 📋 Paste Text (Converts raw report text into PDF on-the-fly and sends to AI engine)
  * Also shows an AI-analysis consent modal before sending the file.
  */
 
 import {
   View, Text, StyleSheet, Pressable, ActivityIndicator, Alert, Modal,
+  TextInput, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { router, useLocalSearchParams, Stack } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
+import * as Clipboard from 'expo-clipboard';
+import * as Print from 'expo-print';
 
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '@/components/ui/Card';
@@ -24,7 +32,7 @@ import { useUsage } from '@/context/UsageContext';
 import { reportsApi } from '@/services/reportsApi';
 import { generateReportNarrative } from '@/services/aiService';
 
-type PickedFile = { uri: string; name: string; mimeType: string; size?: number; lastModified?: number };
+type PickedFile = { uri: string; name: string; mimeType: string; size?: number; lastModified?: number; isPasted?: boolean };
 
 function formatBytes(bytes?: number): string {
   if (!bytes) return '';
@@ -40,9 +48,6 @@ function getExtension(name: string): string {
   return parts.length > 1 ? parts.pop()!.toLowerCase() : '';
 }
 
-// Returns true if the file is acceptable to send to the backend.
-// Shows an alert and returns false otherwise — call this right after every
-// picker (camera / gallery / document) resolves, before setFile().
 function validatePickedFile(name: string): boolean {
   const ext = getExtension(name);
   if (!ALLOWED_EXTENSIONS.includes(ext)) {
@@ -54,6 +59,273 @@ function validatePickedFile(name: string): boolean {
     return false;
   }
   return true;
+}
+
+// ── Convert raw pasted text into a formatted PDF document on device ───────────
+async function createPdfFromText(text: string, context?: string): Promise<PickedFile> {
+  const safeText = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+  const title = context === 'prescription' ? 'Prescription Notes' : 'Clinical Medical Report';
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            padding: 32px;
+            color: #0F172A;
+            background-color: #FFFFFF;
+            line-height: 1.6;
+          }
+          .header {
+            border-bottom: 2px solid #0284C7;
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+          }
+          .header h1 {
+            color: #0284C7;
+            font-size: 22px;
+            margin: 0 0 6px 0;
+            font-weight: 700;
+          }
+          .header p {
+            color: #64748B;
+            font-size: 12px;
+            margin: 0;
+          }
+          .content-box {
+            background-color: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            padding: 20px;
+          }
+          pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: inherit;
+            font-size: 14px;
+            color: #1E293B;
+            margin: 0;
+            line-height: 1.6;
+          }
+          .footer {
+            margin-top: 30px;
+            font-size: 11px;
+            color: #94A3B8;
+            text-align: center;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>${title}</h1>
+          <p>HealthAI Digital Patient Record · Generated on ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+        </div>
+        <div class="content-box">
+          <pre>${safeText}</pre>
+        </div>
+        <div class="footer">
+          Digitized via HealthAI Report Assistant
+        </div>
+      </body>
+    </html>
+  `;
+
+  const { uri } = await Print.printToFileAsync({ html });
+  const name = context === 'prescription' ? `Prescription_${Date.now().toString().slice(-6)}.pdf` : `Pasted_Report_${Date.now().toString().slice(-6)}.pdf`;
+  return {
+    uri,
+    name,
+    mimeType: 'application/pdf',
+    size: text.length * 3 + 1200,
+    lastModified: Date.now(),
+    isPasted: true,
+  };
+}
+
+// ── Paste Report / Prescription Text Modal ───────────────────────────────────
+function PasteReportModal({
+  visible,
+  onClose,
+  onAnalyzeText,
+  context,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onAnalyzeText: (text: string) => Promise<void>;
+  context?: string;
+}) {
+  const [text, setText] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [justPasted, setJustPasted] = useState(false);
+
+  const handlePasteClipboard = async () => {
+    try {
+      const clip = await Clipboard.getStringAsync();
+      if (clip && clip.trim().length > 0) {
+        setText(clip.trim());
+        setJustPasted(true);
+        setTimeout(() => setJustPasted(false), 2000);
+      } else {
+        Alert.alert('Clipboard Empty', 'No text was found on your clipboard to paste.');
+      }
+    } catch {
+      Alert.alert('Paste Error', 'Unable to access clipboard.');
+    }
+  };
+
+  const handleInsertSample = () => {
+    if (context === 'prescription') {
+      setText(
+        'Rx Prescription Details:\n' +
+        'Doctor: Dr. Rajesh Sharma, MD\n' +
+        'Date: Today\n\n' +
+        '1. Tab Amoxicillin 500mg - 1 tablet 3 times a day for 5 days (After food)\n' +
+        '2. Tab Paracetamol 650mg - 1 tablet as needed for fever/pain\n' +
+        '3. Tab Pantoprazole 40mg - 1 tablet once daily before breakfast'
+      );
+    } else {
+      setText(
+        'Patient Name: John Doe\n' +
+        'Lab: Apollo Diagnostics\n' +
+        'Test: Complete Blood Count (CBC) & Metabolic Panel\n\n' +
+        'Hemoglobin: 13.8 g/dL (Normal Range: 13.0 - 17.0)\n' +
+        'RBC Count: 4.8 million/mcL (Normal Range: 4.5 - 5.5)\n' +
+        'WBC (Total Leucocyte): 7,200 /cumm (Normal Range: 4000 - 11000)\n' +
+        'Platelet Count: 240,000 /cumm (Normal Range: 150000 - 450000)\n' +
+        'Fasting Blood Glucose: 104 mg/dL (Normal Range: 70 - 99, Status: High)\n' +
+        'HbA1c: 5.8 % (Normal Range: < 5.7, Prediabetes)\n' +
+        'Total Cholesterol: 195 mg/dL (Normal Range: < 200)\n' +
+        'Serum Creatinine: 0.9 mg/dL (Normal Range: 0.7 - 1.2)'
+      );
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!text.trim() || text.trim().length < 15) {
+      Alert.alert('Text Too Short', 'Please paste or type at least a few test names and values so the AI can analyze your medical report.');
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      await onAnalyzeText(text.trim());
+      setText('');
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Failed to prepare report text');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        style={pasteStyles.overlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={pasteStyles.sheet}>
+          {/* Header */}
+          <View style={pasteStyles.header}>
+            <View style={pasteStyles.iconWrap}>
+              <Ionicons name="clipboard-outline" size={24} color={Colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={pasteStyles.title}>
+                {context === 'prescription' ? 'Paste Prescription Text' : 'Paste Report Text'}
+              </Text>
+              <Text style={pasteStyles.subtitle}>
+                Paste medical notes, email results, or lab report text
+              </Text>
+            </View>
+            <Pressable onPress={onClose} hitSlop={8} style={pasteStyles.closeBtn}>
+              <Ionicons name="close" size={22} color="#64748B" />
+            </Pressable>
+          </View>
+
+          {/* Quick Helper Actions */}
+          <View style={pasteStyles.quickRow}>
+            <Pressable style={pasteStyles.pasteBtn} onPress={handlePasteClipboard}>
+              <Ionicons
+                name={justPasted ? 'checkmark-circle' : 'clipboard'}
+                size={16}
+                color={justPasted ? Colors.success : Colors.primary}
+              />
+              <Text style={[pasteStyles.pasteBtnText, justPasted && { color: Colors.success }]}>
+                {justPasted ? 'Pasted!' : 'Paste from Clipboard'}
+              </Text>
+            </Pressable>
+
+            <Pressable style={pasteStyles.sampleBtn} onPress={handleInsertSample}>
+              <Ionicons name="sparkles-outline" size={14} color="#64748B" />
+              <Text style={pasteStyles.sampleBtnText}>Insert Sample</Text>
+            </Pressable>
+
+            {text.length > 0 && (
+              <Pressable style={pasteStyles.clearBtn} onPress={() => setText('')}>
+                <Text style={pasteStyles.clearBtnText}>Clear</Text>
+              </Pressable>
+            )}
+          </View>
+
+          {/* Text Area */}
+          <View style={pasteStyles.inputContainer}>
+            <TextInput
+              style={pasteStyles.textInput}
+              multiline
+              textAlignVertical="top"
+              placeholder={
+                context === 'prescription'
+                  ? 'Paste prescription details here (e.g. Tab Amoxicillin 500mg 1-0-1 for 5 days, Paracetamol 650mg SOS...)'
+                  : 'Paste your lab results, blood work values, or doctor notes here...\n\nExample:\nHemoglobin: 14.2 g/dL\nFasting Sugar: 110 mg/dL\nTotal Cholesterol: 210 mg/dL'
+              }
+              placeholderTextColor="#94A3B8"
+              value={text}
+              onChangeText={setText}
+            />
+            <View style={pasteStyles.counterRow}>
+              <Text style={pasteStyles.counterText}>
+                {text.length} characters · {text.trim() ? text.trim().split(/\s+/).length : 0} words
+              </Text>
+              {text.trim().length >= 15 ? (
+                <View style={pasteStyles.validBadge}>
+                  <Ionicons name="checkmark-circle" size={14} color={Colors.success} />
+                  <Text style={pasteStyles.validText}>Ready for AI</Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+
+          {/* Submit Button */}
+          <Pressable
+            style={[
+              pasteStyles.submitBtn,
+              (text.trim().length < 15 || isProcessing) && pasteStyles.submitBtnDisabled,
+            ]}
+            onPress={handleSubmit}
+            disabled={text.trim().length < 15 || isProcessing}
+          >
+            {isProcessing ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Text style={pasteStyles.submitBtnText}>
+                  {context === 'prescription' ? 'Analyze Prescription Text' : 'Analyze Report Text'}
+                </Text>
+                <Ionicons name="arrow-forward" size={18} color="#fff" />
+              </>
+            )}
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
 }
 
 // ── Analysis consent modal ─────────────────────────────────────────────────
@@ -84,13 +356,17 @@ function AnalysisPermissionModal({
           {file && (
             <View style={perm.fileCard}>
               <Ionicons
-                name={file.mimeType?.includes('pdf') ? 'document-text-outline' : 'image-outline'}
+                name={file.isPasted ? 'clipboard-outline' : file.mimeType?.includes('pdf') ? 'document-text-outline' : 'image-outline'}
                 size={22}
                 color={Colors.primary}
               />
               <View style={perm.fileInfo}>
                 <Text style={perm.fileName} numberOfLines={1}>{file.name}</Text>
-                {file.size ? <Text style={perm.fileMeta}>{formatBytes(file.size)}</Text> : null}
+                {file.isPasted ? (
+                  <Text style={[perm.fileMeta, { color: Colors.primary, fontWeight: '600' }]}>Pasted Text Report</Text>
+                ) : file.size ? (
+                  <Text style={perm.fileMeta}>{formatBytes(file.size)}</Text>
+                ) : null}
               </View>
             </View>
           )}
@@ -137,19 +413,13 @@ export default function Upload() {
   const [file, setFile] = useState<PickedFile | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPermModal, setShowPermModal] = useState(false);
+  const [showPasteModal, setShowPasteModal] = useState(false);
   const [elapsedSec, setElapsedSec] = useState(0);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  // Belt-and-suspenders guard: a ref (not state) so the check is synchronous
-  // and can't be bypassed by two onPress events firing before a re-render
-  // commits. This is what actually stops a double-tap from sending two
-  // real fetch() calls to /api/analyze-report with the same file.
+
   const analyzeInFlight = useRef(false);
-  // AbortController for the current analyze request — lets the Stop button
-  // cancel the in-flight fetch immediately without waiting for the 150s timeout.
   const cancelControllerRef = useRef<AbortController | null>(null);
 
-  // ── Tick elapsed seconds while the "Analyzing Report" overlay is showing,
-  //     so the user can see it's actively waiting rather than stuck. ──
   useEffect(() => {
     if (!loading) {
       setElapsedSec(0);
@@ -159,7 +429,7 @@ export default function Upload() {
     return () => clearInterval(interval);
   }, [loading]);
 
-  // ── Camera: request permission FIRST, then launch ──
+  // ── Camera ──
   const camera = async () => {
     if (!canUploadReport()) return setShowPaywall(true);
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -180,7 +450,7 @@ export default function Upload() {
     }
   };
 
-  // ── Gallery: request media-library permission FIRST, then launch ──
+  // ── Gallery ──
   const pickImage = async () => {
     if (!canUploadReport()) return setShowPaywall(true);
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -204,7 +474,7 @@ export default function Upload() {
     }
   };
 
-  // ── Document picker — no extra permission needed on modern Android/iOS ──
+  // ── Document picker ──
   const pickDoc = async () => {
     if (!canUploadReport()) return setShowPaywall(true);
     const r = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'image/*'] });
@@ -215,6 +485,20 @@ export default function Upload() {
     }
   };
 
+  // ── Paste Text Handler ──
+  const handleAnalyzePastedText = async (pastedText: string) => {
+    if (!canUploadReport()) {
+      setShowPasteModal(false);
+      setShowPaywall(true);
+      return;
+    }
+    const generatedPdf = await createPdfFromText(pastedText, context);
+    setFile(generatedPdf);
+    setShowPasteModal(false);
+    // Directly proceed to analysis with user consent
+    handleConfirmedAnalysis(generatedPdf);
+  };
+
   // Step 1: show AI analysis consent modal
   const handleSendPress = () => {
     if (!canUploadReport()) return setShowPaywall(true);
@@ -223,18 +507,10 @@ export default function Upload() {
   };
 
   // Step 2: user confirmed — run analysis
-  const handleConfirmedAnalysis = async () => {
-    if (!file) return;
-    // ── Double-submit guard ─────────────────────────────────────────────
-    // analyzeInFlight is a ref, checked synchronously, BEFORE any state
-    // update or await. This is what actually stops two taps (e.g. a fast
-    // double-tap on the modal's confirm button, or a touch event firing
-    // twice) from both reaching reportsApi.analyze() and sending two real
-    // POST /api/analyze-report requests for the same file. One request
-    // then succeeds and saves the report (explaining why it shows up in
-    // the list), while the other has nothing left to "win" the response
-    // race and just sits there until the client-side timeout fires —
-    // which is the exact symptom that was being investigated here.
+  const handleConfirmedAnalysis = async (customFile?: PickedFile) => {
+    const targetFile = customFile || file;
+    if (!targetFile) return;
+
     if (analyzeInFlight.current) {
       console.log('[upload] ⚠️ handleConfirmedAnalysis called again while already in flight — ignoring duplicate tap');
       return;
@@ -246,32 +522,30 @@ export default function Upload() {
     setLoading(true);
     try {
       const formData = new FormData();
-      formData.append('file', { uri: file.uri, name: file.name, type: file.mimeType } as any);
+      formData.append('file', { uri: targetFile.uri, name: targetFile.name, type: targetFile.mimeType } as any);
       if (memberId) {
         formData.append('member_id', memberId);
       }
-      
-      // Tell the backend what kind of file this is (report vs prescription)
-      // so it can trigger the right AI extraction prompt.
-      formData.append('document_type', context);
+      if (context) {
+        formData.append('document_type', context);
+      }
 
       console.log(
-        `[upload] sending file "${file.name}" — ${file.size ? (file.size / 1024 / 1024).toFixed(2) + ' MB' : 'size unknown'}`
+        `[upload] sending file "${targetFile.name}" — ${targetFile.size ? (targetFile.size / 1024 / 1024).toFixed(2) + ' MB' : 'size unknown'}`
       );
 
-      const result = await reportsApi.analyze(formData, file.name, {
-        size: file.size,
-        lastModified: file.lastModified,
-        fileUri: file.uri,
+      const result = await reportsApi.analyze(formData, targetFile.name, {
+        size: targetFile.size,
+        lastModified: targetFile.lastModified,
+        fileUri: targetFile.uri,
       }, phone, cancelControllerRef.current.signal);
 
-      // Guard against blurry photos or unreadable documents
       const hasData = context === 'prescription'
         ? (result.detectedMedicines && result.detectedMedicines.length > 0)
         : (result.values && result.values.length > 0);
 
       if (!hasData) {
-        throw new Error('Please provide a clear photo or document');
+        throw new Error('Please provide clear report text or document');
       }
 
       if (result.duplicate) {
@@ -283,11 +557,6 @@ export default function Upload() {
         await incrementReportUpload();
       }
 
-      // ── Navigate immediately — don't block on generateReportNarrative ───────
-      // generateReportNarrative is a secondary AI call that was blocking
-      // navigation. If it's slow or fails the user never sees the result even
-      // though the report was fully analyzed. Navigate first, fire narrative
-      // generation in the background (non-blocking).
       if (context === 'prescription') {
         router.replace({
           pathname: '/medicines/prescription-review',
@@ -310,7 +579,6 @@ export default function Upload() {
         });
       }
 
-      // Background narrative generation — errors silently ignored
       try {
         let parsedSummary: any = null;
         try { parsedSummary = result.summary ? JSON.parse(result.summary) : null; } catch { }
@@ -329,7 +597,6 @@ export default function Upload() {
       const isNameMismatch = /name mismatch/i.test(err?.message ?? '') || err?.code === 'NAME_MISMATCH';
 
       if (isCancelled) {
-        // User tapped Stop — silent exit, stay on upload screen so they can retry
         console.log('[upload] analysis cancelled by user');
       } else if (isTimeout) {
         Alert.alert(
@@ -356,15 +623,13 @@ export default function Upload() {
       setIsAnalyzing(false);
       analyzeInFlight.current = false;
       cancelControllerRef.current = null;
-      setLoading(false);
-      setIsAnalyzing(false);
-      analyzeInFlight.current = false;
     }
   };
 
   return (
-    <View style={styles.c}>
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
       <Stack.Screen options={{ title: context === 'prescription' ? 'Upload Prescription' : t('upload_report') }} />
+      
       {/* Analyzing overlay */}
       <Modal visible={loading} transparent animationType="fade">
         <View style={styles.overlay}>
@@ -399,11 +664,19 @@ export default function Upload() {
         </View>
       </Modal>
 
+      {/* Paste Report Text Modal */}
+      <PasteReportModal
+        visible={showPasteModal}
+        onClose={() => setShowPasteModal(false)}
+        onAnalyzeText={handleAnalyzePastedText}
+        context={context}
+      />
+
       {/* AI analysis consent modal */}
       <AnalysisPermissionModal
         file={file}
         visible={showPermModal}
-        onConfirm={handleConfirmedAnalysis}
+        onConfirm={() => handleConfirmedAnalysis()}
         onCancel={() => setShowPermModal(false)}
         isSubmitting={isAnalyzing}
         context={context}
@@ -413,35 +686,78 @@ export default function Upload() {
         <Card style={styles.dropzone}>
           {file ? (
             <>
-              <Ionicons name="document-text-outline" size={48} color={Colors.primary} />
+              <View style={styles.dropzoneIconWrap}>
+                <Ionicons
+                  name={file.isPasted ? 'clipboard-outline' : 'document-text-outline'}
+                  size={36}
+                  color={Colors.primary}
+                />
+              </View>
               <Text style={styles.fileName} numberOfLines={1}>{file.name}</Text>
-              {file.size ? <Text style={styles.fileSize}>{formatBytes(file.size)}</Text> : null}
+              {file.isPasted ? (
+                <View style={styles.pastedBadge}>
+                  <Ionicons name="checkmark-circle" size={13} color={Colors.primary} />
+                  <Text style={styles.pastedBadgeText}>Pasted Text Ready</Text>
+                </View>
+              ) : file.size ? (
+                <Text style={styles.fileSize}>{formatBytes(file.size)}</Text>
+              ) : null}
               <Text style={styles.sub}>Tap to change</Text>
             </>
           ) : (
             <>
-              <Ionicons name="cloud-upload-outline" size={64} color={Colors.primary} />
+              <View style={styles.dropzoneIconWrap}>
+                <Ionicons name="cloud-upload-outline" size={38} color={Colors.primary} />
+              </View>
               <Text style={styles.title}>{context === 'prescription' ? 'Upload Prescription' : t('upload_report')}</Text>
-              <Text style={styles.sub}>(JPG, PNG, PDF | Max 10MB)</Text>
+              <Text style={styles.sub}>JPG, PNG, PDF or Paste Text directly</Text>
             </>
           )}
         </Card>
       </Pressable>
 
-      <Text style={styles.or}>OR choose from</Text>
+      <Text style={styles.or}>OR choose how to input</Text>
 
-      <View style={styles.row}>
-        <Pressable style={styles.opt} onPress={camera}>
-          <Ionicons name="camera-outline" size={28} color={Colors.primary} />
+      {/* 1/1 Full-width Action Options List (styled like QuickActions) */}
+      <View style={styles.actionsList}>
+        <Pressable
+          style={({ pressed }) => [styles.optCard, pressed && styles.optCardPressed]}
+          onPress={camera}
+        >
+          <View style={[styles.optIconWrap, { backgroundColor: '#EFF6FF' }]}>
+            <Ionicons name="camera-outline" size={20} color={Colors.primary} />
+          </View>
           <Text style={styles.optLabel}>Camera</Text>
         </Pressable>
-        <Pressable style={styles.opt} onPress={pickImage}>
-          <Ionicons name="images-outline" size={28} color={Colors.primary} />
+
+        <Pressable
+          style={({ pressed }) => [styles.optCard, pressed && styles.optCardPressed]}
+          onPress={pickImage}
+        >
+          <View style={[styles.optIconWrap, { backgroundColor: '#FEF3C7' }]}>
+            <Ionicons name="images-outline" size={20} color="#D97706" />
+          </View>
           <Text style={styles.optLabel}>Gallery</Text>
         </Pressable>
-        <Pressable style={styles.opt} onPress={pickDoc}>
-          <Ionicons name="document-outline" size={28} color={Colors.primary} />
+
+        <Pressable
+          style={({ pressed }) => [styles.optCard, pressed && styles.optCardPressed]}
+          onPress={pickDoc}
+        >
+          <View style={[styles.optIconWrap, { backgroundColor: '#F0FDF4' }]}>
+            <Ionicons name="document-outline" size={20} color="#059669" />
+          </View>
           <Text style={styles.optLabel}>Document</Text>
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [styles.optCard, styles.optCardPaste, pressed && styles.optCardPressed]}
+          onPress={() => setShowPasteModal(true)}
+        >
+          <View style={[styles.optIconWrap, { backgroundColor: '#E0F2FE' }]}>
+            <Ionicons name="clipboard-outline" size={20} color="#0284C7" />
+          </View>
+          <Text style={[styles.optLabel, styles.optPasteLabel]}>Paste Text</Text>
         </Pressable>
       </View>
 
@@ -453,28 +769,92 @@ export default function Upload() {
           style={styles.sendBtn}
         />
       )}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  c: { flex: 1, padding: 16, backgroundColor: Colors.bg, gap: 16 },
-  dropzone: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40, borderStyle: 'dashed', gap: 8 },
-  title: { fontSize: 16, fontWeight: '600', color: Colors.text },
+  scroll: { flex: 1, backgroundColor: Colors.bg },
+  scrollContent: { padding: 16, gap: 14, paddingBottom: 36 },
+  dropzone: { alignItems: 'center', justifyContent: 'center', paddingVertical: 28, borderStyle: 'dashed', gap: 8, backgroundColor: '#fff', borderRadius: Radius.lg, borderWidth: 1.5, borderColor: '#CBD5E1' },
+  dropzoneIconWrap: { width: 60, height: 60, borderRadius: 30, backgroundColor: Colors.primary + '12', alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
+  title: { fontSize: 16, fontWeight: '700', color: Colors.text },
   fileName: { fontSize: 15, fontWeight: '600', color: Colors.text, maxWidth: '80%' },
   fileSize: { fontSize: 12, color: Colors.textMuted },
+  pastedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.primary + '15', paddingVertical: 4, paddingHorizontal: 10, borderRadius: Radius.pill },
+  pastedBadgeText: { fontSize: 12, fontWeight: '600', color: Colors.primary },
   sub: { color: Colors.textMuted, fontSize: 12 },
-  or: { textAlign: 'center', color: Colors.textMuted },
-  row: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
-  opt: { flex: 1, alignItems: 'center', padding: 16, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md, gap: 6, backgroundColor: Colors.surface },
-  optLabel: { fontSize: 12, color: Colors.text, textAlign: 'center' },
-  sendBtn: { borderRadius: Radius.lg, paddingVertical: 16 },
+  or: { textAlign: 'center', color: Colors.textMuted, fontSize: 13, fontWeight: '600', marginVertical: 2 },
+  actionsList: { gap: 10 },
+  optCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  optCardPaste: {
+    borderColor: '#BAE6FD',
+    backgroundColor: '#F0F9FF',
+  },
+  optCardPressed: {
+    opacity: 0.75,
+  },
+  optIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  optLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  optPasteLabel: {
+    color: '#0284C7',
+    fontWeight: '700',
+  },
+  sendBtn: { borderRadius: Radius.lg, paddingVertical: 16, marginTop: 4 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   overlayCard: { backgroundColor: '#fff', borderRadius: Radius.xl, padding: 32, alignItems: 'center', gap: 12, marginHorizontal: 32 },
   overlayTitle: { fontSize: 18, fontWeight: '700', color: Colors.text },
   overlaySub: { fontSize: 14, color: Colors.textMuted, textAlign: 'center', lineHeight: 22 },
   overlayStopBtn: { marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 20, borderRadius: Radius.pill, borderWidth: 1.5, borderColor: Colors.danger, backgroundColor: '#FEF2F2' },
   overlayStopText: { fontSize: 14, color: Colors.danger, fontWeight: '700' },
+});
+
+const pasteStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, gap: 14, maxHeight: '88%' },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  iconWrap: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.primary + '15', alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 17, fontWeight: '700', color: '#0F172A' },
+  subtitle: { fontSize: 12, color: '#64748B', marginTop: 1 },
+  closeBtn: { padding: 4 },
+  quickRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  pasteBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.primary + '15', paddingVertical: 8, paddingHorizontal: 12, borderRadius: Radius.pill },
+  pasteBtnText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
+  sampleBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#F1F5F9', paddingVertical: 8, paddingHorizontal: 12, borderRadius: Radius.pill },
+  sampleBtnText: { fontSize: 12, fontWeight: '600', color: '#475569' },
+  clearBtn: { marginLeft: 'auto', paddingVertical: 6, paddingHorizontal: 10 },
+  clearBtnText: { fontSize: 12, fontWeight: '600', color: '#DC2626' },
+  inputContainer: { backgroundColor: '#F8FAFC', borderRadius: Radius.md, borderWidth: 1, borderColor: '#E2E8F0', padding: 12, gap: 8 },
+  textInput: { minHeight: 160, maxHeight: 240, fontSize: 13.5, color: '#0F172A', lineHeight: 20 },
+  counterRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 8 },
+  counterText: { fontSize: 11, color: '#94A3B8' },
+  validBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  validText: { fontSize: 11, fontWeight: '700', color: Colors.success },
+  submitBtn: { flexDirection: 'row', backgroundColor: Colors.primary, borderRadius: Radius.pill, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4 },
+  submitBtnDisabled: { opacity: 0.5 },
+  submitBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });
 
 const perm = StyleSheet.create({
@@ -495,4 +875,4 @@ const perm = StyleSheet.create({
   confirmText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   cancelBtn: { alignItems: 'center', paddingVertical: 10 },
   cancelText: { color: Colors.textMuted, fontSize: 15, fontWeight: '500' },
-});
+});
