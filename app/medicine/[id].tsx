@@ -24,12 +24,14 @@ import {
   Platform,
   UIManager,
   LayoutAnimation,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
-import { getMedicineDetails, saveMedicine, type Medicine } from '@/services/medicineTabApi';
+import { getMedicineDetails, saveMedicine, removeSavedMedicine, getSavedMedicines, getScanHistory, type Medicine, type ScanHistoryItem } from '@/services/medicineTabApi';
 import { LanguageSelectModal } from '@/components/ui/LanguageSelectModal';
 import { ENDPOINTS } from '@/constants/api';
 import { api } from '@/services/api';
@@ -40,16 +42,19 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 export default function MedicineDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, from, isSaved } = useLocalSearchParams<{ id: string; from?: string; isSaved?: string }>();
   const [medicine, setMedicine] = useState<Medicine | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState(isSaved === 'true');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [langModalOpen, setLangModalOpen] = useState(false);
   const [currentLang, setCurrentLang] = useState<string | null>(null);
   const [translating, setTranslating] = useState(false);
+  const [historyVisible, setHistoryVisible] = useState(false);
+  const [history, setHistory] = useState<ScanHistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [translatedUses, setTranslatedUses] = useState<string | null>(null);
   const [translatedDosage, setTranslatedDosage] = useState<string | null>(null);
   const [translatedSideEffects, setTranslatedSideEffects] = useState<string[] | null>(null);
@@ -58,31 +63,50 @@ export default function MedicineDetail() {
 
   useEffect(() => {
     if (!id) return;
+    if (isSaved === 'true') {
+      setSaved(true);
+    }
     setLoading(true);
-    getMedicineDetails(id)
-      .then((m) => {
+    Promise.all([
+      getMedicineDetails(id),
+      getSavedMedicines().catch(() => []),
+    ])
+      .then(([m, savedList]) => {
         setMedicine(m);
-        if (m?.isSaved) setSaved(true);
+        const isSavedFound =
+          isSaved === 'true' ||
+          Boolean(m?.isSaved) ||
+          (Array.isArray(savedList) && savedList.some((s) => String(s.id) === String(id)));
+        setSaved(isSavedFound);
         if (!m) setError('Medicine details could not be found.');
       })
       .catch(() => setError('Failed to load medicine details.'))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, isSaved]);
 
   const toggleExpanded = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpanded((prev) => !prev);
   };
 
-  const handleSave = async () => {
-    if (!medicine || saved) return;
+  const handleToggleSave = async () => {
+    if (!medicine || saving) return;
     setSaving(true);
     try {
-      await saveMedicine(medicine.id);
-      setSaved(true);
+      if (saved) {
+        const res = await removeSavedMedicine(medicine.id);
+        if (res.success) {
+          setSaved(false);
+        } else {
+          setError('Could not remove medicine. Please try again.');
+        }
+      } else {
+        await saveMedicine(medicine.id);
+        setSaved(true);
+      }
     } catch (e) {
-      console.error('[MedicineDetail] saveMedicine error', e);
-      setError('Could not save medicine. Please try again.');
+      console.error('[MedicineDetail] save/unsave error', e);
+      setError(saved ? 'Could not remove medicine. Please try again.' : 'Could not save medicine. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -136,6 +160,21 @@ export default function MedicineDetail() {
     }
   };
 
+  const openHistory = async () => {
+    setHistoryVisible(true);
+    if (history.length === 0) {
+      setHistoryLoading(true);
+      try {
+        const items = await getScanHistory();
+        setHistory(items);
+      } catch (e) {
+        console.error('[MedicineDetail] getScanHistory error:', e);
+      } finally {
+        setHistoryLoading(false);
+      }
+    }
+  };
+
   const isRx = medicine?.prescriptionType === 'Prescription' || medicine?.prescriptionType === 'High Risk';
   const rxColor = isRx ? '#B91C1C' : '#047857';
   const rxBg = isRx ? '#FEE2E2' : '#D1FAE5';
@@ -143,7 +182,20 @@ export default function MedicineDetail() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <View style={styles.topNav}>
+          <Pressable
+            style={({ pressed }) => [styles.navBackBtn, pressed && { opacity: 0.7, backgroundColor: '#E2E8F0' }]}
+            onPress={() => router.back()}
+            hitSlop={10}
+          >
+            <Ionicons name="arrow-back" size={20} color="#0F172A" />
+          </Pressable>
+          <View style={styles.navTitleWrap}>
+            <Text style={styles.navTitle} numberOfLines={1}>Medicine Details</Text>
+          </View>
+          <View style={styles.navRightActions} />
+        </View>
         <View style={styles.center}>
           <View style={styles.loadingBox}>
             <ActivityIndicator size="large" color={Colors.primary} />
@@ -156,7 +208,20 @@ export default function MedicineDetail() {
 
   if (error || !medicine) {
     return (
-      <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <View style={styles.topNav}>
+          <Pressable
+            style={({ pressed }) => [styles.navBackBtn, pressed && { opacity: 0.7, backgroundColor: '#E2E8F0' }]}
+            onPress={() => router.back()}
+            hitSlop={10}
+          >
+            <Ionicons name="arrow-back" size={20} color="#0F172A" />
+          </Pressable>
+          <View style={styles.navTitleWrap}>
+            <Text style={styles.navTitle} numberOfLines={1}>Medicine Details</Text>
+          </View>
+          <View style={styles.navRightActions} />
+        </View>
         <View style={styles.center}>
           <View style={styles.errorBox}>
             <Ionicons name="alert-circle-outline" size={44} color={Colors.danger} />
@@ -185,7 +250,51 @@ export default function MedicineDetail() {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      {/* ── Top Navigation Bar ── */}
+      <View style={styles.topNav}>
+        <Pressable
+          style={({ pressed }) => [styles.navBackBtn, pressed && { opacity: 0.7, backgroundColor: '#E2E8F0' }]}
+          onPress={() => router.back()}
+          hitSlop={10}
+        >
+          <Ionicons name="arrow-back" size={20} color="#0F172A" />
+        </Pressable>
+
+        <View style={styles.navTitleWrap}>
+          <Text style={styles.navTitle} numberOfLines={1}>Medicine Details</Text>
+        </View>
+
+        <View style={styles.navRightActions}>
+          <Pressable
+            style={({ pressed }) => [styles.navIconBtn, pressed && { opacity: 0.7 }]}
+            onPress={handleToggleSave}
+            disabled={saving}
+            hitSlop={8}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color={Colors.primary} />
+            ) : (
+              <Ionicons
+                name={saved ? 'bookmark' : 'bookmark-outline'}
+                size={20}
+                color={saved ? '#16A34A' : '#475569'}
+              />
+            )}
+          </Pressable>
+
+          {from === 'scanner' && (
+            <Pressable
+              style={({ pressed }) => [styles.navIconBtn, pressed && { opacity: 0.7 }]}
+              onPress={openHistory}
+              hitSlop={8}
+            >
+              <Ionicons name="time-outline" size={21} color="#475569" />
+            </Pressable>
+          )}
+        </View>
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.page}
         showsVerticalScrollIndicator={false}
@@ -504,11 +613,11 @@ export default function MedicineDetail() {
 
             <View style={styles.actionDivider} />
 
-            {/* Add to My Medicines */}
+            {/* Add / Remove from My Medicines */}
             <Pressable
               style={({ pressed }) => [styles.actionRow, pressed && styles.actionRowPressed]}
-              onPress={handleSave}
-              disabled={saving || saved}
+              onPress={handleToggleSave}
+              disabled={saving}
             >
               <View
                 style={[
@@ -531,7 +640,7 @@ export default function MedicineDetail() {
                   {saved ? 'Saved to My Medicines' : 'Add to My Medicines'}
                 </Text>
                 <Text style={styles.actionSub}>
-                  {saved ? 'Available in your saved medicine records' : 'Save for quick offline access'}
+                  {saved ? 'Tap to remove from your saved medicines' : 'Save for quick offline access'}
                 </Text>
               </View>
               {!saving && (
@@ -553,6 +662,83 @@ export default function MedicineDetail() {
         onClose={() => setLangModalOpen(false)}
         onSelect={handleTranslate}
       />
+
+      {/* ── Scan History Pop-up Modal ── */}
+      <Modal
+        visible={historyVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setHistoryVisible(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }} edges={['top', 'bottom']}>
+          <View style={styles.modalHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={styles.modalIconWrap}>
+                <Ionicons name="time-outline" size={20} color={Colors.primary} />
+              </View>
+              <Text style={styles.modalTitle}>Scan History</Text>
+            </View>
+            <Pressable
+              onPress={() => setHistoryVisible(false)}
+              hitSlop={10}
+              style={styles.modalCloseBtn}
+            >
+              <Ionicons name="close" size={20} color="#64748B" />
+            </Pressable>
+          </View>
+
+          {historyLoading ? (
+            <View style={styles.historyCenter}>
+              <ActivityIndicator size="large" color={Colors.primary} />
+              <Text style={styles.historyLoadingText}>Loading scan history...</Text>
+            </View>
+          ) : history.length === 0 ? (
+            <View style={styles.historyCenter}>
+              <View style={[styles.modalIconWrap, { width: 56, height: 56, borderRadius: 28, backgroundColor: '#F1F5F9' }]}>
+                <Ionicons name="time-outline" size={28} color="#94A3B8" />
+              </View>
+              <Text style={styles.historyEmptyTitle}>No scan history yet</Text>
+              <Text style={styles.historyEmptySub}>
+                Medicines you scan with the camera will appear here.
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={history}
+              keyExtractor={(item) => item.scanId}
+              contentContainerStyle={{ padding: 16, gap: 10 }}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.historyItem,
+                    pressed && { opacity: 0.8, backgroundColor: '#F8FAFC' },
+                  ]}
+                  onPress={() => {
+                    setHistoryVisible(false);
+                    if (item.medicineId) {
+                      router.replace({
+                        pathname: `/medicine/${item.medicineId}`,
+                        params: { from: 'scanner' },
+                      } as any);
+                    }
+                  }}
+                >
+                  <View style={styles.historyIconWrap}>
+                    <Ionicons name="medical-outline" size={18} color={Colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.historyName}>{item.medicineName}</Text>
+                    <Text style={styles.historyMeta} numberOfLines={1}>
+                      {new Date(item.scannedAt).toLocaleDateString()} · {item.aiSummary || 'Scanned medicine'}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
+                </Pressable>
+              )}
+            />
+          )}
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1020,5 +1206,140 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#F1F5F9',
     marginLeft: 70,
+  },
+
+  // ── Top App Bar ──
+  topNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    gap: 12,
+  },
+  navBackBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navTitleWrap: {
+    flex: 1,
+  },
+  navTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  navRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  navIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // ── Scan History Modal ──
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  modalIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: Colors.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  modalCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  historyCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    gap: 10,
+  },
+  historyLoadingText: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  historyEmptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#334155',
+    marginTop: 6,
+  },
+  historyEmptySub: {
+    fontSize: 13,
+    color: '#94A3B8',
+    textAlign: 'center',
+    lineHeight: 18,
+    maxWidth: 260,
+  },
+  historyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 14,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  historyIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: Colors.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  historyName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#0F172A',
+  },
+  historyMeta: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
   },
 });

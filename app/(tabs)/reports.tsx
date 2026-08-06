@@ -372,7 +372,7 @@ export default function ReportsScreen() {
   const ListFooter = (
     <View style={{ paddingBottom: 28 }}>
       {/* AI insight */}
-      <View style={styles.aiBanner}>
+      {/* <View style={styles.aiBanner}>
         <Ionicons name="sparkles" size={18} color="#16A34A" />
         <Text style={styles.aiText}>
           AI Insight:{' '}
@@ -387,10 +387,10 @@ export default function ReportsScreen() {
           </Text>
         </Text>
         <Ionicons name="stats-chart-outline" size={18} color="#16A34A" />
-      </View>
+      </View> */}
 
       {/* Tools */}
-      <View style={[styles.sectionCard, { marginTop: 14 }]}>
+      {/* <View style={[styles.sectionCard, { marginTop: 14 }]}>
         <Text style={styles.sectionTitle}>Tools & Insights</Text>
         <View style={styles.toolsList}>
           {tools.map((t) => (
@@ -413,7 +413,7 @@ export default function ReportsScreen() {
             </Pressable>
           ))}
         </View>
-      </View>
+      </View> */}
     </View>
   );
 

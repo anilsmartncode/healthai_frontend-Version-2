@@ -66,34 +66,44 @@ function MedicineCard({
 
   return (
     <View style={styles.card}>
-      {/* Top row */}
-      <View style={styles.cardTop}>
-        <View style={styles.cardIcon}>
-          <Ionicons name="medical-outline" size={22} color={Colors.primary} />
+      {/* Top row & details (pressable to view full details) */}
+      <Pressable
+        onPress={() =>
+          router.push({
+            pathname: `/medicine/${med.id}`,
+            params: { isSaved: 'true' },
+          } as any)
+        }
+        style={({ pressed }) => pressed && { opacity: 0.7 }}
+      >
+        <View style={styles.cardTop}>
+          <View style={styles.cardIcon}>
+            <Ionicons name="medical-outline" size={22} color={Colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.medName}>{med.name}</Text>
+            <Text style={styles.medSub}>{med.type} · {med.category}</Text>
+          </View>
+          <View style={[styles.rxPill, { backgroundColor: rxBg }]}>
+            <Text style={[styles.rxText, { color: rxColor }]}>{med.prescriptionType}</Text>
+          </View>
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.medName}>{med.name}</Text>
-          <Text style={styles.medSub}>{med.type} · {med.category}</Text>
-        </View>
-        <View style={[styles.rxPill, { backgroundColor: rxBg }]}>
-          <Text style={[styles.rxText, { color: rxColor }]}>{med.prescriptionType}</Text>
-        </View>
-      </View>
 
-      {/* Uses */}
-      {med.uses ? (
-        <Text style={styles.medUses} numberOfLines={2}>{med.uses}</Text>
-      ) : null}
+        {/* Uses */}
+        {med.uses ? (
+          <Text style={styles.medUses} numberOfLines={2}>{med.uses}</Text>
+        ) : null}
 
-      {/* Side effects */}
-      {med.sideEffects && med.sideEffects.length > 0 && (
-        <View style={styles.sideRow}>
-          <Ionicons name="warning-outline" size={12} color="#EA580C" />
-          <Text style={styles.sideText} numberOfLines={1}>
-            {med.sideEffects.slice(0, 2).join(', ')}
-          </Text>
-        </View>
-      )}
+        {/* Side effects */}
+        {med.sideEffects && med.sideEffects.length > 0 && (
+          <View style={styles.sideRow}>
+            <Ionicons name="warning-outline" size={12} color="#EA580C" />
+            <Text style={styles.sideText} numberOfLines={1}>
+              {med.sideEffects.slice(0, 2).join(', ')}
+            </Text>
+          </View>
+        )}
+      </Pressable>
 
       {/* Action buttons */}
       <View style={styles.cardActions}>

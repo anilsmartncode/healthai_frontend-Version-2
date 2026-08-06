@@ -252,34 +252,14 @@ export default function MedicineScannerScreen() {
   };
 
   // ── View medicine details ────────────────────────────────────────────────
-  const handleViewDetails = async () => {
+  const handleViewDetails = () => {
     if (!scanResult?.medicineName && !scanResult?.medicineId) return;
 
     if (scanResult.medicineId) {
-      setViewDetailsLoading(true);
-      console.log('[Scanner] getScanMedicineDetails REQUEST', { medicineId: scanResult.medicineId });
-      const t0 = Date.now();
-      try {
-        const med = await getScanMedicineDetails(scanResult.medicineId);
-        console.log('[Scanner] getScanMedicineDetails RESPONSE', { name: med?.name, type: med?.type, ms: Date.now() - t0 });
-        if (med) {
-          setDetail(med);
-          setView('details');
-        } else {
-          router.push({
-            pathname: '/medicines/browse',
-            params: { search: scanResult.medicineName },
-          });
-        }
-      } catch (e: any) {
-        console.error('[Scanner] getScanMedicineDetails ERROR', e?.message ?? e);
-        router.push({
-          pathname: '/medicines/browse',
-          params: { search: scanResult.medicineName },
-        });
-      } finally {
-        setViewDetailsLoading(false);
-      }
+      router.push({
+        pathname: `/medicine/${scanResult.medicineId}`,
+        params: { from: 'scanner' },
+      } as any);
     } else if (scanResult.medicineName) {
       router.push({
         pathname: '/medicines/browse',
@@ -764,7 +744,12 @@ export default function MedicineScannerScreen() {
       {detail?.id && (
         <Pressable
           style={styles.viewMoreBtn}
-          onPress={() => router.push(`/medicine/${detail.id}` as any)}
+          onPress={() =>
+            router.push({
+              pathname: `/medicine/${detail.id}`,
+              params: { from: 'scanner' },
+            } as any)
+          }
         >
           <Text style={styles.viewMoreText}>View Full Medicine Details</Text>
           <Ionicons name="arrow-forward" size={15} color={Colors.primary} />
@@ -876,7 +861,10 @@ export default function MedicineScannerScreen() {
                   onPress={() => {
                     setHistoryVisible(false);
                     if (item.medicineId) {
-                      router.push(`/medicine/${item.medicineId}` as any);
+                      router.push({
+                        pathname: `/medicine/${item.medicineId}`,
+                        params: { from: 'scanner' },
+                      } as any);
                     }
                   }}
                 >

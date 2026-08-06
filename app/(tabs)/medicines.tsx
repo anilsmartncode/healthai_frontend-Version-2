@@ -107,6 +107,40 @@ function MedicineRow({
   );
 }
 
+// ─── SAVED MEDICINE ROW ───────────────────────────────────────────────────────
+function SavedMedicineRow({
+  med,
+  onPress,
+}: {
+  med: Medicine;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.medRow, pressed && { opacity: 0.75 }]}
+      onPress={onPress}
+    >
+      <View style={[styles.medIcon, { backgroundColor: '#DCFCE7' }]}>
+        <Ionicons name="bookmark" size={18} color="#16A34A" />
+      </View>
+      <View style={styles.medInfo}>
+        <Text style={styles.medName}>{med.name}</Text>
+        <Text style={styles.medSub}>
+          {med.form || (med as any).type || 'Medicine'} · {med.category || 'General'}
+        </Text>
+      </View>
+      <View style={styles.medRight}>
+        {med.rx || (med as any).prescriptionType === 'Prescription' ? (
+          <View style={styles.rxPill}>
+            <Text style={styles.rxText}>Rx</Text>
+          </View>
+        ) : null}
+        <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+      </View>
+    </Pressable>
+  );
+}
+
 export default function Medicines() {
   const [searchQ, setSearchQ] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -115,6 +149,7 @@ export default function Medicines() {
   const {
     categories,
     recentlyViewed,
+    savedMedicines,
     todayReminders,
     todayBanner,
     loading,
@@ -188,6 +223,19 @@ export default function Medicines() {
           <Text style={styles.title}>Medicines</Text>
           <Text style={styles.subtitle}>Manage your medicines and reminders</Text>
         </View>
+        <Pressable
+          style={styles.iconBtn}
+          onPress={() => router.push('/medicines/my-medicines')}
+          hitSlop={8}
+          accessibilityLabel="Saved Medicines"
+        >
+          <Ionicons name="bookmark-outline" size={20} color={Colors.text} />
+          {savedMedicines.length > 0 && (
+            <View style={[styles.badge, { backgroundColor: '#16A34A' }]}>
+              <Text style={styles.badgeText}>{savedMedicines.length}</Text>
+            </View>
+          )}
+        </Pressable>
         <Pressable style={styles.iconBtn} onPress={() => router.push('/notifications')} hitSlop={8}>
           <Ionicons name="notifications-outline" size={20} color={Colors.text} />
           {unreadCount > 0 && (
@@ -484,6 +532,61 @@ export default function Medicines() {
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
           </Pressable>
+
+          {/* ── Saved Medicines ── */}
+          <View style={[styles.section, { marginTop: 18 }]}>
+            <View style={styles.secHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="bookmark" size={18} color="#16A34A" />
+                <Text style={styles.secTitle}>Saved Medicines</Text>
+              </View>
+              <Pressable onPress={() => router.push('/medicines/my-medicines')} hitSlop={8}>
+                <Text style={styles.linkTxt}>
+                  {savedMedicines.length > 0 ? `View all (${savedMedicines.length}) ›` : 'View all ›'}
+                </Text>
+              </Pressable>
+            </View>
+
+            {savedMedicines.length === 0 ? (
+              <View style={styles.card}>
+                <Pressable
+                  style={styles.emptySchedule}
+                  onPress={handleBrowseAll}
+                >
+                  <Ionicons name="bookmark-outline" size={28} color="#16A34A" />
+                  <Text style={styles.emptyTitle}>No saved medicines yet</Text>
+                  <Text style={styles.emptySub}>Tap the bookmark icon on any medicine to save it here</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.card}>
+                <View style={styles.medList}>
+                  {savedMedicines.slice(0, 4).map((med, idx) => (
+                    <SavedMedicineRow
+                      key={`saved_${med.id}_${idx}`}
+                      med={med}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/medicine/[id]',
+                          params: { id: med.id, isSaved: 'true' },
+                        })
+                      }
+                    />
+                  ))}
+                </View>
+                {savedMedicines.length > 4 && (
+                  <Pressable
+                    style={styles.fullLink}
+                    onPress={() => router.push('/medicines/my-medicines')}
+                  >
+                    <Text style={styles.fullLinkTxt}>
+                      View all {savedMedicines.length} saved medicines ›
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+            )}
+          </View>
 
           {/* ── Recently Viewed ── */}
           {/* @ts-ignore - recentlyViewed might be defined in the original branch */}

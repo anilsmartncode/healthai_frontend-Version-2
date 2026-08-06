@@ -7,6 +7,7 @@ import {
   getCategories,
   getRecentlyViewed,
   getTodaysReminders,
+  getUserMedicines,
   type Category,
   type Medicine,
   type Reminder,
@@ -21,6 +22,7 @@ export interface TodayReminderBanner {
 export function useMedicines() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [recentlyViewed, setRecentlyViewed] = useState<Medicine[]>([]);
+  const [savedMedicines, setSavedMedicines] = useState<Medicine[]>([]);
   const [todayReminders, setTodayReminders] = useState<Reminder[]>([]);
   const [todayBanner, setTodayBanner] = useState<TodayReminderBanner | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,15 +32,20 @@ export function useMedicines() {
     setLoading(true);
     setError(null);
     try {
-      const [cats, recent, reminders] = await Promise.all([
+      const [cats, recent, reminders, saved] = await Promise.all([
         getCategories(),
         getRecentlyViewed(1, 5),
         getTodaysReminders(),
+        getUserMedicines().catch((e) => {
+          console.log('[useMedicines] getUserMedicines err', e);
+          return [];
+        }),
       ]);
 
       setCategories(cats);
       setRecentlyViewed(recent);
       setTodayReminders(reminders);
+      setSavedMedicines(saved);
 
       const upcoming = reminders.filter((r) => r.status === 'upcoming');
       if (reminders.length > 0) {
@@ -73,6 +80,7 @@ export function useMedicines() {
   return {
     categories,
     recentlyViewed,
+    savedMedicines,
     todayReminders,
     todayBanner,
     loading,
