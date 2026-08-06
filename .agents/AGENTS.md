@@ -5,3 +5,5 @@
 - Never use mock data APIs for the frontend. We are nearing production, so always use the real live APIs.
 
 - The company name is always spelled **SMARTnCODE** (not SmartNCode, Smartncode, or any other variation). Use this exact casing everywhere — in code, comments, UI text, and conversations.
+
+- Proactively suggest optimizations or improvements to API inputs/outputs (requests/responses) when implementing new features, rather than just accepting current API definitions as set in stone.

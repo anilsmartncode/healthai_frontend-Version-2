@@ -92,7 +92,7 @@ export default function MemberAIInsightsScreen() {
               New Insights
               <Text style={styles.sectionBadge}> {newInsights.length}</Text>
             </Text>
-            {newInsights.map((ins) => <InsightCard key={ins.id || ins.insight_id || Math.random().toString()} insight={ins} />)}
+            {newInsights.map((ins) => <InsightCard key={(ins as any).id || (ins as any).insight_id || Math.random().toString()} insight={ins} />)}
           </>
         )}
 
@@ -100,7 +100,7 @@ export default function MemberAIInsightsScreen() {
         {readInsights.length > 0 && (
           <>
             <Text style={[styles.section, { marginTop: 8 }]}>Earlier</Text>
-            {readInsights.map((ins) => <InsightCard key={ins.id || ins.insight_id || Math.random().toString()} insight={ins} />)}
+            {readInsights.map((ins) => <InsightCard key={(ins as any).id || (ins as any).insight_id || Math.random().toString()} insight={ins} />)}
           </>
         )}
 

@@ -16,9 +16,6 @@ export function SecurityWrapper({ children }: { children: React.ReactNode }) {
   // 1. Prevent Screen Capture globally (Temporarily disabled for testing)
   // usePreventScreenCapture();
 
-  // On web, we only show public legal pages, so security lock isn't needed.
-  if (Platform.OS === 'web') return <>{children}</>;
-
   const { token, ready } = useAuth();
   const [isLocked, setIsLocked] = useState(false);
   const appState = useRef(AppState.currentState);
@@ -102,6 +99,9 @@ export function SecurityWrapper({ children }: { children: React.ReactNode }) {
       console.warn('[SecurityWrapper] Biometric error:', e);
     }
   };
+
+  // On web, we only show public legal pages, so security lock isn't needed.
+  if (Platform.OS === 'web') return <>{children}</>;
 
   return (
     <View style={styles.container}>

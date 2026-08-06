@@ -614,7 +614,8 @@ export async function getScanHistory(page = 1, limit = 10): Promise<ScanHistoryI
     confidence: item.confidence ?? 0,
     aiSummary: item.ai_summary ?? item.aiSummary ?? '',
     imageUrl: item.image_url ?? item.imageUrl,
-    createdAt: item.created_at ?? item.createdAt ?? new Date().toISOString(),
+    scannedAt: item.created_at ?? item.createdAt ?? new Date().toISOString(),
+    medicineType: item.medicine_type ?? item.medicineType ?? 'Pill',
   }));
 
   // 🟢 MOCK

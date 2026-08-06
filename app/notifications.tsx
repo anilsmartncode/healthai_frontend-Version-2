@@ -50,7 +50,7 @@ function NotifRow({ item, onPress }: { item: FamilyNotification; onPress: () => 
         <Text style={[styles.rowTitle, !item.read && { fontWeight: '700' }]}>
           {item.title}
         </Text>
-        {item.body ? <Text style={styles.rowBody}>{item.body}</Text> : null}
+        {(item as any).body ? <Text style={styles.rowBody}>{(item as any).body}</Text> : null}
       </View>
       <Text style={styles.rowTime}>{timeAgo(item.created_at)}</Text>
     </Pressable>

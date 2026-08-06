@@ -50,7 +50,7 @@ function mapMedicine(raw: any): Medicine {
     name: raw.name ?? raw.medicine_name ?? '',
     form: raw.form ?? raw.type ?? raw.medicine_type ?? 'Tablet',
     category: raw.category ?? raw.category_name ?? '',
-    rx: raw.rx ?? (raw.prescription_type === 'Prescription') ?? false,
+    rx: raw.rx ?? (raw.prescription_type === 'Prescription'),
     uses: raw.uses ?? raw.use ?? undefined,
     dosage: raw.dosage ?? raw.dose ?? undefined,
     sideEffects: Array.isArray(raw.sideEffects) ? raw.sideEffects
@@ -511,6 +511,7 @@ export async function getTodaysReminders(): Promise<Reminder[]> {
   // The backend returns 'medicine_name', 'reminder_time', and 'is_active'.
   return list.map((r: any) => ({
     id: String(r.id),
+    medicineId: String(r.medicine_id ?? r.medicineId ?? ''),
     medicineName: r.medicine_name ?? r.medicineName ?? '',
     time: r.reminder_time ?? r.time ?? '',
     frequency: r.frequency ?? 'daily',

@@ -253,7 +253,7 @@ export default function Upload() {
       
       // Tell the backend what kind of file this is (report vs prescription)
       // so it can trigger the right AI extraction prompt.
-      formData.append('document_type', context);
+      formData.append('document_type', context || 'report');
 
       console.log(
         `[upload] sending file "${file.name}" — ${file.size ? (file.size / 1024 / 1024).toFixed(2) + ' MB' : 'size unknown'}`

@@ -150,7 +150,6 @@ export default function RootLayout() {
       if (actionId === 'take') {
         try {
           await medicineApiCall(ENDPOINTS.reminderTaken(reminderId), { method: 'POST' });
-          await cancelReminderNotification(reminderId);
           await Notifications.dismissNotificationAsync(response.notification.request.identifier);
         } catch (e) {
           console.warn('[Notifications] Background taken API failed:', e);
