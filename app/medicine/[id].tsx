@@ -316,32 +316,23 @@ export default function MedicineDetail() {
           </View>
 
           {/* Badges Row */}
-          <View style={styles.badgesRow}>
-            <View style={[styles.badge, { backgroundColor: rxBg, borderColor: rxBorder }]}>
-              <Ionicons
-                name={isRx ? 'warning-outline' : 'shield-checkmark-outline'}
-                size={12}
-                color={rxColor}
-              />
-              <Text style={[styles.badgeText, { color: rxColor }]}>
-                {isRx ? 'Prescription Required (Rx)' : 'Over The Counter (OTC)'}
-              </Text>
+          {(medicine.category || medicine.isVerified) && (
+            <View style={styles.badgesRow}>
+              {medicine.category ? (
+                <View style={[styles.badge, styles.categoryBadge]}>
+                  <Ionicons name="pricetag-outline" size={12} color="#1D4ED8" />
+                  <Text style={[styles.badgeText, { color: '#1D4ED8' }]}>{medicine.category}</Text>
+                </View>
+              ) : null}
+
+              {medicine.isVerified ? (
+                <View style={[styles.badge, styles.verifiedBadge]}>
+                  <Ionicons name="checkmark-circle" size={12} color="#059669" />
+                  <Text style={[styles.badgeText, { color: '#059669' }]}>Verified</Text>
+                </View>
+              ) : null}
             </View>
-
-            {medicine.category ? (
-              <View style={[styles.badge, styles.categoryBadge]}>
-                <Ionicons name="pricetag-outline" size={12} color="#1D4ED8" />
-                <Text style={[styles.badgeText, { color: '#1D4ED8' }]}>{medicine.category}</Text>
-              </View>
-            ) : null}
-
-            {medicine.isVerified ? (
-              <View style={[styles.badge, styles.verifiedBadge]}>
-                <Ionicons name="checkmark-circle" size={12} color="#059669" />
-                <Text style={[styles.badgeText, { color: '#059669' }]}>Verified</Text>
-              </View>
-            ) : null}
-          </View>
+          )}
 
           {/* Translate Button */}
           <Pressable
@@ -808,7 +799,7 @@ const styles = StyleSheet.create({
   page: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 32,
+    paddingBottom: 40,
     gap: 12,
   },
 
@@ -817,14 +808,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#F1F5F9',
     padding: 18,
     gap: 14,
     shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: 1,
   },
   heroTopRow: {
     flexDirection: 'row',
@@ -832,14 +823,12 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   iconWrap: {
-    width: 54,
-    height: 54,
+    width: 52,
+    height: 52,
     borderRadius: 16,
-    backgroundColor: Colors.primary + '15',
+    backgroundColor: Colors.primary + '12',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Colors.primary + '25',
   },
   heroTitleWrap: {
     flex: 1,
@@ -857,9 +846,9 @@ const styles = StyleSheet.create({
     gap: 4,
     alignSelf: 'flex-start',
     backgroundColor: '#F1F5F9',
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: 8,
   },
   formPillText: {
     fontSize: 12,
@@ -870,29 +859,25 @@ const styles = StyleSheet.create({
   badgesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 8,
   },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
     borderRadius: 99,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 5,
-    borderWidth: 1,
   },
   badgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.2,
+    fontSize: 12,
+    fontWeight: '600',
   },
   categoryBadge: {
     backgroundColor: '#EFF6FF',
-    borderColor: '#DBEAFE',
   },
   verifiedBadge: {
     backgroundColor: '#ECFDF5',
-    borderColor: '#A7F3D0',
   },
 
   translateBtn: {
@@ -900,32 +885,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: Colors.primary + '10',
-    paddingVertical: 8,
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 9,
     paddingHorizontal: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.primary + '20',
+    borderColor: '#F1F5F9',
   },
   translateText: {
-    fontSize: 12,
-    color: Colors.primary,
-    fontWeight: '700',
+    fontSize: 13,
+    color: '#475569',
+    fontWeight: '600',
   },
 
   // ── Info Cards ──
   infoCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#F1F5F9',
     padding: 16,
-    gap: 8,
+    gap: 10,
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
+    shadowOpacity: 0.02,
+    shadowRadius: 6,
+    elevation: 0.5,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -941,9 +926,9 @@ const styles = StyleSheet.create({
   },
   cardHeaderTitle: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#64748B',
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
     flex: 1,
   },
   cardBodyText: {
@@ -990,11 +975,11 @@ const styles = StyleSheet.create({
   // ── AI Summary Card ──
   aiCard: {
     backgroundColor: '#F0FDF4',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
+    borderRadius: 18,
     padding: 16,
-    gap: 8,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
   },
   aiCardHeader: {
     flexDirection: 'row',
@@ -1011,24 +996,24 @@ const styles = StyleSheet.create({
   },
   aiCardTitle: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#15803D',
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
   },
   aiCardBody: {
     fontSize: 14,
-    color: '#14532D',
+    color: '#166534',
     lineHeight: 22,
   },
 
   // ── Warning Card ──
   warningCard: {
     backgroundColor: '#FEF2F2',
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: '#FEE2E2',
     padding: 16,
-    gap: 6,
+    gap: 8,
   },
   warningHeader: {
     flexDirection: 'row',
@@ -1037,9 +1022,9 @@ const styles = StyleSheet.create({
   },
   warningTitle: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#DC2626',
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
   },
   warningBody: {
     fontSize: 14,
@@ -1049,10 +1034,10 @@ const styles = StyleSheet.create({
 
   // ── Patient Summary Card ──
   patientSummaryCard: {
-    backgroundColor: '#F0F9FF',
-    borderRadius: 16,
+    backgroundColor: '#f1f6faff',
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#BAE6FD',
+    borderColor: '#c0ddfaff',
     padding: 16,
     gap: 12,
   },
@@ -1061,14 +1046,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0F2FE',
+    borderBottomColor: '#EDF2F7',
     paddingBottom: 10,
   },
   patientHeaderTitle: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#0369A1',
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
   },
   patientSubSection: {
     gap: 3,
@@ -1080,12 +1065,12 @@ const styles = StyleSheet.create({
   },
   patientSubBody: {
     fontSize: 13,
-    color: '#1E293B',
+    color: '#334155',
     lineHeight: 20,
   },
   helpAlertBox: {
     backgroundColor: '#FFF1F2',
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 12,
     borderWidth: 1,
     borderColor: '#FFE4E6',
@@ -1113,24 +1098,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: Colors.primary + '35',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 99,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
   viewMoreBtnActive: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#A7F3D0',
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
   },
   viewMoreText: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '600',
     color: Colors.primary,
   },
   viewMoreTextActive: {
@@ -1140,12 +1125,12 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: Colors.primary + '15',
+    backgroundColor: Colors.primary + '12',
     alignItems: 'center',
     justifyContent: 'center',
   },
   viewMoreIconBoxActive: {
-    backgroundColor: '#D1FAE5',
+    backgroundColor: '#DCFCE7',
   },
 
   // ── Action Section ──
@@ -1155,7 +1140,7 @@ const styles = StyleSheet.create({
   },
   actionSectionHeader: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#94A3B8',
     letterSpacing: 0.8,
     marginLeft: 4,
@@ -1164,13 +1149,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#F1F5F9',
     overflow: 'hidden',
     shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 6,
+    elevation: 0.5,
   },
   actionRow: {
     flexDirection: 'row',
@@ -1204,7 +1189,7 @@ const styles = StyleSheet.create({
   },
   actionDivider: {
     height: 1,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#F8FAFC',
     marginLeft: 70,
   },
 
@@ -1225,7 +1210,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1248,7 +1233,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
   },
