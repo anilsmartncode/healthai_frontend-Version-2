@@ -42,6 +42,28 @@ function unwrapList<T>(raw: any, ...keys: string[]): T[] {
   return [];
 }
 
+function sanitizeAvatarUrl(url?: string | null): string | undefined {
+  if (!url) return undefined;
+  let clean = String(url).trim();
+  if (!clean) return undefined;
+  if (clean.includes('localhost') || clean.includes('127.0.0.1')) {
+    clean = clean.replace(/http:\/\/(localhost|127\.0\.0\.1)(:\d+)?/, 'https://healthai.smartncode.com');
+  }
+  if (clean.startsWith('http://healthai.smartncode.com')) {
+    clean = clean.replace('http://', 'https://');
+  }
+  if (clean.startsWith('https://healthai.smartncode.com/uploads/')) {
+    clean = clean.replace('https://healthai.smartncode.com/uploads/', 'https://healthai.smartncode.com/api/uploads/');
+  } else if (clean.startsWith('http://healthai.smartncode.com/uploads/')) {
+    clean = clean.replace('http://healthai.smartncode.com/uploads/', 'https://healthai.smartncode.com/api/uploads/');
+  } else if (clean.startsWith('/uploads/')) {
+    clean = `https://healthai.smartncode.com/api${clean}`;
+  } else if (clean.startsWith('uploads/')) {
+    clean = `https://healthai.smartncode.com/api/${clean}`;
+  }
+  return clean;
+}
+
 // ════════════════════════════════════════════════════════════════════════
 // TYPES
 // ════════════════════════════════════════════════════════════════════════
@@ -154,7 +176,7 @@ export async function getFamilyDashboard(): Promise<FamilyDashboard> {
         m.health_status
         ?? preview?.member_scores?.find((s: any) => s.member_id === m.id)?.health_status
       ),
-      avatar_url: m.profile_image ?? undefined,
+      avatar_url: sanitizeAvatarUrl(m.profile_image ?? m.avatar_url),
     }));
 
     const memberScores = preview?.member_scores ?? [];

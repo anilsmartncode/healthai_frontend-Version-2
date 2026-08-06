@@ -44,25 +44,68 @@ export default function Account() {
   const { phone } = useAuth();
   const { t }     = useLang();
 
-  const [name,       setName]       = useState('');
-  const [email,      setEmail]      = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [dob,        setDob]        = useState<Date | null>(null);
-  const [bloodGroup, setBloodGroup] = useState('B+');
-  const [gender,     setGender]     = useState('Male');
-  const [height,     setHeight]     = useState('');
-  const [weight,     setWeight]     = useState('');
-  const [avatarUrl,  setAvatarUrl]  = useState<string | null>(null);
+  const [name,            setName]            = useState('');
+  const [email,           setEmail]           = useState('');
+  const [phoneNumber,     setPhoneNumber]     = useState('');
+  const [dob,             setDob]             = useState<Date | null>(null);
+  const [bloodGroup,      setBloodGroup]      = useState('B+');
+  const [gender,          setGender]          = useState('Male');
+  const [height,          setHeight]          = useState('');
+  const [weight,          setWeight]          = useState('');
+  const [avatarUrl,       setAvatarUrl]       = useState<string | null>(null);
+  const [localAvatarUri,  setLocalAvatarUri]  = useState<string | null>(null);
+  const [imageLoadError,  setImageLoadError]  = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [loading,    setLoading]    = useState(true);
-  const [saving,     setSaving]     = useState(false);
+  const [loading,         setLoading]         = useState(true);
+  const [saving,          setSaving]          = useState(false);
+
+  const isActualPhone = (val?: string | null) => !!val && !val.includes('@') && /\d/.test(val);
+  const isActualEmail = (val?: string | null) => !!val && val.includes('@');
+
+  const sanitizeAvatarUrl = (url?: string | null): string | null => {
+    if (!url) return null;
+    let clean = String(url).trim();
+    if (!clean) return null;
+
+    // Replace localhost or 127.0.0.1 with production BASE_URL host
+    if (clean.includes('localhost') || clean.includes('127.0.0.1')) {
+      clean = clean.replace(/http:\/\/(localhost|127\.0\.0\.1)(:\d+)?/, BASE_URL);
+    }
+
+    // Upgrade http to https if it matches BASE_URL domain
+    if (clean.startsWith('http://healthai.smartncode.com')) {
+      clean = clean.replace('http://', 'https://');
+    }
+
+    // CRITICAL BACKEND NGINX ROUTE FIX:
+    // Backend returns '/uploads/avatars/...' but Nginx routes backend static files under '/api/uploads/...'
+    // Without '/api', Nginx returns index.html (SPA frontend HTML) which causes 'unknown image format'
+    if (clean.startsWith('https://healthai.smartncode.com/uploads/')) {
+      clean = clean.replace('https://healthai.smartncode.com/uploads/', 'https://healthai.smartncode.com/api/uploads/');
+    } else if (clean.startsWith('http://healthai.smartncode.com/uploads/')) {
+      clean = clean.replace('http://healthai.smartncode.com/uploads/', 'https://healthai.smartncode.com/api/uploads/');
+    } else if (clean.startsWith('/uploads/')) {
+      clean = `${BASE_URL}/api${clean}`;
+    } else if (clean.startsWith('uploads/')) {
+      clean = `${BASE_URL}/api/${clean}`;
+    } else if (
+      !clean.startsWith('http://') &&
+      !clean.startsWith('https://') &&
+      !clean.startsWith('file://') &&
+      !clean.startsWith('content://') &&
+      !clean.startsWith('blob:')
+    ) {
+      clean = clean.startsWith('/') ? `${BASE_URL}${clean}` : `${BASE_URL}/${clean}`;
+    }
+
+    return clean;
+  };
 
   // ── Load profile on mount ──────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
         if (USE_MOCK) {
-          // 🟢 MOCK: start with empty fields so user fills their real info
           setName(MOCK_PROFILE.name);
           setEmail(MOCK_PROFILE.email);
           setDob(MOCK_PROFILE.dob);
@@ -71,45 +114,71 @@ export default function Account() {
           setHeight(MOCK_PROFILE.height);
           setWeight(MOCK_PROFILE.weight);
         } else {
+          // Check cached local avatar first
+          const authKey = email || (isActualPhone(phone) ? phone! : 'guest');
+          let cachedAvatar: string | null = null;
+          try {
+            cachedAvatar = await AsyncStorage.getItem(`healthai_avatar_${authKey}`);
+            if (cachedAvatar) {
+              setAvatarUrl(cachedAvatar);
+              setLocalAvatarUri(cachedAvatar);
+            }
+          } catch { /* ignore */ }
+
           // 🔴 REAL: GET /api/user/profile
           const raw = await api.request<any>(ENDPOINTS.profileMePath);
-          console.log('[Account] RAW API RESPONSE:', JSON.stringify(raw, null, 2));
-          // GET returns flat: { user_id, full_name, email, phone, avatar_url,
-          //                     date_of_birth, gender, blood_type, created_at }
-          // PATCH response wraps under user: { user_id, full_name, ... }
+          console.log('[Account] GET PROFILE RAW RESPONSE:', JSON.stringify(raw, null, 2));
           const data = raw?.user ?? raw;
+
           setName(data.full_name ?? data.name ?? '');
           setEmail(data.email ?? '');
           setPhoneNumber(data.phone ?? '');
           const dobValue = data.date_of_birth ?? data.dob;
           setDob(dobValue ? new Date(dobValue) : null);
-          let avUrl = data.avatar_url ?? null;
-          if (avUrl && !avUrl.startsWith('http')) {
-            avUrl = avUrl.startsWith('/') ? BASE_URL + avUrl : `${BASE_URL}/${avUrl}`;
+
+          let avUrl = data.avatar_url ?? data.profile_image ?? data.avatar ?? null;
+          avUrl = sanitizeAvatarUrl(avUrl);
+
+          const userKey = data.email || data.phone || authKey;
+
+          // If API didn't return an avatar, look up local storage
+          if (!avUrl) {
+            try {
+              const localAv = await AsyncStorage.getItem(`healthai_avatar_${userKey}`);
+              if (localAv) {
+                avUrl = localAv;
+                setLocalAvatarUri(localAv);
+              }
+            } catch { /* ignore */ }
+          } else {
+            try {
+              await AsyncStorage.setItem(`healthai_avatar_${userKey}`, avUrl);
+            } catch { /* ignore */ }
           }
-          setAvatarUrl(avUrl);
+
+          if (avUrl) {
+            setAvatarUrl(avUrl);
+            setImageLoadError(false);
+          }
+
           setBloodGroup(data.blood_type ?? data.blood_group ?? 'B+');
           setGender(data.gender ?? 'Male');
-          
-          // Use the email returned by the API as a consistent key (falls back to phone or guest)
-          const userKey = data.email || data.phone || 'guest';
+
           const localPhone = await AsyncStorage.getItem(`healthai_phone_${userKey}`);
           const localHeight = await AsyncStorage.getItem(`healthai_height_${userKey}`);
           const localWeight = await AsyncStorage.getItem(`healthai_weight_${userKey}`);
-          
-          if (localPhone) setPhoneNumber(localPhone);
-          if (localHeight) setHeight(localHeight);
-          if (localWeight) setWeight(localWeight);
-          
-          if (!localHeight && data.height) setHeight(String(data.height));
-          if (!localWeight && data.weight) setWeight(String(data.weight));
+
+          if (localPhone && !data.phone) setPhoneNumber(localPhone);
+          if (localHeight && !data.height) setHeight(localHeight);
+          if (localWeight && !data.weight) setWeight(localWeight);
+
+          if (data.height) setHeight(String(data.height));
+          if (data.weight) setWeight(String(data.weight));
+
           const displayName = (data.full_name ?? data.name ?? '').trim();
           if (displayName) {
             try {
-              await AsyncStorage.setItem(
-                `healthai_profile_name_${userKey}`,
-                displayName
-              );
+              await AsyncStorage.setItem(`healthai_profile_name_${userKey}`, displayName);
             } catch { /* ignore */ }
           }
         }
@@ -129,32 +198,33 @@ export default function Account() {
     setSaving(true);
     try {
       if (USE_MOCK) {
-        // 🟢 MOCK: simulate save delay
         await new Promise((r) => setTimeout(r, 900));
       } else {
         // 🔴 REAL: PATCH /api/user/profile
         await api.request(ENDPOINTS.profileMePath, {
           method: 'PATCH',
           body: JSON.stringify({
-            full_name:     name,
-            email,
-            phone:         phoneNumber,
+            full_name:     name.trim(),
+            email:         email.trim(),
+            phone:         phoneNumber.trim(),
             date_of_birth: dob ? dob.toISOString().split('T')[0] : null,
             blood_type:    bloodGroup,
             gender:        gender,
-            height:        height || null,
-            weight:        weight || null,
+            height:        height ? Number(height) || height : null,
+            weight:        weight ? Number(weight) || weight : null,
           }),
         });
       }
-      Alert.alert('Saved', 'Your profile has been updated.');
-      // Cache extra fields locally so they persist without causing a 500 on the backend
+      Alert.alert('Saved', 'Your profile has been updated successfully.');
+
+      // Cache locally for instant UI responsiveness
       try {
-        const userKey = email || phone || 'guest';
+        const userKey = email.trim() || (isActualPhone(phoneNumber) ? phoneNumber.trim() : (isActualPhone(phone) ? phone! : 'guest'));
         await AsyncStorage.setItem(`healthai_profile_name_${userKey}`, name.trim());
-        if (phoneNumber) await AsyncStorage.setItem(`healthai_phone_${userKey}`, phoneNumber);
+        if (phoneNumber) await AsyncStorage.setItem(`healthai_phone_${userKey}`, phoneNumber.trim());
         if (height) await AsyncStorage.setItem(`healthai_height_${userKey}`, height);
         if (weight) await AsyncStorage.setItem(`healthai_weight_${userKey}`, weight);
+        if (avatarUrl) await AsyncStorage.setItem(`healthai_avatar_${userKey}`, avatarUrl);
       } catch { /* ignore */ }
     } catch (e: any) {
       if (e?.message === 'SESSION_EXPIRED') {
@@ -171,7 +241,7 @@ export default function Account() {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Sorry, we need camera roll permissions to upload a profile photo.');
+        Alert.alert('Permission needed', 'Please allow camera roll access to choose a profile picture.');
         return;
       }
 
@@ -179,40 +249,105 @@ export default function Account() {
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.8,
+        quality: 0.85,
       });
 
-      if (!result.canceled && result.assets[0]) {
+      if (!result.canceled && result.assets && result.assets[0]) {
         const asset = result.assets[0];
-        setUploadingAvatar(true);
+        console.log('[Account] Picked Image Asset:', { uri: asset.uri, width: asset.width, height: asset.height, mimeType: asset.mimeType });
 
+        setUploadingAvatar(true);
+        setImageLoadError(false);
+        setLocalAvatarUri(asset.uri);
+        // Immediately preview selected image
+        setAvatarUrl(asset.uri);
+
+        const userKey = email.trim() || (isActualPhone(phoneNumber) ? phoneNumber.trim() : (isActualPhone(phone) ? phone! : 'guest'));
+        try {
+          await AsyncStorage.setItem(`healthai_avatar_${userKey}`, asset.uri);
+        } catch { /* ignore */ }
+
+        // Construct FormData for multipart upload
         const formData = new FormData();
+        const filename = asset.fileName || `avatar_${Date.now()}.jpg`;
+        const mimeType = asset.mimeType || 'image/jpeg';
+
         formData.append('file', {
           uri: asset.uri,
-          name: asset.fileName || 'avatar.jpg',
-          type: asset.mimeType || 'image/jpeg',
+          name: filename,
+          type: mimeType,
         } as any);
 
-        const response = await api.request<any>(ENDPOINTS.profileAvatarPath, {
-          method: 'POST',
-          body: formData,
-        });
+        formData.append('avatar', {
+          uri: asset.uri,
+          name: filename,
+          type: mimeType,
+        } as any);
 
-        let newAvatarUrl = response?.user?.avatar_url || response?.avatar_url;
-        if (newAvatarUrl) {
-          if (!newAvatarUrl.startsWith('http')) {
-            newAvatarUrl = newAvatarUrl.startsWith('/') ? BASE_URL + newAvatarUrl : `${BASE_URL}/${newAvatarUrl}`;
+        console.log('[Account] POSTing avatar to:', ENDPOINTS.profileAvatarPath);
+
+        try {
+          const response = await api.request<any>(ENDPOINTS.profileAvatarPath, {
+            method: 'POST',
+            body: formData,
+          });
+
+          console.log('[Account] RAW AVATAR UPLOAD RESPONSE:', JSON.stringify(response, null, 2));
+
+          const serverUrl =
+            response?.avatar_url ||
+            response?.user?.avatar_url ||
+            response?.data?.avatar_url ||
+            response?.data?.user?.avatar_url ||
+            response?.url ||
+            response?.data?.url ||
+            response?.file_url ||
+            response?.data?.file_url ||
+            response?.image ||
+            response?.profile_image;
+
+          if (serverUrl) {
+            const formattedUrl = sanitizeAvatarUrl(serverUrl);
+            console.log('[Account] Parsed server avatar URL:', formattedUrl);
+            if (formattedUrl) {
+              setAvatarUrl(formattedUrl);
+              setImageLoadError(false);
+              await AsyncStorage.setItem(`healthai_avatar_${userKey}`, formattedUrl);
+            }
+            Alert.alert('Success', 'Profile photo updated and saved on server!');
+          } else {
+            console.log('[Account] Backend returned success status but no URL in response body. Querying fresh profile...');
+            // Check fresh profile from server
+            try {
+              const freshProfile = await api.request<any>(ENDPOINTS.profileMePath);
+              console.log('[Account] FRESH PROFILE RAW:', JSON.stringify(freshProfile, null, 2));
+              const freshData = freshProfile?.user ?? freshProfile;
+              const freshUrl = sanitizeAvatarUrl(freshData?.avatar_url ?? freshData?.profile_image);
+              if (freshUrl) {
+                setAvatarUrl(freshUrl);
+                setImageLoadError(false);
+                await AsyncStorage.setItem(`healthai_avatar_${userKey}`, freshUrl);
+                Alert.alert('Success', 'Profile photo updated successfully!');
+                return;
+              }
+            } catch (freshErr) {
+              console.warn('[Account] Fresh profile fetch error:', freshErr);
+            }
+
+            // Local preview remains active
+            Alert.alert('Photo Updated', 'Profile photo preview updated on this device.');
           }
-          setAvatarUrl(newAvatarUrl);
-        } else {
-          // Show local image immediately if backend didn't return the URL but succeeded
-          setAvatarUrl(asset.uri);
+        } catch (err: any) {
+          console.error('[Account] Backend avatar upload ERROR:', err);
+          Alert.alert(
+            'Upload Error',
+            `Server error: ${err?.message || 'Failed to upload photo to server'}.\n\nYour photo has been saved locally for preview.`
+          );
         }
-        Alert.alert('Success', 'Profile photo updated!');
       }
     } catch (e: any) {
-      console.warn('[Account] Photo upload error:', e);
-      Alert.alert('Error', e.message || 'Failed to upload photo');
+      console.error('[Account] Photo selection error:', e);
+      Alert.alert('Error', e?.message || 'Failed to select photo');
     } finally {
       setUploadingAvatar(false);
     }
@@ -227,17 +362,50 @@ export default function Account() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       {/* ── Header ── */}
       <View style={styles.header}>
-        <Pressable style={styles.backBtn} onPress={() => router.back()}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.backBtn,
+            pressed && { opacity: 0.7, backgroundColor: '#E2E8F0' },
+          ]}
+          onPress={() => router.back()}
+          hitSlop={10}
+        >
           <Ionicons name="arrow-back" size={20} color={Colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>{t('account_info')}</Text>
-        <Pressable onPress={handleSave} disabled={saving}>
-          {saving
-            ? <ActivityIndicator size="small" color={Colors.primary} />
-            : <Text style={styles.saveLink}>{t('save_changes')}</Text>}
+
+        <View style={styles.headerTitleWrap}>
+          <Text
+            style={styles.headerTitle}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            adjustsFontSizeToFit
+            minimumFontScale={0.85}
+          >
+            {t('account_info')}
+          </Text>
+        </View>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.saveHeaderBtn,
+            saving && { opacity: 0.6 },
+            pressed && { opacity: 0.8 },
+          ]}
+          onPress={handleSave}
+          disabled={saving}
+          hitSlop={8}
+        >
+          {saving ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <>
+              <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
+              <Text style={styles.saveLink}>{t('save_changes')}</Text>
+            </>
+          )}
         </Pressable>
       </View>
 
@@ -251,164 +419,250 @@ export default function Account() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-        {/* Avatar */}
-        <View style={styles.avatarWrap}>
-          <View style={styles.avatar}>
-            {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={{ width: 78, height: 78, borderRadius: 39 }} resizeMode="cover" />
-            ) : name.trim() ? (
-              <Text style={styles.avatarInitial}>
-                {name.trim()[0].toUpperCase()}
+          {/* ── Interactive Avatar Section ── */}
+          <View style={styles.avatarSection}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.avatarTouch,
+                pressed && styles.avatarPressed,
+              ]}
+              onPress={handlePickImage}
+              disabled={uploadingAvatar}
+              hitSlop={10}
+            >
+              <View style={styles.avatarContainer}>
+                {avatarUrl && !imageLoadError ? (
+                  <Image
+                    source={{ uri: avatarUrl }}
+                    style={styles.avatarImg}
+                    resizeMode="cover"
+                    onLoadStart={() => {
+                      console.log('[Account] Avatar Image loading started for:', avatarUrl);
+                    }}
+                    onLoad={() => {
+                      console.log('[Account] Avatar Image rendered successfully!');
+                      setImageLoadError(false);
+                    }}
+                    onError={(err) => {
+                      console.warn('[Account] Avatar Image FAILED to load from URL:', avatarUrl, err.nativeEvent);
+                      if (localAvatarUri && avatarUrl !== localAvatarUri) {
+                        console.log('[Account] Falling back to local file URI:', localAvatarUri);
+                        setAvatarUrl(localAvatarUri);
+                      } else {
+                        setImageLoadError(true);
+                      }
+                    }}
+                  />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    {name.trim() ? (
+                      <Text style={styles.avatarInitial}>
+                        {name.trim().charAt(0).toUpperCase()}
+                      </Text>
+                    ) : (
+                      <Ionicons name="person" size={38} color={Colors.primary} />
+                    )}
+                  </View>
+                )}
+                {uploadingAvatar && (
+                  <View style={styles.avatarLoading}>
+                    <ActivityIndicator size="small" color="#fff" />
+                  </View>
+                )}
+              </View>
+              <View style={styles.cameraBadge}>
+                <Ionicons name="camera" size={13} color="#fff" />
+              </View>
+            </Pressable>
+
+            <Pressable
+              style={styles.changePhotoBtn}
+              onPress={handlePickImage}
+              disabled={uploadingAvatar}
+              hitSlop={8}
+            >
+              <Ionicons name="image-outline" size={15} color={Colors.primary} />
+              <Text style={styles.changePhotoText}>
+                {uploadingAvatar ? 'Uploading photo...' : 'Change Photo'}
               </Text>
-            ) : (
-              <Ionicons name="person" size={34} color="#fff" />
-            )}
+            </Pressable>
           </View>
-          <Pressable onPress={handlePickImage} disabled={uploadingAvatar}>
-            {uploadingAvatar ? (
-              <ActivityIndicator size="small" color={Colors.primary} />
+
+          {/* ── Basic Information Card ── */}
+          <View style={styles.sectionHeader}>
+            <View style={[styles.sectionIconWrap, { backgroundColor: '#EFF6FF' }]}>
+              <Ionicons name="person" size={16} color={Colors.primary} />
+            </View>
+            <Text style={styles.sectionTitle}>Personal Details</Text>
+          </View>
+
+          <View style={styles.card}>
+            <Input
+              label={t('full_name')}
+              value={name}
+              onChangeText={setName}
+              placeholder="e.g. John Doe"
+              autoCapitalize="words"
+            />
+
+            {/* Email Field */}
+            {isActualEmail(phone) ? (
+              <View>
+                <View style={styles.fieldHeaderRow}>
+                  <Text style={styles.fieldLabel}>{t('email')}</Text>
+                  <View style={styles.lockedBadge}>
+                    <Ionicons name="lock-closed" size={10} color={Colors.textMuted} />
+                    <Text style={styles.lockedText}>Primary login</Text>
+                  </View>
+                </View>
+                <View style={styles.readOnlyRow}>
+                  <Ionicons name="mail-outline" size={16} color={Colors.textMuted} />
+                  <Text style={styles.readOnlyVal}>{phone}</Text>
+                </View>
+              </View>
             ) : (
-              <Text style={styles.changePhoto}>Change photo</Text>
+              <Input
+                label={t('email')}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="name@example.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            )}
+
+            {/* Phone Field */}
+            {isActualPhone(phone) ? (
+              <View>
+                <View style={styles.fieldHeaderRow}>
+                  <Text style={styles.fieldLabel}>{t('phone')}</Text>
+                  <View style={styles.lockedBadge}>
+                    <Ionicons name="lock-closed" size={10} color={Colors.textMuted} />
+                    <Text style={styles.lockedText}>Primary login</Text>
+                  </View>
+                </View>
+                <View style={styles.readOnlyRow}>
+                  <Ionicons name="call-outline" size={16} color={Colors.textMuted} />
+                  <Text style={styles.readOnlyVal}>{phone}</Text>
+                </View>
+              </View>
+            ) : (
+              <Input
+                label={t('phone')}
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
+                placeholder="+1 234 567 8900"
+                keyboardType="phone-pad"
+              />
+            )}
+
+            <DatePickerField
+              label="Date of birth"
+              value={dob}
+              onChange={setDob}
+              maximumDate={new Date()}
+            />
+          </View>
+
+          {/* ── Health & Vitals Card ── */}
+          <View style={styles.sectionHeader}>
+            <View style={[styles.sectionIconWrap, { backgroundColor: '#ECFDF5' }]}>
+              <Ionicons name="heart-half" size={16} color="#16A34A" />
+            </View>
+            <Text style={styles.sectionTitle}>Health & Medical Info</Text>
+          </View>
+
+          <View style={styles.card}>
+            <View>
+              <Text style={styles.fieldLabel}>Blood Group</Text>
+              <View style={styles.chipRow}>
+                {BLOOD_GROUPS.map((bg) => {
+                  const isSelected = bloodGroup === bg;
+                  return (
+                    <Pressable
+                      key={bg}
+                      style={[styles.chip, isSelected && styles.chipSelected]}
+                      onPress={() => setBloodGroup(bg)}
+                    >
+                      <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                        {bg}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View>
+              <Text style={styles.fieldLabel}>Gender</Text>
+              <View style={styles.chipRow}>
+                {GENDERS.map((g) => {
+                  const isSelected = gender === g;
+                  return (
+                    <Pressable
+                      key={g}
+                      style={[styles.chip, isSelected && styles.chipSelected]}
+                      onPress={() => setGender(g)}
+                    >
+                      <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                        {g}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={styles.rowFields}>
+              <View style={{ flex: 1 }}>
+                <Input
+                  label="Height (cm)"
+                  value={height}
+                  onChangeText={setHeight}
+                  keyboardType="numeric"
+                  placeholder="e.g. 175"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Input
+                  label="Weight (kg)"
+                  value={weight}
+                  onChangeText={setWeight}
+                  keyboardType="numeric"
+                  placeholder="e.g. 70"
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* ── Save Action Button ── */}
+          <Pressable
+            style={[styles.saveBtn, saving && { opacity: 0.7 }]}
+            onPress={handleSave}
+            disabled={saving}
+          >
+            {saving ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <View style={styles.saveBtnContent}>
+                <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                <Text style={styles.saveBtnText}>{t('save_changes')}</Text>
+              </View>
             )}
           </Pressable>
-        </View>
 
-        {/* Basic info */}
-        <Text style={styles.sectionLabel}>Basic information</Text>
-        <View style={styles.card}>
-          <Input
-            label={t('full_name')}
-            value={name}
-            onChangeText={setName}
-            autoCapitalize="words"
-          />
-          {/* Email Field */}
-          {phone?.includes('@') ? (
-            <View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <Text style={[styles.fieldLabel, { marginBottom: 0 }]}>{t('email')}</Text>
-                <Text style={styles.phoneHint}>(Cannot be changed)</Text>
-              </View>
-              <View style={styles.phoneRow}>
-                <Ionicons name="lock-closed-outline" size={14} color={Colors.textMuted} />
-                <Text style={styles.phoneVal}>{phone}</Text>
-              </View>
-            </View>
-          ) : (
-            <Input
-              label={t('email')}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          )}
-
-          {/* Phone Field */}
-          {!phone?.includes('@') ? (
-            <View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <Text style={[styles.fieldLabel, { marginBottom: 0 }]}>{t('phone')}</Text>
-                <Text style={styles.phoneHint}>(Cannot be changed)</Text>
-              </View>
-              <View style={styles.phoneRow}>
-                <Ionicons name="lock-closed-outline" size={14} color={Colors.textMuted} />
-                <Text style={styles.phoneVal}>{phone ?? '—'}</Text>
-              </View>
-            </View>
-          ) : (
-            <Input
-              label={t('phone')}
-              value={phoneNumber}
-              onChangeText={setPhoneNumber}
-              keyboardType="phone-pad"
-            />
-          )}
-
-          <DatePickerField
-            label="Date of birth"
-            value={dob}
-            onChange={setDob}
-            maximumDate={new Date()}
-          />
-        </View>
-
-        {/* Health info */}
-        <Text style={styles.sectionLabel}>Health details</Text>
-        <View style={styles.card}>
-          <View>
-            <Text style={styles.fieldLabel}>Blood group</Text>
-            <View style={styles.chipRow}>
-              {BLOOD_GROUPS.map((bg) => (
-                <Pressable
-                  key={bg}
-                  style={[styles.chip, bloodGroup === bg && styles.chipSelected]}
-                  onPress={() => setBloodGroup(bg)}
-                >
-                  <Text style={[styles.chipText, bloodGroup === bg && styles.chipTextSelected]}>
-                    {bg}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-
-          <View>
-            <Text style={styles.fieldLabel}>Gender</Text>
-            <View style={styles.chipRow}>
-              {GENDERS.map((g) => (
-                <Pressable
-                  key={g}
-                  style={[styles.chip, gender === g && styles.chipSelected]}
-                  onPress={() => setGender(g)}
-                >
-                  <Text style={[styles.chipText, gender === g && styles.chipTextSelected]}>
-                    {g}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.rowFields}>
-            <View style={{ flex: 1 }}>
-              <Input
-                label="Height (cm)"
-                value={height}
-                onChangeText={setHeight}
-                keyboardType="numeric"
-                placeholder="e.g. 172"
-              />
+          {/* ── Security Note (Matching Profile page) ── */}
+          <View style={styles.secureBanner}>
+            <View style={styles.secureIcon}>
+              <Ionicons name="shield-checkmark" size={18} color="#16A34A" />
             </View>
             <View style={{ flex: 1 }}>
-              <Input
-                label="Weight (kg)"
-                value={weight}
-                onChangeText={setWeight}
-                keyboardType="numeric"
-                placeholder="e.g. 68"
-              />
+              <Text style={styles.secureTitle}>Encrypted & Private</Text>
+              <Text style={styles.secureSub}>
+                Your health data is protected with end-to-end encryption and is never shared without your consent.
+              </Text>
             </View>
           </View>
-        </View>
-
-        {/* Save button */}
-        <Pressable
-          style={[styles.saveBtn, saving && { opacity: 0.6 }]}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          {saving
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.saveBtnText}>{t('save_changes')}</Text>}
-        </Pressable>
-
-        <View style={styles.privacyNote}>
-          <Ionicons name="shield-checkmark-outline" size={14} color={Colors.primary} />
-          <Text style={styles.privacyText}>
-            Your data is encrypted and never shared with third parties.
-          </Text>
-        </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -416,63 +670,296 @@ export default function Account() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bg },
+  safe: { flex: 1, backgroundColor: '#F8FAFC' },
+
   header: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    minHeight: 62,
   },
   backBtn: {
-    width: 34, height: 34, borderRadius: 17,
-    backgroundColor: Colors.surface, justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1, borderColor: Colors.border,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  headerTitle:   { fontSize: 17, fontWeight: '600', color: Colors.text, flex: 1 },
-  saveLink:      { fontSize: 14, fontWeight: '600', color: Colors.primary },
-  body:          { padding: Spacing.lg, gap: Spacing.md, paddingBottom: 40 },
-  avatarWrap:    { alignItems: 'center', gap: 10, paddingVertical: 8 },
-  avatar: {
-    width: 78, height: 78, borderRadius: 39,
-    backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center',
-    borderWidth: 2, borderColor: '#5DCAA5', overflow: 'hidden',
+  headerTitleWrap: {
+    flex: 1,
+    marginHorizontal: 10,
+    justifyContent: 'center',
   },
-  avatarInitial: { fontSize: 30, fontWeight: '700', color: '#fff' },
-  changePhoto:   { fontSize: 14, fontWeight: '600', color: Colors.primary },
-  sectionLabel: {
-    fontSize: 12, fontWeight: '600', color: Colors.textMuted,
-    textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4,
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: Colors.text,
+    letterSpacing: -0.2,
   },
+  saveHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.primary,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  saveLink: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+  },
+
+  body: { padding: 16, gap: 16, paddingBottom: 40 },
+
+  avatarSection: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 10,
+  },
+  avatarTouch: {
+    position: 'relative',
+    borderRadius: 44,
+  },
+  avatarPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.98 }],
+  },
+  avatarContainer: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 2,
+    borderColor: '#BFDBFE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+  },
+  avatarImg: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+  },
+  avatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EFF6FF',
+  },
+  avatarInitial: {
+    fontSize: 34,
+    fontWeight: '800',
+    color: Colors.primary,
+  },
+  avatarLoading: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cameraBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+    elevation: 4,
+  },
+  changePhotoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.primary + '10',
+  },
+  changePhotoText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  sectionIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+
   card: {
-    backgroundColor: Colors.card, borderRadius: Radius.lg,
-    padding: Spacing.lg, borderWidth: 1, borderColor: Colors.border, gap: Spacing.md,
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 14,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
   },
-  fieldLabel: { fontSize: 14, fontWeight: '500', color: Colors.text, marginBottom: 6 },
-  phoneRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md,
-    paddingHorizontal: 14, paddingVertical: 12, backgroundColor: Colors.surface,
+  fieldHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
   },
-  phoneVal:        { flex: 1, fontSize: 15, color: Colors.text },
-  phoneHint:       { fontSize: 11, color: Colors.textMuted },
-  chipRow:         { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: 6,
+  },
+  lockedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: Radius.sm,
+  },
+  lockedText: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    fontWeight: '500',
+  },
+  readOnlyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: '#F8FAFC',
+  },
+  readOnlyVal: {
+    flex: 1,
+    fontSize: 14,
+    color: Colors.text,
+    fontWeight: '500',
+  },
+
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
   chip: {
-    paddingHorizontal: 14, paddingVertical: 7,
-    borderRadius: Radius.pill, borderWidth: 1, borderColor: Colors.border,
-    backgroundColor: Colors.surface,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: '#F8FAFC',
   },
-  chipSelected:     { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  chipText:         { fontSize: 13, color: Colors.text },
-  chipTextSelected: { color: '#fff', fontWeight: '600' },
-  rowFields:        { flexDirection: 'row', gap: Spacing.md },
+  chipSelected: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  chipText: {
+    fontSize: 13,
+    color: Colors.text,
+    fontWeight: '500',
+  },
+  chipTextSelected: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+
+  rowFields: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+
   saveBtn: {
-    backgroundColor: Colors.primary, paddingVertical: 14,
-    borderRadius: Radius.md, alignItems: 'center', marginTop: 4,
+    backgroundColor: Colors.primary,
+    paddingVertical: 15,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+    shadowColor: Colors.primary,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
-  saveBtnText:   { color: '#fff', fontSize: 16, fontWeight: '600' },
-  privacyNote: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
-    backgroundColor: '#ECFDF5', borderRadius: Radius.md,
-    padding: 12, borderWidth: 1, borderColor: '#A7F3D0',
+  saveBtnContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  privacyText: { flex: 1, fontSize: 12, color: Colors.primary, lineHeight: 18 },
+  saveBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+
+  secureBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#ECFDF5',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    marginTop: 2,
+  },
+  secureIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#DCFCE7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secureTitle: { fontSize: 13, fontWeight: '700', color: '#166534' },
+  secureSub: { marginTop: 2, fontSize: 11, color: '#15803D', lineHeight: 15 },
 });

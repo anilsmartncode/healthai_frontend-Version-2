@@ -38,6 +38,26 @@ function formatDisplayName(name: string): string {
     .join(' ');
 }
 
+function MemberAvatar({ uri, name }: { uri?: string; name: string }) {
+  const [hasError, setHasError] = useState(false);
+  if (uri && !hasError) {
+    return (
+      <Image
+        source={{ uri }}
+        style={styles.avatarImg}
+        onError={() => setHasError(true)}
+      />
+    );
+  }
+  return (
+    <View style={styles.avatar}>
+      <Text style={styles.avatarInitial}>
+        {name.trim().charAt(0).toUpperCase() || '?'}
+      </Text>
+    </View>
+  );
+}
+
 export default function FamilyScreen() {
   const insets = useSafeAreaInsets();
   const { dashboard, loading, error, refresh } = useFamilyDashboard();
@@ -184,15 +204,7 @@ export default function FamilyScreen() {
                   ]}
                   onPress={() => onMemberPress(m)}
                 >
-                  {m.avatar_url ? (
-                    <Image source={{ uri: m.avatar_url }} style={styles.avatarImg} />
-                  ) : (
-                    <View style={styles.avatar}>
-                      <Text style={styles.avatarInitial}>
-                        {displayName.trim().charAt(0).toUpperCase() || '?'}
-                      </Text>
-                    </View>
-                  )}
+                  <MemberAvatar uri={m.avatar_url} name={displayName} />
 
                   <View style={styles.memberInfo}>
                     <Text style={styles.memberName} numberOfLines={1}>
