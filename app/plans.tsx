@@ -34,12 +34,16 @@ export default function PlansScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={28} color={Colors.text} />
+          <Pressable
+            onPress={() => router.back()}
+            style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.7 }]}
+            hitSlop={10}
+          >
+            <Ionicons name="arrow-back" size={22} color={Colors.text} />
           </Pressable>
           <Text style={styles.title}>Subscription & Plans</Text>
           <Text style={styles.subtitle}>Unlock the full potential of HealthAI</Text>
@@ -203,12 +207,31 @@ function Feature({ icon, text, premium = false }: { icon: any, text: string, pre
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.bg },
-  scroll: { padding: 16, paddingBottom: 40, gap: 20 },
+  scroll: { padding: 16, paddingTop: 12, paddingBottom: 40, gap: 20 },
 
-  header: { alignItems: 'center', marginTop: 10, marginBottom: 5, position: 'relative' },
-  backButton: { position: 'absolute', left: 0, top: 0, padding: 4, zIndex: 10 },
-  title: { fontSize: 24, fontWeight: '800', color: Colors.text, marginBottom: 6 },
-  subtitle: { fontSize: 15, color: Colors.textMuted },
+  header: {
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 8,
+    position: 'relative',
+    paddingHorizontal: 40,
+  },
+  backButton: {
+    position: 'absolute',
+    left: 0,
+    top: 2,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  title: { fontSize: 22, fontWeight: '800', color: Colors.text, marginBottom: 6, textAlign: 'center' },
+  subtitle: { fontSize: 14, color: Colors.textMuted, textAlign: 'center' },
 
   currentBanner: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
