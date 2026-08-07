@@ -37,134 +37,216 @@ export default function PlansScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
+        {/* ── Header ── */}
         <View style={styles.header}>
           <Pressable
             onPress={() => router.back()}
-            style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.7 }]}
-            hitSlop={10}
+            style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.7, backgroundColor: '#F1F5F9' }]}
+            hitSlop={12}
           >
-            <Ionicons name="arrow-back" size={22} color={Colors.text} />
+            <Ionicons name="arrow-back" size={20} color={Colors.text} />
           </Pressable>
-          <Text style={styles.title}>Subscription & Plans</Text>
-          <Text style={styles.subtitle}>Unlock the full potential of HealthAI</Text>
+          <View style={styles.headerTextWrap}>
+            <Text style={styles.title}>Subscription & Plans</Text>
+            <Text style={styles.subtitle}>Unlock the full potential of HealthAI</Text>
+          </View>
         </View>
 
-        {/* Current Plan Banner */}
+        {/* ── Current Plan Banner ── */}
         <View style={styles.currentBanner}>
-          <Text style={styles.currentText}>Your current plan is:</Text>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{activePlan}</Text>
+          <View style={styles.currentBannerLeft}>
+            <View style={styles.statusDot} />
+            <Text style={styles.currentText}>Your current plan is:</Text>
+          </View>
+          <View style={[
+            styles.badge,
+            activePlan === 'PREMIUM' && styles.badgePremium,
+            activePlan === 'FAMILY' && styles.badgeFamily,
+          ]}>
+            <Ionicons
+              name={activePlan === 'FREE' ? 'sparkles' : (activePlan === 'FAMILY' ? 'people' : 'ribbon')}
+              size={12}
+              color={activePlan === 'FREE' ? Colors.primary : (activePlan === 'FAMILY' ? '#7C3AED' : '#0F766E')}
+            />
+            <Text style={[
+              styles.badgeText,
+              activePlan === 'PREMIUM' && styles.badgeTextPremium,
+              activePlan === 'FAMILY' && styles.badgeTextFamily,
+            ]}>
+              {activePlan}
+            </Text>
           </View>
         </View>
 
-        {/* Free Plan Card */}
+        {/* ── Free Plan Card ── */}
         <View style={[styles.card, activePlan === 'FREE' && styles.activeCard]}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.planName}>Free Plan</Text>
-            <Text style={styles.price}>₹0 <Text style={styles.period}>/mo</Text></Text>
-          </View>
-
-          <View style={styles.featureList}>
-            <Feature icon="chatbubbles-outline" text={`${PLAN_LIMITS.FREE.maxDailyAiChats} AI Chats per day`} />
-            <Feature icon="document-text-outline" text={`${PLAN_LIMITS.FREE.maxMonthlyReports} Report analysis per month`} />
-            <Feature icon="barcode-outline" text={`${PLAN_LIMITS.FREE.maxDailyMedicineScans} Medicine scan per day`} />
-            <Feature icon="people-outline" text={`${PLAN_LIMITS.FREE.maxFamilyMembers} Family member included`} />
-          </View>
-        </View>
-
-        {/* Premium Plan Card */}
-        <View style={[styles.card, styles.premiumCard, activePlan === 'PREMIUM' && styles.activeCard]}>
-          <View style={styles.premiumBadge}>
-            <Text style={styles.premiumBadgeText}>POPULAR</Text>
-          </View>
+          {activePlan === 'FREE' && (
+            <View style={styles.activeFloatingPill}>
+              <Ionicons name="checkmark-circle" size={12} color="#15803D" />
+              <Text style={styles.activeFloatingPillText}>ACTIVE PLAN</Text>
+            </View>
+          )}
 
           <View style={styles.cardHeader}>
             <View>
-              <Text style={[styles.planName, { color: '#fff' }]}>Premium</Text>
-              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 2 }}>Single User</Text>
+              <Text style={styles.planName}>Free Plan</Text>
+              <Text style={styles.planSubtitle}>Standard Access</Text>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6 }}>
-              <Text style={styles.strikePrice}>₹299</Text>
-              <Text style={[styles.price, { color: '#fff' }]}>₹99 <Text style={[styles.period, { color: 'rgba(255,255,255,0.7)' }]}>/mo</Text></Text>
+            <View style={styles.priceContainer}>
+              <Text style={styles.price}>₹0 <Text style={styles.period}>/mo</Text></Text>
             </View>
           </View>
 
+          <View style={styles.divider} />
+
           <View style={styles.featureList}>
-            <Feature icon="chatbubbles" text="Unlimited AI Chats" premium />
-            <Feature icon="document-text" text={`${PLAN_LIMITS.PREMIUM.maxMonthlyReports} Report analyses per month`} premium />
-            <Feature icon="barcode" text="Unlimited Medicine scans" premium />
-            <Feature icon="person" text="Single User Account" premium />
-            <Feature icon="star" text="Priority AI Processing" premium />
+            <Feature icon="chatbubbles-outline" text={`${PLAN_LIMITS.FREE.maxDailyAiChats} AI Chats per day`} variant="free" />
+            <Feature icon="document-text-outline" text={`${PLAN_LIMITS.FREE.maxMonthlyReports} Report analysis per month`} variant="free" />
+            <Feature icon="barcode-outline" text={`${PLAN_LIMITS.FREE.maxDailyMedicineScans} Medicine scan per day`} variant="free" />
+            <Feature icon="people-outline" text={`${PLAN_LIMITS.FREE.maxFamilyMembers} Family member included`} variant="free" />
+          </View>
+        </View>
+
+        {/* ── Premium Plan Card (₹199 -> ₹99) ── */}
+        <View style={[styles.card, styles.premiumCard, activePlan === 'PREMIUM' && styles.activeCard]}>
+          <View style={styles.popularBadge}>
+            <Ionicons name="sparkles" size={12} color="#0F766E" />
+            <Text style={styles.popularBadgeText}>POPULAR</Text>
+          </View>
+
+          {activePlan === 'PREMIUM' && (
+            <View style={styles.activeFloatingPill}>
+              <Ionicons name="checkmark-circle" size={12} color="#15803D" />
+              <Text style={styles.activeFloatingPillText}>ACTIVE PLAN</Text>
+            </View>
+          )}
+
+          <View style={styles.cardHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.planName, { color: '#0F172A' }]}>Premium</Text>
+              <Text style={styles.planSubtitle}>Single User</Text>
+              <View style={styles.offerBadge}>
+                <Ionicons name="flame" size={11} color="#EA580C" />
+                <Text style={styles.offerBadgeText}>Limited Period Offer</Text>
+              </View>
+            </View>
+
+            <View style={styles.priceContainer}>
+              <View style={styles.discountRow}>
+                <Text style={styles.strikePrice}>₹199</Text>
+                <View style={styles.saveTag}>
+                  <Text style={styles.saveTagText}>50% OFF</Text>
+                </View>
+              </View>
+              <Text style={[styles.price, { color: '#0F766E' }]}>₹99 <Text style={styles.period}>/mo</Text></Text>
+            </View>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.featureList}>
+            <Feature icon="chatbubbles" text="Unlimited AI Chats" variant="premium" />
+            <Feature icon="document-text" text={`${PLAN_LIMITS.PREMIUM.maxMonthlyReports} Report analyses per month`} variant="premium" />
+            <Feature icon="barcode" text="Unlimited Medicine scans" variant="premium" />
+            <Feature icon="person" text="Single User Account" variant="premium" />
+            <Feature icon="star" text="Priority AI Processing" variant="premium" />
           </View>
 
           {activePlan !== 'PREMIUM' ? (
             <Pressable
-              style={styles.upgradeBtn}
+              style={({ pressed }) => [styles.upgradeBtn, styles.premiumUpgradeBtn, pressed && { opacity: 0.88, transform: [{ scale: 0.99 }] }]}
               onPress={() => handlePayment('PREMIUM')}
               disabled={isProcessingPremium || isProcessingFamily}
             >
               {isProcessingPremium ? (
-                <ActivityIndicator color={Colors.primary} />
+                <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
-                <Text style={styles.upgradeBtnText}>Upgrade to Premium</Text>
+                <View style={styles.btnContentRow}>
+                  <Text style={styles.upgradeBtnText}>Upgrade to Premium</Text>
+                  <Ionicons name="arrow-forward" size={17} color="#FFFFFF" />
+                </View>
               )}
             </Pressable>
           ) : (
             <View style={styles.activePlanBtn}>
-              <Ionicons name="checkmark-circle" size={20} color="#fff" />
+              <Ionicons name="checkmark-circle" size={18} color="#16A34A" />
               <Text style={styles.activePlanBtnText}>Active Plan</Text>
             </View>
           )}
         </View>
 
-        {/* Family Plan Card */}
+        {/* ── Family Plan Card (₹599 -> ₹299) ── */}
         <View style={[styles.card, styles.familyCard, activePlan === 'FAMILY' && styles.activeCard]}>
-          <View style={[styles.premiumBadge, { backgroundColor: '#8B5CF6' }]}>
-            <Text style={[styles.premiumBadgeText, { color: '#fff' }]}>BEST VALUE</Text>
+          <View style={styles.familyBadge}>
+            <Ionicons name="people" size={12} color="#7C3AED" />
+            <Text style={styles.familyBadgeText}>BEST VALUE</Text>
           </View>
+
+          {activePlan === 'FAMILY' && (
+            <View style={styles.activeFloatingPill}>
+              <Ionicons name="checkmark-circle" size={12} color="#15803D" />
+              <Text style={styles.activeFloatingPillText}>ACTIVE PLAN</Text>
+            </View>
+          )}
 
           <View style={styles.cardHeader}>
-            <View>
-              <Text style={[styles.planName, { color: '#fff' }]}>Family Plan</Text>
-              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 2 }}>Up to {PLAN_LIMITS.FAMILY.maxFamilyMembers} Members</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.planName, { color: '#0F172A' }]}>Family Plan</Text>
+              <Text style={styles.planSubtitle}>Up to {PLAN_LIMITS.FAMILY.maxFamilyMembers} Members</Text>
+              <View style={[styles.offerBadge, styles.offerBadgeFamily]}>
+                <Ionicons name="flame" size={11} color="#7C3AED" />
+                <Text style={[styles.offerBadgeText, { color: '#7C3AED' }]}>Limited Period Offer</Text>
+              </View>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6 }}>
-              <Text style={[styles.price, { color: '#fff' }]}>₹299 <Text style={[styles.period, { color: 'rgba(255,255,255,0.7)' }]}>/mo</Text></Text>
+
+            <View style={styles.priceContainer}>
+              <View style={styles.discountRow}>
+                <Text style={styles.strikePrice}>₹599</Text>
+                <View style={[styles.saveTag, styles.saveTagFamily]}>
+                  <Text style={[styles.saveTagText, { color: '#7C3AED' }]}>50% OFF</Text>
+                </View>
+              </View>
+              <Text style={[styles.price, { color: '#7C3AED' }]}>₹299 <Text style={styles.period}>/mo</Text></Text>
             </View>
           </View>
 
+          <View style={styles.divider} />
+
           <View style={styles.featureList}>
-            <Feature icon="chatbubbles" text="Unlimited AI Chats" premium />
-            <Feature icon="document-text" text={`${PLAN_LIMITS.FAMILY.maxMonthlyReports} Report analyses per month`} premium />
-            <Feature icon="barcode" text="Unlimited Medicine scans" premium />
-            <Feature icon="people" text={`Up to ${PLAN_LIMITS.FAMILY.maxFamilyMembers} Family members included`} premium />
-            <Feature icon="share-social" text="Shared Family Dashboard" premium />
-            <Feature icon="star" text="Priority AI Processing" premium />
+            <Feature icon="chatbubbles" text="Unlimited AI Chats" variant="family" />
+            <Feature icon="document-text" text={`${PLAN_LIMITS.FAMILY.maxMonthlyReports} Report analyses per month`} variant="family" />
+            <Feature icon="barcode" text="Unlimited Medicine scans" variant="family" />
+            <Feature icon="people" text={`Up to ${PLAN_LIMITS.FAMILY.maxFamilyMembers} Family members included`} variant="family" />
+            <Feature icon="share-social" text="Shared Family Dashboard" variant="family" />
+            <Feature icon="star" text="Priority AI Processing" variant="family" />
           </View>
 
           {activePlan !== 'FAMILY' ? (
             <Pressable
-              style={[styles.upgradeBtn, { backgroundColor: '#fff' }]}
+              style={({ pressed }) => [styles.upgradeBtn, styles.familyUpgradeBtn, pressed && { opacity: 0.88, transform: [{ scale: 0.99 }] }]}
               onPress={() => handlePayment('FAMILY')}
               disabled={isProcessingPremium || isProcessingFamily}
             >
               {isProcessingFamily ? (
-                <ActivityIndicator color="#8B5CF6" />
+                <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
-                <Text style={[styles.upgradeBtnText, { color: '#7C3AED' }]}>Upgrade to Family</Text>
+                <View style={styles.btnContentRow}>
+                  <Text style={styles.upgradeBtnText}>Upgrade to Family</Text>
+                  <Ionicons name="arrow-forward" size={17} color="#FFFFFF" />
+                </View>
               )}
             </Pressable>
           ) : (
             <View style={styles.activePlanBtn}>
-              <Ionicons name="checkmark-circle" size={20} color="#fff" />
+              <Ionicons name="checkmark-circle" size={18} color="#16A34A" />
               <Text style={styles.activePlanBtnText}>Active Plan</Text>
             </View>
           )}
         </View>
 
-        {/* Restore Purchases Button */}
+        {/* ── Restore Purchases Button ── */}
         <Pressable
-          style={{ paddingVertical: 10, alignItems: 'center', marginTop: 10 }}
+          style={({ pressed }) => [styles.restoreBtn, pressed && { opacity: 0.6 }]}
           onPress={async () => {
             try {
               const restored = await restorePurchases();
@@ -178,16 +260,18 @@ export default function PlansScreen() {
             }
           }}
         >
-          <Text style={{ color: Colors.primary, fontWeight: '600', fontSize: 15 }}>Restore Purchases</Text>
+          <Ionicons name="refresh-outline" size={16} color={Colors.primary} />
+          <Text style={styles.restoreBtnText}>Restore Purchases</Text>
         </Pressable>
 
-        {/* Legal Links for App Store Compliance */}
-        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 20, paddingBottom: 20 }}>
-          <Pressable onPress={() => Linking.openURL('https://healthai.smartncode.com/terms')}>
-            <Text style={{ color: Colors.textMuted, fontSize: 13, textDecorationLine: 'underline' }}>Terms of Service</Text>
+        {/* ── Legal Links for App Store Compliance ── */}
+        <View style={styles.legalRow}>
+          <Pressable onPress={() => Linking.openURL('https://healthai.smartncode.com/terms')} hitSlop={8}>
+            <Text style={styles.legalText}>Terms of Service</Text>
           </Pressable>
-          <Pressable onPress={() => Linking.openURL('https://healthai.smartncode.com/privacy')}>
-            <Text style={{ color: Colors.textMuted, fontSize: 13, textDecorationLine: 'underline' }}>Privacy Policy</Text>
+          <Text style={styles.legalDot}>•</Text>
+          <Pressable onPress={() => Linking.openURL('https://healthai.smartncode.com/privacy')} hitSlop={8}>
+            <Text style={styles.legalText}>Privacy Policy</Text>
           </Pressable>
         </View>
 
@@ -196,111 +280,461 @@ export default function PlansScreen() {
   );
 }
 
-function Feature({ icon, text, premium = false }: { icon: any, text: string, premium?: boolean }) {
+function Feature({ icon, text, variant = 'free' }: { icon: any; text: string; variant?: 'free' | 'premium' | 'family' }) {
+  const getTheme = () => {
+    switch (variant) {
+      case 'premium':
+        return {
+          iconWrapBg: '#F0FDFA',
+          iconColor: '#0F766E',
+          textColor: '#0F172A',
+        };
+      case 'family':
+        return {
+          iconWrapBg: '#F5F3FF',
+          iconColor: '#7C3AED',
+          textColor: '#0F172A',
+        };
+      default:
+        return {
+          iconWrapBg: '#F8FAFC',
+          iconColor: '#64748B',
+          textColor: '#334155',
+        };
+    }
+  };
+
+  const theme = getTheme();
+
   return (
     <View style={styles.featureRow}>
-      <Ionicons name={icon} size={20} color={premium ? '#93C5FD' : Colors.primary} />
-      <Text style={[styles.featureText, premium && { color: '#F8FAFC' }]}>{text}</Text>
+      <View style={[styles.featureIconWrap, { backgroundColor: theme.iconWrapBg }]}>
+        <Ionicons name={icon} size={16} color={theme.iconColor} />
+      </View>
+      <Text style={[styles.featureText, { color: theme.textColor }]}>{text}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bg },
-  scroll: { padding: 16, paddingTop: 12, paddingBottom: 40, gap: 20 },
+  safe: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  scroll: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 40,
+    gap: 18,
+  },
 
+  /* Header */
   header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 8,
-    position: 'relative',
-    paddingHorizontal: 40,
+    marginTop: 6,
+    marginBottom: 4,
+    gap: 12,
   },
   backButton: {
-    position: 'absolute',
-    left: 0,
-    top: 2,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#fff',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#E2E8F0',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
   },
-  title: { fontSize: 22, fontWeight: '800', color: Colors.text, marginBottom: 6, textAlign: 'center' },
-  subtitle: { fontSize: 14, color: Colors.textMuted, textAlign: 'center' },
+  headerTextWrap: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.3,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 2,
+  },
 
+  /* Current Plan Banner */
   currentBanner: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: Colors.surface, paddingVertical: 12, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.border, gap: 10
-  },
-  currentText: { fontSize: 14, color: Colors.textMuted, fontWeight: '500' },
-  badge: { backgroundColor: Colors.primary + '20', paddingHorizontal: 10, paddingVertical: 4, borderRadius: Radius.pill },
-  badgeText: { color: Colors.primary, fontSize: 12, fontWeight: '700' },
-
-  card: {
-    backgroundColor: Colors.bg,
-    borderRadius: Radius.xl,
-    padding: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
-    position: 'relative',
+    borderColor: '#E2E8F0',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
   },
-  activeCard: {
-    borderColor: Colors.primary,
-    borderWidth: 2,
+  currentBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#16A34A',
+  },
+  currentText: {
+    fontSize: 13,
+    color: '#475569',
+    fontWeight: '600',
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: Radius.pill,
+  },
+  badgePremium: {
+    backgroundColor: '#CCFBF1',
+  },
+  badgeFamily: {
+    backgroundColor: '#EDE9FE',
+  },
+  badgeText: {
+    color: '#475569',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  badgeTextPremium: {
+    color: '#0F766E',
+  },
+  badgeTextFamily: {
+    color: '#7C3AED',
+  },
+
+  /* Cards Common */
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    position: 'relative',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
   },
   premiumCard: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-    borderWidth: 2,
-    shadowColor: Colors.primary,
+    borderColor: '#0F766E',
+    borderWidth: 1.5,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#0F766E',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.08,
     shadowRadius: 16,
-    elevation: 8,
+    elevation: 4,
   },
   familyCard: {
-    backgroundColor: '#8B5CF6',
-    borderColor: '#8B5CF6',
-    borderWidth: 2,
-    shadowColor: '#8B5CF6',
+    borderColor: '#C4B5FD',
+    borderWidth: 1.5,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#7C3AED',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.08,
     shadowRadius: 16,
-    elevation: 8,
+    elevation: 4,
   },
-  premiumBadge: {
-    position: 'absolute', top: -12, alignSelf: 'center',
-    backgroundColor: '#fff', paddingHorizontal: 12, paddingVertical: 4,
-    borderRadius: Radius.pill, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 2,
+  activeCard: {
+    borderColor: '#16A34A',
+    borderWidth: 2,
   },
-  premiumBadgeText: { color: Colors.primary, fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
 
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  planName: { fontSize: 20, fontWeight: '700', color: Colors.text },
-  price: { fontSize: 24, fontWeight: '800', color: Colors.text },
-  period: { fontSize: 14, fontWeight: '500', color: Colors.textMuted },
-  strikePrice: { fontSize: 16, fontWeight: '600', color: 'rgba(255,255,255,0.6)', textDecorationLine: 'line-through', marginBottom: 3 },
+  /* Floating Badges (Top Left & Top Right) */
+  popularBadge: {
+    position: 'absolute',
+    top: -12,
+    left: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#CCFBF1',
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: Radius.pill,
+    shadowColor: '#0F766E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  popularBadgeText: {
+    color: '#0F766E',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  familyBadge: {
+    position: 'absolute',
+    top: -12,
+    left: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#EDE9FE',
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: Radius.pill,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  familyBadgeText: {
+    color: '#7C3AED',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  activeFloatingPill: {
+    position: 'absolute',
+    top: -12,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#DCFCE7',
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: Radius.pill,
+    shadowColor: '#16A34A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  activeFloatingPillText: {
+    color: '#15803D',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
 
-  featureList: { gap: 14 },
-  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  featureText: { fontSize: 14, color: Colors.text, flex: 1, fontWeight: '500' },
+  /* Card Header & Price */
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginTop: 4,
+    marginBottom: 12,
+    gap: 12,
+  },
+  planName: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  planSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  offerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FFEDD5',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginTop: 5,
+    alignSelf: 'flex-start',
+  },
+  offerBadgeFamily: {
+    backgroundColor: '#FAF5FF',
+    borderColor: '#F3E8FF',
+  },
+  offerBadgeText: {
+    color: '#EA580C',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  priceContainer: {
+    alignItems: 'flex-end',
+    justifyContent: 'flex-start',
+  },
+  discountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 2,
+  },
+  price: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.5,
+  },
+  period: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  strikePrice: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#94A3B8',
+    textDecorationLine: 'line-through',
+  },
+  saveTag: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  saveTagFamily: {
+    backgroundColor: '#EDE9FE',
+  },
+  saveTagText: {
+    color: '#15803D',
+    fontSize: 9,
+    fontWeight: '800',
+  },
 
-  upgradeBtn: {
-    backgroundColor: '#fff',
-    marginTop: 24, paddingVertical: 16, borderRadius: Radius.lg,
+  divider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginBottom: 14,
+  },
+
+  /* Features */
+  featureList: {
+    gap: 11,
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  featureIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  upgradeBtnText: { color: Colors.primary, fontSize: 16, fontWeight: '700' },
-  activePlanBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginTop: 24, paddingVertical: 16, borderRadius: Radius.lg,
+  featureText: {
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1,
   },
-  activePlanBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+
+  /* CTA Buttons */
+  upgradeBtn: {
+    marginTop: 18,
+    paddingVertical: 14,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  premiumUpgradeBtn: {
+    backgroundColor: '#0F766E',
+    shadowColor: '#0F766E',
+  },
+  familyUpgradeBtn: {
+    backgroundColor: '#7C3AED',
+    shadowColor: '#7C3AED',
+  },
+  btnContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  upgradeBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  activePlanBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    marginTop: 18,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  activePlanBtnText: {
+    color: '#15803D',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  /* Restore */
+  restoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+  },
+  restoreBtnText: {
+    color: Colors.primary,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+
+  /* Legal */
+  legalRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: -4,
+    paddingBottom: 16,
+  },
+  legalText: {
+    color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: '500',
+    textDecorationLine: 'underline',
+  },
+  legalDot: {
+    color: '#CBD5E1',
+    fontSize: 12,
+  },
 });
