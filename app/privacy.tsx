@@ -37,9 +37,9 @@ const SECTIONS = [
         Email:{" "}
         <Text
           style={{ color: Colors.primary, textDecorationLine: "underline" }}
-          onPress={() => Linking.openURL("mailto:support@healthai.app")}
+          onPress={() => Linking.openURL("mailto:support@smartncode.com")}
         >
-          support@healthai.app
+          support@smartncode.com
         </Text>
         {"\n"}
         Website:{" "}

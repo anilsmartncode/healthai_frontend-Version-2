@@ -68,11 +68,12 @@ export default function Profile() {
             try {
               // Call the delete account API endpoint
               await medicineApiCall(ENDPOINTS.deleteAccount, { method: 'DELETE' });
-              
+
               Alert.alert('Account Deleted', 'Your account and data have been permanently deleted.', [
-                { text: 'OK', onPress: () => {
+                {
+                  text: 'OK', onPress: () => {
                     signOut().then(() => router.replace('/(auth)/onboarding'));
-                  } 
+                  }
                 }
               ]);
             } catch (error: any) {
@@ -85,13 +86,13 @@ export default function Profile() {
   };
 
   const items = [
-    { icon: 'person-outline',           label: t('account_info'),  href: '/account'         },
-    { icon: 'star',                     label: 'Subscription & Plans', href: '/plans'       },
-    { icon: 'people-outline',           label: t('family_health'), href: '/family'          },
-    { icon: 'notifications-outline',    label: t('notifications'), href: '/notifications'   },
-    { icon: 'shield-checkmark-outline', label: t('legal_privacy'), href: '/legal-privacy'   },
-    { icon: 'help-circle-outline',      label: t('help_support'),  href: '/help-support'    },
-    { icon: 'star-outline',             label: t('rate_app'),      href: '/rate-app'        },
+    { icon: 'person-outline', label: t('account_info'), href: '/account' },
+    { icon: 'star', label: 'Subscription & Plans', href: '/plans' },
+    { icon: 'people-outline', label: t('family_health'), href: '/family' },
+    { icon: 'notifications-outline', label: t('notifications'), href: '/notifications' },
+    { icon: 'shield-checkmark-outline', label: t('legal_privacy'), href: '/legal-privacy' },
+    { icon: 'help-circle-outline', label: t('help_support'), href: '/help-support' },
+    { icon: 'star-outline', label: t('rate_app'), href: '/rate-app' },
   ] as const;
 
   const initial = displayName.trim() ? displayName.trim()[0].toUpperCase() : null;
@@ -153,12 +154,12 @@ export default function Profile() {
 }
 
 const styles = StyleSheet.create({
-  title:        { fontSize: 22, fontWeight: '700', color: Colors.text },
-  profile:      { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16 },
-  avatar:       { width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center' },
-  avatarInitial:{ fontSize: 22, fontWeight: '700', color: '#fff' },
-  name:         { fontSize: 16, fontWeight: '700', color: Colors.text },
-  sub:          { color: Colors.textMuted },
+  title: { fontSize: 22, fontWeight: '700', color: Colors.text },
+  profile: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16 },
+  avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center' },
+  avatarInitial: { fontSize: 22, fontWeight: '700', color: '#fff' },
+  name: { fontSize: 16, fontWeight: '700', color: Colors.text },
+  sub: { color: Colors.textMuted },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingVertical: 14, paddingHorizontal: 12,

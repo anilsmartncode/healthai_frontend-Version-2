@@ -122,7 +122,7 @@ export default function RootLayout() {
 
   let isWebLocked = false;
   if (Platform.OS === 'web' && isMounted) {
-    const allowedWebPaths = ['/privacy', '/terms', '/cookies', '/contact', '/support'];
+    const allowedWebPaths = ['/privacy', '/terms', '/cookies', '/contact', '/support', '/accountanddata'];
     const isAllowed = pathname && allowedWebPaths.some(p => 
       pathname === p || pathname === `${p}/` || pathname?.startsWith(`${p}?`)
     );
@@ -188,6 +188,7 @@ export default function RootLayout() {
                     <Stack.Screen name="contact" options={{ headerShown: false }} />
                     <Stack.Screen name="cookies" options={{ headerShown: false }} />
                     <Stack.Screen name="support" options={{ headerShown: false }} />
+                    <Stack.Screen name="accountanddata" options={{ headerShown: false }} />
                     
                     <Stack.Screen
                       name="upload"
@@ -375,6 +376,12 @@ export default function RootLayout() {
                           onPress={() => window.location.href = '/support'}
                         >
                           Support
+                        </Text>
+                        <Text 
+                          style={{ color: Colors.primary, fontSize: 13, fontWeight: '600' }}
+                          onPress={() => window.location.href = '/accountanddata'}
+                        >
+                          Account & Data
                         </Text>
                       </View>
                     </View>

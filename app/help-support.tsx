@@ -36,7 +36,7 @@ const FAQS = [
   },
   {
     q: 'How do I delete my account?',
-    a: 'Go to Profile → Legal & Privacy → Data deletion request and follow the steps.',
+    a: 'Go to Profile → tap "Delete Account" → tap "Delete Permanently" to confirm.',
   },
 ];
 
@@ -45,8 +45,8 @@ export default function HelpSupport() {
     {
       icon: 'mail-outline',
       label: 'Email us',
-      sub: 'support@healthai.com',
-      action: () => Linking.openURL('mailto:support@healthai.com'),
+      sub: 'support@smartncode.com',
+      action: () => Linking.openURL('mailto:support@smartncode.com'),
     },
     {
       icon: 'call-outline',
