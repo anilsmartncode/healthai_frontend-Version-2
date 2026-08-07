@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { NotificationCenter } from '@/services/NotificationService';
 import { FamilyNotificationProvider, MedicineNotificationProvider, ReportNotificationProvider } from '@/services/notificationProviders';
 import { UnifiedNotification } from '@/types/notifications';
+import { useAuth } from '@/context/AuthContext';
 
 // Register providers once
 NotificationCenter.registerProvider(FamilyNotificationProvider);
@@ -9,6 +10,7 @@ NotificationCenter.registerProvider(MedicineNotificationProvider);
 NotificationCenter.registerProvider(ReportNotificationProvider);
 
 export function useNotifications() {
+  const { phone } = useAuth();
   const [notifications, setNotifications] = useState<UnifiedNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true); // start loading immediately
@@ -16,7 +18,7 @@ export function useNotifications() {
   const fetchAndSync = useCallback(async () => {
     setLoading(true);
     try {
-      const sorted = await NotificationCenter.fetchAndMerge();
+      const sorted = await NotificationCenter.fetchAndMerge(phone);
       setNotifications(sorted);
       setUnreadCount(NotificationCenter.getUnreadCount());
     } catch (e) {
@@ -24,17 +26,18 @@ export function useNotifications() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [phone]);
 
   useEffect(() => {
     let mounted = true;
     async function initialize() {
       // 1. Await local persistence to avoid flicker
-      await NotificationCenter.init();
+      await NotificationCenter.init(phone);
       if (!mounted) return;
 
       // 2. Subscribe to global updates
       const unsubscribe = NotificationCenter.subscribe(() => {
+        if (!mounted) return;
         setNotifications(NotificationCenter.getSortedNotifications());
         setUnreadCount(NotificationCenter.getUnreadCount());
       });
@@ -56,7 +59,7 @@ export function useNotifications() {
       mounted = false;
       unsub();
     };
-  }, [fetchAndSync]);
+  }, [phone, fetchAndSync]);
 
   const markAllRead = useCallback(() => {
     NotificationCenter.markAllRead();

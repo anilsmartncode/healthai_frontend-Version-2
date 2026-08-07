@@ -1,23 +1,35 @@
 import { SecureAsyncStorage as notificationStorage } from '@/utils/storage';
 import { UnifiedNotification, NotificationProvider, NotificationStatus } from '@/types/notifications';
 
-const STORAGE_KEY = 'healthai_notifications_cache';
+export const notificationStorageKey = (phone?: string | null) =>
+  phone ? `healthai_notifications_cache_${phone}` : 'healthai_notifications_cache';
 
 class NotificationService {
   private providers: NotificationProvider[] = [];
   private cache: UnifiedNotification[] = [];
   private isLoaded = false;
+  private currentPhone: string | null = null;
   private listeners: (() => void)[] = [];
 
   constructor() {
     // Initialization is deferred to init()
   }
 
-  /** Load persisted notifications from MMKV/AsyncStorage */
-  public async init() {
+  private getStorageKey(): string {
+    return notificationStorageKey(this.currentPhone);
+  }
+
+  /** Load persisted notifications from MMKV/AsyncStorage for user */
+  public async init(phone?: string | null) {
+    if (phone !== undefined && phone !== this.currentPhone) {
+      this.currentPhone = phone;
+      this.isLoaded = false;
+      this.cache = [];
+    }
+
     if (this.isLoaded) return;
     try {
-      const raw = await notificationStorage.getItem(STORAGE_KEY);
+      const raw = await notificationStorage.getItem(this.getStorageKey());
       if (raw) {
         try {
           this.cache = JSON.parse(raw);
@@ -26,11 +38,31 @@ class NotificationService {
           console.error('[NotificationService] failed to parse cache:', e);
           this.cache = [];
         }
+      } else {
+        this.cache = [];
       }
     } catch (e) {
       console.error('[NotificationService] failed to get item:', e);
+      this.cache = [];
     }
     this.isLoaded = true;
+    this.notifyListeners();
+  }
+
+  /** Wipe in-memory cache and local storage */
+  public async reset(phoneToClear?: string | null) {
+    const key = notificationStorageKey(phoneToClear !== undefined ? phoneToClear : this.currentPhone);
+    this.cache = [];
+    this.isLoaded = false;
+    this.currentPhone = null;
+    try {
+      await notificationStorage.removeItem(key);
+      // Clean legacy global key as well
+      await notificationStorage.removeItem('healthai_notifications_cache');
+    } catch (e) {
+      console.error('[NotificationService] failed to clear storage:', e);
+    }
+    this.notifyListeners();
   }
 
   /** Subscribe to state changes */
@@ -47,7 +79,7 @@ class NotificationService {
 
   /** Persist to MMKV and notify */
   private async saveCache() {
-    await notificationStorage.setItem(STORAGE_KEY, JSON.stringify(this.cache));
+    await notificationStorage.setItem(this.getStorageKey(), JSON.stringify(this.cache));
     this.notifyListeners();
   }
 
@@ -71,8 +103,8 @@ class NotificationService {
   }
 
   /** Pull fresh notifications from all registered providers and merge with cache */
-  public async fetchAndMerge(): Promise<UnifiedNotification[]> {
-    await this.init();
+  public async fetchAndMerge(phone?: string | null): Promise<UnifiedNotification[]> {
+    await this.init(phone);
     
     const promises = this.providers.map(p => p.fetchNotifications().catch(e => {
       console.error(`[NotificationService] Provider ${p.id} failed:`, e);

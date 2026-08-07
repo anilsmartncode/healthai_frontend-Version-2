@@ -3,6 +3,7 @@ import { storage } from '@/utils/storage';
 import { reportStorageKey, reportDetailsStorageKey } from '@/services/reportsApi';
 import { medicineStorageKey, reminderStorageKey } from '@/services/medicineTabApi';
 import { STORAGE_KEYS as AI_STORAGE_KEYS } from '@/services/aiService';
+import { NotificationCenter, notificationStorageKey } from '@/services/NotificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DeviceEventEmitter, Platform } from 'react-native';
 import { router } from 'expo-router';
@@ -81,6 +82,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (mId != null) setMemberId(mId);
     if (rt) setRefreshToken(rt);
 
+    // Initialize notification center for the newly signed in user
+    await NotificationCenter.init(p);
+
     // After setting auth tokens, register this device for push notifications
     await registerPushToken();
   };
@@ -106,6 +110,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await storage.remove('phone');
     await storage.remove('member_id');
 
+    // Clear notification center in-memory cache and persisted cache
+    await NotificationCenter.reset(phone);
+
     // Clear this user's locally cached reports so the next user
     // (or the same user after re-login) starts with a clean slate
     // from the server — preventing data leakage between sessions.
@@ -116,10 +123,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         reportDetailsStorageKey(phone),
         medicineStorageKey(phone),
         reminderStorageKey(phone),
+        notificationStorageKey(phone),
+        'healthai_notifications_cache',
         aiKeys.AI_MEMORY,
         aiKeys.CONVERSATION,
         `${aiKeys.CONVERSATION}_session_id`,
       ]);
+    } else {
+      await AsyncStorage.removeItem('healthai_notifications_cache');
     }
 
     // Clear onboarding flag so a NEW signup on this device isn't

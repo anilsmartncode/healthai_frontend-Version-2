@@ -49,7 +49,7 @@ function NotifRow({ item, onPress }: { item: UnifiedNotification; onPress: () =>
         <Ionicons name={cfg.icon} size={20} color={cfg.color} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={[styles.rowTitle, !item.read && { fontWeight: '700' }]}>
+        <Text style={[styles.rowTitle, isUnread && { fontWeight: '700' }]}>
           {item.title}
         </Text>
         {(item as any).body ? <Text style={styles.rowBody}>{(item as any).body}</Text> : null}
