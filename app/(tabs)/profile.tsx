@@ -5,6 +5,7 @@ import {
   Pressable,
   ScrollView,
   Image,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +21,7 @@ import { api } from '@/services/api';
 import { ENDPOINTS, BASE_URL } from '@/constants/api';
 import { reportsApi } from '@/services/reportsApi';
 import { getFamilyDashboard } from '@/services/familyApi';
+import { medicineApiCall } from '@/services/Medicineapiclient';
 
 const STAT_GAP = 8;
 
@@ -220,6 +222,10 @@ export default function Profile() {
     }, [phone, memberId])
   );
 
+  const currentPlan = (profile.plan || activePlan || 'FREE').toUpperCase();
+  const isPremium = currentPlan === 'PREMIUM' || currentPlan === 'FAMILY';
+  const planLabel = currentPlan === 'FAMILY' ? 'Family Plan' : (currentPlan === 'PREMIUM' ? 'Premium' : 'Free');
+
   const handleDeleteAccount = () => {
     Alert.alert(
       'Delete Account',
@@ -233,31 +239,23 @@ export default function Profile() {
             try {
               // Call the delete account API endpoint
               await medicineApiCall(ENDPOINTS.deleteAccount, { method: 'DELETE' });
-              
+
               Alert.alert('Account Deleted', 'Your account and data have been permanently deleted.', [
-                { text: 'OK', onPress: () => {
+                {
+                  text: 'OK',
+                  onPress: () => {
                     signOut().then(() => router.replace('/(auth)/onboarding'));
-                  } 
-                }
+                  },
+                },
               ]);
             } catch (error: any) {
-              Alert.alert('Error', 'Failed to delete account. Please contact support.');
+              Alert.alert('Error', error?.message || 'Failed to delete account. Please contact support.');
             }
           },
         },
       ]
     );
   };
-
-  const items = [
-    { icon: 'person-outline',           label: t('account_info'),  href: '/account'         },
-    { icon: 'star',                     label: 'Subscription & Plans', href: '/plans'       },
-    { icon: 'people-outline',           label: t('family_health'), href: '/family'          },
-    { icon: 'notifications-outline',    label: t('notifications'), href: '/notifications'   },
-    { icon: 'shield-checkmark-outline', label: t('legal_privacy'), href: '/legal-privacy'   },
-    { icon: 'help-circle-outline',      label: t('help_support'),  href: '/help-support'    },
-    { icon: 'star-outline',             label: t('rate_app'),      href: '/rate-app'        },
-  ] as const;
 
   const age = calcAge(profile.dob);
   const dobLabel = formatDob(profile.dob);
@@ -575,15 +573,15 @@ export default function Profile() {
           <Text style={styles.logoutText}>{t('log_out')}</Text>
         </Pressable>
 
+        {/* Delete Account */}
         <Pressable
-          style={styles.row}
+          style={styles.deleteAccountBtn}
           onPress={handleDeleteAccount}
         >
-          <Ionicons name="trash-outline" size={22} color={Colors.danger} />
-          <Text style={[styles.rowLabel, { color: Colors.danger }]}>Delete Account</Text>
-          <View />
+          <Ionicons name="trash-outline" size={18} color={Colors.danger} />
+          <Text style={styles.deleteAccountText}>Delete Account</Text>
         </Pressable>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -846,4 +844,18 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   logoutText: { fontSize: 15, fontWeight: '700', color: Colors.danger },
+
+  deleteAccountBtn: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+  },
+  deleteAccountText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.danger,
+  },
 });
