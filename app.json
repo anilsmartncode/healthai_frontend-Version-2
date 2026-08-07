@@ -32,7 +32,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.healthai.app",
+      "package": "com.smartncode.healthai",
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.SCHEDULE_EXACT_ALARM",
