@@ -41,8 +41,10 @@ export default function PlansScreen() {
           <Pressable onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={28} color={Colors.text} />
           </Pressable>
-          <Text style={styles.title}>Subscription & Plans</Text>
-          <Text style={styles.subtitle}>Unlock the full potential of HealthAI</Text>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.title}>Subscription & Plans</Text>
+            <Text style={styles.subtitle}>Unlock the full potential of HealthAI</Text>
+          </View>
         </View>
 
         {/* Current Plan Banner */}
@@ -203,16 +205,17 @@ function Feature({ icon, text, premium = false }: { icon: any, text: string, pre
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.bg },
-  scroll: { padding: 16, paddingBottom: 40, gap: 20 },
+  scroll: { padding: 16, paddingBottom: 40, gap: 28 }, // Increased gap for breathability
 
-  header: { alignItems: 'center', marginTop: 10, marginBottom: 5, position: 'relative' },
-  backButton: { position: 'absolute', left: 0, top: 0, padding: 4, zIndex: 10 },
-  title: { fontSize: 24, fontWeight: '800', color: Colors.text, marginBottom: 6 },
-  subtitle: { fontSize: 15, color: Colors.textMuted },
+  header: { flexDirection: 'row', alignItems: 'center', marginTop: 10, marginBottom: 15, paddingHorizontal: 4 },
+  backButton: { padding: 4, marginRight: 16 },
+  headerTextContainer: { flex: 1 },
+  title: { fontSize: 24, fontWeight: '800', color: Colors.text, marginBottom: 4 },
+  subtitle: { fontSize: 14, color: Colors.textMuted },
 
   currentBanner: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: Colors.surface, paddingVertical: 12, borderRadius: Radius.lg,
+    backgroundColor: Colors.surface, paddingVertical: 10, borderRadius: Radius.lg,
     borderWidth: 1, borderColor: Colors.border, gap: 10
   },
   currentText: { fontSize: 14, color: Colors.textMuted, fontWeight: '500' },
@@ -232,6 +235,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   premiumCard: {
+    marginTop: 12, // Prevents badge from overlapping the card above
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
     borderWidth: 2,
@@ -242,6 +246,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   familyCard: {
+    marginTop: 12, // Prevents badge from overlapping the card above
     backgroundColor: '#8B5CF6',
     borderColor: '#8B5CF6',
     borderWidth: 2,
@@ -259,14 +264,14 @@ const styles = StyleSheet.create({
   premiumBadgeText: { color: Colors.primary, fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
 
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  planName: { fontSize: 20, fontWeight: '700', color: Colors.text },
+  planName: { fontSize: 22, fontWeight: '700', color: Colors.text },
   price: { fontSize: 24, fontWeight: '800', color: Colors.text },
   period: { fontSize: 14, fontWeight: '500', color: Colors.textMuted },
   strikePrice: { fontSize: 16, fontWeight: '600', color: 'rgba(255,255,255,0.6)', textDecorationLine: 'line-through', marginBottom: 3 },
 
-  featureList: { gap: 14 },
+  featureList: { gap: 16 }, // Increased spacing between features
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  featureText: { fontSize: 14, color: Colors.text, flex: 1, fontWeight: '500' },
+  featureText: { fontSize: 15, color: Colors.text, flex: 1, fontWeight: '500' },
 
   upgradeBtn: {
     backgroundColor: '#fff',

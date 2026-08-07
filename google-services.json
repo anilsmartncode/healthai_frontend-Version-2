@@ -7,17 +7,17 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:933979596939:android:267c7f28592c68d322cc8e",
+        "mobilesdk_app_id": "1:933979596939:android:48742e651cf486b122cc8e",
         "android_client_info": {
-          "package_name": "com.healthai.app"
+          "package_name": "com.smartncode.healthai"
         }
       },
       "oauth_client": [
         {
-          "client_id": "933979596939-r5trlgbe7ok83f8tuqsi2gldhunfjl8g.apps.googleusercontent.com",
+          "client_id": "933979596939-5djlp91s3l9molbh7n9bfvota7nfkfn7.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.healthai.app",
+            "package_name": "com.smartncode.healthai",
             "certificate_hash": "f40c121c425d0b6456564d6a4265ab99778d7019"
           }
         },
