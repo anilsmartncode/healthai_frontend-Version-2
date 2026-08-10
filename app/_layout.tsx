@@ -127,7 +127,7 @@ export default function RootLayout() {
       pathname === p || pathname === `${p}/` || pathname?.startsWith(`${p}?`)
     );
     if (!isAllowed) {
-      isWebLocked = true;
+      // isWebLocked = true;
     }
   }
 
