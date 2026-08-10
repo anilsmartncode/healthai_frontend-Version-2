@@ -66,7 +66,7 @@ export default function AIHomeScreen() {
   const goToChat = (text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    router.push({ pathname: '/ai-chat', params: { prefill: trimmed } });
+    router.push({ pathname: '/(tabs)/ai-chat', params: { prefill: trimmed, newSession: Date.now().toString() } });
     setInput('');
   };
 
@@ -159,7 +159,7 @@ export default function AIHomeScreen() {
                       : { backgroundColor: '#F1F5F9' },
                   ]}
                   onPress={() =>
-                    input.trim() ? goToChat(input) : router.push('/ai-chat')
+                    input.trim() ? goToChat(input) : router.push({ pathname: '/(tabs)/ai-chat', params: { newSession: Date.now().toString() } })
                   }
                   hitSlop={6}
                 >

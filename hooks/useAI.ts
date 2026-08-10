@@ -21,7 +21,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import type { ChatMessage } from '@/types';
 
-export function useAI(initialPrefill?: string, prefillContext?: string, openSessionId?: string) {
+export function useAI(initialPrefill?: string, prefillContext?: string, openSessionId?: string, forceNewSessionToken?: string) {
   const { phone } = useAuth();
   const CONVO_KEY = STORAGE_KEYS(phone).CONVERSATION;
   const CURRENT_SESSION_KEY = `${STORAGE_KEYS(phone).CONVERSATION}_session_id`;
@@ -34,6 +34,8 @@ export function useAI(initialPrefill?: string, prefillContext?: string, openSess
       time: new Date().toISOString(),
     },
   ]);
+  const messagesRef = useRef(messages);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
   const [input, setInput]             = useState('');
   const [loading, setLoading]         = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -45,6 +47,21 @@ export function useAI(initialPrefill?: string, prefillContext?: string, openSess
   // or when a specific past session is requested (from the History tab)
   useEffect(() => {
     (async () => {
+      hasAutoSent.current = false;
+      if (forceNewSessionToken) {
+        await AsyncStorage.removeItem(CONVO_KEY);
+        await AsyncStorage.removeItem(CURRENT_SESSION_KEY);
+        setMessages([{
+          id: '0',
+          role: 'ai',
+          text: "Hi! I'm your HealthAI Assistant. I can answer questions about your reports, medicines, and health goals. How can I help you today?",
+          time: new Date().toISOString(),
+        }]);
+        setSessionId(newSessionId());
+        setConvoLoaded(true);
+        return;
+      }
+
       // Opening a specific saved session from History
       if (openSessionId) {
         const session = await getChatSession(openSessionId, phone);
@@ -87,7 +104,7 @@ export function useAI(initialPrefill?: string, prefillContext?: string, openSess
 
     generateSuggestedPrompts(phone).then(setSuggestions);
     checkHealthAlerts(phone).then(setAlert);
-  }, [phone, CONVO_KEY, openSessionId]);
+  }, [phone, CONVO_KEY, openSessionId, forceNewSessionToken]);
 
   // Auto-send if prefill came from navigation/deep link — wait until the
   // persisted conversation has finished loading so we don't overwrite it
@@ -97,7 +114,7 @@ export function useAI(initialPrefill?: string, prefillContext?: string, openSess
       // Small delay so screen is mounted
       setTimeout(() => send(initialPrefill), 300);
     }
-  }, [initialPrefill, convoLoaded]);
+  }, [initialPrefill, convoLoaded, forceNewSessionToken]);
 
   const persistConversation = useCallback(async (msgs: ChatMessage[]) => {
     // Keep last 40 messages to prevent unbounded growth
@@ -119,7 +136,7 @@ export function useAI(initialPrefill?: string, prefillContext?: string, openSess
       time: new Date().toISOString(),
     };
 
-    const updatedWithUser = [...messages, userMsg];
+    const updatedWithUser = [...messagesRef.current, userMsg];
     setMessages(updatedWithUser);
     setInput('');
     setLoading(true);
@@ -142,7 +159,7 @@ export function useAI(initialPrefill?: string, prefillContext?: string, openSess
     } finally {
       setLoading(false);
     }
-  }, [input, loading, messages, prefillContext, persistConversation, phone]);
+  }, [input, loading, prefillContext, persistConversation, phone]);
 
   // "New chat" — saves the current conversation to History (it's already
   // persisted via saveChatSession on each message), then starts a fresh session

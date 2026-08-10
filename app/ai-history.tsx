@@ -129,7 +129,7 @@ export default function AIHistoryScreen() {
           contentContainerStyle={styles.list}
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
           renderItem={({ item }) => (
-            <SessionRow item={item} onPress={() => router.push({ pathname: '/ai-chat', params: { sessionId: item.id } })} onDelete={() => handleDelete(item)} />
+            <SessionRow item={item} onPress={() => router.push({ pathname: '/(tabs)/ai-chat', params: { sessionId: item.id } })} onDelete={() => handleDelete(item)} />
           )}
         />
       )}
