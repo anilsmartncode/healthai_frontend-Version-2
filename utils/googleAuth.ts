@@ -12,13 +12,12 @@
  */
 
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
 
 const isExpoGo = Constants.appOwnership === 'expo';
 let _configured = false;
 
 // Configure early so native modules register the webClientId before sign-in is clicked
-if (!isExpoGo && Platform.OS !== 'web') {
+if (!isExpoGo) {
   try {
     const { GoogleSignin } = require('@react-native-google-signin/google-signin');
     GoogleSignin.configure({

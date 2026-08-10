@@ -10,7 +10,7 @@ import { ENDPOINTS } from '@/constants/api';
 const isExpoGo = Constants.appOwnership === 'expo';
 
 // Configure how notifications behave when the app is in the foreground
-if (!isExpoGo && Platform.OS !== 'web') {
+if (!isExpoGo) {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
@@ -26,7 +26,7 @@ if (!isExpoGo && Platform.OS !== 'web') {
 export const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND-NOTIFICATION-TASK';
 
 // FCM Background Handler (Must be registered early)
-if (!isExpoGo && Platform.OS !== 'web') {
+if (!isExpoGo) {
   try {
     import('@react-native-firebase/messaging').then((messagingModule) => {
       const messaging = messagingModule.default;

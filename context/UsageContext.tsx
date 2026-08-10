@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PLAN_LIMITS, DEFAULT_TESTING_PLAN, PlanType } from '../constants/plans';
 import Purchases, { LOG_LEVEL } from 'react-native-purchases';
@@ -56,7 +56,6 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const ensureRevenueCat = async () => {
-    if (Platform.OS === 'web') return;
     const isConfigured = await Purchases.isConfigured();
     if (!isConfigured) {
       Purchases.setLogLevel(LOG_LEVEL.DEBUG);
@@ -98,9 +97,8 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
       
       // Fetch RevenueCat status
       try {
-        if (Platform.OS !== 'web') {
-          await ensureRevenueCat();
-          const customerInfo = await Purchases.getCustomerInfo();
+        await ensureRevenueCat();
+        const customerInfo = await Purchases.getCustomerInfo();
         if (typeof customerInfo.entitlements.active[ENTITLEMENTS.FAMILY] !== "undefined") {
           setActivePlan('FAMILY');
           await AsyncStorage.setItem('@healthai_active_plan', 'FAMILY');
@@ -110,7 +108,6 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
         } else {
           setActivePlan('FREE');
           await AsyncStorage.setItem('@healthai_active_plan', 'FREE');
-        }
         }
       } catch (e) {
         console.warn('RevenueCat sync failed, falling back to cached plan:', e);
