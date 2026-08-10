@@ -16,6 +16,7 @@ const VIEWPORTS = [
   { name: 'Tablet_10_inch', width: 1600, height: 2560, deviceScaleFactor: 2 },
   { name: 'Chromebook', width: 1920, height: 1080, deviceScaleFactor: 2 },
   { name: 'android_xr', width: 1080, height: 1920, deviceScaleFactor: 2 },
+  { name: 'Feature_Graphic', width: 1024, height: 500, deviceScaleFactor: 2 }
 ];
 
 const TARGET_URL = 'http://localhost:8082';
