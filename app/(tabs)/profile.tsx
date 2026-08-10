@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
@@ -99,56 +99,58 @@ export default function Profile() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.bg }}>
-      <View style={{ padding: 16 }}>
-        <Text style={styles.title}>{t('profile_settings')}</Text>
-        <View style={styles.profile}>
-          <View style={styles.avatar}>
-            {initial
-              ? <Text style={styles.avatarInitial}>{initial}</Text>
-              : <Ionicons name="person" size={28} color="#fff" />
-            }
-          </View>
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={styles.name}>{displayName || t('profile')}</Text>
-              <View style={styles.planBadge}>
-                <Text style={styles.planBadgeText}>{activePlan}</Text>
-              </View>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        <View style={{ padding: 16 }}>
+          <Text style={styles.title}>{t('profile_settings')}</Text>
+          <View style={styles.profile}>
+            <View style={styles.avatar}>
+              {initial
+                ? <Text style={styles.avatarInitial}>{initial}</Text>
+                : <Ionicons name="person" size={28} color="#fff" />
+              }
             </View>
-            <Text style={styles.sub}>{phone ?? 'guest@healthai.app'}</Text>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={styles.name}>{displayName || t('profile')}</Text>
+                <View style={styles.planBadge}>
+                  <Text style={styles.planBadgeText}>{activePlan}</Text>
+                </View>
+              </View>
+              <Text style={styles.sub}>{phone ?? 'guest@healthai.app'}</Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      <View style={{ paddingHorizontal: 16, gap: 4 }}>
-        {items.map((it) => (
-          <Pressable key={it.label} style={styles.row} onPress={() => router.push(it.href as any)}>
-            <Ionicons name={it.icon as any} size={22} color={Colors.text} />
-            <Text style={styles.rowLabel}>{it.label}</Text>
-            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+        <View style={{ paddingHorizontal: 16, gap: 4 }}>
+          {items.map((it) => (
+            <Pressable key={it.label} style={styles.row} onPress={() => router.push(it.href as any)}>
+              <Ionicons name={it.icon as any} size={22} color={Colors.text} />
+              <Text style={styles.rowLabel}>{it.label}</Text>
+              <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+            </Pressable>
+          ))}
+          <Pressable
+            style={styles.row}
+            onPress={async () => {
+              await signOut();
+              router.replace('/(auth)/onboarding');
+            }}
+          >
+            <Ionicons name="log-out-outline" size={22} color={Colors.danger} />
+            <Text style={[styles.rowLabel, { color: Colors.danger }]}>{t('log_out')}</Text>
+            <View />
           </Pressable>
-        ))}
-        <Pressable
-          style={styles.row}
-          onPress={async () => {
-            await signOut();
-            router.replace('/(auth)/onboarding');
-          }}
-        >
-          <Ionicons name="log-out-outline" size={22} color={Colors.danger} />
-          <Text style={[styles.rowLabel, { color: Colors.danger }]}>{t('log_out')}</Text>
-          <View />
-        </Pressable>
 
-        <Pressable
-          style={styles.row}
-          onPress={handleDeleteAccount}
-        >
-          <Ionicons name="trash-outline" size={22} color={Colors.danger} />
-          <Text style={[styles.rowLabel, { color: Colors.danger }]}>Delete Account</Text>
-          <View />
-        </Pressable>
-      </View>
+          <Pressable
+            style={styles.row}
+            onPress={handleDeleteAccount}
+          >
+            <Ionicons name="trash-outline" size={22} color={Colors.danger} />
+            <Text style={[styles.rowLabel, { color: Colors.danger }]}>Delete Account</Text>
+            <View />
+          </Pressable>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
