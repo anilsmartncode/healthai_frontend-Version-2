@@ -18,7 +18,7 @@ import {
   Alert,
   LayoutAnimation,
 } from 'react-native';
-import { Swipeable } from 'react-native-gesture-handler';
+
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,27 +26,6 @@ import { Colors, Radius } from '@/constants/Colors';
 import { useReports, type FilterType } from '@/hooks/useReports';
 import type { ReportListItem } from '@/services/reportsApi';
 
-function DeleteAction({
-  progress,
-  onPress,
-}: {
-  progress: Animated.AnimatedInterpolation<number>;
-  onPress: () => void;
-}) {
-  const scale = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.6, 1],
-    extrapolate: 'clamp',
-  });
-  return (
-    <Pressable style={styles.deleteAction} onPress={onPress}>
-      <Animated.View style={{ transform: [{ scale }], alignItems: 'center' }}>
-        <Ionicons name="trash-outline" size={22} color="#fff" />
-        <Text style={styles.deleteActionText}>Delete</Text>
-      </Animated.View>
-    </Pressable>
-  );
-}
 
 function statusTag(item: ReportListItem) {
   if (item.status === 'attention') {
@@ -71,7 +50,6 @@ function ReportRow({
   item: ReportListItem;
   onDelete: (id: string) => void;
 }) {
-  const swipeRef = React.useRef<Swipeable>(null);
   const tag = statusTag(item);
   const icon = iconColorFor(item);
   const scoreColor =
@@ -83,56 +61,55 @@ function ReportRow({
 
   const handleDelete = () => {
     Alert.alert('Delete Report', `Remove "${item.title}" from your reports?`, [
-      { text: 'Cancel', style: 'cancel', onPress: () => swipeRef.current?.close() },
+      { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: () => {
-          swipeRef.current?.close();
-          onDelete(item.id);
-        },
+        onPress: () => onDelete(item.id),
       },
     ]);
   };
 
   return (
-    <Swipeable
-      ref={swipeRef}
-      renderRightActions={(progress) => (
-        <DeleteAction progress={progress} onPress={handleDelete} />
-      )}
-      overshootRight={false}
+    <Pressable
+      style={({ pressed }) => [styles.reportRow, pressed && { opacity: 0.85 }]}
+      onPress={() =>
+        router.push({ pathname: '/report-detail', params: { id: item.id } })
+      }
     >
+      <View style={[styles.reportIcon, { backgroundColor: icon.bg }]}>
+        <Ionicons name="document-text-outline" size={20} color={icon.color} />
+      </View>
+      <View style={styles.reportInfo}>
+        <Text style={styles.reportTitle} numberOfLines={1}>
+          {item.title}
+        </Text>
+        <Text style={styles.reportMeta} numberOfLines={1}>
+          {item.date} • {item.labName || item.category}
+        </Text>
+      </View>
+      <View style={[styles.statusPill, { backgroundColor: tag.bg }]}>
+        <Text style={[styles.statusPillText, { color: tag.color }]}>{tag.label}</Text>
+      </View>
+      {item.healthScore > 0 && (
+        <View style={[styles.scoreCircle, { borderColor: scoreColor + '55' }]}>
+          <Text style={[styles.scoreCircleText, { color: scoreColor }]}>
+            {item.healthScore}
+          </Text>
+        </View>
+      )}
+      
       <Pressable
-        style={({ pressed }) => [styles.reportRow, pressed && { opacity: 0.85 }]}
-        onPress={() =>
-          router.push({ pathname: '/report-detail', params: { id: item.id } })
-        }
+        onPress={handleDelete}
+        style={({ pressed }) => [
+          styles.deleteBtnInline,
+          pressed && { opacity: 0.7, transform: [{ scale: 0.9 }] },
+        ]}
+        hitSlop={12}
       >
-        <View style={[styles.reportIcon, { backgroundColor: icon.bg }]}>
-          <Ionicons name="document-text-outline" size={20} color={icon.color} />
-        </View>
-        <View style={styles.reportInfo}>
-          <Text style={styles.reportTitle} numberOfLines={1}>
-            {item.title}
-          </Text>
-          <Text style={styles.reportMeta} numberOfLines={1}>
-            {item.date} • {item.labName || item.category}
-          </Text>
-        </View>
-        <View style={[styles.statusPill, { backgroundColor: tag.bg }]}>
-          <Text style={[styles.statusPillText, { color: tag.color }]}>{tag.label}</Text>
-        </View>
-        {item.healthScore > 0 && (
-          <View style={[styles.scoreCircle, { borderColor: scoreColor + '55' }]}>
-            <Text style={[styles.scoreCircleText, { color: scoreColor }]}>
-              {item.healthScore}
-            </Text>
-          </View>
-        )}
-        <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+        <Ionicons name="trash-outline" size={18} color={Colors.danger} />
       </Pressable>
-    </Swipeable>
+    </Pressable>
   );
 }
 
@@ -247,37 +224,9 @@ export default function ReportsScreen() {
           <Text style={styles.headerTitle}>Reports</Text>
           <Text style={styles.headerSub}>Manage and analyze your health reports</Text>
         </View>
-        <Pressable style={styles.headerBtn} onPress={() => setShowSearch((s) => !s)} hitSlop={8}>
-          <Ionicons name="search-outline" size={20} color={Colors.text} />
-        </Pressable>
-        <Pressable
-          style={styles.headerBtn}
-          onPress={() => setActiveFilter('All')}
-          hitSlop={8}
-        >
-          <Ionicons name="options-outline" size={20} color={Colors.text} />
-        </Pressable>
       </View>
 
-      {showSearch && (
-        <View style={styles.searchRow}>
-          <Ionicons name="search-outline" size={18} color={Colors.textMuted} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search reports..."
-            placeholderTextColor={Colors.textMuted}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            returnKeyType="search"
-            autoFocus
-          />
-          {searchQuery.length > 0 && (
-            <Pressable onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
-            </Pressable>
-          )}
-        </View>
-      )}
+
 
       {/* Upload card */}
       <View style={styles.uploadCard}>
@@ -693,20 +642,14 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 
-  deleteAction: {
-    backgroundColor: Colors.danger,
-    justifyContent: 'center',
+  deleteBtnInline: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FEF2F2',
     alignItems: 'center',
-    width: 76,
-    borderRadius: 14,
-    marginLeft: 8,
-  },
-  deleteActionText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 4,
-    textAlign: 'center',
+    justifyContent: 'center',
+    marginLeft: 6,
   },
   viewMoreContainer: {
     alignItems: 'center',
