@@ -224,7 +224,7 @@ export default function RootLayout() {
                       name="medicine/[id]"
                       options={{ headerShown: true, title: 'Medicine Details' }}
                     />
-
+                    <Stack.Screen name="ai-chat" options={{ headerShown: false }} />
                     <Stack.Screen name="ai-history" options={{ headerShown: false }} />
                     <Stack.Screen name="report-detail" options={{ headerShown: false }} />
                     <Stack.Screen name="scorecard" options={{ headerShown: false }} />
