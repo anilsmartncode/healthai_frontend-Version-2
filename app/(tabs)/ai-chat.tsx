@@ -600,7 +600,7 @@ export default function AIChatScreen() {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Pressable
-            onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/ai')}
+            onPress={() => router.navigate('/(tabs)/ai')}
             hitSlop={10}
             style={styles.backBtn}
           >

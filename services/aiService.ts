@@ -570,48 +570,59 @@ export async function saveChatSession(
 
 /** Delete a single saved session */
 export async function deleteChatSession(sessionId: string, phone: string | null = null): Promise<void> {
+  const keys = STORAGE_KEYS(phone);
+
   if (USE_MOCK) {
     // 🟢 MOCK
-    const keys = STORAGE_KEYS(phone);
     await AsyncStorage.removeItem(`${keys.SESSION_PREFIX}${sessionId}`);
     const listRaw = await AsyncStorage.getItem(keys.SESSIONS);
     const list: ChatSessionSummary[] = listRaw ? JSON.parse(listRaw) : [];
     await AsyncStorage.setItem(keys.SESSIONS, JSON.stringify(list.filter(s => s.id !== sessionId)));
-    return;
+  } else {
+    // 🔴 REAL
+    try {
+      await api.request(ENDPOINTS.aiSessionPath(sessionId), {
+        method: 'DELETE',
+      });
+    } catch (error) {
+      console.error('[deleteChatSession] real API failed:', error);
+      throw error;
+    }
   }
 
-  // 🔴 REAL
-  try {
-    await api.request(ENDPOINTS.aiSessionPath(sessionId), {
-      method: 'DELETE',
-    });
-  } catch (error) {
-    console.error('[deleteChatSession] real API failed:', error);
-    throw error;
+  // Clear local cache if the deleted session was the active one
+  const activeSessionId = await AsyncStorage.getItem(`${keys.CONVERSATION}_session_id`);
+  if (activeSessionId === sessionId) {
+    await AsyncStorage.removeItem(keys.CONVERSATION);
+    await AsyncStorage.removeItem(`${keys.CONVERSATION}_session_id`);
   }
 }
 
 /** Delete all saved sessions for this user */
 export async function clearAllChatSessions(phone: string | null = null): Promise<void> {
+  const keys = STORAGE_KEYS(phone);
+
   if (USE_MOCK) {
     // 🟢 MOCK
-    const keys = STORAGE_KEYS(phone);
     const listRaw = await AsyncStorage.getItem(keys.SESSIONS);
     const list: ChatSessionSummary[] = listRaw ? JSON.parse(listRaw) : [];
     await Promise.all(list.map(s => AsyncStorage.removeItem(`${keys.SESSION_PREFIX}${s.id}`)));
     await AsyncStorage.removeItem(keys.SESSIONS);
-    return;
+  } else {
+    // 🔴 REAL
+    try {
+      await api.request(ENDPOINTS.aiSessionsPath, {
+        method: 'DELETE',
+      });
+    } catch (error) {
+      console.error('[clearAllChatSessions] real API failed:', error);
+      throw error;
+    }
   }
 
-  // 🔴 REAL
-  try {
-    await api.request(ENDPOINTS.aiSessionsPath, {
-      method: 'DELETE',
-    });
-  } catch (error) {
-    console.error('[clearAllChatSessions] real API failed:', error);
-    throw error;
-  }
+  // Always clear active local cache
+  await AsyncStorage.removeItem(keys.CONVERSATION);
+  await AsyncStorage.removeItem(`${keys.CONVERSATION}_session_id`);
 }
 
 /** Generate a fresh session id for a new conversation */

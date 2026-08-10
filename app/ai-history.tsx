@@ -94,9 +94,13 @@ export default function AIHistoryScreen() {
           <Ionicons name="chevron-back" size={24} color={Colors.text} />
         </Pressable>
         <Text style={styles.title}>Chat History</Text>
-        <Pressable onPress={handleClearAll} hitSlop={10} style={styles.iconBtn}>
-          <Ionicons name="trash-outline" size={20} color={sessions.length ? Colors.danger : Colors.textMuted} />
-        </Pressable>
+        {sessions.length > 0 ? (
+          <Pressable onPress={handleClearAll} hitSlop={10} style={styles.iconBtn}>
+            <Ionicons name="trash-outline" size={20} color={Colors.danger} />
+          </Pressable>
+        ) : (
+          <View style={{ width: 28 }} />
+        )}
       </View>
 
       {loading ? (
