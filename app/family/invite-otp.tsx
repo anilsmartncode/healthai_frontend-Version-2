@@ -16,7 +16,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/Colors';
 import { FamilyTopBar } from '@/components/family/FamilyTopBar';
 import { acceptInvitation } from '@/services/familyApi';
-import auth from '@react-native-firebase/auth';
+// Lazy-load Firebase Auth
+function getAuth() {
+  const mod = require('@react-native-firebase/auth');
+  return (mod.default || mod)();
+}
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 30; // seconds
@@ -59,7 +63,7 @@ export default function InviteOtpScreen() {
     }
     setSending(true);
     try {
-      const conf = await auth().signInWithPhoneNumber('+91' + phone);
+      const conf = await getAuth().signInWithPhoneNumber('+91' + phone);
       setConfirmation(conf);
       setOtpSent(true);
       setStep('otp');
@@ -76,7 +80,7 @@ export default function InviteOtpScreen() {
     if (cooldown > 0) return;
     setSending(true);
     try {
-      const conf = await auth().signInWithPhoneNumber('+91' + phone);
+      const conf = await getAuth().signInWithPhoneNumber('+91' + phone);
       setConfirmation(conf);
       startCooldown();
       setOtp('');
@@ -94,7 +98,7 @@ export default function InviteOtpScreen() {
     try {
       await confirmation.confirm(otp);
 
-      const idToken = await auth().currentUser?.getIdToken();
+      const idToken = await getAuth().currentUser?.getIdToken();
       if (!idToken) throw new Error("Could not retrieve secure token from Firebase");
 
       // We send the secure Firebase ID Token to the backend, NOT the 6-digit OTP

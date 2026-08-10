@@ -127,7 +127,8 @@ export default function RootLayout() {
       pathname === p || pathname === `${p}/` || pathname?.startsWith(`${p}?`)
     );
     if (!isAllowed) {
-      isWebLocked = true;
+      // TEMPORARILY DISABLED FOR SCREENSHOTS
+      // isWebLocked = true;
     }
   }
 
@@ -246,7 +247,7 @@ export default function RootLayout() {
                       options={{ headerShown: false }}
                     />
                     <Stack.Screen
-                      name="medicines/reminders"
+                      name="medicines/reminders/index"
                       options={{ headerShown: false }}
                     />
                     <Stack.Screen
@@ -317,9 +318,9 @@ export default function RootLayout() {
                       name="family/appointments/book"
                       options={{ headerShown: false }}
                     />
-                    {/* Son-side invite flow — deep link: healthai://family/invite/[code] */}
+                    {/* Son-side invite flow — deep link: healthai://family/join/[code] */}
                     <Stack.Screen
-                      name="family/invite/[code]"
+                      name="family/join/[code]"
                       options={{ headerShown: false }}
                     />
                     <Stack.Screen
