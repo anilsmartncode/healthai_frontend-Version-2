@@ -19,7 +19,7 @@ const VIEWPORTS = [
   { name: 'Feature_Graphic', width: 1024, height: 500, deviceScaleFactor: 2 }
 ];
 
-const TARGET_URL = 'http://localhost:8082';
+const TARGET_URL = 'https://healthai.smartncode.com';
 
 // 8 Screens to capture
 const SCREENS = [
