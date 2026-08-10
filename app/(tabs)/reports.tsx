@@ -16,6 +16,7 @@ import {
   ScrollView,
   Animated,
   Alert,
+  LayoutAnimation,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -358,19 +359,39 @@ export default function ReportsScreen() {
       {/* Recent header */}
       <View style={styles.recentHeader}>
         <Text style={styles.sectionTitle}>Recent Reports</Text>
-        {reports.length > 5 && (
-          <Pressable onPress={() => setShowAllRecent((v) => !v)} hitSlop={8}>
-            <Text style={styles.viewAll}>
-              {showAllRecent ? 'Show less' : 'View all'} ›
-            </Text>
-          </Pressable>
-        )}
       </View>
     </View>
   );
 
   const ListFooter = (
     <View style={{ paddingBottom: 28 }}>
+      {reports.length > 5 && (
+        <View style={styles.viewMoreContainer}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.viewMoreBtn,
+              showAllRecent && styles.viewMoreBtnActive,
+              pressed && { transform: [{ scale: 0.98 }], opacity: 0.9 },
+            ]}
+            onPress={() => {
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+              setShowAllRecent((v) => !v);
+            }}
+          >
+            <Text style={[styles.viewMoreText, showAllRecent && styles.viewMoreTextActive]}>
+              {showAllRecent ? 'View less' : 'View More'}
+            </Text>
+            <View style={[styles.viewMoreIconBox, showAllRecent && styles.viewMoreIconBoxActive]}>
+              <Ionicons
+                name={showAllRecent ? 'chevron-up' : 'chevron-down'}
+                size={15}
+                color={showAllRecent ? '#047857' : Colors.primary}
+              />
+            </View>
+          </Pressable>
+        </View>
+      )}
+
       {/* AI insight */}
       {/* <View style={styles.aiBanner}>
         <Ionicons name="sparkles" size={18} color="#16A34A" />
@@ -686,5 +707,49 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 4,
     textAlign: 'center',
+  },
+  viewMoreContainer: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  viewMoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 99,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  viewMoreBtnActive: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+  },
+  viewMoreText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.primary,
+  },
+  viewMoreTextActive: {
+    color: '#047857',
+  },
+  viewMoreIconBox: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.primary + '12',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewMoreIconBoxActive: {
+    backgroundColor: '#DCFCE7',
   },
 });

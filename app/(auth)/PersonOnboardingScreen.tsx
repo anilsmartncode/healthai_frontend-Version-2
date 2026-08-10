@@ -157,9 +157,7 @@ export default function PersonOnboardingScreen() {
       <View style={styles.header}>
         <View style={{ width: 34 }} />
         <Text style={styles.headerTitle}>Complete Your Profile</Text>
-        <Pressable onPress={handleSkip} disabled={loading}>
-          <Text style={styles.skipLink}>Skip for now</Text>
-        </Pressable>
+        <View style={{ width: 34 }} />
       </View>
 
       <ScrollView
@@ -260,6 +258,14 @@ export default function PersonOnboardingScreen() {
             : <Text style={styles.saveBtnText}>Continue</Text>}
         </Pressable>
 
+        <Pressable
+          style={styles.skipBtnBottom}
+          onPress={handleSkip}
+          disabled={loading}
+        >
+          <Text style={styles.skipBtnTextBottom}>Skip for now</Text>
+        </Pressable>
+
         <View style={styles.privacyNote}>
           <Ionicons name="shield-checkmark-outline" size={14} color={Colors.primary} />
           <Text style={styles.privacyText}>
@@ -311,6 +317,11 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md, alignItems: 'center', marginTop: 4,
   },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+
+  skipBtnBottom: {
+    paddingVertical: 12, alignItems: 'center', marginTop: 4,
+  },
+  skipBtnTextBottom: { color: Colors.primary, fontSize: 15, fontWeight: '600' },
 
   privacyNote: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 8,

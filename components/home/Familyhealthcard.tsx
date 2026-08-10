@@ -25,12 +25,7 @@ export function FamilyHealthCard() {
       .substring(0, 2);
   };
 
-  const getScoreColor = (score: number) => {
-    if (score >= 85) return "#10B981"; // Excellent - Emerald
-    if (score >= 75) return "#3B82F6"; // Good - Blue
-    if (score >= 65) return "#F59E0B"; // Attention - Orange
-    return "#EF4444"; // Critical - Red
-  };
+
 
   return (
     <Pressable
@@ -59,7 +54,7 @@ export function FamilyHealthCard() {
           <View style={styles.avatarsRow}>
             {members.map((member) => {
               const initials = getInitials(member.name);
-              const color = getScoreColor(member.health_score);
+              const color = "#10B981";
 
               return (
                 <View key={member.member_id} style={styles.avatarContainer}>
@@ -78,8 +73,8 @@ export function FamilyHealthCard() {
               style={styles.avatarContainer}
               onPress={() => router.push('/family/add-member')}
             >
-              <View style={[styles.avatar, { borderColor: '#CBD5E1', borderStyle: 'dashed', backgroundColor: '#F8FAFC' }]}>
-                <Ionicons name="add" size={22} color="#94A3B8" />
+              <View style={[styles.avatar, { borderColor: '#3B82F6', borderStyle: 'dashed', backgroundColor: '#EFF6FF' }]}>
+                <Ionicons name="add" size={22} color="#3B82F6" />
               </View>
               <Text style={styles.memberName} numberOfLines={1}>
                 Add family

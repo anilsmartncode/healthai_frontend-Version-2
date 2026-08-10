@@ -244,10 +244,7 @@ export default function Medicines() {
             </View>
           )}
         </Pressable>
-        <Pressable style={styles.scanBtn} onPress={handleScanMedicine}>
-          <Ionicons name="scan-outline" size={16} color="#fff" />
-          <Text style={styles.scanTxt}>Scan</Text>
-        </Pressable>
+
       </View>
 
       {loading ? (
@@ -517,7 +514,7 @@ export default function Medicines() {
             </Pressable>
           </View>
 
-          <Pressable
+          {/* <Pressable
             style={styles.rxBanner}
             onPress={() =>
               router.push({ pathname: '/upload', params: { context: 'prescription' } } as any)
@@ -531,7 +528,7 @@ export default function Medicines() {
               <Text style={styles.rxSub}>Extract medicines instantly</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-          </Pressable>
+          </Pressable> */}
 
           {/* ── Saved Medicines ── */}
           <View style={[styles.section, { marginTop: 18 }]}>
@@ -637,8 +634,8 @@ const styles = StyleSheet.create({
 
   header: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
+    alignItems: 'center',
+    gap: 12,
     paddingHorizontal: H_PAD,
     paddingTop: 6,
     paddingBottom: 12,
@@ -675,16 +672,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "800",
   },
-  scanBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  scanTxt: { color: '#fff', fontSize: 13, fontWeight: '700' },
+
 
   searchBar: {
     flexDirection: 'row',

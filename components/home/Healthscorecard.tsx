@@ -88,11 +88,7 @@ function EmptyHealthScore({ onUpload }: { onUpload: () => void }) {
             <Ionicons name="sparkles" size={14} color="#60A5FA" />
           </View>
           <Text style={styles.overallSub}>Based on your uploaded reports</Text>
-          {/* Upload pill CTA */}
-          <Pressable style={styles.uploadPill} onPress={onUpload}>
-            <Ionicons name="pulse" size={13} color={Colors.primary} />
-            <Text style={styles.uploadPillText}>Upload a report to get health score</Text>
-          </Pressable>
+
         </View>
       </View>
 
@@ -126,14 +122,7 @@ function EmptyHealthScore({ onUpload }: { onUpload: () => void }) {
         </View>
       </View>
 
-      {/* ── Orange upload prompt banner ── */}
-      <Pressable style={styles.attentionBanner} onPress={onUpload}>
-        <View style={styles.attentionIcon}>
-          <Ionicons name="alert-circle" size={20} color="#fff" />
-        </View>
-        <Text style={styles.attentionText}>Upload a report to get health score</Text>
-        <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-      </Pressable>
+
     </Card>
   );
 }

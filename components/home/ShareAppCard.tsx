@@ -46,7 +46,7 @@ export function ShareAppCard() {
         {/* Eye-Catchy Action Pill Button */}
         <View style={styles.actionPill}>
           <Ionicons name="share-social" size={16} color="#FFFFFF" />
-          <Text style={styles.actionPillText}>Invite Friends</Text>
+          <Text style={styles.actionPillText}>Refer Friends</Text>
         </View>
       </View>
     </Pressable>
