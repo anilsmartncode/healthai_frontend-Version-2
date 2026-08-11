@@ -27,6 +27,7 @@ import {
 export default function AIHistoryScreen() {
   const { phone } = useAuth();
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,19 +64,32 @@ export default function AIHistoryScreen() {
     );
   };
 
-  const handleClearAll = () => {
-    if (sessions.length === 0) return;
+  const toggleSelection = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedIds.size === 0) return;
     Alert.alert(
-      'Clear all history',
-      'This will permanently delete all your saved conversations. This cannot be undone.',
+      'Delete selected conversations',
+      `Are you sure you want to delete the ${selectedIds.size} selected conversation(s)?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Clear all',
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            await clearAllChatSessions(phone);
-            setSessions([]);
+            const arr = Array.from(selectedIds);
+            for (const id of arr) {
+              await deleteChatSession(id, phone);
+            }
+            setSessions(prev => prev.filter(s => !selectedIds.has(s.id)));
+            setSelectedIds(new Set());
           },
         },
       ]
@@ -86,20 +100,39 @@ export default function AIHistoryScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable
-          onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/ai')}
-          hitSlop={10}
-          style={styles.iconBtn}
-        >
-          <Ionicons name="chevron-back" size={24} color={Colors.text} />
-        </Pressable>
-        <Text style={styles.title}>Chat History</Text>
-        {sessions.length > 0 ? (
-          <Pressable onPress={handleClearAll} hitSlop={10} style={styles.iconBtn}>
-            <Ionicons name="trash-outline" size={20} color={Colors.danger} />
-          </Pressable>
+        {selectedIds.size > 0 ? (
+          <>
+            <Pressable
+              onPress={() => setSelectedIds(new Set())}
+              hitSlop={10}
+              style={styles.iconBtn}
+            >
+              <Ionicons name="close" size={24} color={Colors.text} />
+            </Pressable>
+            <Text style={styles.title}>{selectedIds.size} Selected</Text>
+            <Pressable onPress={handleDeleteSelected} hitSlop={10} style={styles.iconBtn}>
+              <Ionicons name="trash-outline" size={20} color={Colors.danger} />
+            </Pressable>
+          </>
         ) : (
-          <View style={{ width: 28 }} />
+          <>
+            <Pressable
+              onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/ai')}
+              hitSlop={10}
+              style={styles.iconBtn}
+            >
+              <Ionicons name="chevron-back" size={24} color={Colors.text} />
+            </Pressable>
+            <View style={{ alignItems: 'center' }}>
+              <Text style={styles.title}>Chat History</Text>
+              {sessions.length > 0 && (
+                <Text style={{ fontSize: 10, color: Colors.textMuted, marginTop: 2 }}>
+                  Long press to select
+                </Text>
+              )}
+            </View>
+            <View style={{ width: 28 }} />
+          </>
         )}
       </View>
 
@@ -129,7 +162,14 @@ export default function AIHistoryScreen() {
           contentContainerStyle={styles.list}
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
           renderItem={({ item }) => (
-            <SessionRow item={item} onPress={() => router.push({ pathname: '/(tabs)/ai-chat', params: { sessionId: item.id } })} onDelete={() => handleDelete(item)} />
+            <SessionRow 
+              item={item} 
+              isSelected={selectedIds.has(item.id)}
+              isSelectionMode={selectedIds.size > 0}
+              onToggleSelect={() => toggleSelection(item.id)}
+              onPress={() => router.push({ pathname: '/(tabs)/ai-chat', params: { sessionId: item.id } })} 
+              onDelete={() => handleDelete(item)} 
+            />
           )}
         />
       )}
@@ -138,13 +178,39 @@ export default function AIHistoryScreen() {
 }
 
 function SessionRow({
-  item, onPress, onDelete,
-}: { item: ChatSessionSummary; onPress: () => void; onDelete: () => void }) {
+  item, onPress, onDelete, isSelected, isSelectionMode, onToggleSelect
+}: { 
+  item: ChatSessionSummary; 
+  onPress: () => void; 
+  onDelete: () => void;
+  isSelected: boolean;
+  isSelectionMode: boolean;
+  onToggleSelect: () => void;
+}) {
+  const handlePress = () => {
+    if (isSelectionMode) {
+      onToggleSelect();
+    } else {
+      onPress();
+    }
+  };
+
   return (
     <Pressable
-      style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
-      onPress={onPress}
+      style={({ pressed }) => [styles.row, isSelected && styles.rowSelected, pressed && { opacity: 0.7 }]}
+      onPress={handlePress}
+      onLongPress={onToggleSelect}
     >
+      {isSelectionMode ? (
+        <View style={styles.selectionCircle}>
+          <Ionicons 
+            name={isSelected ? "checkmark-circle" : "ellipse-outline"} 
+            size={24} 
+            color={isSelected ? Colors.primary : Colors.textMuted} 
+          />
+        </View>
+      ) : null}
+
       <View style={styles.rowIcon}>
         <Ionicons name="chatbubble-ellipses-outline" size={18} color={Colors.primary} />
       </View>
@@ -157,9 +223,11 @@ function SessionRow({
           {formatDate(item.updatedAt)} · {formatTime(item.updatedAt)} · {item.messageCount} messages
         </Text>
       </View>
-      <Pressable onPress={onDelete} hitSlop={10} style={styles.deleteBtn}>
-        <Ionicons name="trash-outline" size={18} color={Colors.textMuted} />
-      </Pressable>
+      {!isSelectionMode && (
+        <Pressable onPress={onDelete} hitSlop={10} style={styles.deleteBtn}>
+          <Ionicons name="trash-outline" size={18} color={Colors.textMuted} />
+        </Pressable>
+      )}
     </Pressable>
   );
 }
@@ -181,11 +249,20 @@ const styles = StyleSheet.create({
   list: { padding: 16 },
 
   row: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: Colors.surface,
     borderRadius: Radius.lg,
     borderWidth: 1, borderColor: Colors.border,
     padding: 14,
+  },
+  rowSelected: {
+    backgroundColor: Colors.primary + '0A',
+    borderColor: Colors.primary,
+  },
+  selectionCircle: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 4,
   },
   rowIcon: {
     width: 36, height: 36, borderRadius: 18,
