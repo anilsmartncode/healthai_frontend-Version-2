@@ -22,6 +22,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Colors, Radius } from '@/constants/Colors';
 import { useReports, type FilterType } from '@/hooks/useReports';
 import type { ReportListItem } from '@/services/reportsApi';
@@ -98,7 +99,7 @@ function ReportRow({
           </Text>
         </View>
       )}
-      
+
       <Pressable
         onPress={handleDelete}
         style={({ pressed }) => [
@@ -151,6 +152,7 @@ export default function ReportsScreen() {
 
   const [showSearch, setShowSearch] = useState(false);
   const [showAllRecent, setShowAllRecent] = useState(false);
+  const tabBarHeight = useBottomTabBarHeight();
 
   const summary = useMemo(() => {
     const total = allReports.length;
@@ -165,7 +167,7 @@ export default function ReportsScreen() {
     return { total, lab, prescriptions, imaging };
   }, [allReports]);
 
-  const recent = showAllRecent ? reports : reports.slice(0, 5);
+  const recent = showAllRecent ? reports : reports.slice(0, 8);
   const improvingCount = useMemo(
     () => allReports.filter((r) => r.healthScore >= 75 && r.status === 'good').length,
     [allReports]
@@ -296,7 +298,7 @@ export default function ReportsScreen() {
 
   const ListFooter = (
     <View style={{ paddingBottom: 28 }}>
-      {reports.length > 5 && (
+      {reports.length > 8 && (
         <View style={styles.viewMoreContainer}>
           <Pressable
             style={({ pressed }) => [
@@ -406,7 +408,7 @@ export default function ReportsScreen() {
       {/* Floating Action Button (ChatGPT Style Attachment) */}
       <Pressable
         style={styles.fab}
-        onPress={() => router.push('/upload')}
+        onPress={() => router.push({ pathname: '/upload', params: { tabBarHeight } })}
       >
         <Ionicons name="add" size={28} color="#fff" />
       </Pressable>
