@@ -548,7 +548,7 @@ export default function AIChatScreen() {
 
   const {
     messages, input, setInput, loading,
-    suggestions, alert, send, clearConversation, dismissAlert,
+    suggestions, send, clearConversation,
   } = useAI(prefill, context, openSessionId, newSession);
 
   const [inputHeight, setInputHeight] = useState(36);
@@ -648,15 +648,8 @@ export default function AIChatScreen() {
         </>
       )}
 
-      {/* Alert banner */}
-      {alert && (
-        <AlertBanner
-          alert={alert}
-          onTap={() => { dismissAlert(); setInput(alert.prefill); }}
-          onDismiss={dismissAlert}
-        />
-      )}
-
+      {/* Alert banner removed */}
+      
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

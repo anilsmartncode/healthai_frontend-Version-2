@@ -7,7 +7,8 @@
  * ─────────────────────────────────────────────────────────
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useRef } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View, Text, StyleSheet, FlatList, Pressable, Alert, ActivityIndicator,
 } from 'react-native';
@@ -21,6 +22,7 @@ import {
   listChatSessions,
   deleteChatSession,
   clearAllChatSessions,
+  STORAGE_KEYS,
   type ChatSessionSummary,
 } from '@/services/aiService';
 
@@ -30,6 +32,8 @@ export default function AIHistoryScreen() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const activeSessionId = useRef<string | null>(null);
+  const activeDeleted = useRef(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -41,6 +45,9 @@ export default function AIHistoryScreen() {
         setError('Could not load history. Please try again.');
       })
       .finally(() => setLoading(false));
+
+    AsyncStorage.getItem(`${STORAGE_KEYS(phone).CONVERSATION}_session_id`)
+      .then(id => { activeSessionId.current = id; });
   }, [phone]);
 
   // Reload every time this screen comes into focus (e.g. after a new chat)
@@ -56,6 +63,7 @@ export default function AIHistoryScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
+            if (session.id === activeSessionId.current) activeDeleted.current = true;
             await deleteChatSession(session.id, phone);
             setSessions(prev => prev.filter(s => s.id !== session.id));
           },
@@ -86,6 +94,7 @@ export default function AIHistoryScreen() {
           onPress: async () => {
             const arr = Array.from(selectedIds);
             for (const id of arr) {
+              if (id === activeSessionId.current) activeDeleted.current = true;
               await deleteChatSession(id, phone);
             }
             setSessions(prev => prev.filter(s => !selectedIds.has(s.id)));
@@ -117,7 +126,15 @@ export default function AIHistoryScreen() {
         ) : (
           <>
             <Pressable
-              onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/ai')}
+              onPress={() => {
+                if (activeDeleted.current) {
+                  router.replace('/(tabs)/ai');
+                } else if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  router.replace('/(tabs)/ai');
+                }
+              }}
               hitSlop={10}
               style={styles.iconBtn}
             >

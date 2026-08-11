@@ -47,9 +47,9 @@ export function QuickActions() {
             onPress={() => router.push(a.route as any)}
           >
             <View style={[styles.iconWrap, { backgroundColor: a.bg }]}>
-              <Ionicons name={a.icon as any} size={22} color={Colors.primary} />
+              <Ionicons name={a.icon as any} size={28} color={Colors.primary} />
             </View>
-            <Text style={styles.label} numberOfLines={1}>
+            <Text style={styles.label} numberOfLines={2}>
               {t(a.key)}
             </Text>
           </Pressable>
@@ -61,7 +61,8 @@ export function QuickActions() {
 
 const styles = StyleSheet.create({
   wrapper: {
-    gap: 10,
+    gap: 16,
+    paddingHorizontal: 4,
   },
   heading: {
     fontSize: 16,
@@ -69,34 +70,37 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   list: {
-    gap: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
   },
   listItem: {
-    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    width: 76,
+    gap: 8,
   },
   pressed: {
-    opacity: 0.75,
+    opacity: 0.7,
+    transform: [{ scale: 0.96 }],
   },
   iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: "center",
     alignItems: "center",
-    flexShrink: 0,
+    backgroundColor: Colors.surface,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   label: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "600",
     color: Colors.text,
+    textAlign: "center",
+    lineHeight: 16,
   },
 });

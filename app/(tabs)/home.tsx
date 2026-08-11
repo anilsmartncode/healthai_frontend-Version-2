@@ -211,8 +211,8 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 32,
-    gap: 14,
+    paddingBottom: 48,
+    gap: 24,
     flexGrow: 1,
   },
   uploadBtn: {

@@ -52,58 +52,6 @@ global.fetch = async (...args) => {
   }
 };
 
-let sessionAlertShown = false;
-
-function AlertOverlay() {
-  const { phone } = useAuth();
-  const [alert, setAlert] = useState<HealthAlert | null>(null);
-  useEffect(() => {
-    if (Platform.OS === 'web') return; // No health alerts on web
-    if (sessionAlertShown) return;
-    const timer = setTimeout(() => {
-      checkHealthAlerts(phone).then(a => {
-        if (a) {
-          setAlert(a);
-          sessionAlertShown = true;
-        }
-      });
-    }, 2500); // check 2.5s after launch
-    return () => clearTimeout(timer);
-  }, [phone]);
-
-  if (!alert) return null;
-  return (
-    <Pressable
-      style={overlay.banner}
-      onPress={() => {
-        setAlert(null);
-        router.push({ pathname: '/ai-chat', params: { prefill: alert.prefill } });
-      }}
-    >
-      <Ionicons name="sparkles" size={16} color="#fff" style={{ flexShrink: 0 }} />
-      <View style={{ flex: 1 }}>
-        <Text style={overlay.title}>{alert.title}</Text>
-        <Text style={overlay.msg}>{alert.message}</Text>
-      </View>
-      <Pressable onPress={() => setAlert(null)} hitSlop={10}>
-        <Ionicons name="close" size={16} color="rgba(255,255,255,0.7)" />
-      </Pressable>
-    </Pressable>
-  );
-}
-
-const overlay = StyleSheet.create({
-  banner: {
-    position: 'absolute', bottom: 90, left: 16, right: 16,
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: Colors.primary, borderRadius: Radius.lg,
-    padding: 14, zIndex: 999,
-    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 8, elevation: 8,
-  },
-  title: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  msg: { color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 1 },
-});
-
 export default function RootLayout() {
   const pathname = usePathname();
   const params = useGlobalSearchParams();
@@ -342,7 +290,6 @@ export default function RootLayout() {
                       options={{ headerShown: false }}
                     />
                   </Stack>
-                  <AlertOverlay />
                   <PaywallModal />
                   {isWebLocked && (
                     <View style={[StyleSheet.absoluteFillObject, { backgroundColor: Colors.bg, zIndex: 999999 }]}>

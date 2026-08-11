@@ -572,6 +572,12 @@ export async function saveChatSession(
 export async function deleteChatSession(sessionId: string, phone: string | null = null): Promise<void> {
   const keys = STORAGE_KEYS(phone);
 
+  const activeSessionId = await AsyncStorage.getItem(`${keys.CONVERSATION}_session_id`);
+  if (activeSessionId === sessionId) {
+    await AsyncStorage.removeItem(keys.CONVERSATION);
+    await AsyncStorage.removeItem(`${keys.CONVERSATION}_session_id`);
+  }
+
   if (USE_MOCK) {
     // 🟢 MOCK
     await AsyncStorage.removeItem(`${keys.SESSION_PREFIX}${sessionId}`);
@@ -589,18 +595,14 @@ export async function deleteChatSession(sessionId: string, phone: string | null 
       throw error;
     }
   }
-
-  // Clear local cache if the deleted session was the active one
-  const activeSessionId = await AsyncStorage.getItem(`${keys.CONVERSATION}_session_id`);
-  if (activeSessionId === sessionId) {
-    await AsyncStorage.removeItem(keys.CONVERSATION);
-    await AsyncStorage.removeItem(`${keys.CONVERSATION}_session_id`);
-  }
 }
 
 /** Delete all saved sessions for this user */
 export async function clearAllChatSessions(phone: string | null = null): Promise<void> {
   const keys = STORAGE_KEYS(phone);
+
+  await AsyncStorage.removeItem(keys.CONVERSATION);
+  await AsyncStorage.removeItem(`${keys.CONVERSATION}_session_id`);
 
   if (USE_MOCK) {
     // 🟢 MOCK

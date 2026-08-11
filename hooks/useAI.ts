@@ -11,12 +11,10 @@ import {
   askAI,
   generateSuggestedPrompts,
   saveAIMemory,
-  checkHealthAlerts,
   saveChatSession,
   getChatSession,
   newSessionId,
   STORAGE_KEYS,
-  type HealthAlert,
 } from '@/services/aiService';
 import { useAuth } from '@/context/AuthContext';
 import type { ChatMessage } from '@/types';
@@ -39,13 +37,13 @@ export function useAI(initialPrefill?: string, prefillContext?: string, openSess
   const [input, setInput]             = useState('');
   const [loading, setLoading]         = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [alert, setAlert]             = useState<HealthAlert | null>(null);
   const hasAutoSent = useRef(false);
   const [convoLoaded, setConvoLoaded] = useState(false);
 
   // Load conversation — re-runs whenever the logged-in user changes,
   // or when a specific past session is requested (from the History tab)
   useEffect(() => {
+    setConvoLoaded(false);
     (async () => {
       hasAutoSent.current = false;
       if (forceNewSessionToken) {
@@ -103,7 +101,6 @@ export function useAI(initialPrefill?: string, prefillContext?: string, openSess
     })();
 
     generateSuggestedPrompts(phone).then(setSuggestions);
-    checkHealthAlerts(phone).then(setAlert);
   }, [phone, CONVO_KEY, openSessionId, forceNewSessionToken]);
 
   // Auto-send if prefill came from navigation/deep link — wait until the
@@ -183,10 +180,8 @@ export function useAI(initialPrefill?: string, prefillContext?: string, openSess
     setInput,
     loading,
     suggestions,
-    alert,
     sessionId,
     send,
     clearConversation,
-    dismissAlert: () => setAlert(null),
   };
 }
