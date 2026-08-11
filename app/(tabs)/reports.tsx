@@ -228,24 +228,6 @@ export default function ReportsScreen() {
 
 
 
-      {/* Upload card */}
-      <View style={styles.uploadCard}>
-        <View style={styles.uploadIconWrap}>
-          <Ionicons name="document-text" size={32} color={Colors.primary} />
-        </View>
-        <Text style={styles.uploadTitle}>Upload your health reports</Text>
-        <Text style={styles.uploadSub}>
-          Get AI insights, health score and personalized recommendations.
-        </Text>
-        <Pressable
-          style={styles.uploadBtn}
-          onPress={() => router.push('/upload')}
-        >
-          <Ionicons name="add" size={18} color="#fff" />
-          <Text style={styles.uploadBtnText}>Upload Report</Text>
-        </Pressable>
-      </View>
-
       {/* Tabs */}
       <ScrollView
         horizontal
@@ -420,6 +402,14 @@ export default function ReportsScreen() {
           )}
         />
       )}
+
+      {/* Floating Action Button (ChatGPT Style Attachment) */}
+      <Pressable
+        style={styles.fab}
+        onPress={() => router.push('/upload')}
+      >
+        <Ionicons name="add" size={28} color="#fff" />
+      </Pressable>
     </SafeAreaView>
   );
 }
@@ -461,39 +451,22 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, height: 44, fontSize: 15, color: Colors.text },
 
-  uploadCard: {
-    backgroundColor: '#ECFDF5',
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-    padding: 24,
-    marginBottom: 14,
-    alignItems: 'center',
-  },
-  uploadIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#DCFCE7',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  uploadTitle: { fontSize: 18, fontWeight: '700', color: '#166534', textAlign: 'center' },
-  uploadSub: { marginTop: 6, fontSize: 13, color: Colors.textMuted, lineHeight: 18, textAlign: 'center', paddingHorizontal: 10 },
-  uploadBtn: {
-    marginTop: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: Colors.primary,
-    borderRadius: Radius.pill,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 8,
   },
-  uploadBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 
   tabsScroll: { marginBottom: 14, maxHeight: 44 },
   tabsRow: { flexDirection: 'row', gap: 8, paddingRight: 8 },

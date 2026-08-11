@@ -191,7 +191,7 @@ export default function RootLayout() {
                     
                     <Stack.Screen
                       name="upload"
-                      options={{ headerShown: true, title: "Upload Report" }}
+                      options={{ headerShown: false, presentation: 'transparentModal', animation: 'fade' }}
                     />
                     <Stack.Screen
                       name="analyzing"

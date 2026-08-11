@@ -15,16 +15,16 @@ export interface PlanLimits {
 
 export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
   FREE: {
-    maxDailyAiChats: 3,
-    maxMonthlyReports: 1,
-    maxDailyMedicineScans: 1,
-    maxFamilyMembers: 1,
+    maxDailyAiChats: 9999,
+    maxMonthlyReports: 9999,
+    maxDailyMedicineScans: 9999,
+    maxFamilyMembers: 9999,
   },
   PREMIUM: {
     maxDailyAiChats: 9999, // Essentially unlimited
-    maxMonthlyReports: 10,
+    maxMonthlyReports: 9999,
     maxDailyMedicineScans: 9999,
-    maxFamilyMembers: 0, // Single user
+    maxFamilyMembers: 9999, // Single user
   },
   FAMILY: {
     maxDailyAiChats: 9999,
