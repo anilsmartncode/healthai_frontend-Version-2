@@ -13,6 +13,7 @@ import {
   Pressable,
   TextInput,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -77,9 +78,11 @@ function LibraryCard({
 function MedicineRow({
   med,
   onPress,
+  onDelete,
 }: {
   med: Medicine;
   onPress: () => void;
+  onDelete?: () => void;
 }) {
   return (
     <Pressable
@@ -101,7 +104,13 @@ function MedicineRow({
             <Text style={styles.rxText}>Rx</Text>
           </View>
         )}
-        <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+        {onDelete ? (
+          <Pressable onPress={onDelete} hitSlop={10} style={{ paddingLeft: 8 }}>
+            <Ionicons name="trash-outline" size={18} color="#EF4444" />
+          </Pressable>
+        ) : (
+          <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+        )}
       </View>
     </Pressable>
   );
@@ -154,6 +163,7 @@ export default function Medicines() {
     todayBanner,
     loading,
     refetch,
+    removeRecentlyViewed,
   } = useMedicines();
 
   const handleCategoryPress = (cat: Category) => {
@@ -601,6 +611,16 @@ export default function Medicines() {
                     key={`recent_${med.id}_${idx}`}
                     med={med}
                     onPress={() => handleMedicinePress(med)}
+                    onDelete={() => {
+                      Alert.alert(
+                        'Remove from history',
+                        'Remove this medicine from your recently viewed list?',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Remove', style: 'destructive', onPress: () => removeRecentlyViewed(med.id) }
+                        ]
+                      );
+                    }}
                   />
                 ))}
               </View>

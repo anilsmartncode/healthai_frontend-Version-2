@@ -2,6 +2,7 @@
  * useMedicines.ts — Medicine Hub tab data
  */
 import { useCallback, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 import {
   getCategories,
@@ -32,7 +33,7 @@ export function useMedicines() {
     setLoading(true);
     setError(null);
     try {
-      const [cats, recent, reminders, saved] = await Promise.all([
+      let [cats, recent, reminders, saved] = await Promise.all([
         getCategories(),
         getRecentlyViewed(1, 5),
         getTodaysReminders(),
@@ -41,6 +42,16 @@ export function useMedicines() {
           return [];
         }),
       ]);
+
+      try {
+        const deletedRaw = await AsyncStorage.getItem('DELETED_RECENT_MEDS');
+        if (deletedRaw) {
+          const deletedIds = JSON.parse(deletedRaw);
+          recent = recent.filter(m => !deletedIds.includes(m.id));
+        }
+      } catch (e) {
+        console.warn('Failed to load deleted recent meds', e);
+      }
 
       setCategories(cats);
       setRecentlyViewed(recent);
@@ -65,6 +76,22 @@ export function useMedicines() {
     }
   }, []);
 
+  const removeRecentlyViewed = useCallback(async (id: string) => {
+    setRecentlyViewed((prev) => prev.filter((m) => m.id !== id));
+
+    const key = 'DELETED_RECENT_MEDS';
+    try {
+      const raw = await AsyncStorage.getItem(key);
+      const deletedIds = raw ? JSON.parse(raw) : [];
+      if (!deletedIds.includes(id)) {
+        deletedIds.push(id);
+        await AsyncStorage.setItem(key, JSON.stringify(deletedIds));
+      }
+    } catch (e) {
+      console.warn('Failed to save deleted recent med', e);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       let active = true;
@@ -86,5 +113,6 @@ export function useMedicines() {
     loading,
     error,
     refetch: fetchAll,
+    removeRecentlyViewed,
   };
 }
