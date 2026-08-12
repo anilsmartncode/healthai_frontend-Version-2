@@ -5,7 +5,7 @@ import { Colors, Radius } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import { Button } from "@/components/ui/Button";
 import { useReports } from "@/hooks/useReports";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { reportsApi } from "@/services/reportsApi";
 import { useAuth } from "@/context/AuthContext";
 import { useMedicines } from "@/hooks/useMedicines";
@@ -61,6 +61,8 @@ export default function Home() {
   const [navigating, setNavigating] = useState(false);
   const { todayBanner } = useMedicines();
   const { t } = useLang();
+  
+  const uploadBtnRef = useRef<View>(null);
 
   useEffect(() => {
     reportsApi.getScorecard().then(s => {
@@ -166,6 +168,25 @@ export default function Home() {
           onAttentionPress={handleAttentionPress}
         />
 
+        <Pressable 
+          ref={uploadBtnRef as any}
+          style={({ pressed }) => [
+            styles.uploadBtn,
+            pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }
+          ]}
+          onPress={() => {
+            uploadBtnRef.current?.measure((x, y, w, h, px, py) => {
+              router.push({
+                pathname: '/upload',
+                params: { btnY: py, btnX: px, btnW: w, btnH: h }
+              });
+            });
+          }}
+        >
+          <Ionicons name="cloud-upload-outline" size={24} color="#fff" />
+          <Text style={styles.uploadBtnText}>{t("upload_report")}</Text>
+        </Pressable>
+
         <QuickActions />
 
         <HealthMetricsSection reports={reports} phone={phone} />
@@ -216,8 +237,23 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   uploadBtn: {
+    backgroundColor: Colors.primary,
     borderRadius: Radius.lg,
     paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  uploadBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
   },
   sectionHeading: {
     fontSize: 16,

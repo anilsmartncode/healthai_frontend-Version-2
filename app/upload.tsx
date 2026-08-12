@@ -20,7 +20,7 @@
 
 import {
   View, Text, StyleSheet, Pressable, ActivityIndicator, Alert, Modal,
-  TextInput, KeyboardAvoidingView, Platform, ScrollView, Animated
+  TextInput, KeyboardAvoidingView, Platform, ScrollView, Animated, Dimensions
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect, useRef } from 'react';
@@ -419,7 +419,7 @@ export default function Upload() {
   const { t } = useLang();
   const { phone } = useAuth();
   const { canUploadReport, incrementReportUpload, setShowPaywall } = useUsage();
-  const { memberId, context, tabBarHeight } = useLocalSearchParams<{ memberId?: string, context?: string, tabBarHeight?: string }>();
+  const { memberId, context, tabBarHeight, btnY, btnX, btnW, btnH } = useLocalSearchParams<any>();
   const [file, setFile] = useState<PickedFile | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPermModal, setShowPermModal] = useState(false);
@@ -428,6 +428,13 @@ export default function Upload() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const insets = useSafeAreaInsets();
+  const screenHeight = Dimensions.get('window').height;
+
+  const dynamicMenuStyles = btnY ? {
+    bottom: screenHeight - Number(btnY) + 8,
+    left: btnX ? Number(btnX) : 20,
+    right: 'auto' as any,
+  } : { right: 'auto' as any };
 
   // Perfectly align with reports.tsx FAB (bottom: 24 inside the tab screen)
   const bottomOffset = tabBarHeight ? Number(tabBarHeight) + 24 : (Platform.OS === 'ios' ? 100 : 80);
@@ -615,30 +622,6 @@ export default function Upload() {
     }
   };
 
-  // Interpolations for Speed Dial
-  const fabRotation = animation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '45deg'],
-  });
-
-  const getPillStyle = (index: number) => ({
-    transform: [
-      {
-        translateY: animation.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, -70 * (index + 1)],
-        }),
-      },
-      {
-        scale: animation.interpolate({
-          inputRange: [0, 0.5, 1],
-          outputRange: [0.5, 0.8, 1],
-        }),
-      },
-    ],
-    opacity: animation,
-  });
-
   const previewDrawerAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -665,49 +648,59 @@ export default function Upload() {
       </Animated.View>
 
       {!file && (
-        <View style={[styles.speedDialContainer, { bottom: bottomOffset }]}>
-          <Animated.View style={[styles.pillWrapper, getPillStyle(3)]}>
-            <Pressable style={styles.pill} onPress={camera}>
-              <View style={[styles.pillIconWrap, { backgroundColor: '#EFF6FF' }]}>
-                <Ionicons name="camera-outline" size={20} color={Colors.primary} />
-              </View>
-              <Text style={styles.pillText}>Camera</Text>
-            </Pressable>
-          </Animated.View>
-
-          <Animated.View style={[styles.pillWrapper, getPillStyle(2)]}>
-            <Pressable style={styles.pill} onPress={pickImage}>
-              <View style={[styles.pillIconWrap, { backgroundColor: '#FEF3C7' }]}>
-                <Ionicons name="images-outline" size={20} color="#D97706" />
-              </View>
-              <Text style={styles.pillText}>Gallery</Text>
-            </Pressable>
-          </Animated.View>
-
-          <Animated.View style={[styles.pillWrapper, getPillStyle(1)]}>
-            <Pressable style={styles.pill} onPress={pickDoc}>
-              <View style={[styles.pillIconWrap, { backgroundColor: '#F0FDF4' }]}>
-                <Ionicons name="document-outline" size={20} color="#059669" />
-              </View>
-              <Text style={styles.pillText}>Document</Text>
-            </Pressable>
-          </Animated.View>
-
-          <Animated.View style={[styles.pillWrapper, getPillStyle(0)]}>
-            <Pressable style={styles.pill} onPress={() => setShowPasteModal(true)}>
-              <View style={[styles.pillIconWrap, { backgroundColor: '#F3E8FF' }]}>
-                <Ionicons name="clipboard-outline" size={20} color="#7C3AED" />
-              </View>
-              <Text style={styles.pillText}>Paste</Text>
-            </Pressable>
-          </Animated.View>
-
-          <Pressable onPress={() => closeMenu()} style={styles.fabWrapper}>
-            <Animated.View style={[styles.fab, { transform: [{ rotate: fabRotation }] }]}>
-              <Ionicons name="add" size={28} color="#fff" />
-            </Animated.View>
+        <Animated.View style={[
+          styles.menuContainer,
+          {
+            opacity: animation,
+            transform: [{
+              translateY: animation.interpolate({
+                inputRange: [0, 1],
+                outputRange: [20, 0], // Smaller translation for compact drop-up
+              }),
+            }],
+          },
+          dynamicMenuStyles
+        ]}>
+          <Pressable style={styles.menuItem} onPress={camera}>
+            <View style={[styles.menuIconWrap, { backgroundColor: '#EFF6FF' }]}>
+              <Ionicons name="camera-outline" size={20} color={Colors.primary} />
+            </View>
+            <View style={styles.menuTextContent}>
+              <Text style={styles.menuItemText}>Camera</Text>
+              <Text style={styles.menuItemSubtext}>Take a photo of a document</Text>
+            </View>
           </Pressable>
-        </View>
+
+          <Pressable style={styles.menuItem} onPress={pickImage}>
+            <View style={[styles.menuIconWrap, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="images-outline" size={20} color="#D97706" />
+            </View>
+            <View style={styles.menuTextContent}>
+              <Text style={styles.menuItemText}>Gallery</Text>
+              <Text style={styles.menuItemSubtext}>Choose from your camera roll</Text>
+            </View>
+          </Pressable>
+
+          <Pressable style={styles.menuItem} onPress={pickDoc}>
+            <View style={[styles.menuIconWrap, { backgroundColor: '#F0FDF4' }]}>
+              <Ionicons name="document-outline" size={20} color="#059669" />
+            </View>
+            <View style={styles.menuTextContent}>
+              <Text style={styles.menuItemText}>Document</Text>
+              <Text style={styles.menuItemSubtext}>Upload a PDF, DOC, or DOCX</Text>
+            </View>
+          </Pressable>
+
+          <Pressable style={styles.menuItem} onPress={() => setShowPasteModal(true)}>
+            <View style={[styles.menuIconWrap, { backgroundColor: '#F3E8FF' }]}>
+              <Ionicons name="clipboard-outline" size={20} color="#7C3AED" />
+            </View>
+            <View style={styles.menuTextContent}>
+              <Text style={styles.menuItemText}>Paste Text</Text>
+              <Text style={styles.menuItemSubtext}>Paste copied report text</Text>
+            </View>
+          </Pressable>
+        </Animated.View>
       )}
 
       {/* Floating Preview Drawer */}
@@ -816,61 +809,49 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(255,255,255,0.85)',
   },
-  speedDialContainer: {
+  menuContainer: {
     position: 'absolute',
-    right: 24,
-    width: 250, // Allows pills to expand fully without text wrapping
-    alignItems: 'flex-end',
+    bottom: 40,
+    left: 20,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
-  pillWrapper: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0, // Perfectly aligned with right edge of FAB
-  },
-  pill: {
+  menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    paddingVertical: 6,
-    paddingLeft: 6,
-    paddingRight: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8FAFC',
   },
-  pillText: {
+  menuIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuTextContent: {
+    marginLeft: 12,
+    paddingRight: 8,
+  },
+  menuItemText: {
     fontSize: 14,
     fontWeight: '600',
     color: Colors.text,
-    marginLeft: 10,
   },
-  pillIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fabWrapper: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  fab: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+  menuItemSubtext: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginTop: 2,
   },
   previewDrawer: {
     position: 'absolute',

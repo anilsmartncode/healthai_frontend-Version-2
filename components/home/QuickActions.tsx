@@ -12,12 +12,6 @@ const ACTIONS: {
   bg: string;
 }[] = [
   {
-    icon: "cloud-upload-outline",
-    key: "upload_report",
-    route: "/upload",
-    bg: "#EFF6FF",
-  },
-  {
     icon: "flask-outline",
     key: "interactions",
     route: "/interactions",

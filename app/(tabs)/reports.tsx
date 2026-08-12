@@ -3,7 +3,7 @@
  * Keeps useReports: search, filters, delete, refresh, upload, detail nav.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -153,6 +153,7 @@ export default function ReportsScreen() {
   const [showSearch, setShowSearch] = useState(false);
   const [showAllRecent, setShowAllRecent] = useState(false);
   const tabBarHeight = useBottomTabBarHeight();
+  const uploadBtnRef = useRef<View>(null);
 
   const summary = useMemo(() => {
     const total = allReports.length;
@@ -289,6 +290,26 @@ export default function ReportsScreen() {
         </View>
       </View>
 
+      <Pressable 
+        ref={uploadBtnRef as any}
+        style={({ pressed }) => [
+          styles.uploadBtn,
+          { marginTop: 16, marginBottom: 8 },
+          pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }
+        ]}
+        onPress={() => {
+          uploadBtnRef.current?.measure((x, y, w, h, px, py) => {
+            router.push({
+              pathname: '/upload',
+              params: { btnY: py, btnX: px, btnW: w, btnH: h }
+            });
+          });
+        }}
+      >
+        <Ionicons name="cloud-upload-outline" size={24} color="#fff" />
+        <Text style={styles.uploadBtnText}>Upload Reports</Text>
+      </Pressable>
+
       {/* Recent header */}
       <View style={styles.recentHeader}>
         <Text style={styles.sectionTitle}>Recent Reports</Text>
@@ -404,14 +425,6 @@ export default function ReportsScreen() {
           )}
         />
       )}
-
-      {/* Floating Action Button (ChatGPT Style Attachment) */}
-      <Pressable
-        style={styles.fab}
-        onPress={() => router.push({ pathname: '/upload', params: { tabBarHeight } })}
-      >
-        <Ionicons name="add" size={28} color="#fff" />
-      </Pressable>
     </SafeAreaView>
   );
 }
@@ -453,21 +466,24 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, height: 44, fontSize: 15, color: Colors.text },
 
-  fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  uploadBtn: {
     backgroundColor: Colors.primary,
+    borderRadius: Radius.lg,
+    paddingVertical: 16,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
+    gap: 10,
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 8,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  uploadBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
   },
 
   tabsScroll: { marginBottom: 14, maxHeight: 44 },
