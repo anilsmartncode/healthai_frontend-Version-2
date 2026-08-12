@@ -17,6 +17,8 @@ import {
   Animated,
   Alert,
   LayoutAnimation,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,6 +28,7 @@ import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Colors, Radius } from '@/constants/Colors';
 import { useReports, type FilterType } from '@/hooks/useReports';
 import type { ReportListItem } from '@/services/reportsApi';
+import { ChatInputBar } from '@/components/ui/ChatInputBar';
 
 
 function statusTag(item: ReportListItem) {
@@ -153,7 +156,6 @@ export default function ReportsScreen() {
   const [showSearch, setShowSearch] = useState(false);
   const [showAllRecent, setShowAllRecent] = useState(false);
   const tabBarHeight = useBottomTabBarHeight();
-  const uploadBtnRef = useRef<View>(null);
 
   const summary = useMemo(() => {
     const total = allReports.length;
@@ -290,25 +292,9 @@ export default function ReportsScreen() {
         </View>
       </View>
 
-      <Pressable 
-        ref={uploadBtnRef as any}
-        style={({ pressed }) => [
-          styles.uploadBtn,
-          { marginTop: 16, marginBottom: 8 },
-          pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }
-        ]}
-        onPress={() => {
-          uploadBtnRef.current?.measure((x, y, w, h, px, py) => {
-            router.push({
-              pathname: '/upload',
-              params: { btnY: py, btnX: px, btnW: w, btnH: h }
-            });
-          });
-        }}
-      >
-        <Ionicons name="cloud-upload-outline" size={24} color="#fff" />
-        <Text style={styles.uploadBtnText}>Upload Reports</Text>
-      </Pressable>
+      <View style={{ marginTop: 16, marginBottom: 8 }}>
+        <ChatInputBar />
+      </View>
 
       {/* Recent header */}
       <View style={styles.recentHeader}>
@@ -393,6 +379,7 @@ export default function ReportsScreen() {
   );
 
   return (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <SafeAreaView style={styles.safe} edges={['top']}>
       {loading ? (
         <ActivityIndicator style={{ marginTop: 48 }} size="large" color={Colors.primary} />
@@ -426,6 +413,7 @@ export default function ReportsScreen() {
         />
       )}
     </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -466,25 +454,7 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, height: 44, fontSize: 15, color: Colors.text },
 
-  uploadBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.lg,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  uploadBtnText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  searchInput: { flex: 1, height: 44, fontSize: 15, color: Colors.text },
 
   tabsScroll: { marginBottom: 14, maxHeight: 44 },
   tabsRow: { flexDirection: 'row', gap: 8, paddingRight: 8 },

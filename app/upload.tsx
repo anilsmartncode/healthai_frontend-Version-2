@@ -419,7 +419,7 @@ export default function Upload() {
   const { t } = useLang();
   const { phone } = useAuth();
   const { canUploadReport, incrementReportUpload, setShowPaywall } = useUsage();
-  const { memberId, context, tabBarHeight, btnY, btnX, btnW, btnH } = useLocalSearchParams<any>();
+  const { memberId, context, tabBarHeight, btnY, btnX, btnW, btnH, prefillText } = useLocalSearchParams<any>();
   const [file, setFile] = useState<PickedFile | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPermModal, setShowPermModal] = useState(false);
@@ -451,6 +451,16 @@ export default function Upload() {
       tension: 60,
     }).start();
   }, [animation]);
+
+  useEffect(() => {
+    if (prefillText) {
+      // Auto-trigger analysis for pasted text sent from ChatInputBar
+      (async () => {
+        const generatedPdf = await createPdfFromText(prefillText, context);
+        handleConfirmedAnalysis(generatedPdf);
+      })();
+    }
+  }, [prefillText]);
 
   const closeMenu = (callback?: () => void) => {
     Animated.timing(animation, {
@@ -688,16 +698,6 @@ export default function Upload() {
             <View style={styles.menuTextContent}>
               <Text style={styles.menuItemText}>Document</Text>
               <Text style={styles.menuItemSubtext}>Upload a PDF, DOC, or DOCX</Text>
-            </View>
-          </Pressable>
-
-          <Pressable style={styles.menuItem} onPress={() => setShowPasteModal(true)}>
-            <View style={[styles.menuIconWrap, { backgroundColor: '#F3E8FF' }]}>
-              <Ionicons name="clipboard-outline" size={20} color="#7C3AED" />
-            </View>
-            <View style={styles.menuTextContent}>
-              <Text style={styles.menuItemText}>Paste Text</Text>
-              <Text style={styles.menuItemSubtext}>Paste copied report text</Text>
             </View>
           </Pressable>
         </Animated.View>

@@ -1,4 +1,4 @@
-import { View, ScrollView, StyleSheet, Text, Alert, Pressable, RefreshControl } from "react-native";
+import { View, ScrollView, StyleSheet, Text, Alert, Pressable, RefreshControl, KeyboardAvoidingView, Platform } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors, Radius } from "@/constants/Colors";
@@ -22,6 +22,7 @@ import { HealthMetricsSection } from "@/components/home/HealthMetricsSection";
 import { RiskIndicatorsSection } from "@/components/home/RiskIndicatorsSection";
 import { MedicineReminderCard } from "@/components/home/MedicineReminderCard";
 import { ShareAppCard } from "@/components/home/ShareAppCard";
+import { ChatInputBar } from "@/components/ui/ChatInputBar";
 
 
 function EmptyState() {
@@ -61,8 +62,6 @@ export default function Home() {
   const [navigating, setNavigating] = useState(false);
   const { todayBanner } = useMedicines();
   const { t } = useLang();
-  
-  const uploadBtnRef = useRef<View>(null);
 
   useEffect(() => {
     reportsApi.getScorecard().then(s => {
@@ -137,10 +136,11 @@ export default function Home() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <HomeHeader />
-      </View>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.header}>
+          <HomeHeader />
+        </View>
 
       <ScrollView
         style={styles.scroll}
@@ -168,24 +168,7 @@ export default function Home() {
           onAttentionPress={handleAttentionPress}
         />
 
-        <Pressable 
-          ref={uploadBtnRef as any}
-          style={({ pressed }) => [
-            styles.uploadBtn,
-            pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }
-          ]}
-          onPress={() => {
-            uploadBtnRef.current?.measure((x, y, w, h, px, py) => {
-              router.push({
-                pathname: '/upload',
-                params: { btnY: py, btnX: px, btnW: w, btnH: h }
-              });
-            });
-          }}
-        >
-          <Ionicons name="cloud-upload-outline" size={24} color="#fff" />
-          <Text style={styles.uploadBtnText}>{t("upload_report")}</Text>
-        </Pressable>
+        <ChatInputBar />
 
         <QuickActions />
 
@@ -215,6 +198,7 @@ export default function Home() {
         {hasReports ? <RecentReports reports={reports} /> : <EmptyState />}
       </ScrollView>
     </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -235,25 +219,6 @@ const styles = StyleSheet.create({
     paddingBottom: 48,
     gap: 24,
     flexGrow: 1,
-  },
-  uploadBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.lg,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  uploadBtnText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
   },
   sectionHeading: {
     fontSize: 16,
