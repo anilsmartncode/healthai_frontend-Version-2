@@ -92,6 +92,8 @@ const styles = StyleSheet.create({
   card: {
     padding: 16,
     gap: 14,
+    backgroundColor: "#F0F7FF",
+    borderColor: "#DBEAFE",
   },
   topRow: {
     flexDirection: "row",
