@@ -96,6 +96,25 @@ export function ChatInputBar() {
     }
   };
 
+  const scanDoc = async () => {
+    setShowMenu(false);
+    try {
+      const DocumentScanner = require('react-native-document-scanner-plugin').default;
+      const { scannedImages } = await DocumentScanner.scanDocument({
+        croppedImageQuality: 100,
+      });
+
+      if (scannedImages && scannedImages.length > 0) {
+        // We'll just take the first scanned page as an image for now,
+        // or if it returns multiple we can pass it, but our backend currently accepts a single file per request.
+        const uri = scannedImages[0];
+        setAttachedFile({ uri, name: 'scanned_document.jpg', mimeType: 'image/jpeg', size: 0 });
+      }
+    } catch (e: any) {
+      Alert.alert('Scanner Error', 'Failed to start the document scanner.');
+    }
+  };
+
   const handleSend = () => {
     if (!input.trim() && !attachedFile) return;
 
@@ -151,18 +170,28 @@ export function ChatInputBar() {
       )}
 
       <View style={[styles.inputWrap, { zIndex: showMenu ? 50 : 1 }]}>
-        
+
         {/* Giant invisible backdrop to catch outside taps without a Modal */}
         {showMenu && (
-          <Pressable 
+          <Pressable
             style={styles.giantBackdrop}
-            onPress={() => setShowMenu(false)} 
+            onPress={() => setShowMenu(false)}
           />
         )}
 
         {/* Inline Absolute Menu directly above the plus button */}
         {showMenu && (
-          <View style={styles.inlineMenuContainer}>
+          <View style={[styles.inlineMenuContainer, { height: 260 }]}>
+            <Pressable style={styles.menuItem} onPress={scanDoc}>
+              <View style={[styles.menuIconWrap, { backgroundColor: '#F3E8FF' }]}>
+                <Ionicons name="scan-outline" size={20} color="#9333EA" />
+              </View>
+              <View style={styles.menuTextContent}>
+                <Text style={styles.menuItemText}>Scan Document</Text>
+                <Text style={styles.menuItemSubtext}>Auto-crop and enhance</Text>
+              </View>
+            </Pressable>
+
             <Pressable style={styles.menuItem} onPress={camera}>
               <View style={[styles.menuIconWrap, { backgroundColor: '#EFF6FF' }]}>
                 <Ionicons name="camera-outline" size={20} color={Colors.primary} />
@@ -185,10 +214,10 @@ export function ChatInputBar() {
 
             <Pressable style={[styles.menuItem, { borderBottomWidth: 0 }]} onPress={pickDoc}>
               <View style={[styles.menuIconWrap, { backgroundColor: '#F0FDF4' }]}>
-                <Ionicons name="document-outline" size={20} color="#059669" />
+                <Ionicons name="folder-open-outline" size={20} color="#059669" />
               </View>
               <View style={styles.menuTextContent}>
-                <Text style={styles.menuItemText}>Document</Text>
+                <Text style={styles.menuItemText}>Document / Drive</Text>
                 <Text style={styles.menuItemSubtext}>Upload a PDF, DOC, or DOCX</Text>
               </View>
             </Pressable>
@@ -198,7 +227,7 @@ export function ChatInputBar() {
         <Pressable style={styles.innerPlusBtn} onPress={handlePlusPress} hitSlop={8}>
           <Ionicons name="add" size={24} color={showMenu ? Colors.primary : Colors.textMuted} />
         </Pressable>
-        
+
         <TextInput
           style={[
             styles.input,
@@ -210,15 +239,15 @@ export function ChatInputBar() {
             const h = e.nativeEvent.contentSize.height;
             if (h > 0) setInputHeight(h);
           }}
-          placeholder="Analyze a report or paste text..."
+          placeholder="Upload & Ask about reports..."
           placeholderTextColor={Colors.textMuted}
           multiline
           scrollEnabled={inputHeight >= 76}
           maxLength={1000}
         />
 
-        <Pressable 
-          style={[styles.innerMicBtn, hasInput ? { backgroundColor: Colors.primary } : { backgroundColor: '#F1F5F9' }]} 
+        <Pressable
+          style={[styles.innerMicBtn, hasInput ? { backgroundColor: Colors.primary } : { backgroundColor: '#F1F5F9' }]}
           onPress={handleSend}
           disabled={!hasInput}
         >
@@ -277,10 +306,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     lineHeight: 14,
   },
-  inputWrap: { 
+  inputWrap: {
     flexDirection: 'row', alignItems: 'flex-end',
     backgroundColor: '#FFFFFF',
-    borderWidth: 1.5, 
+    borderWidth: 1.5,
     borderColor: '#E2E8F0',
     borderRadius: 24,
     paddingHorizontal: 8,

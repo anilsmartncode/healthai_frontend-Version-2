@@ -455,8 +455,6 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, height: 44, fontSize: 15, color: Colors.text },
 
-  searchInput: { flex: 1, height: 44, fontSize: 15, color: Colors.text },
-
   tabsScroll: { marginBottom: 14, maxHeight: 44 },
   tabsRow: { flexDirection: 'row', gap: 8, paddingRight: 8 },
   tab: {
