@@ -198,44 +198,40 @@ export function ChatInputBar() {
 
         {/* Inline Absolute Menu directly above the plus button */}
         {showMenu && (
-          <View style={[styles.inlineMenuContainer, { height: 260 }]}>
+          <View style={styles.inlineMenuContainer}>
             <Pressable style={styles.menuItem} onPress={scanDoc}>
               <View style={[styles.menuIconWrap, { backgroundColor: '#F3E8FF' }]}>
-                <Ionicons name="scan-outline" size={20} color="#9333EA" />
+                <Ionicons name="scan-outline" size={16} color="#9333EA" />
               </View>
               <View style={styles.menuTextContent}>
                 <Text style={styles.menuItemText}>Scan Document</Text>
-                <Text style={styles.menuItemSubtext}>Auto-crop and enhance</Text>
               </View>
             </Pressable>
 
             <Pressable style={styles.menuItem} onPress={camera}>
               <View style={[styles.menuIconWrap, { backgroundColor: '#EFF6FF' }]}>
-                <Ionicons name="camera-outline" size={20} color={Colors.primary} />
+                <Ionicons name="camera-outline" size={16} color={Colors.primary} />
               </View>
               <View style={styles.menuTextContent}>
                 <Text style={styles.menuItemText}>Camera</Text>
-                <Text style={styles.menuItemSubtext}>Take a photo of a document</Text>
               </View>
             </Pressable>
 
             <Pressable style={styles.menuItem} onPress={pickImage}>
               <View style={[styles.menuIconWrap, { backgroundColor: '#FEF3C7' }]}>
-                <Ionicons name="images-outline" size={20} color="#D97706" />
+                <Ionicons name="images-outline" size={16} color="#D97706" />
               </View>
               <View style={styles.menuTextContent}>
                 <Text style={styles.menuItemText}>Gallery</Text>
-                <Text style={styles.menuItemSubtext}>Choose from your camera roll</Text>
               </View>
             </Pressable>
 
             <Pressable style={[styles.menuItem, { borderBottomWidth: 0 }]} onPress={pickDoc}>
               <View style={[styles.menuIconWrap, { backgroundColor: '#F0FDF4' }]}>
-                <Ionicons name="folder-open-outline" size={20} color="#059669" />
+                <Ionicons name="folder-open-outline" size={16} color="#059669" />
               </View>
               <View style={styles.menuTextContent}>
                 <Text style={styles.menuItemText}>Document / Drive</Text>
-                <Text style={styles.menuItemSubtext}>Upload a PDF, DOC, or DOCX</Text>
               </View>
             </Pressable>
           </View>
@@ -363,19 +359,19 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: '100%',
     left: 8,
-    marginBottom: 12,
+    marginBottom: 8,
     backgroundColor: '#fff',
     borderRadius: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
     elevation: 8,
     borderWidth: 1,
     borderColor: '#F1F5F9',
-    width: 250,
+    width: 200,
     zIndex: 100,
   },
   giantBackdrop: {
@@ -389,14 +385,15 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
     borderBottomWidth: 1,
     borderBottomColor: '#F8FAFC',
   },
   menuIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -405,13 +402,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   menuItemText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '500',
     color: Colors.text,
-  },
-  menuItemSubtext: {
-    fontSize: 11,
-    color: Colors.textMuted,
-    marginTop: 2,
   },
 });

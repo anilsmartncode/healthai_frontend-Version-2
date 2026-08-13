@@ -404,7 +404,8 @@ function parseHealthScore(raw?: ApiSummary | string): number {
   if (!raw) return 0;
   const summary = typeof raw === 'string' ? (() => { try { return JSON.parse(raw) as ApiSummary; } catch { return null; } })() : raw;
   if (!summary?.health_score) return 0;
-  const n = parseInt(summary.health_score.split('/')[0]);
+  if (typeof summary.health_score === 'number') return summary.health_score;
+  const n = parseInt(String(summary.health_score).split('/')[0]);
   return isNaN(n) ? 0 : n;
 }
 

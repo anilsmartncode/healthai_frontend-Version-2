@@ -53,23 +53,13 @@ global.fetch = async (...args) => {
   }
 };
 
-export default function RootLayout() {
-  const pathname = usePathname();
-  const params = useGlobalSearchParams();
-
-  // Route tracker
-  useEffect(() => {
-    if (pathname) {
-      console.log(`[Navigation] -> ${pathname}`, Object.keys(params).length ? JSON.stringify(params) : '');
-    }
-  }, [pathname, params]);
-
-  // Share Intent Tracker
-  const { hasShareIntent, shareIntent, resetShareIntent, error } = useShareIntent();
-  const { ready, token } = useAuth(); // We need to make sure auth is ready before navigating
+  // Share Intent Tracker Component
+function ShareIntentListener() {
+  const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntent();
+  const { ready, token } = useAuth(); // Now safe because it's inside AuthProvider
 
   useEffect(() => {
-    if (hasShareIntent && shareIntent.files && ready && token) {
+    if (hasShareIntent && shareIntent?.files && ready && token) {
       if (Array.isArray(shareIntent.files) && shareIntent.files.length > 0) {
         const file = shareIntent.files[0] as any;
         if (file?.contentUri || file?.path) {
@@ -87,6 +77,20 @@ export default function RootLayout() {
       }
     }
   }, [hasShareIntent, shareIntent, ready, token]);
+
+  return null;
+}
+
+export default function RootLayout() {
+  const pathname = usePathname();
+  const params = useGlobalSearchParams();
+
+  // Route tracker
+  useEffect(() => {
+    if (pathname) {
+      console.log(`[Navigation] -> ${pathname}`, Object.keys(params).length ? JSON.stringify(params) : '');
+    }
+  }, [pathname, params]);
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
@@ -147,6 +151,7 @@ export default function RootLayout() {
         <LanguageProvider>
           <UsageProvider>
             <AuthProvider>
+              <ShareIntentListener />
               <SecurityWrapper>
                 <ErrorBoundary>
                   <StatusBar style="dark" />
@@ -195,7 +200,6 @@ export default function RootLayout() {
                       name="medicine/[id]"
                       options={{ headerShown: false }}
                     />
-                    <Stack.Screen name="ai-chat" options={{ headerShown: false }} />
                     <Stack.Screen name="ai-history" options={{ headerShown: false }} />
                     <Stack.Screen name="report-detail" options={{ headerShown: false }} />
                     <Stack.Screen name="scorecard" options={{ headerShown: false }} />
@@ -210,15 +214,15 @@ export default function RootLayout() {
                       options={{ headerShown: false }}
                     />
                     <Stack.Screen
+                      name="medicines/reminders/index"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
                       name="medicines/browse"
                       options={{ headerShown: false }}
                     />
                     <Stack.Screen
                       name="medicines/check-interactions"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="medicines/reminders"
                       options={{ headerShown: false }}
                     />
                     <Stack.Screen

@@ -166,12 +166,14 @@ export function HealthMetricsSection({ reports, phone }: Props) {
       </View>
 
       <View style={styles.grid}>
-        {activeMetrics.map((m) => {
+        {activeMetrics.map((m, index) => {
           const displayVal = m.extracted!.value;
           const displayUnit = ""; // parsed values have units built-in
           const status = m.extracted!.status;
           const statusStyle = status ? getStatusStyle(status) : null;
           const isSingle = activeMetrics.length === 1;
+          const isLastOddCard = activeMetrics.length % 2 !== 0 && index === activeMetrics.length - 1;
+          const isCentered = isSingle || isLastOddCard;
 
           return (
             <Pressable
@@ -179,11 +181,12 @@ export function HealthMetricsSection({ reports, phone }: Props) {
               style={({ pressed }) => [
                 styles.card,
                 isSingle && styles.fullWidthCard,
+                isCentered && styles.centeredCard,
                 pressed && styles.pressed,
               ]}
               onPress={handlePress}
             >
-              <View style={styles.cardHeader}>
+              <View style={[styles.cardHeader, isCentered && styles.centeredCardHeader]}>
                 <View style={[styles.iconWrap, { backgroundColor: m.bgColor }]}>
                   <Ionicons name={m.icon} size={20} color={m.color} />
                 </View>
@@ -196,12 +199,12 @@ export function HealthMetricsSection({ reports, phone }: Props) {
                 )}
               </View>
 
-              <View style={styles.valueContainer}>
+              <View style={[styles.valueContainer, isCentered && styles.centeredValueContainer]}>
                 <Text style={styles.value}>{displayVal}</Text>
                 {displayUnit && <Text style={styles.unit}>{displayUnit}</Text>}
               </View>
 
-              <Text style={styles.label} numberOfLines={1}>
+              <Text style={[styles.label, isCentered && styles.centeredText]} numberOfLines={1}>
                 {m.label}
               </Text>
             </Pressable>
@@ -244,6 +247,9 @@ const styles = StyleSheet.create({
   fullWidthCard: {
     width: "100%",
   },
+  centeredCard: {
+    alignItems: "center",
+  },
   pressed: {
     opacity: 0.75,
   },
@@ -251,6 +257,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    width: "100%",
+  },
+  centeredCardHeader: {
+    justifyContent: "center",
+    gap: 12,
   },
   iconWrap: {
     width: 36,
@@ -285,10 +296,16 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     fontWeight: "600",
   },
+  centeredValueContainer: {
+    justifyContent: "center",
+  },
   label: {
     fontSize: 12,
     color: Colors.textMuted,
     fontWeight: "600",
+  },
+  centeredText: {
+    textAlign: "center",
   },
   onboardCard: {
     flexDirection: "row",

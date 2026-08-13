@@ -175,7 +175,9 @@ export default function Home() {
 
         <QuickActions />
 
-        <HealthMetricsSection reports={reports} phone={phone} />
+        {hasReports && (
+          <HealthMetricsSection reports={reports} phone={phone} />
+        )}
 
         <RiskIndicatorsSection
           riskIndicators={scorecard?.riskIndicators ?? []}

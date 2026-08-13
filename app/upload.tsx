@@ -24,7 +24,7 @@ type PickedFile = { uri: string; name: string; mimeType: string; size?: number; 
 
 // ── Convert raw pasted text into a formatted PDF document on device ───────────
 async function createPdfFromText(text: string, context?: string): Promise<PickedFile> {
-  const safeText = text
+  const safeText = String(text)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -99,16 +99,21 @@ async function createPdfFromText(text: string, context?: string): Promise<Picked
     </html>
   `;
 
-  const { uri } = await Print.printToFileAsync({ html });
-  const name = context === 'prescription' ? `Prescription_${Date.now().toString().slice(-6)}.pdf` : `Pasted_Report_${Date.now().toString().slice(-6)}.pdf`;
-  return {
-    uri,
-    name,
-    mimeType: 'application/pdf',
-    size: text.length * 3 + 1200,
-    lastModified: Date.now(),
-    isPasted: true,
-  };
+  try {
+    const { uri } = await Print.printToFileAsync({ html });
+    const name = context === 'prescription' ? `Prescription_${Date.now().toString().slice(-6)}.pdf` : `Pasted_Report_${Date.now().toString().slice(-6)}.pdf`;
+    return {
+      uri,
+      name,
+      mimeType: 'application/pdf',
+      size: text.length * 3 + 1200,
+      lastModified: Date.now(),
+      isPasted: true,
+    };
+  } catch (err: any) {
+    console.error("PDF Generation failed:", err);
+    throw new Error(`PDF Generation failed: ${err.message}`);
+  }
 }
 
 export default function Upload() {
@@ -217,8 +222,13 @@ export default function Upload() {
       handleConfirmedAnalysis({ uri: fileUri, name: fileName || 'Document', mimeType: mimeType || 'application/pdf' });
     } else if (prefillText) {
       (async () => {
-        const generatedPdf = await createPdfFromText(prefillText, context);
-        handleConfirmedAnalysis(generatedPdf);
+        try {
+          const generatedPdf = await createPdfFromText(prefillText, context);
+          handleConfirmedAnalysis(generatedPdf);
+        } catch (err: any) {
+          Alert.alert("Analysis Failed", err.message);
+          router.back();
+        }
       })();
     } else {
       router.back();
