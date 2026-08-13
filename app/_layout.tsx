@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { checkHealthAlerts, type HealthAlert } from "@/services/aiService";
 import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
 import { router, usePathname, useGlobalSearchParams } from "expo-router";
+import { useShareIntent } from "expo-share-intent";
 import { Colors, Radius } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import { LanguageProvider } from "@/context/Languagecontext";
@@ -62,6 +63,30 @@ export default function RootLayout() {
       console.log(`[Navigation] -> ${pathname}`, Object.keys(params).length ? JSON.stringify(params) : '');
     }
   }, [pathname, params]);
+
+  // Share Intent Tracker
+  const { hasShareIntent, shareIntent, resetShareIntent, error } = useShareIntent();
+  const { ready, token } = useAuth(); // We need to make sure auth is ready before navigating
+
+  useEffect(() => {
+    if (hasShareIntent && shareIntent.files && ready && token) {
+      if (Array.isArray(shareIntent.files) && shareIntent.files.length > 0) {
+        const file = shareIntent.files[0] as any;
+        if (file?.contentUri || file?.path) {
+          console.log('[ShareIntent] Received file:', file);
+          router.replace({
+            pathname: '/(tabs)/home',
+            params: {
+              sharedFileUri: file.contentUri || file.path,
+              sharedFileName: file.fileName || 'Shared_Document',
+              sharedFileMimeType: file.mimeType || 'application/pdf'
+            }
+          });
+          resetShareIntent();
+        }
+      }
+    }
+  }, [hasShareIntent, shareIntent, ready, token]);
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {

@@ -109,6 +109,7 @@
           "cameraPermission": "We need camera access to scan your documents."
         }
       ],
+      "expo-share-intent",
       "./plugins/with-rnfb-fix.js"
     ],
     "experiments": {

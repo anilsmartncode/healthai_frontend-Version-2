@@ -8,9 +8,10 @@ import {
   Text,
   Modal,
   Alert,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useGlobalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Colors, Radius } from '@/constants/Colors';
@@ -40,6 +41,22 @@ export function ChatInputBar() {
   const [inputHeight, setInputHeight] = useState(36);
   const [attachedFile, setAttachedFile] = useState<any>(null);
   const [showMenu, setShowMenu] = useState(false);
+
+  const params = useGlobalSearchParams();
+
+  useEffect(() => {
+    if (params.sharedFileUri) {
+      setAttachedFile({
+        uri: params.sharedFileUri,
+        name: params.sharedFileName || 'Shared_Document',
+        mimeType: params.sharedFileMimeType || 'application/pdf',
+        size: 0
+      });
+      // Optionally clear the params to prevent re-attachment on re-renders, 
+      // though router.setParams works best inside the route itself.
+      router.setParams({ sharedFileUri: undefined, sharedFileName: undefined, sharedFileMimeType: undefined });
+    }
+  }, [params.sharedFileUri]);
 
   useEffect(() => {
     if (!input || input.trim().length === 0) {
