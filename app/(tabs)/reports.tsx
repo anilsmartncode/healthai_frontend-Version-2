@@ -17,9 +17,9 @@ import {
   Animated,
   Alert,
   LayoutAnimation,
-  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { KeyboardAwareFlatList } from 'react-native-keyboard-aware-scroll-view';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -379,12 +379,14 @@ export default function ReportsScreen() {
   );
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <SafeAreaView style={styles.safe} edges={['top']}>
       {loading ? (
         <ActivityIndicator style={{ marginTop: 48 }} size="large" color={Colors.primary} />
       ) : (
-        <FlatList
+        <KeyboardAwareFlatList
+          enableOnAndroid={true}
+          extraScrollHeight={Platform.OS === 'ios' ? 60 : 80}
+          keyboardShouldPersistTaps="handled"
           data={recent}
           keyExtractor={(r) => r.id}
           contentContainerStyle={styles.listContent}
@@ -413,7 +415,6 @@ export default function ReportsScreen() {
         />
       )}
     </SafeAreaView>
-    </KeyboardAvoidingView>
   );
 }
 

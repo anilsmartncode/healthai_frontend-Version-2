@@ -1,4 +1,5 @@
-import { View, ScrollView, StyleSheet, Text, Alert, Pressable, RefreshControl, KeyboardAvoidingView, Platform } from "react-native";
+import { View, ScrollView, StyleSheet, Text, Alert, Pressable, RefreshControl, Platform } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors, Radius } from "@/constants/Colors";
@@ -136,16 +137,18 @@ export default function Home() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.header}>
-          <HomeHeader />
-        </View>
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.header}>
+        <HomeHeader />
+      </View>
 
-      <ScrollView
+      <KeyboardAwareScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        enableOnAndroid={true}
+        extraScrollHeight={Platform.OS === 'ios' ? 60 : 80}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -196,9 +199,8 @@ export default function Home() {
         <ShareAppCard />
 
         {hasReports ? <RecentReports reports={reports} /> : <EmptyState />}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
-    </KeyboardAvoidingView>
   );
 }
 
