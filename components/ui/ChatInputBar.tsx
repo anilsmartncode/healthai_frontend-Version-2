@@ -36,7 +36,7 @@ function validatePickedFile(name: string): boolean {
   return true;
 }
 
-export function ChatInputBar() {
+export function ChatInputBar({ dropDirection = 'up' }: { dropDirection?: 'up' | 'down' }) {
   const [input, setInput] = useState('');
   const [inputHeight, setInputHeight] = useState(36);
   const [attachedFile, setAttachedFile] = useState<any>(null);
@@ -198,7 +198,10 @@ export function ChatInputBar() {
 
         {/* Inline Absolute Menu directly above the plus button */}
         {showMenu && (
-          <View style={styles.inlineMenuContainer}>
+          <View style={[
+            styles.inlineMenuContainer,
+            dropDirection === 'down' ? styles.menuDrop : styles.menuUp
+          ]}>
             <Pressable style={styles.menuItem} onPress={scanDoc}>
               <View style={[styles.menuIconWrap, { backgroundColor: '#F3E8FF' }]}>
                 <Ionicons name="scan-outline" size={16} color="#9333EA" />
@@ -357,9 +360,7 @@ const styles = StyleSheet.create({
   },
   inlineMenuContainer: {
     position: 'absolute',
-    bottom: '100%',
     left: 8,
-    marginBottom: 8,
     backgroundColor: '#fff',
     borderRadius: 16,
     paddingVertical: 6,
@@ -373,6 +374,14 @@ const styles = StyleSheet.create({
     borderColor: '#F1F5F9',
     width: 200,
     zIndex: 100,
+  },
+  menuUp: {
+    bottom: '100%',
+    marginBottom: 8,
+  },
+  menuDrop: {
+    top: '100%',
+    marginTop: 8,
   },
   giantBackdrop: {
     position: 'absolute',

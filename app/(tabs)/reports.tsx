@@ -18,8 +18,12 @@ import {
   Alert,
   LayoutAnimation,
   Platform,
+  Share,
 } from 'react-native';
 import { KeyboardAwareFlatList } from 'react-native-keyboard-aware-scroll-view';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import * as Sharing from 'expo-sharing';
+import * as WebBrowser from 'expo-web-browser';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -76,7 +80,7 @@ function ReportRow({
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.reportRow, pressed && { opacity: 0.85 }]}
+      style={({ pressed }: { pressed: boolean }) => [styles.reportRow, pressed && { opacity: 0.85 }]}
       onPress={() =>
         router.push({ pathname: '/report-detail', params: { id: item.id } })
       }
@@ -92,29 +96,71 @@ function ReportRow({
           {item.date} • {item.labName || item.category}
         </Text>
       </View>
-      <View style={[styles.statusPill, { backgroundColor: tag.bg }]}>
-        <Text style={[styles.statusPillText, { color: tag.color }]}>{tag.label}</Text>
-      </View>
-      {item.healthScore > 0 && (
-        <View style={[styles.scoreCircle, { borderColor: scoreColor + '55' }]}>
-          <Text style={[styles.scoreCircleText, { color: scoreColor }]}>
-            {item.healthScore}
-          </Text>
-        </View>
-      )}
 
-      <Pressable
-        onPress={handleDelete}
-        style={({ pressed }) => [
-          styles.deleteBtnInline,
-          pressed && { opacity: 0.7, transform: [{ scale: 0.9 }] },
-        ]}
-        hitSlop={12}
-      >
-        <Ionicons name="trash-outline" size={18} color={Colors.danger} />
-      </Pressable>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Pressable
+          onPress={async () => {
+            if (!item.fileUri) {
+              Alert.alert(
+                'File not available',
+                'The original file for this report is no longer stored on this device.'
+              );
+              return;
+            }
+            try {
+              const canShare = await Sharing.isAvailableAsync();
+              if (canShare) {
+                await Sharing.shareAsync(item.fileUri, {
+                  mimeType: item.fileType === 'PDF' ? 'application/pdf' : 'image/jpeg',
+                  dialogTitle: 'Share report',
+                  UTI: item.fileType === 'PDF' ? 'com.adobe.pdf' : 'public.image',
+                });
+              } else {
+                await WebBrowser.openBrowserAsync(item.fileUri);
+              }
+            } catch (e: any) {
+              Alert.alert('Cannot share file', e?.message ?? 'Unknown error');
+            }
+          }}
+          style={({ pressed }: { pressed: boolean }) => [
+            styles.actionBtnInline,
+            pressed && { opacity: 0.7, transform: [{ scale: 0.9 }] },
+            { backgroundColor: Colors.primary + '15' }
+          ]}
+          hitSlop={12}
+        >
+          <Ionicons name="share-social-outline" size={18} color={Colors.primary} />
+        </Pressable>
+
+        <Pressable
+          onPress={handleDelete}
+          style={({ pressed }: { pressed: boolean }) => [
+            styles.actionBtnInline,
+            pressed && { opacity: 0.7, transform: [{ scale: 0.9 }] },
+            { backgroundColor: '#FEF2F2' }
+          ]}
+          hitSlop={12}
+        >
+          <Ionicons name="trash-outline" size={18} color={Colors.danger} />
+        </Pressable>
+      </View>
     </Pressable>
   );
+}
+
+function getDescriptiveFilterLabel(label: string) {
+  switch (label) {
+    case 'All': return 'All Reports';
+    case 'CBC': return 'CBC (Blood Count)';
+    case 'Lipid': return 'Lipid (Heart/Cholesterol)';
+    case 'Thyroid': return 'Thyroid (T3/T4/TSH)';
+    case 'Diabetes': return 'Diabetes (Sugar/HbA1c)';
+    case 'Liver': return 'Liver (SGPT/SGOT)';
+    case 'Kidney': return 'Kidney (Creatinine/Urea)';
+    case 'Vitamins': return 'Vitamins (D/B12)';
+    case 'Blood Test': return 'General Blood Tests';
+    default: return label;
+  }
 }
 
 function FilterTab({
@@ -132,7 +178,7 @@ function FilterTab({
       onPress={onPress}
     >
       <Text style={[styles.tabText, active && styles.tabTextActive]}>
-        {label === 'All' ? 'All Reports' : label}
+        {getDescriptiveFilterLabel(label)}
       </Text>
     </Pressable>
   );
@@ -150,12 +196,26 @@ export default function ReportsScreen() {
     activeFilter,
     setActiveFilter,
     availableFilters,
+    filterDate,
+    setFilterDate,
     deleteReport,
   } = useReports();
 
   const [showSearch, setShowSearch] = useState(false);
   const [showAllRecent, setShowAllRecent] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const tabBarHeight = useBottomTabBarHeight();
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (event.type === 'set' && selectedDate) {
+      setFilterDate(selectedDate);
+    } else if (event.type === 'dismissed') {
+      setShowDatePicker(false);
+    }
+  };
+
+  const clearDate = () => setFilterDate(null);
 
   const summary = useMemo(() => {
     const total = allReports.length;
@@ -222,16 +282,41 @@ export default function ReportsScreen() {
   ];
 
   const ListHeader = (
-    <View>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Reports</Text>
-          <Text style={styles.headerSub}>Manage and analyze your health reports</Text>
-        </View>
+    <View style={{ zIndex: 10 }}>
+
+      {/* Recent header */}
+      <View style={styles.recentHeader}>
+        <Text style={styles.sectionTitle}>Your Reports</Text>
       </View>
 
+      {/* Filter Label & Date Filter */}
+      <View style={styles.filterHeaderRow}>
+        <Text style={styles.filterLabel}>Filter by report category:</Text>
+        <Pressable
+          style={styles.dateFilterBtn}
+          onPress={() => setShowDatePicker(true)}
+        >
+          <Ionicons name="calendar-outline" size={14} color={filterDate ? Colors.primary : Colors.textMuted} />
+          <Text style={[styles.dateFilterText, filterDate && { color: Colors.primary, fontWeight: '700' }]}>
+            {filterDate ? filterDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Filter by Date'}
+          </Text>
+          {filterDate && (
+            <Pressable onPress={clearDate} hitSlop={8} style={{ marginLeft: 4 }}>
+              <Ionicons name="close-circle" size={16} color={Colors.primary} />
+            </Pressable>
+          )}
+        </Pressable>
+      </View>
 
+      {showDatePicker && (
+        <DateTimePicker
+          value={filterDate || new Date()}
+          mode="date"
+          display="default"
+          onChange={onDateChange}
+          maximumDate={new Date()}
+        />
+      )}
 
       {/* Tabs */}
       <ScrollView
@@ -249,57 +334,6 @@ export default function ReportsScreen() {
           />
         ))}
       </ScrollView>
-
-      {/* Summary */}
-      <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>Reports Summary</Text>
-        <View style={styles.summaryRow}>
-          <View style={styles.summaryItem}>
-            <View style={[styles.summaryIcon, { backgroundColor: '#DCFCE7' }]}>
-              <Ionicons name="document-text" size={16} color="#16A34A" />
-            </View>
-            <Text style={[styles.summaryNum, { color: '#16A34A' }]}>
-              {summary.total}
-              {summary.total > 0 ? '+' : ''}
-            </Text>
-            <Text style={styles.summaryLabel}>Total Reports</Text>
-            <Text style={styles.summaryHint}>All time</Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <View style={[styles.summaryIcon, { backgroundColor: '#F3E8FF' }]}>
-              <Ionicons name="flask" size={16} color="#7C3AED" />
-            </View>
-            <Text style={[styles.summaryNum, { color: '#7C3AED' }]}>{summary.lab}</Text>
-            <Text style={styles.summaryLabel}>Lab Reports</Text>
-            <Text style={styles.summaryHint}>This year</Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <View style={[styles.summaryIcon, { backgroundColor: '#FFEDD5' }]}>
-              <Text style={{ fontSize: 11, fontWeight: '800', color: '#EA580C' }}>Rx</Text>
-            </View>
-            <Text style={[styles.summaryNum, { color: '#EA580C' }]}>{summary.prescriptions}</Text>
-            <Text style={styles.summaryLabel}>Prescriptions</Text>
-            <Text style={styles.summaryHint}>This year</Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <View style={[styles.summaryIcon, { backgroundColor: '#DBEAFE' }]}>
-              <Ionicons name="image" size={16} color="#2563EB" />
-            </View>
-            <Text style={[styles.summaryNum, { color: '#2563EB' }]}>{summary.imaging}</Text>
-            <Text style={styles.summaryLabel}>Imaging</Text>
-            <Text style={styles.summaryHint}>This year</Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={{ marginTop: 16, marginBottom: 8 }}>
-        <ChatInputBar />
-      </View>
-
-      {/* Recent header */}
-      <View style={styles.recentHeader}>
-        <Text style={styles.sectionTitle}>Recent Reports</Text>
-      </View>
     </View>
   );
 
@@ -308,7 +342,7 @@ export default function ReportsScreen() {
       {reports.length > 8 && (
         <View style={styles.viewMoreContainer}>
           <Pressable
-            style={({ pressed }) => [
+            style={({ pressed }: { pressed: boolean }) => [
               styles.viewMoreBtn,
               showAllRecent && styles.viewMoreBtnActive,
               pressed && { transform: [{ scale: 0.98 }], opacity: 0.9 },
@@ -380,6 +414,19 @@ export default function ReportsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      {/* Fixed Header & Input Bar to prevent dropdown clipping by FlatList on Android */}
+      <View style={{ zIndex: 999, elevation: 999, paddingHorizontal: 16, backgroundColor: '#F8FAFC' }}>
+        <View style={styles.header}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerTitle}>Reports</Text>
+            <Text style={styles.headerSub}>Manage and analyze your health reports</Text>
+          </View>
+        </View>
+        <View style={{ marginBottom: 16, zIndex: 999, elevation: 999 }}>
+          <ChatInputBar dropDirection="down" />
+        </View>
+      </View>
+
       {loading ? (
         <ActivityIndicator style={{ marginTop: 48 }} size="large" color={Colors.primary} />
       ) : (
@@ -426,7 +473,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
-    paddingTop: 4,
+    paddingTop: 8,
     marginBottom: 14,
   },
   headerTitle: { fontSize: 26, fontWeight: '800', color: Colors.text, letterSpacing: -0.3 },
@@ -466,6 +513,34 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: '#DCFCE7' },
   tabText: { fontSize: 13, fontWeight: '600', color: Colors.textMuted },
   tabTextActive: { color: '#166534' },
+  filterHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    paddingHorizontal: 2,
+  },
+  filterLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textMuted,
+  },
+  dateFilterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: Radius.pill,
+    gap: 4,
+  },
+  dateFilterText: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    fontWeight: '500',
+  },
 
   sectionCard: {
     backgroundColor: '#fff',
@@ -602,14 +677,12 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 
-  deleteBtnInline: {
+  actionBtnInline: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#FEF2F2',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 6,
   },
   viewMoreContainer: {
     alignItems: 'center',

@@ -21,6 +21,7 @@ export function useReports() {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
+  const [filterDate, setFilterDate] = useState<Date | null>(null);
 
   const fetchReports = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -58,8 +59,9 @@ export function useReports() {
       r.reportTypeFull.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter =
       activeFilter === 'All' || r.category === activeFilter;
-    return matchesSearch && matchesFilter;
-  }), [allReports, searchQuery, activeFilter]);
+    const matchesDate = !filterDate || new Date(r.analyzedAt).toDateString() === filterDate.toDateString();
+    return matchesSearch && matchesFilter && matchesDate;
+  }), [allReports, searchQuery, activeFilter, filterDate]);
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = { All: allReports.length };
@@ -113,6 +115,8 @@ export function useReports() {
     setSearchQuery,
     activeFilter,
     setActiveFilter,
+    filterDate,
+    setFilterDate,
     availableFilters,
     categoryCounts,
     deleteReport,
