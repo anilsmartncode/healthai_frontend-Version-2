@@ -266,6 +266,7 @@ export default function ReportDetailScreen() {
           variant="banner"
           label="Ask AI about this report"
           prefill={`My ${report.title} report (score: ${report.healthScore ?? '?'}/100) has ${report.abnormalCount ?? 0} abnormal values. What should I know about this?`}
+          reportId={report.id}
         />
       </ScrollView>
 

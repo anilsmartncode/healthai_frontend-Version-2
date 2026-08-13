@@ -11,6 +11,7 @@ import { useLang } from '@/context/Languagecontext';
 import {
   getFamilyNotifications,
   markNotificationsRead,
+  markAllGlobalNotificationsRead,
   type FamilyNotification,
 } from '@/services/familyApi';
 
@@ -22,6 +23,14 @@ const ICON_MAP: Record<string, { icon: IoniconName; bg: string; color: string }>
   health_alert: { icon: 'alert-circle-outline', bg: '#FCEBEB', color: Colors.danger },
   medicine_alert: { icon: 'medkit-outline', bg: '#FAEEDA', color: '#854F0B' },
   report_ready: { icon: 'document-text-outline', bg: '#E1F5EE', color: Colors.primary },
+  
+  // New Global Types
+  medicine: { icon: 'medkit-outline', bg: '#FAEEDA', color: '#854F0B' },
+  report: { icon: 'document-text-outline', bg: '#E1F5EE', color: Colors.primary },
+  family: { icon: 'people-outline', bg: '#E6F1FB', color: '#185FA5' },
+  health_tip: { icon: 'bulb-outline', bg: '#FFF4E5', color: '#D97706' },
+  system: { icon: 'information-circle-outline', bg: Colors.surface, color: Colors.textMuted },
+
   default: { icon: 'notifications-outline', bg: Colors.surface, color: Colors.textMuted },
 };
 
@@ -82,19 +91,30 @@ export default function Notifications() {
 
   const handlePress = async (item: FamilyNotification) => {
     if (!item.read) {
+      // Mark as read in the backend (using family endpoint which takes specific IDs)
       await markNotificationsRead([item.notif_id]);
       setItems(prev => prev.map(n => n.notif_id === item.notif_id ? { ...n, read: true } : n));
       setUnread(prev => Math.max(0, prev - 1));
     }
-    if (item.type === 'invite_pending') router.push('/family/invitations');
-    if (item.type === 'invite_accepted') router.push('/family');
-    if (item.type === 'health_alert') router.push('/family');
+    
+    // Routing based on type (including new types and old types)
+    if (item.type === 'invite_pending' || item.type === 'family') router.push('/family/invitations');
+    else if (item.type === 'invite_accepted') router.push('/family');
+    else if (item.type === 'health_alert' || item.type === 'health_tip') router.push('/family');
+    else if (item.type === 'medicine_alert' || item.type === 'medicine') router.push('/medicines');
+    else if (item.type === 'report_ready' || item.type === 'report') router.push('/(tabs)/reports');
   };
 
   const markAllRead = async () => {
     const unreadIds = items.filter(n => !n.read).map(n => n.notif_id);
     if (!unreadIds.length) return;
-    await markNotificationsRead(unreadIds);
+    
+    // Hit both endpoints to make sure both family and global are marked read
+    await Promise.all([
+      markNotificationsRead(unreadIds),
+      markAllGlobalNotificationsRead()
+    ]);
+    
     setItems(prev => prev.map(n => ({ ...n, read: true })));
     setUnread(0);
   };

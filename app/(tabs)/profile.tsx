@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
@@ -9,8 +9,7 @@ import { useLang } from '@/context/Languagecontext';
 import { useUsage } from '@/context/UsageContext';
 import { SecureAsyncStorage as AsyncStorage } from '@/utils/storage';
 import { api } from '@/services/api';
-import { ENDPOINTS } from '@/constants/api';
-import { Alert } from 'react-native';
+import { ENDPOINTS, BASE_URL } from '@/constants/api';
 import { medicineApiCall } from '@/services/Medicineapiclient';
 
 export default function Profile() {
@@ -18,6 +17,7 @@ export default function Profile() {
   const { t } = useLang();
   const { activePlan } = useUsage();
   const [displayName, setDisplayName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   // Refresh the display name from the real backend every time this tab is
   // focused — falls back to the local cache (written by account.tsx) if the
@@ -26,6 +26,7 @@ export default function Profile() {
     useCallback(() => {
       let cancelled = false;
       const cacheKey = `healthai_profile_name_${phone ?? 'guest'}`;
+      const avatarCacheKey = `healthai_profile_avatar_${phone ?? 'guest'}`;
 
       (async () => {
         // Show cached name immediately so there's no blank flash while the
@@ -33,6 +34,8 @@ export default function Profile() {
         try {
           const cached = await AsyncStorage.getItem(cacheKey);
           if (cached && !cancelled) setDisplayName(cached);
+          const cachedAvatar = await AsyncStorage.getItem(avatarCacheKey);
+          if (cachedAvatar && !cancelled) setAvatarUrl(cachedAvatar);
         } catch { /* ignore */ }
 
         try {
@@ -44,6 +47,20 @@ export default function Profile() {
             setDisplayName(displayName);
             try { await AsyncStorage.setItem(cacheKey, displayName); } catch { /* ignore */ }
           }
+          
+          let avUrl = data.avatar_url ?? data.image_url ?? data.profile_image ?? data.profile_image_url ?? null;
+          if (avUrl) {
+            if (avUrl.includes('.smartncode.com/uploads/')) {
+              avUrl = avUrl.replace('.smartncode.com/uploads/', '.smartncode.com/api/uploads/');
+            } else if (!avUrl.startsWith('http')) {
+              avUrl = avUrl.startsWith('/') ? BASE_URL + avUrl : `${BASE_URL}/${avUrl}`;
+            }
+          }
+          if (avUrl) {
+            setAvatarUrl(avUrl);
+            try { await AsyncStorage.setItem(avatarCacheKey, avUrl); } catch { /* ignore */ }
+          }
+
         } catch (e) {
           // Network error / session expired — keep showing whatever the
           // cache already gave us above rather than clearing the name.
@@ -103,11 +120,14 @@ export default function Profile() {
         <View style={{ padding: 16 }}>
           <Text style={styles.title}>{t('profile_settings')}</Text>
           <View style={styles.profile}>
-            <View style={styles.avatar}>
-              {initial
-                ? <Text style={styles.avatarInitial}>{initial}</Text>
-                : <Ionicons name="person" size={28} color="#fff" />
-              }
+            <View style={[styles.avatar, avatarUrl ? { backgroundColor: 'transparent' } : {}]}>
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#E5E7EB' }} resizeMode="cover" />
+              ) : initial ? (
+                <Text style={styles.avatarInitial}>{initial}</Text>
+              ) : (
+                <Ionicons name="person" size={28} color="#fff" />
+              )}
             </View>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

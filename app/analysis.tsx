@@ -426,6 +426,7 @@ export default function AnalysisScreen() {
             label="Discuss with AI Assistant"
             prefill={`My ${params.reportType ?? 'report'} shows ${abnormal.length} abnormal value${abnormal.length !== 1 ? 's' : ''}${parsedSummary?.condition_severity ? ` and overall status is ${parsedSummary.condition_severity}` : ''}. What does this mean and what should I do?`}
             context={params.summary}
+            reportId={params.reportId}
           />
         </View>
       </ScrollView>

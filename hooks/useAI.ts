@@ -14,6 +14,8 @@ import {
   checkHealthAlerts,
   saveChatSession,
   getChatSession,
+  getChatHistory,
+  clearChatHistory,
   newSessionId,
   STORAGE_KEYS,
   type HealthAlert,
@@ -21,7 +23,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import type { ChatMessage } from '@/types';
 
-export function useAI(initialPrefill?: string, prefillContext?: string, openSessionId?: string) {
+export function useAI(initialPrefill?: string, prefillContext?: string, openSessionId?: string, reportId?: string) {
   const { phone } = useAuth();
   const CONVO_KEY = STORAGE_KEYS(phone).CONVERSATION;
   const CURRENT_SESSION_KEY = `${STORAGE_KEYS(phone).CONVERSATION}_session_id`;
@@ -45,7 +47,21 @@ export function useAI(initialPrefill?: string, prefillContext?: string, openSess
   // or when a specific past session is requested (from the History tab)
   useEffect(() => {
     (async () => {
-      // Opening a specific saved session from History
+      // 1. If this is a report-specific chat, start fresh immediately.
+      // We don't want to load global chat history for a specific report context.
+      if (reportId) {
+        setSessionId(newSessionId());
+        setMessages([{
+          id: '0',
+          role: 'ai',
+          text: `Hi! I'm your HealthAI Assistant. I see you want to discuss your report. How can I help?`,
+          time: new Date().toISOString(),
+        }]);
+        setConvoLoaded(true);
+        return;
+      }
+
+      // 2. Opening a specific saved session from History
       if (openSessionId) {
         const session = await getChatSession(openSessionId, phone);
         if (session) {
@@ -58,7 +74,18 @@ export function useAI(initialPrefill?: string, prefillContext?: string, openSess
         }
       }
 
-      // Resume the last active session for this user
+      // 3. Try fetching recent legacy history from backend
+      // If the backend DELETE is not working, this might return deleted chats.
+      // We limit to the last 40 messages to mimic local behavior.
+      const backendHistory = await getChatHistory(phone);
+      if (backendHistory && backendHistory.messages && backendHistory.messages.length > 0) {
+        setMessages(backendHistory.messages.slice(-40));
+        setSessionId(newSessionId());
+        setConvoLoaded(true);
+        return;
+      }
+
+      // Resume the last active session for this user (local fallback)
       const [raw, savedSessionId] = await Promise.all([
         AsyncStorage.getItem(CONVO_KEY),
         AsyncStorage.getItem(CURRENT_SESSION_KEY),
@@ -125,7 +152,7 @@ export function useAI(initialPrefill?: string, prefillContext?: string, openSess
     setLoading(true);
 
     try {
-      const reply = await askAI(question, updatedWithUser, prefillContext, phone);
+      const reply = await askAI(question, updatedWithUser, prefillContext, phone, reportId);
       const finalMsgs = [...updatedWithUser, reply];
       setMessages(finalMsgs);
       await persistConversation(finalMsgs);
@@ -142,12 +169,13 @@ export function useAI(initialPrefill?: string, prefillContext?: string, openSess
     } finally {
       setLoading(false);
     }
-  }, [input, loading, messages, prefillContext, persistConversation, phone]);
+  }, [input, loading, messages, prefillContext, persistConversation, phone, reportId]);
 
   // "New chat" — saves the current conversation to History (it's already
   // persisted via saveChatSession on each message), then starts a fresh session
   const clearConversation = useCallback(async () => {
     await saveAIMemory(messages, phone);
+    await clearChatHistory(phone);
     const freshId = newSessionId();
     setSessionId(freshId);
     await AsyncStorage.removeItem(CONVO_KEY);

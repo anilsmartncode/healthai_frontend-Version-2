@@ -672,20 +672,46 @@ export async function getFamilyNotifications(): Promise<{
   unread_count: number; notifications: FamilyNotification[];
 }> {
   // 🔴 REAL
-  const raw = await medicineApiCall<any>(ENDPOINTS.familyNotifications);
-  const notifications = unwrapList<FamilyNotification>(raw, 'notifications', 'data');
-  return {
-    unread_count: raw?.unread_count ?? notifications.filter((n) => !n.read).length,
-    notifications,
-  };
+  let mergedNotifications: FamilyNotification[] = [];
+  let totalUnread = 0;
 
-  // 🟢 MOCK
-  // await delay(500);
-  // console.log('🔔 [familyApi] getFamilyNotifications — MOCK');
-  // return { unread_count: MOCK_NOTIFICATIONS.filter((n) => !n.read).length, notifications: MOCK_NOTIFICATIONS };
+  try {
+    const [familyRaw, globalRaw] = await Promise.allSettled([
+      medicineApiCall<any>(ENDPOINTS.familyNotifications),
+      medicineApiCall<any>(ENDPOINTS.globalNotifications)
+    ]);
+
+    if (familyRaw.status === 'fulfilled') {
+      const fNotifs = unwrapList<FamilyNotification>(familyRaw.value, 'notifications', 'data');
+      mergedNotifications = mergedNotifications.concat(fNotifs);
+      totalUnread += (familyRaw.value?.unread_count ?? fNotifs.filter((n) => !n.read).length);
+    } else {
+      console.error('[getFamilyNotifications] Family API failed:', familyRaw.reason);
+    }
+
+    if (globalRaw.status === 'fulfilled') {
+      const gNotifs = unwrapList<FamilyNotification>(globalRaw.value, 'notifications', 'data');
+      mergedNotifications = mergedNotifications.concat(gNotifs);
+      totalUnread += (globalRaw.value?.unread_count ?? gNotifs.filter((n) => !n.read).length);
+    } else {
+      console.error('[getFamilyNotifications] Global API failed:', globalRaw.reason);
+    }
+  } catch (e) {
+    console.error('[getFamilyNotifications] Error fetching notifications:', e);
+  }
+
+  // Deduplicate by notif_id just in case
+  const uniqueNotifs = Array.from(new Map(mergedNotifications.map(item => [item.notif_id, item])).values());
+
+  // Sort by created_at descending (newest first)
+  uniqueNotifs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  return {
+    unread_count: totalUnread,
+    notifications: uniqueNotifs,
+  };
 }
 
-/** PATCH /api/api/family/notifications/read */
 export async function markNotificationsRead(
   notification_ids: string[]
 ): Promise<{ success: boolean; updated_count: number }> {
@@ -695,8 +721,17 @@ export async function markNotificationsRead(
     body: { notification_ids },
   });
   return (raw?.data ?? raw) as { success: boolean; updated_count: number };
+}
 
-  // 🟢 MOCK
-  // await delay(400);
-  // return { success: true, updated_count: notification_ids.length };
+/** PATCH /api/notifications/read-all (Global) */
+export async function markAllGlobalNotificationsRead(): Promise<{ success: boolean; updated_count: number }> {
+  try {
+    const raw = await medicineApiCall<any>(ENDPOINTS.globalNotificationsReadAll, {
+      method: 'PATCH' as any,
+    });
+    return (raw?.data ?? raw) as { success: boolean; updated_count: number };
+  } catch (e) {
+    console.error('[markAllGlobalNotificationsRead] API failed:', e);
+    return { success: false, updated_count: 0 };
+  }
 }

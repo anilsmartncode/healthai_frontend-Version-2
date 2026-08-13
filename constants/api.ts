@@ -51,6 +51,7 @@ export const ENDPOINTS = {
 
   // ── AI Assistant 
   aiChatPath: '/api/ai/chat',
+  aiHistoryPath: '/api/ai/history',
   aiSuggestedPromptsPath: '/api/api/ai/suggested-prompts',
   aiMemoryPath: '/api/api/ai/memory',
   aiAskWithReportPath: '/api/api/ai/ask-with-report',
@@ -124,6 +125,10 @@ export const ENDPOINTS = {
   // ── Family — Notifications 
   familyNotifications: `${BASE_URL}/api/api/family/notifications`,
   familyNotificationsRead: `${BASE_URL}/api/api/family/notifications/read`,
+
+  // ── Global Notifications 
+  globalNotifications: `${BASE_URL}/api/api/notifications`,
+  globalNotificationsReadAll: `${BASE_URL}/api/api/notifications/read-all`,
 
   // ── Family — Member Sub-screens 
   familyMemberHealthSummary: (id: string) => `${BASE_URL}/api/api/family/member/${id}/health-summary`,

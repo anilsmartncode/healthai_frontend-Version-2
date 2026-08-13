@@ -393,8 +393,8 @@ const condStyles = StyleSheet.create({
 
 export default function AIChatScreen() {
   const insets = useSafeAreaInsets();
-  const { prefill, context, sessionId: openSessionId } = useLocalSearchParams<{
-    prefill?: string; context?: string; sessionId?: string;
+  const { prefill, context, sessionId: openSessionId, reportId } = useLocalSearchParams<{
+    prefill?: string; context?: string; sessionId?: string; reportId?: string;
   }>();
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -404,7 +404,7 @@ export default function AIChatScreen() {
   const {
     messages, input, setInput, loading,
     suggestions, alert, send, clearConversation, dismissAlert,
-  } = useAI(prefill, context, openSessionId);
+  } = useAI(prefill, context, openSessionId, reportId);
 
   const { canSendAiChat, incrementAiChat, setShowPaywall } = useUsage();
 

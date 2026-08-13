@@ -83,9 +83,13 @@ export default function Account() {
           setPhoneNumber(data.phone ?? '');
           const dobValue = data.date_of_birth ?? data.dob;
           setDob(dobValue ? new Date(dobValue) : null);
-          let avUrl = data.avatar_url ?? null;
-          if (avUrl && !avUrl.startsWith('http')) {
-            avUrl = avUrl.startsWith('/') ? BASE_URL + avUrl : `${BASE_URL}/${avUrl}`;
+          let avUrl = data.avatar_url ?? data.image_url ?? data.profile_image ?? data.profile_image_url ?? null;
+          if (avUrl) {
+            if (avUrl.includes('.smartncode.com/uploads/')) {
+              avUrl = avUrl.replace('.smartncode.com/uploads/', '.smartncode.com/api/uploads/');
+            } else if (!avUrl.startsWith('http')) {
+              avUrl = avUrl.startsWith('/') ? BASE_URL + avUrl : `${BASE_URL}/${avUrl}`;
+            }
           }
           setAvatarUrl(avUrl);
           setBloodGroup(data.blood_type ?? data.blood_group ?? 'B+');
@@ -198,9 +202,11 @@ export default function Account() {
           body: formData,
         });
 
-        let newAvatarUrl = response?.user?.avatar_url || response?.avatar_url;
+        let newAvatarUrl = response?.user?.avatar_url || response?.avatar_url || response?.image_url || response?.profile_image || response?.user?.image_url || response?.user?.profile_image;
         if (newAvatarUrl) {
-          if (!newAvatarUrl.startsWith('http')) {
+          if (newAvatarUrl.includes('.smartncode.com/uploads/')) {
+            newAvatarUrl = newAvatarUrl.replace('.smartncode.com/uploads/', '.smartncode.com/api/uploads/');
+          } else if (!newAvatarUrl.startsWith('http')) {
             newAvatarUrl = newAvatarUrl.startsWith('/') ? BASE_URL + newAvatarUrl : `${BASE_URL}/${newAvatarUrl}`;
           }
           setAvatarUrl(newAvatarUrl);
@@ -253,9 +259,9 @@ export default function Account() {
         >
         {/* Avatar */}
         <View style={styles.avatarWrap}>
-          <View style={styles.avatar}>
+          <View style={[styles.avatar, avatarUrl ? { backgroundColor: 'transparent', borderWidth: 0 } : {}]}>
             {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={{ width: 78, height: 78, borderRadius: 39 }} resizeMode="cover" />
+              <Image source={{ uri: avatarUrl }} style={{ width: 78, height: 78, borderRadius: 39, backgroundColor: '#E5E7EB' }} resizeMode="cover" />
             ) : name.trim() ? (
               <Text style={styles.avatarInitial}>
                 {name.trim()[0].toUpperCase()}
