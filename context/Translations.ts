@@ -284,7 +284,7 @@ export const translations: Record<LangCode, TranslationKeys> = {
     add_family: 'Add Family member',
     share_message: "Hi! I'm using HealthAI to track my blood reports, monitor key health indicators, and manage my medications. Try it out to take control of your health: ",
     share_card_title: 'Refer your FRIENDS',
-    share_card_desc: 'Invite your friends to join HealthAI and help them stay on top of their health with smart reminders, health tracking, and personalized AI insights.',
+    share_card_desc: 'Invite friends to track their health with smart AI insights.',
     nav_nearby: 'Nearby',
     hospitals: 'Hospitals',
     pharmacies: 'Pharmacies',
