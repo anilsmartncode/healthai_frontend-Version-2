@@ -22,7 +22,6 @@ import { HealthTipCard } from "@/components/home/HealthTipCard";
 import { HealthMetricsSection } from "@/components/home/HealthMetricsSection";
 import { RiskIndicatorsSection } from "@/components/home/RiskIndicatorsSection";
 import { MedicineReminderCard } from "@/components/home/MedicineReminderCard";
-import { ShareAppCard } from "@/components/home/ShareAppCard";
 import { ChatInputBar } from "@/components/ui/ChatInputBar";
 
 
@@ -197,8 +196,6 @@ export default function Home() {
         )}
 
         <HealthTipCard />
-
-        <ShareAppCard />
 
         {hasReports ? <RecentReports reports={reports} /> : <EmptyState />}
       </KeyboardAwareScrollView>

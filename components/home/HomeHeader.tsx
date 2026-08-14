@@ -9,7 +9,7 @@ import { useLang } from "@/context/Languagecontext";
 import { Strings } from "@/constants/Strings";
 import { useNotifications } from "@/hooks/useNotifications";
 
-interface Props {}
+interface Props { }
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -26,7 +26,7 @@ function formatName(raw: string): string {
     .join(" ");
 }
 
-export function HomeHeader({}: Props) {
+export function HomeHeader({ }: Props) {
   const { phone } = useAuth();
   const [userName, setUserName] = useState(formatName(phone ?? "User"));
   const greetingText = getGreeting();
@@ -65,9 +65,10 @@ export function HomeHeader({}: Props) {
         <Pressable
           onPress={handleShare}
           hitSlop={8}
-          style={styles.actionBtn}
+          style={styles.inviteBtn}
         >
-          <Ionicons name="share-outline" size={20} color={Colors.text} />
+          <Ionicons name="gift" size={16} color="#4F46E5" />
+          <Text style={styles.inviteBtnText}>Refer Friends</Text>
         </Pressable>
 
         <Pressable
@@ -120,6 +121,22 @@ const styles = StyleSheet.create({
     borderColor: "#ECEEFF",
     justifyContent: "center",
     alignItems: "center",
+  },
+  inviteBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#EEF2FF",
+    borderWidth: 1,
+    borderColor: "#C7D2FE",
+  },
+  inviteBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#4338CA",
   },
   badge: {
     position: "absolute",
