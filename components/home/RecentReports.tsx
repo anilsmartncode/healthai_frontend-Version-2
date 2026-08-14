@@ -5,6 +5,26 @@ import { Colors, Radius } from "@/constants/Colors";
 import { useLang } from "@/context/Languagecontext";
 import type { ReportListItem } from "@/services/reportsApi";
 
+function formatIndianDateTime(isoString: string | undefined | null, fallback: string): string {
+  if (!isoString) return fallback;
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return fallback;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = d.toLocaleString('en-US', { month: 'short' });
+    const year = d.getFullYear();
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; 
+    const strTime = `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
+    return `${day} ${month} ${year}, ${strTime}`;
+  } catch {
+    return fallback;
+  }
+}
+
 interface CategoryStyle {
   icon: string;
   bg: string;
@@ -43,7 +63,7 @@ function ReportRow({ report }: { report: ReportListItem }) {
   return (
     <View style={reportStyles.row}>
       <View style={[reportStyles.iconWrap, { backgroundColor: catStyle.bg }]}>
-        <Ionicons name={catStyle.icon as any} size={20} color={catStyle.color} />
+        <Ionicons name={catStyle.icon as any} size={18} color={catStyle.color} />
       </View>
 
       <View style={reportStyles.info}>
@@ -51,7 +71,7 @@ function ReportRow({ report }: { report: ReportListItem }) {
           {report.title}
         </Text>
         <View style={reportStyles.metaRow}>
-          <Text style={reportStyles.date} numberOfLines={1}>{report.date}</Text>
+          <Text style={reportStyles.date} numberOfLines={1}>{formatIndianDateTime(report.analyzedAt, report.date)}</Text>
           <Text style={reportStyles.dotDivider}>•</Text>
           <Text style={reportStyles.lab} numberOfLines={1}>
             {report.labName || "General"}
@@ -75,18 +95,18 @@ const reportStyles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
     backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
-    padding: 14,
+    borderRadius: 12,
+    padding: 10,
     borderWidth: 1,
     borderColor: Colors.border,
     width: "100%",
   },
   iconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 38,
+    height: 38,
+    borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
     flexShrink: 0,

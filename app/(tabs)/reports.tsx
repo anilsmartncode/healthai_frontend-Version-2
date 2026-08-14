@@ -35,6 +35,26 @@ import type { ReportListItem } from '@/services/reportsApi';
 import { ChatInputBar } from '@/components/ui/ChatInputBar';
 
 
+function formatIndianDateTime(isoString: string | undefined | null, fallback: string): string {
+  if (!isoString) return fallback;
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return fallback;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = d.toLocaleString('en-US', { month: 'short' });
+    const year = d.getFullYear();
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; 
+    const strTime = `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
+    return `${day} ${month} ${year}, ${strTime}`;
+  } catch {
+    return fallback;
+  }
+}
+
 function statusTag(item: ReportListItem) {
   if (item.status === 'attention') {
     return { label: 'Active', bg: '#FFEDD5', color: '#C2410C' };
@@ -86,14 +106,14 @@ function ReportRow({
       }
     >
       <View style={[styles.reportIcon, { backgroundColor: icon.bg }]}>
-        <Ionicons name="document-text-outline" size={20} color={icon.color} />
+        <Ionicons name="document-text-outline" size={16} color={icon.color} />
       </View>
       <View style={styles.reportInfo}>
         <Text style={styles.reportTitle} numberOfLines={1}>
           {item.title}
         </Text>
         <Text style={styles.reportMeta} numberOfLines={1}>
-          {item.date} • {item.labName || item.category}
+          {formatIndianDateTime(item.analyzedAt, item.date)} • {item.labName || item.category}
         </Text>
       </View>
 
@@ -129,7 +149,7 @@ function ReportRow({
           ]}
           hitSlop={12}
         >
-          <Ionicons name="share-social-outline" size={18} color={Colors.primary} />
+          <Ionicons name="share-social-outline" size={16} color={Colors.primary} />
         </Pressable>
 
         <Pressable
@@ -141,7 +161,7 @@ function ReportRow({
           ]}
           hitSlop={12}
         >
-          <Ionicons name="trash-outline" size={18} color={Colors.danger} />
+          <Ionicons name="trash-outline" size={16} color={Colors.danger} />
         </Pressable>
       </View>
     </Pressable>
@@ -577,22 +597,22 @@ const styles = StyleSheet.create({
   reportRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     backgroundColor: '#fff',
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.border,
-    padding: 12,
+    padding: 8,
   },
   reportIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   reportInfo: { flex: 1, minWidth: 0 },
-  reportTitle: { fontSize: 14, fontWeight: '700', color: Colors.text },
+  reportTitle: { fontSize: 14, fontWeight: '500', color: Colors.text },
   reportMeta: { marginTop: 2, fontSize: 11, color: Colors.textMuted },
   statusPill: {
     borderRadius: Radius.pill,
@@ -678,9 +698,9 @@ const styles = StyleSheet.create({
   },
 
   actionBtnInline: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
