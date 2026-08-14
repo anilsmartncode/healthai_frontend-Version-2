@@ -9,6 +9,7 @@ import {
   Modal,
   Alert,
   Keyboard,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useGlobalSearchParams } from 'expo-router';
@@ -36,11 +37,14 @@ function validatePickedFile(name: string): boolean {
   return true;
 }
 
-export function ChatInputBar({ dropDirection = 'up' }: { dropDirection?: 'up' | 'down' }) {
+export function ChatInputBar() {
   const [input, setInput] = useState('');
   const [inputHeight, setInputHeight] = useState(36);
   const [attachedFile, setAttachedFile] = useState<any>(null);
   const [showMenu, setShowMenu] = useState(false);
+  const [autoDirection, setAutoDirection] = useState<'up' | 'down'>('up');
+
+  const containerRef = useRef<View>(null);
 
   const params = useGlobalSearchParams();
 
@@ -65,7 +69,21 @@ export function ChatInputBar({ dropDirection = 'up' }: { dropDirection?: 'up' | 
   }, [input]);
 
   const handlePlusPress = () => {
-    setShowMenu(!showMenu);
+    if (!showMenu) {
+      containerRef.current?.measure((x, y, width, height, pageX, pageY) => {
+        const screenHeight = Dimensions.get('window').height;
+        // If element is in the top half of the screen, drop down.
+        // If element is in the bottom half, drop up.
+        if (pageY < screenHeight / 2) {
+          setAutoDirection('down');
+        } else {
+          setAutoDirection('up');
+        }
+        setShowMenu(true);
+      });
+    } else {
+      setShowMenu(false);
+    }
   };
 
   const camera = async () => {
@@ -186,7 +204,7 @@ export function ChatInputBar({ dropDirection = 'up' }: { dropDirection?: 'up' | 
         </View>
       )}
 
-      <View style={[styles.inputWrap, { zIndex: showMenu ? 50 : 1 }]}>
+      <View ref={containerRef} style={[styles.inputWrap, { zIndex: showMenu ? 50 : 1 }]}>
 
         {/* Giant invisible backdrop to catch outside taps without a Modal */}
         {showMenu && (
@@ -200,7 +218,7 @@ export function ChatInputBar({ dropDirection = 'up' }: { dropDirection?: 'up' | 
         {showMenu && (
           <View style={[
             styles.inlineMenuContainer,
-            dropDirection === 'down' ? styles.menuDrop : styles.menuUp
+            autoDirection === 'down' ? styles.menuDrop : styles.menuUp
           ]}>
             <Pressable style={styles.menuItem} onPress={scanDoc}>
               <View style={[styles.menuIconWrap, { backgroundColor: '#F3E8FF' }]}>

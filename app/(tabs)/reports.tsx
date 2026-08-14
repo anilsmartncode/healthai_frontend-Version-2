@@ -422,8 +422,8 @@ export default function ReportsScreen() {
             <Text style={styles.headerSub}>Manage and analyze your health reports</Text>
           </View>
         </View>
-        <View style={{ marginBottom: 16, zIndex: 999, elevation: 999 }}>
-          <ChatInputBar dropDirection="down" />
+        <View style={{ marginBottom: 16, zIndex: 100, elevation: 100 }}>
+          <ChatInputBar />
         </View>
       </View>
 
