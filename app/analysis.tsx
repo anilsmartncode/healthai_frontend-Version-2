@@ -20,8 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Colors, Radius } from '@/constants/Colors';
-import type { LabValue } from '@/types';
-import type { ApiSummary, DetectedMedicine } from '@/types/Report/reportype';
+import type { ApiSummary, DetectedMedicine, LabValue } from '@/types/Report/reportype';
 import { api } from '@/services/api';
 import { ENDPOINTS } from '@/constants/api';
 import { LanguageSelectModal } from '@/components/ui/LanguageSelectModal';
@@ -29,6 +28,23 @@ import { AnalysisSummaryCard } from '@/components/reports/AnalysisSummaryCard';
 import { AIExplanationCard } from '@/components/reports/AIExplanationCard';
 
 type ViewMode = 'parameter' | 'category';
+
+function isUsableValue(v: LabValue): boolean {
+  if (!v || !v.value) return false;
+  const val = String(v.value).trim().toLowerCase();
+  
+  if (val === '') return false;
+
+  // Split by whitespace to handle cases like "N/A N/A" or "Unknown Unknown"
+  const words = val.split(/\s+/);
+  const dummyWords = new Set(['n/a', 'na', 'unknown', 'null', 'undefined', '-', '--']);
+  
+  const isAllDummy = words.every(
+    (word) => dummyWords.has(word) || word === 'not' || word === 'available' || word === 'provided'
+  );
+
+  return !isAllDummy;
+}
 
 function escapeHtml(str?: string): string {
   if (!str) return '';
@@ -211,7 +227,9 @@ export default function AnalysisScreen() {
     }
   }, [params.values]);
 
-  const abnormal = values.filter((v) => v.status === 'high' || v.status === 'low');
+  const usableValues = useMemo(() => values.filter(isUsableValue), [values]);
+
+  const abnormal = usableValues.filter((v) => v.status === 'high' || v.status === 'low');
 
   const detectedMedicines: DetectedMedicine[] = useMemo(() => {
     if (!params.detectedMedicines) return [];
@@ -233,11 +251,13 @@ export default function AnalysisScreen() {
     }
   }
 
+  const isUnanalyzable = usableValues.length === 0 && detectedMedicines.length === 0;
+
   const grouped = useMemo(() => {
     if (viewMode === 'category') {
       const map = new Map<string, LabValue[]>();
       const order = ['Abnormal', 'Normal'];
-      values.forEach((v) => {
+      usableValues.forEach((v) => {
         const key = v.status === 'high' || v.status === 'low' ? 'Abnormal' : 'Normal';
         if (!map.has(key)) map.set(key, []);
         map.get(key)!.push(v);
@@ -248,7 +268,7 @@ export default function AnalysisScreen() {
     }
 
     const map = new Map<string, LabValue[]>();
-    values.forEach((v) => {
+    usableValues.forEach((v) => {
       const key = categorizeParam(v.name);
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(v);
@@ -270,7 +290,7 @@ export default function AnalysisScreen() {
       ...Array.from(map.keys()).filter((k) => !preferred.includes(k)),
     ];
     return titles.map((title) => ({ title, items: map.get(title)! }));
-  }, [values, viewMode]);
+  }, [usableValues, viewMode]);
 
   const toggleExpand = (key: string) => {
     setExpandedIds((prev) => {
@@ -405,7 +425,7 @@ export default function AnalysisScreen() {
   const handleSharePdf = async () => {
     setSharing(true);
     try {
-      const valuesRows = values
+      const valuesRows = usableValues
         .map(
           (v) => `
         <tr>
@@ -526,14 +546,16 @@ export default function AnalysisScreen() {
         ) : null}
 
         {/* Health score overview (previous Report Analysis) */}
-        <AnalysisSummaryCard
-          abnormalCount={abnormal.length}
-          totalCount={values.length}
-          abnormalValues={abnormal}
-          healthScore={parsedSummary?.health_score}
-          conditionSeverity={parsedSummary?.condition_severity}
-          conditionColor={parsedSummary?.condition_color}
-        />
+        {!isUnanalyzable && (
+          <AnalysisSummaryCard
+            abnormalCount={abnormal.length}
+            totalCount={usableValues.length}
+            abnormalValues={abnormal}
+            healthScore={parsedSummary?.health_score}
+            conditionSeverity={parsedSummary?.condition_severity}
+            conditionColor={parsedSummary?.condition_color}
+          />
+        )}
 
         {/* AI insights: simple words, risks, next steps, symptoms, doctor, diet, etc. */}
         {(rawSummarySource || translatedNarrative || params.narrative) ? (
@@ -553,106 +575,124 @@ export default function AnalysisScreen() {
           </View>
         ) : null}
 
-        {/* Segmented control */}
-        <View style={styles.segment}>
-          <Pressable
-            style={[styles.segmentBtn, viewMode === 'parameter' && styles.segmentBtnActive]}
-            onPress={() => setViewMode('parameter')}
-          >
-            <Text
-              style={[styles.segmentTxt, viewMode === 'parameter' && styles.segmentTxtActive]}
-            >
-              By Parameter
+        {isUnanalyzable && (
+          <View style={styles.emptyStateCard}>
+            <Ionicons name="document-text-outline" size={48} color={Colors.textMuted} style={{ alignSelf: 'center', marginBottom: 12 }} />
+            <Text style={styles.emptyStateTitle}>We couldn't analyze this report</Text>
+            <Text style={styles.emptyStateText}>
+              The provided file or text did not contain any readable lab values or medicines. Please upload a clear medical report or prescription.
             </Text>
-            {viewMode === 'parameter' && <View style={styles.segmentUnderline} />}
-          </Pressable>
-          <Pressable
-            style={[styles.segmentBtn, viewMode === 'category' && styles.segmentBtnActive]}
-            onPress={() => setViewMode('category')}
-          >
-            <Text
-              style={[styles.segmentTxt, viewMode === 'category' && styles.segmentTxtActive]}
-            >
-              By Category
-            </Text>
-            {viewMode === 'category' && <View style={styles.segmentUnderline} />}
-          </Pressable>
-        </View>
-
-        {values.length === 0 ? (
-          <Text style={styles.empty}>No values to show.</Text>
-        ) : (
-          grouped.map((g) => (
-            <CategorySection
-              key={g.title}
-              title={g.title}
-              items={g.items}
-              expandedIds={expandedIds}
-              toggleExpand={toggleExpand}
-              collapsed={isSectionCollapsed(g.title)}
-              onToggleCollapse={() => toggleSection(g.title)}
-            />
-          ))
+            <Pressable style={styles.uploadBtn} onPress={() => router.replace('/(tabs)/reports')}>
+              <Ionicons name="cloud-upload-outline" size={18} color="#fff" />
+              <Text style={styles.uploadBtnText}>Upload a new report</Text>
+            </Pressable>
+          </View>
         )}
 
-        {detectedMedicines.length > 0 && (
-          <View style={styles.sectionWrap}>
-            <Text style={styles.sectionTitle}>Medicines Detected</Text>
-            <View style={styles.sectionCard}>
-              {detectedMedicines.map((m, i) => (
+        {!isUnanalyzable && (
+          <>
+            {/* Segmented control */}
+            <View style={styles.segment}>
+              <Pressable
+                style={[styles.segmentBtn, viewMode === 'parameter' && styles.segmentBtnActive]}
+                onPress={() => setViewMode('parameter')}
+              >
+                <Text
+                  style={[styles.segmentTxt, viewMode === 'parameter' && styles.segmentTxtActive]}
+                >
+                  By Parameter
+                </Text>
+                {viewMode === 'parameter' && <View style={styles.segmentUnderline} />}
+              </Pressable>
+              <Pressable
+                style={[styles.segmentBtn, viewMode === 'category' && styles.segmentBtnActive]}
+                onPress={() => setViewMode('category')}
+              >
+                <Text
+                  style={[styles.segmentTxt, viewMode === 'category' && styles.segmentTxtActive]}
+                >
+                  By Category
+                </Text>
+                {viewMode === 'category' && <View style={styles.segmentUnderline} />}
+              </Pressable>
+            </View>
+
+            {usableValues.length === 0 ? (
+              <Text style={styles.empty}>No values to show.</Text>
+            ) : (
+              grouped.map((g) => (
+                <CategorySection
+                  key={g.title}
+                  title={g.title}
+                  items={g.items}
+                  expandedIds={expandedIds}
+                  toggleExpand={toggleExpand}
+                  collapsed={isSectionCollapsed(g.title)}
+                  onToggleCollapse={() => toggleSection(g.title)}
+                />
+              ))
+            )}
+
+            {detectedMedicines.length > 0 && (
+              <View style={styles.sectionWrap}>
+                <Text style={styles.sectionTitle}>Medicines Detected</Text>
+                <View style={styles.sectionCard}>
+                  {detectedMedicines.map((m, i) => (
+                    <Pressable
+                      key={m.name}
+                      style={[styles.medRow, i > 0 && styles.rowDivider]}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/medicines/browse',
+                          params: { query: m.name },
+                        })
+                      }
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.resultName}>{m.name}</Text>
+                        <Text style={styles.expandText} numberOfLines={2}>
+                          {m.reason}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Ask HealthAI CTA */}
+            <View style={styles.askBanner}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.askTitle}>Want to understand your results better?</Text>
+                <Text style={styles.askSub}>Ask HealthAI for a detailed explanation.</Text>
                 <Pressable
-                  key={m.name}
-                  style={[styles.medRow, i > 0 && styles.rowDivider]}
+                  style={styles.askBtn}
                   onPress={() =>
                     router.push({
-                      pathname: '/medicines/browse',
-                      params: { query: m.name },
+                      pathname: '/ai-chat',
+                      params: {
+                        prefill: `My ${params.reportType ?? 'report'} shows ${abnormal.length} abnormal value${abnormal.length !== 1 ? 's' : ''}${parsedSummary?.condition_severity ? ` and overall status is ${parsedSummary.condition_severity}` : ''}. What does this mean and what should I do?`,
+                        context: params.summary ?? '',
+                      },
                     })
                   }
                 >
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.resultName}>{m.name}</Text>
-                    <Text style={styles.expandText} numberOfLines={2}>
-                      {m.reason}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+                  <Text style={styles.askBtnText}>Ask HealthAI</Text>
                 </Pressable>
-              ))}
+              </View>
+              <View style={styles.askArt}>
+                <Ionicons name="chatbubbles" size={28} color={Colors.primary} />
+                <Ionicons
+                  name="sparkles"
+                  size={14}
+                  color={Colors.primary}
+                  style={{ position: 'absolute', top: 2, right: 2 }}
+                />
+              </View>
             </View>
-          </View>
+          </>
         )}
-
-        {/* Ask HealthAI CTA */}
-        <View style={styles.askBanner}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.askTitle}>Want to understand your results better?</Text>
-            <Text style={styles.askSub}>Ask HealthAI for a detailed explanation.</Text>
-            <Pressable
-              style={styles.askBtn}
-              onPress={() =>
-                router.push({
-                  pathname: '/ai-chat',
-                  params: {
-                    prefill: `My ${params.reportType ?? 'report'} shows ${abnormal.length} abnormal value${abnormal.length !== 1 ? 's' : ''}${parsedSummary?.condition_severity ? ` and overall status is ${parsedSummary.condition_severity}` : ''}. What does this mean and what should I do?`,
-                    context: params.summary ?? '',
-                  },
-                })
-              }
-            >
-              <Text style={styles.askBtnText}>Ask HealthAI</Text>
-            </Pressable>
-          </View>
-          <View style={styles.askArt}>
-            <Ionicons name="chatbubbles" size={28} color={Colors.primary} />
-            <Ionicons
-              name="sparkles"
-              size={14}
-              color={Colors.primary}
-              style={{ position: 'absolute', top: 2, right: 2 }}
-            />
-          </View>
-        </View>
       </ScrollView>
 
       <LanguageSelectModal
@@ -853,5 +893,43 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 40,
     fontSize: 14,
+  },
+  
+  emptyStateCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  emptyStateTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  uploadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: Radius.pill,
+  },
+  uploadBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

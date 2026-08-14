@@ -22,6 +22,22 @@ import { generateReportNarrative } from '@/services/aiService';
 
 type PickedFile = { uri: string; name: string; mimeType: string; size?: number; lastModified?: number; isPasted?: boolean };
 
+function isUsableValue(v: any): boolean {
+  if (!v || !v.value) return false;
+  const val = String(v.value).trim().toLowerCase();
+  
+  if (val === '') return false;
+
+  const words = val.split(/\s+/);
+  const dummyWords = new Set(['n/a', 'na', 'unknown', 'null', 'undefined', '-', '--']);
+  
+  const isAllDummy = words.every(
+    (word) => dummyWords.has(word) || word === 'not' || word === 'available' || word === 'provided'
+  );
+
+  return !isAllDummy;
+}
+
 // ── Convert raw pasted text into a formatted PDF document on device ───────────
 async function createPdfFromText(text: string, context?: string): Promise<PickedFile> {
   const safeText = String(text)
@@ -149,11 +165,13 @@ export default function Upload() {
         fileUri: targetFile.uri,
       }, phone, cancelControllerRef.current.signal);
 
+      const usableValues = (result.values || []).filter(isUsableValue);
+
       const hasData = context === 'prescription'
         ? (result.detectedMedicines && result.detectedMedicines.length > 0)
-        : (result.values && result.values.length > 0);
+        : (usableValues.length > 0);
 
-      if (!hasData) throw new Error('Please provide clear report text or document');
+      if (!hasData) throw new Error('We couldn\'t analyze this report. The provided text or document did not contain any readable medical lab values.');
 
       if (result.duplicate) {
         Alert.alert('Already Uploaded', 'This report was already uploaded and analyzed previously. Showing the existing analysis.');
