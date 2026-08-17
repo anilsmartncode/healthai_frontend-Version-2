@@ -212,18 +212,8 @@ export default function Medicines() {
   }, [todayReminders, todayBanner]);
 
   const scheduleItems = todayReminders.slice(0, 2);
-  const refillMed = recentlyViewed[0] ?? null;
 
-  const libraryCats: Category[] = [
-    {
-      id: 'all',
-      name: 'All Medicines',
-      icon: 'medical',
-      color: '#16A34A',
-      bg: '#DCFCE7',
-    },
-    ...categories.slice(0, 8),
-  ];
+
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -295,30 +285,11 @@ export default function Medicines() {
             </Pressable>
           </View>
 
-          {/* Promo banner */}
-          <Pressable style={styles.promoBanner} onPress={handleViewReminder}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.promoTitle}>Stay on track with your medicines</Text>
-              <Text style={styles.promoSub}>
-                Get reminders, track intake and never miss a dose.
-              </Text>
-            </View>
-            <View style={styles.promoArt}>
-              <Ionicons name="medical" size={22} color={Colors.primary} />
-              <View style={styles.promoClock}>
-                <Ionicons name="time" size={14} color={Colors.primary} />
-              </View>
-            </View>
-          </Pressable>
 
           {/* Today's Schedule */}
           <View style={styles.section}>
             <View style={styles.secHeader}>
               <Text style={styles.secTitle}>Today's Schedule</Text>
-              <Pressable style={styles.linkRow} onPress={handleViewReminder} hitSlop={8}>
-                <Ionicons name="calendar-outline" size={14} color={Colors.primary} />
-                <Text style={styles.linkTxt}>View calendar</Text>
-              </Pressable>
             </View>
 
             <View style={styles.card}>
@@ -393,118 +364,9 @@ export default function Medicines() {
             </View>
           </View>
 
-          {/* Medicine Reminders stats */}
-          <View style={styles.section}>
-            <View style={styles.secHeader}>
-              <Text style={styles.secTitle}>Medicine Reminders</Text>
-              <Pressable onPress={handleViewReminder} hitSlop={8}>
-                <Text style={styles.linkTxt}>View all ›</Text>
-              </Pressable>
-            </View>
-            <View style={styles.statsRow}>
-              <Pressable style={styles.statCard} onPress={handleViewReminder}>
-                <View style={[styles.statIcon, { backgroundColor: '#DCFCE7' }]}>
-                  <Ionicons name="alarm" size={16} color="#16A34A" />
-                </View>
-                <Text style={[styles.statNum, { color: '#16A34A' }]}>{stats.active}</Text>
-                <Text style={styles.statLabel}>Active Reminders</Text>
-                <Text style={styles.statHint}>On track</Text>
-              </Pressable>
-              <Pressable style={styles.statCard} onPress={handleViewReminder}>
-                <View style={[styles.statIcon, { backgroundColor: '#FFEDD5' }]}>
-                  <Ionicons name="alert-circle" size={16} color="#EA580C" />
-                </View>
-                <Text style={[styles.statNum, { color: '#EA580C' }]}>{stats.missed}</Text>
-                <Text style={styles.statLabel}>Missed</Text>
-                <Text style={styles.statHint}>{stats.missed === 0 ? 'Great!' : 'Review'}</Text>
-              </Pressable>
-              <Pressable style={styles.statCard} onPress={handleViewReminder}>
-                <View style={[styles.statIcon, { backgroundColor: '#DBEAFE' }]}>
-                  <Ionicons name="calendar" size={16} color="#2563EB" />
-                </View>
-                <Text style={[styles.statNum, { color: '#2563EB' }]}>{stats.week}</Text>
-                <Text style={styles.statLabel}>This Week</Text>
-                <Text style={styles.statHint}>Doses</Text>
-              </Pressable>
-              <Pressable style={styles.statCard} onPress={handleViewReminder}>
-                <View style={[styles.statIcon, { backgroundColor: '#F3E8FF' }]}>
-                  <Ionicons name="stats-chart" size={16} color="#7C3AED" />
-                </View>
-                <Text style={[styles.statNum, { color: '#7C3AED' }]}>{stats.adherence}%</Text>
-                <Text style={styles.statLabel}>Adherence</Text>
-                <Text style={styles.statHint}>
-                  {stats.adherence >= 90 ? 'Excellent' : 'Keep going'}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
 
-          {/* Refill & Orders */}
-          <View style={styles.section}>
-            <View style={styles.secHeader}>
-              <Text style={styles.secTitle}>Refill & Orders</Text>
-              <Pressable onPress={() => router.push('/medicines/my-medicines')} hitSlop={8}>
-                <Text style={styles.linkTxt}>View all ›</Text>
-              </Pressable>
-            </View>
-            <View style={styles.card}>
-              {refillMed ? (
-                <View style={styles.refillRow}>
-                  <View style={styles.bottleIcon}>
-                    <Ionicons name="flask-outline" size={22} color={Colors.primary} />
-                  </View>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={styles.medName} numberOfLines={1}>
-                      {refillMed.name}
-                    </Text>
-                    <Text style={styles.medHint}>
-                      {refillMed.form} • {refillMed.category}
-                    </Text>
-                    <Text style={styles.refillNote}>Recently viewed medicine</Text>
-                  </View>
-                  <Pressable
-                    style={styles.orderBtn}
-                    onPress={() => handleMedicinePress(refillMed)}
-                  >
-                    <Text style={styles.orderBtnTxt}>Order Again</Text>
-                  </Pressable>
-                </View>
-              ) : (
-                <Pressable
-                  style={styles.emptySchedule}
-                  onPress={() => router.push('/medicines/my-medicines')}
-                >
-                  <Text style={styles.emptyTitle}>No refill items yet</Text>
-                  <Text style={styles.emptySub}>Saved medicines will appear here</Text>
-                </Pressable>
-              )}
-            </View>
-          </View>
 
-          {/* Medicine Library */}
-          <View style={styles.section}>
-            <View style={styles.secHeader}>
-              <Text style={styles.secTitle}>Medicine Library</Text>
-              <Pressable onPress={handleBrowseAll} hitSlop={8}>
-                <Text style={styles.linkTxt}>View all ›</Text>
-              </Pressable>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.libRow}
-            >
-              {libraryCats.map((cat) => (
-                <LibraryCard
-                  key={cat.id}
-                  cat={cat}
-                  onPress={() =>
-                    cat.id === 'all' ? handleBrowseAll() : handleCategoryPress(cat)
-                  }
-                />
-              ))}
-            </ScrollView>
-          </View>
+
 
           {/* Quick actions kept reachable */}
           <View style={styles.quickRow}>
