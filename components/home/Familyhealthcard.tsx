@@ -25,6 +25,14 @@ export function FamilyHealthCard() {
       .substring(0, 2);
   };
 
+  const formatName = (raw: string) => {
+    if (!raw) return "";
+    return raw
+      .split(/[._\-\s]+/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(" ");
+  };
+
 
 
   return (
@@ -37,13 +45,13 @@ export function FamilyHealthCard() {
           <View style={styles.leftCol}>
             <View style={styles.titleRow}>
               <Ionicons name="people-outline" size={20} color={Colors.primary} />
-              <Text style={styles.title}>{t("family_health")}</Text>
+              <Text style={styles.title}>Family Member Health</Text>
             </View>
             {loading ? (
               <ActivityIndicator size="small" color={Colors.primary} style={styles.loader} />
             ) : (
               <Text style={styles.subtitle}>
-                {members.length} {members.length === 1 ? "member" : "members"} connected • Average: {avgScore} ({scoreLabel})
+                {members.length === 1 ? "Family Admin" : `${members.length} members connected`} • Average: {avgScore} ({scoreLabel})
               </Text>
             )}
           </View>
@@ -63,7 +71,7 @@ export function FamilyHealthCard() {
                     <View style={[styles.scoreDot, { backgroundColor: color }]} />
                   </View>
                   <Text style={styles.memberName} numberOfLines={1}>
-                    {member.name}
+                    {formatName(member.name)}
                   </Text>
                 </View>
               );
@@ -76,8 +84,8 @@ export function FamilyHealthCard() {
               <View style={[styles.avatar, { borderColor: '#3B82F6', borderStyle: 'dashed', backgroundColor: '#EFF6FF' }]}>
                 <Ionicons name="add" size={22} color="#3B82F6" />
               </View>
-              <Text style={styles.memberName} numberOfLines={1}>
-                Add family
+              <Text style={styles.memberName} numberOfLines={2}>
+                Add Family{"\n"}Member
               </Text>
             </Pressable>
           </View>

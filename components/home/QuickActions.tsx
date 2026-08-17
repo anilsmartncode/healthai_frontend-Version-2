@@ -17,7 +17,6 @@ const ACTIONS: {
     route: "/interactions",
     bg: "#FEF3C7",
   },
-  { icon: "people-outline", key: "add_family", route: "/family", bg: "#F0FDF4" },
   {
     icon: "alarm-outline",
     key: "medicine_reminder",
@@ -65,7 +64,7 @@ const styles = StyleSheet.create({
   },
   list: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "space-around",
     alignItems: "flex-start",
   },
   listItem: {

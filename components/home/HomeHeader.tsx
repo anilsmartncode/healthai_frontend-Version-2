@@ -36,7 +36,7 @@ export function HomeHeader({ }: Props) {
   useEffect(() => {
     const cacheKey = `healthai_profile_name_${phone ?? 'guest'}`;
     AsyncStorage.getItem(cacheKey).then(name => {
-      if (name && name.trim()) setUserName(name.trim());
+      if (name && name.trim()) setUserName(formatName(name.trim()));
     });
   }, [phone]);
 

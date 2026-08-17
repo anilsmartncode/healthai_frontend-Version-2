@@ -184,7 +184,7 @@ export default function Home() {
         />
 
         <View style={styles.sectionGroup}>
-          <Text style={styles.sectionHeading}>{t("family_health")}</Text>
+          <Text style={styles.sectionHeading}>Family Members Health</Text>
           <FamilyHealthCard />
         </View>
 
