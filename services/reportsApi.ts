@@ -833,7 +833,7 @@ export const reportsApi = {
           reportTypeFull: raw.reportTypeFull ?? raw.report_type_full ?? raw.report_type ?? '',
           category: deriveCategory(raw.reportType ?? raw.report_type ?? ''),
           date: displayDate,
-          labName: raw.labName ?? raw.lab_name ?? raw.hospitalName ?? raw.hospital_name ?? 'Unknown',
+          labName: raw.labName ?? raw.lab_name ?? raw.hospitalName ?? raw.hospital_name ?? '',
           fileType: (raw.fileType ?? raw.file_type ?? 'IMAGE') as 'PDF' | 'IMAGE',
           healthScore: finalHealthScore,
           healthLabel: raw.healthLabel ?? raw.health_label ?? scoreToLabel(finalHealthScore),

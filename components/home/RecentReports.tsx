@@ -59,6 +59,13 @@ function ReportRow({ report }: { report: ReportListItem }) {
   const isGood = report.status === "good";
   const statusColor = isGood ? "#16A34A" : "#F97316";
   const statusBg = isGood ? "#DCFCE7" : "#FFEDD5";
+  
+  const displayLabName = report.labName && !['Unknown', 'Lab', 'General'].includes(report.labName)
+    ? report.labName
+    : (report.category && report.category !== 'Others' ? report.category : "Report");
+
+  const isJunkTitle = /^\d+$/.test(report.title.replace(/\.\w+$/, '')) || /img_|screenshot|whatsapp/i.test(report.title);
+  const subText = isJunkTitle ? (report.reportTypeFull || report.category || 'Report') : report.title;
 
   return (
     <View style={reportStyles.row}>
@@ -68,13 +75,13 @@ function ReportRow({ report }: { report: ReportListItem }) {
 
       <View style={reportStyles.info}>
         <Text style={reportStyles.name} numberOfLines={1}>
-          {report.title}
+          {displayLabName}
         </Text>
         <View style={reportStyles.metaRow}>
           <Text style={reportStyles.date} numberOfLines={1}>{formatIndianDateTime(report.analyzedAt, report.date)}</Text>
           <Text style={reportStyles.dotDivider}>•</Text>
           <Text style={reportStyles.lab} numberOfLines={1}>
-            {report.labName || "General"}
+            {subText}
           </Text>
           <View style={reportStyles.typeBadge}>
             <Text style={reportStyles.typeText}>{report.fileType}</Text>

@@ -87,6 +87,13 @@ function ReportRow({
         ? Colors.warning
         : Colors.danger;
 
+  const displayLabName = item.labName && !['Unknown', 'Lab', 'General'].includes(item.labName)
+    ? item.labName
+    : (item.category && item.category !== 'Others' ? item.category : "Report");
+
+  const isJunkTitle = /^\d+$/.test(item.title.replace(/\.\w+$/, '')) || /img_|screenshot|whatsapp/i.test(item.title);
+  const subText = isJunkTitle ? (item.reportTypeFull || item.category || 'Report') : item.title;
+
   const handleDelete = () => {
     Alert.alert('Delete Report', `Remove "${item.title}" from your reports?`, [
       { text: 'Cancel', style: 'cancel' },
@@ -110,10 +117,10 @@ function ReportRow({
       </View>
       <View style={styles.reportInfo}>
         <Text style={styles.reportTitle} numberOfLines={1}>
-          {item.title}
+          {displayLabName}
         </Text>
         <Text style={styles.reportMeta} numberOfLines={1}>
-          {formatIndianDateTime(item.analyzedAt, item.date)} • {item.labName || item.category}
+          {formatIndianDateTime(item.analyzedAt, item.date)} • {subText}
         </Text>
       </View>
 
