@@ -377,13 +377,7 @@ export default function Profile() {
             <Text style={styles.title}>Profile</Text>
             <Text style={styles.subtitle}>Manage your account and preferences</Text>
           </View>
-          <Pressable
-            style={styles.headerBtn}
-            onPress={() => router.push('/account' as any)}
-            hitSlop={8}
-          >
-            <Ionicons name="settings-outline" size={20} color={Colors.text} />
-          </Pressable>
+
           <Pressable
             style={styles.headerBtn}
             onPress={() => router.push('/notifications' as any)}
@@ -488,28 +482,6 @@ export default function Profile() {
           </View>
         </Pressable>
 
-        {/* Quick stats — dynamic 2×2 grid */}
-        <View style={styles.statsGrid}>
-          {[0, 1].map((row) => (
-            <View key={`stat-row-${row}`} style={styles.statsRow}>
-              {quickStats.slice(row * 2, row * 2 + 2).map((s) => (
-                <Pressable
-                  key={s.key}
-                  style={styles.statCard}
-                  onPress={s.onPress}
-                >
-                  <View style={[styles.statIcon, { backgroundColor: s.bg }]}>
-                    <Ionicons name={s.icon} size={18} color={s.color} />
-                  </View>
-                  <View style={styles.statTextWrap}>
-                    <Text style={styles.statLabel}>{s.label}</Text>
-                    <Text style={styles.statValue}>{s.value}</Text>
-                  </View>
-                </Pressable>
-              ))}
-            </View>
-          ))}
-        </View>
 
         {/* Account & Settings */}
         <Text style={styles.sectionTitle}>Account & Settings</Text>
@@ -632,16 +604,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    paddingVertical: 16,
   },
   avatarWrap: { width: 72, height: 72, marginTop: 2 },
   avatarImg: { width: 72, height: 72, borderRadius: 36 },
@@ -757,19 +720,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.text,
   },
-  menuCard: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: 'hidden',
-  },
+  menuCard: {},
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     paddingVertical: 14,
-    paddingHorizontal: 14,
+    paddingHorizontal: 4,
   },
   menuDivider: {
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -837,11 +794,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    paddingVertical: 14,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    paddingVertical: 10,
   },
   logoutText: { fontSize: 15, fontWeight: '700', color: Colors.danger },
 
