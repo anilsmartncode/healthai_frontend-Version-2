@@ -409,10 +409,10 @@ function parseHealthScore(raw?: ApiSummary | string): number {
   return isNaN(n) ? 0 : n;
 }
 
-function extractDetectedMedicines(summary?: ApiSummary | string): DetectedMedicine[] {
+function extractDetectedMedicines(summary?: any): DetectedMedicine[] {
   if (!summary) return [];
-  const s = typeof summary === 'string' ? (() => { try { return JSON.parse(summary) as ApiSummary; } catch { return null; } })() : summary;
-  return s?.detected_medicines ?? [];
+  const s: any = typeof summary === 'string' ? (() => { try { return JSON.parse(summary); } catch { return null; } })() : summary;
+  return s?.detected_medicines ?? s?.detectedMedicines ?? s?.medicines ?? [];
 }
 
 // ─── Shared real-API JSON caller (GET/DELETE) — mirrors medicineApiCall ──────
@@ -558,7 +558,27 @@ async function apiFileCall(url: string, formData: FormData, externalSignal?: Abo
   return rawData as ApiAnalyzeResponse;
 }
 
-function apiToAnalyzeResult(result: ApiAnalyzeResponse): AnalyzeResult {
+function apiToAnalyzeResult(result: any): AnalyzeResult {
+  // 1. Aggressively look for medicines at the root (in case backend sent a prescription-specific response)
+  const rootMeds = result.medicines || result.detectedMedicines || result.detected_medicines || result.data?.medicines;
+  if (rootMeds && Array.isArray(rootMeds) && rootMeds.length > 0) {
+    return {
+      reportId: result.report_id || Date.now(),
+      patientName: '',
+      hospitalName: '',
+      reportType: 'Prescription',
+      reportTypeFull: 'Prescription Upload',
+      category: 'Others',
+      summary: '{}',
+      values: [],
+      healthScore: 0,
+      healthLabel: '',
+      totalValues: 0,
+      abnormalCount: 0,
+      detectedMedicines: result.medicines,
+    };
+  }
+
   const summaryStr =
     typeof result.summary === 'string'
       ? result.summary
@@ -566,15 +586,16 @@ function apiToAnalyzeResult(result: ApiAnalyzeResponse): AnalyzeResult {
         ? JSON.stringify(result.summary)
         : '{}';
 
-  const values = mapApiLabValues(result.data);
+  const safeData = Array.isArray(result.data) ? result.data : [];
+  const values = mapApiLabValues(safeData);
   const abnormalCount = values.filter(v => v.status === 'high' || v.status === 'low').length;
   const healthScore = parseHealthScore(result.summary);
   const category = deriveCategory(result.report_type ?? '');
 
   return {
     reportId: result.report_id,
-    patientName: result.data[0]?.['Patient Name'] ?? '',
-    hospitalName: result.data[0]?.['Hospital Name'] ?? '',
+    patientName: safeData[0]?.['Patient Name'] ?? '',
+    hospitalName: safeData[0]?.['Hospital Name'] ?? '',
     reportType: result.report_type ?? '',
     reportTypeFull: result.report_type_full ?? '',
     category,

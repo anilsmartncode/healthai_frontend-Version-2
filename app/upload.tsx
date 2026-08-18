@@ -167,11 +167,28 @@ export default function Upload() {
 
       const usableValues = (result.values || []).filter(isUsableValue);
 
+      let finalMedicines = result.detectedMedicines || [];
+
+      // If backend parsed the prescription as a generic lab report, medicines might be inside usableValues
+      if (context === 'prescription' && finalMedicines.length === 0 && usableValues.length > 0) {
+        finalMedicines = usableValues.map((v: any) => ({
+          name: v.name,
+          dosage: v.value || '',
+          reason: v.simpleMeaning || '',
+          type: 'mentioned'
+        }));
+      }
+
       const hasData = context === 'prescription'
-        ? (result.detectedMedicines && result.detectedMedicines.length > 0)
+        ? (finalMedicines.length > 0)
         : (usableValues.length > 0);
 
-      if (!hasData) throw new Error('We couldn\'t analyze this report. The provided text or document did not contain any readable medical lab values.');
+      if (!hasData) {
+        if (context === 'prescription') {
+          throw new Error('We couldn\'t analyze this prescription. The provided document did not contain any readable medicines.');
+        }
+        throw new Error('We couldn\'t analyze this report. The provided text or document did not contain any readable medical lab values.');
+      }
 
       if (result.duplicate) {
         Alert.alert('Already Uploaded', 'This report was already uploaded and analyzed previously. Showing the existing analysis.');
@@ -180,7 +197,7 @@ export default function Upload() {
       }
 
       if (context === 'prescription') {
-        router.replace({ pathname: '/medicines/prescription-review', params: { detectedMedicines: JSON.stringify(result.detectedMedicines) } });
+        router.replace({ pathname: '/medicines/prescription-review', params: { detectedMedicines: JSON.stringify(finalMedicines) } });
       } else {
         router.replace({
           pathname: '/analysis',

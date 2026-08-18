@@ -29,7 +29,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { getMedicineDetails, saveMedicine, removeSavedMedicine, getSavedMedicines, getScanHistory, type Medicine, type ScanHistoryItem } from '@/services/medicineTabApi';
 import { LanguageSelectModal } from '@/components/ui/LanguageSelectModal';
@@ -41,6 +41,28 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
+function getFormIcon(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes('syrup') || n.includes('suspension')) return 'bottle-tonic-plus';
+  if (n.includes('injection') || n.includes('vaccine') || n.includes('pen')) return 'needle';
+  if (n.includes('drop')) return 'water-outline';
+  if (n.includes('cream') || n.includes('gel') || n.includes('ointment')) return 'lotion';
+  if (n.includes('inhaler') || n.includes('spray')) return 'spray';
+  if (n.includes('capsule')) return 'pill';
+  return 'pill';
+}
+
+function getFormColor(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes('syrup') || n.includes('suspension')) return '#D97706';
+  if (n.includes('injection') || n.includes('vaccine') || n.includes('pen')) return '#DC2626';
+  if (n.includes('drop')) return '#0284C7';
+  if (n.includes('cream') || n.includes('gel') || n.includes('ointment')) return '#9333EA';
+  if (n.includes('inhaler') || n.includes('spray')) return '#059669';
+  if (n.includes('capsule')) return '#EA580C';
+  return '#DB2777';
+}
+
 export default function MedicineDetail() {
   const { id, from, isSaved } = useLocalSearchParams<{ id: string; from?: string; isSaved?: string }>();
   const [medicine, setMedicine] = useState<Medicine | null>(null);
@@ -48,7 +70,6 @@ export default function MedicineDetail() {
   const [saved, setSaved] = useState(isSaved === 'true');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(false);
   const [langModalOpen, setLangModalOpen] = useState(false);
   const [currentLang, setCurrentLang] = useState<string | null>(null);
   const [translating, setTranslating] = useState(false);
@@ -84,10 +105,6 @@ export default function MedicineDetail() {
       .finally(() => setLoading(false));
   }, [id, isSaved]);
 
-  const toggleExpanded = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpanded((prev) => !prev);
-  };
 
   const handleToggleSave = async () => {
     if (!medicine || saving) return;
@@ -238,16 +255,6 @@ export default function MedicineDetail() {
   }
 
   const rawSideEffects = translatedSideEffects ?? medicine.sideEffects ?? [];
-  const hasMultipleEffects = rawSideEffects.length > 2;
-  const displayedEffects = expanded ? rawSideEffects : rawSideEffects.slice(0, 2);
-
-  const hasExtraDetails = Boolean(
-    medicine.patientSummary ||
-    medicine.aiSummaryDetails ||
-    medicine.description ||
-    hasMultipleEffects ||
-    medicine.warnings
-  );
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -301,19 +308,13 @@ export default function MedicineDetail() {
       >
         {/* ── Header Hero Card ── */}
         <View style={styles.headerCard}>
-          <View style={styles.heroTopRow}>
-            <View style={styles.iconWrap}>
-              <Ionicons name="medical" size={28} color={Colors.primary} />
-            </View>
-            <View style={styles.heroTitleWrap}>
-              <Text style={styles.title}>{medicine.name}</Text>
-              {medicine.type ? (
-                <View style={styles.formPill}>
-                  <Text style={styles.formPillText}>{medicine.type}</Text>
-                </View>
-              ) : null}
-            </View>
+          <View style={[styles.heroIconLg, { backgroundColor: getFormColor(medicine.name) + '15' }]}>
+            <MaterialCommunityIcons name={getFormIcon(medicine.name) as any} size={42} color={getFormColor(medicine.name)} />
           </View>
+          <Text style={styles.heroNameLg}>{medicine.name}</Text>
+          {medicine.type && !medicine.name.toLowerCase().includes(medicine.type.toLowerCase()) ? (
+            <Text style={styles.heroFormLg}>{medicine.type}</Text>
+          ) : null}
 
           {/* Badges Row */}
           {(medicine.category || medicine.isVerified) && (
@@ -337,17 +338,17 @@ export default function MedicineDetail() {
           {/* Translate Button */}
           <Pressable
             onPress={() => setLangModalOpen(true)}
-            hitSlop={8}
-            style={({ pressed }) => [styles.translateBtn, pressed && { opacity: 0.8 }]}
+            hitSlop={10}
+            style={styles.translatePillBtn}
             disabled={translating}
           >
             {translating ? (
               <ActivityIndicator size="small" color={Colors.primary} />
             ) : (
-              <Ionicons name="language-outline" size={16} color={Colors.primary} />
+              <Ionicons name="language" size={18} color={Colors.primary} />
             )}
-            <Text style={styles.translateText}>
-              {translating ? 'Translating...' : currentLang ? `Translated (${currentLang})` : 'Translate Content'}
+            <Text style={styles.translatePillText}>
+              {translating ? 'Translating...' : currentLang ? `Translated (${currentLang})` : 'Translate'}
             </Text>
           </Pressable>
         </View>
@@ -386,17 +387,10 @@ export default function MedicineDetail() {
                 <Ionicons name="warning" size={16} color="#D97706" />
               </View>
               <Text style={styles.cardHeaderTitle}>POTENTIAL SIDE EFFECTS</Text>
-              {!expanded && hasMultipleEffects && (
-                <View style={styles.sideEffectCountBadge}>
-                  <Text style={styles.sideEffectCountText}>
-                    +{rawSideEffects.length - 2} more
-                  </Text>
-                </View>
-              )}
             </View>
 
             <View style={styles.sideEffectsList}>
-              {displayedEffects.map((s, i) => (
+              {rawSideEffects.map((s, i) => (
                 <View key={i} style={styles.sideEffectRow}>
                   <View style={styles.sideEffectDot} />
                   <Text style={styles.sideEffectText}>{s}</Text>
@@ -420,8 +414,6 @@ export default function MedicineDetail() {
         ) : null}
 
         {/* ── Expandable Details Section (Description, Warnings & Patient Summary) ── */}
-        {expanded && (
-          <>
             {/* Description */}
             {medicine.description ? (
               <View style={styles.infoCard}>
@@ -437,18 +429,7 @@ export default function MedicineDetail() {
               </View>
             ) : null}
 
-            {/* Warnings */}
-            {medicine.warnings ? (
-              <View style={styles.warningCard}>
-                <View style={styles.warningHeader}>
-                  <Ionicons name="alert-circle" size={18} color="#DC2626" />
-                  <Text style={styles.warningTitle}>IMPORTANT WARNINGS & PRECAUTIONS</Text>
-                </View>
-                <Text style={styles.warningBody}>
-                  {translatedWarnings ?? medicine.warnings}
-                </Text>
-              </View>
-            ) : null}
+
 
             {/* AI Patient Summary */}
             {medicine.patientSummary && (
@@ -486,46 +467,32 @@ export default function MedicineDetail() {
                   </View>
                 )}
 
-                {medicine.patientSummary.whenToSeekMedicalHelp && (
-                  <View style={styles.helpAlertBox}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                      <Ionicons name="medkit" size={15} color="#991B1B" />
-                      <Text style={styles.helpAlertTitle}>When to Seek Medical Help</Text>
-                    </View>
-                    <Text style={styles.helpAlertBody}>
-                      {medicine.patientSummary.whenToSeekMedicalHelp}
-                    </Text>
-                  </View>
-                )}
+
               </View>
             )}
-          </>
-        )}
 
-        {/* ── Enhanced Animated View More / View Less Button ── */}
-        {hasExtraDetails && (
-          <View style={styles.viewMoreContainer}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.viewMoreBtn,
-                expanded && styles.viewMoreBtnActive,
-                pressed && { transform: [{ scale: 0.98 }], opacity: 0.9 },
-              ]}
-              onPress={toggleExpanded}
-              accessibilityRole="button"
-              accessibilityLabel={expanded ? 'View less medicine details' : 'View more medicine details'}
-            >
-              <Text style={[styles.viewMoreText, expanded && styles.viewMoreTextActive]}>
-                {expanded ? 'View Less' : 'View More'}
-              </Text>
-              <View style={[styles.viewMoreIconBox, expanded && styles.viewMoreIconBoxActive]}>
-                <Ionicons
-                  name={expanded ? 'chevron-up' : 'chevron-down'}
-                  size={15}
-                  color={expanded ? '#047857' : Colors.primary}
-                />
+
+        {/* ── Critical Safety & Warnings ── */}
+        {(medicine.warnings || medicine.patientSummary?.whenToSeekMedicalHelp) && (
+          <View style={styles.criticalWarningCard}>
+            <View style={styles.criticalWarningHeader}>
+              <Ionicons name="warning" size={20} color="#DC2626" />
+              <Text style={styles.criticalWarningTitle}>CRITICAL SAFETY & WARNINGS</Text>
+            </View>
+            
+            {medicine.warnings && (
+              <View style={styles.criticalWarningSection}>
+                <Text style={styles.criticalWarningSubtitle}>Precautions</Text>
+                <Text style={styles.criticalWarningBody}>{translatedWarnings ?? medicine.warnings}</Text>
               </View>
-            </Pressable>
+            )}
+
+            {medicine.patientSummary?.whenToSeekMedicalHelp && (
+              <View style={styles.criticalWarningSection}>
+                <Text style={styles.criticalWarningSubtitle}>When to Seek Medical Help</Text>
+                <Text style={styles.criticalWarningBody}>{medicine.patientSummary.whenToSeekMedicalHelp}</Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -555,8 +522,6 @@ export default function MedicineDetail() {
               <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
             </Pressable>
 
-            <View style={styles.actionDivider} />
-
             {/* Check Interactions */}
             <Pressable
               style={({ pressed }) => [styles.actionRow, pressed && styles.actionRowPressed]}
@@ -577,8 +542,6 @@ export default function MedicineDetail() {
               </View>
               <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
             </Pressable>
-
-            <View style={styles.actionDivider} />
 
             {/* Ask AI About Medicine */}
             <Pressable
@@ -601,8 +564,6 @@ export default function MedicineDetail() {
               </View>
               <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
             </Pressable>
-
-            <View style={styles.actionDivider} />
 
             {/* Add / Remove from My Medicines */}
             <Pressable
@@ -797,77 +758,55 @@ const styles = StyleSheet.create({
   },
 
   page: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 40,
-    gap: 12,
+    backgroundColor: '#FFFFFF',
   },
 
   // ── Hero Header Card ──
   headerCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    padding: 18,
-    gap: 14,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 1,
-  },
-  heroTopRow: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 6,
+    paddingVertical: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#F1F5F9',
   },
-  iconWrap: {
-    width: 52,
-    height: 52,
+  heroIconLg: {
+    width: 64,
+    height: 64,
     borderRadius: 16,
-    backgroundColor: Colors.primary + '12',
+    backgroundColor: Colors.primary + '15',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroTitleWrap: {
-    flex: 1,
-    gap: 4,
-  },
-  title: {
-    fontSize: 21,
+  heroNameLg: {
+    fontSize: 20,
     fontWeight: '800',
     color: '#0F172A',
+    textAlign: 'center',
     letterSpacing: -0.3,
   },
-  formPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  formPillText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#475569',
+  heroFormLg: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '500',
   },
 
   badgesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: 8,
+    marginTop: 4,
   },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
     borderRadius: 99,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
   badgeText: {
     fontSize: 12,
@@ -880,37 +819,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#ECFDF5',
   },
 
-  translateBtn: {
+  translatePillBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#F8FAFC',
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
+    marginTop: 10,
+    backgroundColor: Colors.primary + '10',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 99,
   },
-  translateText: {
+  translatePillText: {
     fontSize: 13,
-    color: '#475569',
-    fontWeight: '600',
+    color: Colors.primary,
+    fontWeight: '700',
   },
 
   // ── Info Cards ──
   infoCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    padding: 16,
-    gap: 10,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 6,
-    elevation: 0.5,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    gap: 8,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -918,9 +849,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   cardHeaderIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -974,12 +902,10 @@ const styles = StyleSheet.create({
 
   // ── AI Summary Card ──
   aiCard: {
-    backgroundColor: '#F0FDF4',
-    borderRadius: 18,
-    padding: 16,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: '#DCFCE7',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    gap: 8,
   },
   aiCardHeader: {
     flexDirection: 'row',
@@ -987,10 +913,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   aiIconBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: 7,
-    backgroundColor: '#DCFCE7',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1006,39 +928,48 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  // ── Warning Card ──
-  warningCard: {
+  // ── Critical Warning Card ──
+  criticalWarningCard: {
     backgroundColor: '#FEF2F2',
-    borderRadius: 18,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#FEE2E2',
-    padding: 16,
-    gap: 8,
+    padding: 18,
+    gap: 14,
+    marginTop: 8,
+    marginBottom: 8,
   },
-  warningHeader: {
+  criticalWarningHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    marginBottom: 2,
   },
-  warningTitle: {
-    fontSize: 12,
-    fontWeight: '700',
+  criticalWarningTitle: {
+    fontSize: 13,
+    fontWeight: '800',
     color: '#DC2626',
-    letterSpacing: 0.6,
+    letterSpacing: 0.8,
   },
-  warningBody: {
-    fontSize: 14,
+  criticalWarningSection: {
+    gap: 4,
+  },
+  criticalWarningSubtitle: {
+    fontSize: 13,
+    fontWeight: '700',
     color: '#991B1B',
-    lineHeight: 21,
+  },
+  criticalWarningBody: {
+    fontSize: 14,
+    color: '#7F1D1D',
+    lineHeight: 22,
   },
 
   // ── Patient Summary Card ──
   patientSummaryCard: {
-    backgroundColor: '#f1f6faff',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#c0ddfaff',
-    padding: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
     gap: 12,
   },
   patientHeader: {
@@ -1068,24 +999,7 @@ const styles = StyleSheet.create({
     color: '#334155',
     lineHeight: 20,
   },
-  helpAlertBox: {
-    backgroundColor: '#FFF1F2',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#FFE4E6',
-    marginTop: 4,
-  },
-  helpAlertTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#991B1B',
-  },
-  helpAlertBody: {
-    fontSize: 13,
-    color: '#881337',
-    lineHeight: 19,
-  },
+
 
   // ── View More / View Less Button ──
   viewMoreContainer: {
@@ -1135,37 +1049,37 @@ const styles = StyleSheet.create({
 
   // ── Action Section ──
   actionSection: {
-    marginTop: 4,
-    gap: 8,
+    marginTop: 12,
   },
   actionSectionHeader: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#94A3B8',
+    color: '#64748B',
+    marginBottom: 10,
     letterSpacing: 0.8,
-    marginLeft: 4,
   },
   actionList: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    overflow: 'hidden',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 6,
-    elevation: 0.5,
+    gap: 10,
   },
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     paddingHorizontal: 16,
     paddingVertical: 14,
     gap: 14,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
   actionRowPressed: {
     backgroundColor: '#F8FAFC',
+    transform: [{ scale: 0.98 }],
   },
   actionIconWrap: {
     width: 40,

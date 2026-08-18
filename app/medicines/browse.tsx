@@ -36,7 +36,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 
@@ -56,6 +56,28 @@ import { LanguageSelectModal } from '@/components/ui/LanguageSelectModal';
 import { ENDPOINTS } from '@/constants/api';
 import { api } from '@/services/api';
 
+function getFormIcon(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes('syrup') || n.includes('suspension')) return 'bottle-tonic-plus';
+  if (n.includes('injection') || n.includes('vaccine') || n.includes('pen')) return 'needle';
+  if (n.includes('drop')) return 'water-outline';
+  if (n.includes('cream') || n.includes('gel') || n.includes('ointment')) return 'lotion';
+  if (n.includes('inhaler') || n.includes('spray')) return 'spray';
+  if (n.includes('capsule')) return 'pill';
+  return 'pill';
+}
+
+function getFormColor(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes('syrup') || n.includes('suspension')) return '#D97706';
+  if (n.includes('injection') || n.includes('vaccine') || n.includes('pen')) return '#DC2626';
+  if (n.includes('drop')) return '#0284C7';
+  if (n.includes('cream') || n.includes('gel') || n.includes('ointment')) return '#9333EA';
+  if (n.includes('inhaler') || n.includes('spray')) return '#059669';
+  if (n.includes('capsule')) return '#EA580C';
+  return '#DB2777';
+}
+
 // ─── MEDICINE ROW ─────────────────────────────────────────────────────────────
 function MedicineRow({
   med,
@@ -69,8 +91,8 @@ function MedicineRow({
       style={({ pressed }) => [styles.medRow, pressed && { opacity: 0.75 }]}
       onPress={onPress}
     >
-      <View style={[styles.medIcon, { backgroundColor: Colors.primary + '15' }]}>
-        <Ionicons name="medical-outline" size={18} color={Colors.primary} />
+      <View style={[styles.medIcon, { backgroundColor: getFormColor(med.name) + '15' }]}>
+        <MaterialCommunityIcons name={getFormIcon(med.name) as any} size={22} color={getFormColor(med.name)} />
       </View>
       <View style={styles.medInfo}>
         <Text style={styles.medName}>{med.name}</Text>
@@ -142,15 +164,7 @@ function MedicineDetailModal({
     }
   };
 
-  const handleSetReminder = () => {
-    onClose();
-    router.push(`/medicines/reminders/new?medicineId=${med.id}&medicineName=${encodeURIComponent(med.name)}`);
-  };
 
-  const handleCheckInteractions = () => {
-    onClose();
-    router.push(`/medicines/check-interactions?medicineId=${med.id}&medicineName=${encodeURIComponent(med.name)}`);
-  };
 
   const handleTranslate = async (langCode: string, langName: string) => {
     if (!med) return;
@@ -198,6 +212,16 @@ function MedicineDetailModal({
     }
   };
 
+  const totalContentLength = [
+    med.description,
+    med.uses,
+    med.dosage,
+    med.warnings,
+    ...(med.sideEffects || [])
+  ].reduce((acc, text) => acc + (text?.length || 0), 0);
+
+  const shouldShowViewMore = totalContentLength > 300 || med.patientSummary || med.aiSummary;
+
   return (
     <Modal
       visible={visible}
@@ -226,14 +250,16 @@ function MedicineDetailModal({
           </Pressable>
         </View>
 
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
+        <ScrollView contentContainerStyle={{ padding: 16, gap: 6 }}>
           {/* Header card */}
           <View style={styles.detailCard}>
             <View style={styles.detailIconLg}>
               <Ionicons name="medical-outline" size={32} color={Colors.primary} />
             </View>
             <Text style={styles.detailNameLg}>{med.name}</Text>
-            <Text style={styles.detailFormLg}>{med.form}</Text>
+            {med.form && !med.name.toLowerCase().includes(med.form.toLowerCase()) ? (
+              <Text style={styles.detailFormLg}>{med.form}</Text>
+            ) : null}
             {med.rx && (
               <View style={styles.rxBadge}>
                 <Text style={styles.rxBadgeText}>Prescription Required</Text>
@@ -276,12 +302,7 @@ function MedicineDetailModal({
               <Text style={styles.infoValue}>{translatedDosage ?? med.dosage}</Text>
             </View>
           )}
-          {med.warnings && (
-            <View style={styles.infoBlock}>
-              <Text style={styles.infoLabel}>Warnings</Text>
-              <Text style={[styles.infoValue, { color: '#B91C1C' }]}>{translatedWarnings ?? med.warnings}</Text>
-            </View>
-          )}
+
           {(translatedSideEffects || med.sideEffects) && (translatedSideEffects || med.sideEffects)!.length > 0 && (
             <View style={styles.infoBlock}>
               <Text style={styles.infoLabel}>Side Effects</Text>
@@ -291,52 +312,13 @@ function MedicineDetailModal({
             </View>
           )}
 
-          <Pressable onPress={() => { onClose(); router.push(`/medicine/${med.id}` as any); }}>
-            <Text style={styles.viewMore}>View More</Text>
-          </Pressable>
+          {shouldShowViewMore && (
+            <Pressable onPress={() => { onClose(); router.push(`/medicine/${med.id}` as any); }}>
+              <Text style={styles.viewMore}>View More Details</Text>
+            </Pressable>
+          )}
 
-          {/* Extra actions */}
-          <View style={styles.extraActions}>
-            {[
-              { icon: 'notifications-outline', label: 'Set Reminder', onPress: handleSetReminder },
-              { icon: 'git-compare-outline', label: 'Check Interactions', onPress: handleCheckInteractions },
-              {
-                icon: 'sparkles-outline',
-                label: 'Ask AI About Medicine',
-                onPress: () => { onClose(); router.push('/ai-chat'); },
-              },
-              {
-                icon: saved ? 'bookmark' : 'bookmark-outline',
-                label: saved ? 'Saved to My Medicines' : 'Add to My Medicines',
-                onPress: handleSave,
-                disabled: saving || saved,
-                saved,
-              },
-            ].map((a) => (
-              <Pressable
-                key={a.label}
-                style={({ pressed }) => [styles.extraActionRow, pressed && { opacity: 0.7 }]}
-                onPress={a.onPress}
-                disabled={a.disabled}
-              >
-                {a.label === 'Add to My Medicines' && saving ? (
-                  <ActivityIndicator size="small" color={Colors.primary} />
-                ) : (
-                  <Ionicons
-                    name={a.icon as any}
-                    size={18}
-                    color={a.saved ? '#16A34A' : Colors.primary}
-                  />
-                )}
-                <Text style={[styles.extraActionLabel, a.saved && { color: '#16A34A' }]}>
-                  {a.label}
-                </Text>
-                {!(a.label === 'Add to My Medicines' && saving) && (
-                  <Ionicons name="chevron-forward" size={15} color="#CBD5E1" />
-                )}
-              </Pressable>
-            ))}
-          </View>
+
         </ScrollView>
       </SafeAreaView>
 
@@ -638,17 +620,7 @@ export default function BrowseMedicinesScreen() {
           <Ionicons name="chevron-back" size={22} color="#0F172A" />
         </Pressable>
         <Text style={styles.headerTitle}>{headerTitle}</Text>
-        <Pressable
-          onPress={() => {
-            setSelectedCategory(null);
-            setSearchQ('');
-            setMedicines([]);
-          }}
-          hitSlop={8}
-          style={styles.filterIconBtn}
-        >
-          <Ionicons name="options-outline" size={22} color="#64748B" />
-        </Pressable>
+        <View style={{ width: 38 }} /> {/* Placeholder to balance header */}
       </View>
 
       {/* Search bar */}
@@ -842,7 +814,6 @@ export default function BrowseMedicinesScreen() {
                   <View style={styles.secHeader}>
                     <Text style={styles.sectionTitle}>Recently Viewed</Text>
                     {/* API 6 — GET /api/medicines/recent */}
-                    <Text style={styles.viewAll}>View All</Text>
                   </View>
                   <View style={styles.medList}>
                     {recently.map((m, idx) => (
@@ -1077,10 +1048,10 @@ const styles = StyleSheet.create({
   modalTitle: { flex: 1, fontSize: 16, fontWeight: '700', color: '#0F172A' },
   detailCard: {
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 16,
-    padding: 20,
+    gap: 6,
+    paddingVertical: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#F1F5F9',
   },
   detailIconLg: {
     width: 64,
@@ -1105,12 +1076,10 @@ const styles = StyleSheet.create({
   },
   rxBadgeText: { fontSize: 12, fontWeight: '700', color: '#B91C1C' },
   infoBlock: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 0.5,
-    borderColor: '#E2E8F0',
-    padding: 12,
-    gap: 4,
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#F1F5F9',
+    gap: 2,
   },
   infoLabel: {
     fontSize: 11,
@@ -1125,6 +1094,7 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontWeight: '600',
     textAlign: 'center',
+    marginTop: 8,
   },
   extraActions: {
     backgroundColor: '#fff',

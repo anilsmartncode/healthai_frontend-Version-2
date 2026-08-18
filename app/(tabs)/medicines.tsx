@@ -16,8 +16,9 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import * as DocumentPicker from 'expo-document-picker';
 import { Colors, Radius } from '@/constants/Colors';
 import { useMedicines } from '@/hooks/useMedicines';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -47,6 +48,28 @@ function timeOfDayIcon(time: string): keyof typeof Ionicons.glyphMap {
   }
   if (t.includes('PM')) return 'moon-outline';
   return 'alarm-outline';
+}
+
+function getFormIcon(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes('syrup') || n.includes('suspension')) return 'bottle-tonic-plus';
+  if (n.includes('injection') || n.includes('vaccine') || n.includes('pen')) return 'needle';
+  if (n.includes('drop')) return 'water-outline';
+  if (n.includes('cream') || n.includes('gel') || n.includes('ointment')) return 'lotion';
+  if (n.includes('inhaler') || n.includes('spray')) return 'spray';
+  if (n.includes('capsule')) return 'pill';
+  return 'pill'; // default tablet/pill
+}
+
+function getFormColor(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes('syrup') || n.includes('suspension')) return '#D97706'; // Amber
+  if (n.includes('injection') || n.includes('vaccine') || n.includes('pen')) return '#DC2626'; // Red
+  if (n.includes('drop')) return '#0284C7'; // Blue
+  if (n.includes('cream') || n.includes('gel') || n.includes('ointment')) return '#9333EA'; // Purple
+  if (n.includes('inhaler') || n.includes('spray')) return '#059669'; // Emerald
+  if (n.includes('capsule')) return '#EA580C'; // Orange
+  return '#DB2777'; // Pink for tablets
 }
 
 function LibraryCard({
@@ -89,8 +112,8 @@ function MedicineRow({
       style={({ pressed }) => [styles.medRow, pressed && { opacity: 0.75 }]}
       onPress={onPress}
     >
-      <View style={[styles.medIcon, { backgroundColor: Colors.primary + '15' }]}>
-        <Ionicons name="medical-outline" size={18} color={Colors.primary} />
+      <View style={[styles.medIcon, { backgroundColor: getFormColor(med.name) + '15' }]}>
+        <MaterialCommunityIcons name={getFormIcon(med.name) as any} size={22} color={getFormColor(med.name)} />
       </View>
       <View style={styles.medInfo}>
         <Text style={styles.medName}>{med.name}</Text>
@@ -129,8 +152,8 @@ function SavedMedicineRow({
       style={({ pressed }) => [styles.medRow, pressed && { opacity: 0.75 }]}
       onPress={onPress}
     >
-      <View style={[styles.medIcon, { backgroundColor: '#DCFCE7' }]}>
-        <Ionicons name="bookmark" size={18} color="#16A34A" />
+      <View style={[styles.medIcon, { backgroundColor: getFormColor(med.name) + '15' }]}>
+        <MaterialCommunityIcons name={getFormIcon(med.name) as any} size={22} color={getFormColor(med.name)} />
       </View>
       <View style={styles.medInfo}>
         <Text style={styles.medName}>{med.name}</Text>
@@ -144,7 +167,7 @@ function SavedMedicineRow({
             <Text style={styles.rxText}>Rx</Text>
           </View>
         ) : null}
-        <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+        <Ionicons name="bookmark" size={16} color="#16A34A" />
       </View>
     </Pressable>
   );
@@ -177,6 +200,29 @@ export default function Medicines() {
   const handleScanMedicine = () => router.push('/medicines/scanner');
   const handleCheckInteractions = () => router.push('/medicines/check-interactions');
   const handleBrowseAll = () => router.push('/medicines/browse');
+
+  const handleUploadPrescription = async () => {
+    try {
+      const r = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'application/pdf'],
+        copyToCacheDirectory: true,
+      });
+      if (r.canceled || !r.assets || r.assets.length === 0) return;
+      const file = r.assets[0];
+      
+      router.push({
+        pathname: '/upload',
+        params: {
+          context: 'prescription',
+          fileUri: file.uri,
+          fileName: file.name,
+          mimeType: file.mimeType ?? 'application/pdf',
+        }
+      });
+    } catch (err) {
+      Alert.alert('Upload Error', 'Failed to pick document.');
+    }
+  };
 
   const handleSearch = () => {
     if (searchQ.trim()) {
@@ -280,9 +326,6 @@ export default function Medicines() {
               returnKeyType="search"
               onSubmitEditing={handleSearch}
             />
-            <Pressable onPress={handleSearch} hitSlop={8}>
-              <Ionicons name="mic-outline" size={18} color={Colors.textMuted} />
-            </Pressable>
           </View>
 
 
@@ -308,34 +351,25 @@ export default function Medicines() {
                       style={[styles.schedRow, idx > 0 && styles.schedDivider]}
                       onPress={handleViewReminder}
                     >
-                      <View style={styles.schedTime}>
-                        <Ionicons
-                          name={timeOfDayIcon(r.time)}
-                          size={14}
-                          color={Colors.warning}
-                        />
-                        <Text style={styles.schedTimeTxt}>
-                          {r.time.includes('AM') || r.time.includes('PM')
-                            ? r.time
-                            : `Morning ${r.time}`}
-                        </Text>
+                      <View style={[styles.pillIcon, { backgroundColor: getFormColor(r.medicineName) + '15' }]}>
+                        <MaterialCommunityIcons name={getFormIcon(r.medicineName) as any} size={22} color={getFormColor(r.medicineName)} />
                       </View>
-                      <View style={styles.schedBody}>
-                        <View style={styles.pillIcon}>
-                          <Ionicons name="medical" size={18} color="#DB2777" />
-                        </View>
-                        <View style={{ flex: 1, minWidth: 0 }}>
-                          <Text style={styles.medName} numberOfLines={1}>
-                            {r.medicineName}
-                          </Text>
+                      
+                      <View style={{ flex: 1, minWidth: 0, justifyContent: 'center' }}>
+                        <Text style={styles.medName} numberOfLines={1}>
+                          {r.medicineName}
+                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                          <Ionicons name="time-outline" size={12} color="#64748B" />
                           <Text style={styles.medHint} numberOfLines={1}>
-                            1 dose {whenLabel(r.whenToTake)}
+                            {r.time} • {whenLabel(r.whenToTake)}
                           </Text>
-                          <View style={styles.forTag}>
-                            <Text style={styles.forTagTxt}>Reminder</Text>
-                          </View>
                         </View>
-                        <View style={styles.takenWrap}>
+                      </View>
+                        <View style={styles.statusWrap}>
+                          <Text style={[styles.statusLbl, taken && { color: Colors.success }]}>
+                            {taken ? 'Taken' : r.status === 'missed' ? 'Missed' : 'Due'}
+                          </Text>
                           <View
                             style={[
                               styles.takenCircle,
@@ -344,15 +378,11 @@ export default function Medicines() {
                           >
                             <Ionicons
                               name={taken ? 'checkmark' : 'ellipse-outline'}
-                              size={16}
+                              size={12}
                               color={taken ? '#fff' : Colors.textMuted}
                             />
                           </View>
-                          <Text style={[styles.takenLbl, taken && { color: Colors.success }]}>
-                            {taken ? 'Taken' : r.status === 'missed' ? 'Missed' : 'Due'}
-                          </Text>
                         </View>
-                      </View>
                     </Pressable>
                   );
                 })
@@ -386,21 +416,19 @@ export default function Medicines() {
             </Pressable>
           </View>
 
-          {/* <Pressable
+          <Pressable
             style={styles.rxBanner}
-            onPress={() =>
-              router.push({ pathname: '/upload', params: { context: 'prescription' } } as any)
-            }
+            onPress={handleUploadPrescription}
           >
             <View style={styles.rxIcon}>
               <Ionicons name="document-text" size={20} color="#0284C7" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.rxTitle}>Upload Prescription</Text>
-              <Text style={styles.rxSub}>Extract medicines instantly</Text>
+              <Text style={styles.rxSub}>Extract all your medicines instantly</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-          </Pressable> */}
+          </Pressable>
 
           {/* ── Saved Medicines ── */}
           <View style={[styles.section, { marginTop: 18 }]}>
@@ -417,42 +445,28 @@ export default function Medicines() {
             </View>
 
             {savedMedicines.length === 0 ? (
-              <View style={styles.card}>
-                <Pressable
-                  style={styles.emptySchedule}
-                  onPress={handleBrowseAll}
-                >
-                  <Ionicons name="bookmark-outline" size={28} color="#16A34A" />
-                  <Text style={styles.emptyTitle}>No saved medicines yet</Text>
-                  <Text style={styles.emptySub}>Tap the bookmark icon on any medicine to save it here</Text>
-                </Pressable>
-              </View>
+              <Pressable
+                style={[styles.card, styles.emptySchedule]}
+                onPress={handleBrowseAll}
+              >
+                <Ionicons name="bookmark-outline" size={28} color="#16A34A" />
+                <Text style={styles.emptyTitle}>No saved medicines yet</Text>
+                <Text style={styles.emptySub}>Tap the bookmark icon on any medicine to save it here</Text>
+              </Pressable>
             ) : (
-              <View style={styles.card}>
-                <View style={styles.medList}>
-                  {savedMedicines.slice(0, 4).map((med, idx) => (
-                    <SavedMedicineRow
-                      key={`saved_${med.id}_${idx}`}
-                      med={med}
-                      onPress={() =>
-                        router.push({
-                          pathname: '/medicine/[id]',
-                          params: { id: med.id, isSaved: 'true' },
-                        })
-                      }
-                    />
-                  ))}
-                </View>
-                {savedMedicines.length > 4 && (
-                  <Pressable
-                    style={styles.fullLink}
-                    onPress={() => router.push('/medicines/my-medicines')}
-                  >
-                    <Text style={styles.fullLinkTxt}>
-                      View all {savedMedicines.length} saved medicines ›
-                    </Text>
-                  </Pressable>
-                )}
+              <View style={styles.medList}>
+                {savedMedicines.slice(0, 4).map((med, idx) => (
+                  <SavedMedicineRow
+                    key={`saved_${med.id}_${idx}`}
+                    med={med}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/medicine/[id]',
+                        params: { id: med.id, isSaved: 'true' },
+                      })
+                    }
+                  />
+                ))}
               </View>
             )}
           </View>
@@ -462,9 +476,12 @@ export default function Medicines() {
           {typeof recentlyViewed !== 'undefined' && recentlyViewed.length > 0 && (
             <View style={[styles.section, { marginTop: 20 }]}>
               <View style={styles.secHeader}>
-                <Text style={styles.secTitle}>Recently Viewed</Text>
-                <Pressable onPress={handleBrowseAll}>
-                  <Text style={styles.viewAll}>View All</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="time-outline" size={18} color={Colors.textMuted} />
+                  <Text style={styles.secTitle}>Recent Searches</Text>
+                </View>
+                <Pressable onPress={handleBrowseAll} hitSlop={8}>
+                  <Text style={styles.linkTxt}>View all ›</Text>
                 </Pressable>
               </View>
               <View style={styles.medList}>
@@ -489,17 +506,7 @@ export default function Medicines() {
             </View>
           )}
 
-          {/* Safety banner */}
-          <View style={styles.safetyBanner}>
-            <View style={styles.safetyIcon}>
-              <Ionicons name="shield-checkmark" size={18} color={Colors.primary} />
-            </View>
-            <Text style={styles.safetyText}>
-              <Text style={styles.safetyBold}>Safety First. </Text>
-              We never share your medicine information. Your health data is 100% secure.
-            </Text>
-            <Ionicons name="lock-closed" size={18} color={Colors.primary} />
-          </View>
+
 
           <View style={{ height: 24 }} />
         </ScrollView>
@@ -648,41 +655,28 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 14, fontWeight: '700', color: Colors.text },
   emptySub: { fontSize: 12, color: Colors.textMuted },
 
-  schedRow: { padding: 14, gap: 10 },
+  schedRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
   schedDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.border },
-  schedTime: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  schedTimeTxt: { fontSize: 12, fontWeight: '600', color: Colors.textMuted },
-  schedBody: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   pillIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: '#FCE7F3',
+    width: 38,
+    height: 38,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   medName: { fontSize: 14, fontWeight: '700', color: Colors.text },
-  medHint: { marginTop: 2, fontSize: 12, color: Colors.textMuted },
-  forTag: {
-    alignSelf: 'flex-start',
-    marginTop: 6,
-    backgroundColor: '#DCFCE7',
-    borderRadius: Radius.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  forTagTxt: { fontSize: 10, fontWeight: '700', color: '#15803D' },
-  takenWrap: { alignItems: 'center', gap: 4 },
+  medHint: { fontSize: 12, color: '#64748B' },
+  statusWrap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  statusLbl: { fontSize: 11, fontWeight: '600', color: Colors.textMuted },
   takenCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   takenYes: { backgroundColor: Colors.success },
-  takenNo: { backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: Colors.border },
-  takenLbl: { fontSize: 10, fontWeight: '600', color: Colors.textMuted },
+  takenNo: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#CBD5E1' },
   fullLink: { alignItems: 'center', paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.border },
   fullLinkTxt: { fontSize: 13, fontWeight: '700', color: Colors.primary },
 
@@ -804,25 +798,5 @@ const styles = StyleSheet.create({
   rxTitle: { fontSize: 14, fontWeight: '700', color: Colors.text },
   rxSub: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
 
-  safetyBanner: {
-    marginHorizontal: H_PAD,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#ECFDF5',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-    padding: 14,
-  },
-  safetyIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#DCFCE7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  safetyText: { flex: 1, fontSize: 12, color: '#166534', lineHeight: 17 },
-  safetyBold: { fontWeight: '800' },
+
 });
