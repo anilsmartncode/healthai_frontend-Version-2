@@ -207,103 +207,104 @@ export function AnalysisSummaryCard({
       {/* ── Divider ── */}
       <View style={styles.divider} />
 
-      {/* ── Stats row ── */}
-      <View style={styles.statsRow}>
-        {/* Normal values */}
-        <View style={styles.statItem}>
-          <View style={[styles.statIcon, { backgroundColor: "#DCFCE7" }]}>
-            <Ionicons name="checkmark" size={16} color="#16a34a" />
+      {/* ── Stats List ── */}
+      <View style={styles.statsList}>
+        <View style={styles.statItemRow}>
+          <View style={styles.statLeft}>
+            <View style={[styles.statIcon, { backgroundColor: "#DCFCE7" }]}>
+              <Ionicons name="checkmark" size={14} color="#16a34a" />
+            </View>
+            <Text style={styles.statLabel}>Normal Values</Text>
           </View>
-          <View style={styles.statText}>
-            <Text style={[styles.statNum, { color: "#16a34a" }]}>
-              {String(normalCount).padStart(2, "0")}
-            </Text>
-            <Text style={styles.statLabel}>values in{"\n"}normal range</Text>
-          </View>
+          <Text style={[styles.statNum, { color: "#16a34a" }]}>{String(normalCount).padStart(2, "0")}</Text>
         </View>
 
-        <View style={styles.statDivider} />
-
-        {/* Abnormal values */}
-        <View style={styles.statItem}>
-          <View style={[styles.statIcon, { backgroundColor: "#FEE2E2" }]}>
-            <Ionicons name="alert-circle-outline" size={16} color={Colors.danger} />
+        <View style={styles.statItemRow}>
+          <View style={styles.statLeft}>
+            <View style={[styles.statIcon, { backgroundColor: "#FEE2E2" }]}>
+              <Ionicons name="alert-circle-outline" size={14} color={Colors.danger} />
+            </View>
+            <Text style={styles.statLabel}>Needs Attention</Text>
           </View>
-          <View style={styles.statText}>
-            <Text style={[styles.statNum, { color: Colors.danger }]}>
-              {String(abnormalCount).padStart(2, "0")}
-            </Text>
-            <Text style={styles.statLabel}>values{"\n"}out of range</Text>
-          </View>
+          <Text style={[styles.statNum, { color: Colors.danger }]}>{String(abnormalCount).padStart(2, "0")}</Text>
         </View>
 
-        <View style={styles.statDivider} />
-
-        {/* Total count */}
-        <View style={styles.statItem}>
-          <View style={[styles.statIcon, { backgroundColor: "#EDE9FE" }]}>
-            <Ionicons name="document-text-outline" size={16} color="#7C3AED" />
+        <View style={styles.statItemRow}>
+          <View style={styles.statLeft}>
+            <View style={[styles.statIcon, { backgroundColor: "#EDE9FE" }]}>
+              <Ionicons name="document-text-outline" size={14} color="#7C3AED" />
+            </View>
+            <Text style={styles.statLabel}>Total Values</Text>
           </View>
-          <View style={styles.statText}>
-            <Text style={[styles.statNum, { color: "#7C3AED" }]}>
-              {String(totalCount).padStart(2, "0")}
-            </Text>
-            <Text style={styles.statLabel}>total{"\n"}markers</Text>
-          </View>
+          <Text style={[styles.statNum, { color: "#7C3AED" }]}>{String(totalCount).padStart(2, "0")}</Text>
         </View>
       </View>
 
-      {/* ── Abnormal chips banner ── */}
-      {abnormalValues.length > 0 && (
-        <>
-          <View style={styles.divider} />
-          <View style={styles.chipsSection}>
-            <View style={styles.chipsSectionHeader}>
-              <View style={styles.clipboardCircle}>
-                <Ionicons name="clipboard-outline" size={14} color={Colors.danger} />
-              </View>
-              <Text style={styles.chipsSectionTitle}>Abnormal Values</Text>
-              <View style={styles.countBadge}>
-                <Text style={styles.countText}>{abnormalCount}</Text>
-              </View>
-            </View>
+    </Card>
+  );
+}
 
-            {isMultiRow ? (
-              <View style={styles.chipGrid}>
-                {(abnormalValues || []).map((v) => (
-                  <View key={v.name} style={styles.chip}>
-                    <Ionicons name="water" size={11} color={Colors.danger} />
-                    <Text style={styles.chipName}>{v.name}</Text>
-                    <View style={styles.chipDivider} />
-                    <Text style={styles.chipStatus}>
-                      {String(v.status || 'unknown').charAt(0).toUpperCase() +
-                        String(v.status || 'unknown').slice(1)}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 6, paddingTop: 2 }}
-              >
-                {(abnormalValues || []).map((v) => (
-                  <View key={v.name} style={styles.chip}>
-                    <Ionicons name="water" size={11} color={Colors.danger} />
-                    <Text style={styles.chipName}>{v.name}</Text>
-                    <View style={styles.chipDivider} />
-                    <Text style={styles.chipStatus}>
-                      {String(v.status || 'unknown').charAt(0).toUpperCase() +
-                        String(v.status || 'unknown').slice(1)}
-                    </Text>
-                  </View>
-                ))}
-              </ScrollView>
-            )}
+export function AbnormalChipsCard({
+  abnormalValues = [],
+  abnormalCount,
+}: {
+  abnormalValues?: LabValue[];
+  abnormalCount: number;
+}) {
+  const isMultiRow = abnormalValues.length > 2;
+  if (abnormalValues.length === 0) return null;
+
+  return (
+    <Card style={styles.card}>
+      <View style={styles.chipsSection}>
+        <View style={styles.chipsSectionHeader}>
+          <View style={styles.clipboardCircle}>
+            <Ionicons name="clipboard-outline" size={14} color={Colors.danger} />
           </View>
-        </>
-      )}
+          <Text style={styles.chipsSectionTitle}>Abnormal Values</Text>
+          <View style={styles.countBadge}>
+            <Text style={styles.countText}>{abnormalCount}</Text>
+          </View>
+        </View>
+
+        <Text style={styles.chipsSectionSubtitle}>
+          These values fall outside the reference range. Minor fluctuations are common, but consult your doctor for an accurate diagnosis.
+        </Text>
+
+        {isMultiRow ? (
+          <View style={styles.chipGrid}>
+            {(abnormalValues || []).map((v) => (
+              <View key={v.name} style={styles.chip}>
+                <Ionicons name="water" size={11} color={Colors.danger} />
+                <Text style={styles.chipName}>{v.name}</Text>
+                <View style={styles.chipDivider} />
+                <Text style={styles.chipStatus}>
+                  {String(v.status || 'unknown').charAt(0).toUpperCase() +
+                    String(v.status || 'unknown').slice(1)}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 6, paddingTop: 2 }}
+          >
+            {(abnormalValues || []).map((v) => (
+              <View key={v.name} style={styles.chip}>
+                <Ionicons name="water" size={11} color={Colors.danger} />
+                <Text style={styles.chipName}>{v.name}</Text>
+                <View style={styles.chipDivider} />
+                <Text style={styles.chipStatus}>
+                  {String(v.status || 'unknown').charAt(0).toUpperCase() +
+                    String(v.status || 'unknown').slice(1)}
+                </Text>
+              </View>
+            ))}
+          </ScrollView>
+        )}
+      </View>
     </Card>
   );
 }
@@ -369,30 +370,23 @@ const styles = StyleSheet.create({
   // Divider
   divider: { height: 1, backgroundColor: Colors.border, marginBottom: 14 },
 
-  // Stats row — exact mirror of HealthScoreCard
-  statsRow: { flexDirection: "row", alignItems: "center", marginBottom: 14 },
-  statItem: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6 },
-  statText: { flex: 1 },
+  // Stats List
+  statsList: { flexDirection: "column", gap: 10, marginBottom: 14 },
+  statItemRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  statLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
   statIcon: {
-    width: 34,
-    aspectRatio: 1,
+    width: 26,
+    height: 26,
     flex: 0,
-    borderRadius: 17,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
-  statNum: { fontSize: 16, fontWeight: "700", color: Colors.text },
+  statNum: { fontSize: 15, fontWeight: "700", color: Colors.text },
   statLabel: {
-    fontSize: 10,
-    color: Colors.textMuted,
-    lineHeight: 14,
-    flexShrink: 1,
-  },
-  statDivider: {
-    width: 1,
-    height: 36,
-    backgroundColor: Colors.border,
-    marginHorizontal: 2,
+    fontSize: 13,
+    fontWeight: "500",
+    color: Colors.text,
   },
 
   // Chips section (replaces attention banner)
@@ -411,6 +405,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   chipsSectionTitle: { fontSize: 12, fontWeight: "700", color: Colors.text, flex: 1 },
+  chipsSectionSubtitle: { fontSize: 11, color: Colors.textMuted, lineHeight: 15, marginBottom: 2 },
   countBadge: {
     minWidth: 18,
     height: 18,

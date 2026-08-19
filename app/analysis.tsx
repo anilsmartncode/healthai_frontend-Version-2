@@ -24,7 +24,7 @@ import type { ApiSummary, DetectedMedicine, LabValue } from '@/types/Report/repo
 import { api } from '@/services/api';
 import { ENDPOINTS } from '@/constants/api';
 import { LanguageSelectModal } from '@/components/ui/LanguageSelectModal';
-import { AnalysisSummaryCard } from '@/components/reports/AnalysisSummaryCard';
+import { AnalysisSummaryCard, AbnormalChipsCard } from '@/components/reports/AnalysisSummaryCard';
 import { AIExplanationCard } from '@/components/reports/AIExplanationCard';
 
 type ViewMode = 'parameter' | 'category';
@@ -100,7 +100,7 @@ function ResultRow({
           </Text>
           <Text style={styles.resultValue}>{value.value}</Text>
         </View>
-        <Text style={styles.resultRange} numberOfLines={1}>
+        <Text style={styles.resultRange}>
           Range: {value.range || '—'}
         </Text>
         <Text style={[styles.resultStatus, { color: st.color }]}>{st.label}</Text>
@@ -575,6 +575,13 @@ export default function AnalysisScreen() {
           </View>
         ) : null}
 
+        {!isUnanalyzable && abnormal.length > 0 && (
+          <AbnormalChipsCard
+            abnormalValues={abnormal}
+            abnormalCount={abnormal.length}
+          />
+        )}
+
         {isUnanalyzable && (
           <View style={styles.emptyStateCard}>
             <Ionicons name="document-text-outline" size={48} color={Colors.textMuted} style={{ alignSelf: 'center', marginBottom: 12 }} />
@@ -616,6 +623,23 @@ export default function AnalysisScreen() {
                 {viewMode === 'category' && <View style={styles.segmentUnderline} />}
               </Pressable>
             </View>
+
+            {/* Guide/Legend */}
+            {usableValues.length > 0 && (
+              <View style={styles.guideBox}>
+                <View style={styles.guideRow}>
+                  <Ionicons name="information-circle-outline" size={14} color={Colors.textMuted} />
+                  <Text style={styles.guideTitle}>How to read these values</Text>
+                </View>
+                <Text style={styles.guideText}>
+                  <Text style={{ color: '#16A34A', fontWeight: '600' }}>Normal:</Text> Within the standard reference range.
+                </Text>
+                <Text style={styles.guideText}>
+                  <Text style={{ color: '#D97706', fontWeight: '600' }}>Low</Text> / <Text style={{ color: '#DC2626', fontWeight: '600' }}>High:</Text> Outside the reference range; may require attention.
+                </Text>
+              </View>
+            )}
+
 
             {usableValues.length === 0 ? (
               <Text style={styles.empty}>No values to show.</Text>
@@ -798,6 +822,18 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     overflow: 'hidden',
   },
+
+  guideBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  guideRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  guideTitle: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase' },
+  guideText: { fontSize: 11, color: Colors.textMuted, lineHeight: 16 },
 
   resultRow: {
     flexDirection: 'row',

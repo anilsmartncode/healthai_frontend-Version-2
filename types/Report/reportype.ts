@@ -141,7 +141,7 @@ export function mapApiLabValues(raw: ApiLabValue[]): LabValue[] {
   return raw.map((item) => ({
     name:   item['Test Name'],
     value:  item['Units'] ? `${item['Value']} ${item['Units']}` : item['Value'],
-    range:  item['Normal Range'],
+    range:  item['Units'] ? `${item['Normal Range']} ${item['Units']}` : item['Normal Range'],
     status: (item['Status'] ? String(item['Status']).toLowerCase() : 'normal') as 'normal' | 'high' | 'low',
     possibleDisease: item['Possible Disease'] ?? undefined,
     simpleMeaning: item['Simple Meaning'],

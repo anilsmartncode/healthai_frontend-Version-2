@@ -103,9 +103,8 @@ export default function Home() {
       // Map scorecard.averageMetrics to LabValue format expected by analysis.tsx
       const mappedValues = (scorecard.averageMetrics || []).map((m: any) => ({
         name: m.testName || 'Unknown',
-        value: String(m.value || '-'),
-        unit: m.unit || '',
-        range: m.normalRange || '-',
+        value: m.unit ? `${m.value || '-'} ${m.unit}` : String(m.value || '-'),
+        range: m.unit ? `${m.normalRange || '-'} ${m.unit}` : String(m.normalRange || '-'),
         status: m.status ? m.status.toLowerCase() : 'unknown',
         meaning: m.simpleMeaning || '',
       }));
