@@ -10,7 +10,7 @@ import { useRouter } from "expo-router";
 interface MapBottomSheetProps {
   bottomSheetRef: React.RefObject<BottomSheet>;
   selectedPlace: PlaceItem | null;
-  activeTab: "hospital" | "pharmacy";
+  activeTab: "hospital" | "pharmacy" | "diagnostic";
   onClose: () => void;
   onCall: (phone: string) => void;
   onDirections: (place: PlaceItem) => void;

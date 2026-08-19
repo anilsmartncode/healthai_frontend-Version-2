@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import { Colors } from "@/constants/Colors";
+import { Colors, Radius } from "@/constants/Colors";
 import { useLang } from "@/context/Languagecontext";
 import { fetchGeoapifyPlaces, GeoapifyPlace } from "@/services/geoapify";
 import { cachePlace } from "@/services/PlacesStore";
@@ -33,8 +33,8 @@ export default function NearbyScreen() {
   const { t } = useLang();
 
   // State
-  const [activeTab, setActiveTab] = useState<"hospital" | "pharmacy">("hospital");
-  const [radius, setRadius] = useState<number>(5000); // meters
+  const [activeTab, setActiveTab] = useState<"hospital" | "pharmacy" | "diagnostic">("hospital");
+  const [radius, setRadius] = useState<number>(3000); // meters
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [places, setPlaces] = useState<PlaceItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -75,7 +75,7 @@ export default function NearbyScreen() {
   const loadPlaces = async (
     lat: number,
     lng: number,
-    category: "hospital" | "pharmacy"
+    category: "hospital" | "pharmacy" | "diagnostic"
   ) => {
     if (placesCache[category]) {
       updateDisplayedPlaces(placesCache[category], radius);
@@ -91,50 +91,81 @@ export default function NearbyScreen() {
     abortControllerRef.current = new AbortController();
 
     try {
-      // Always fetch max radius (10km) to allow local filtering
-      const rawPlaces = await fetchGeoapifyPlaces(
-        lat,
-        lng,
-        10000,
-        category,
-        abortControllerRef.current.signal
-      );
+      let mapped: PlaceItem[] = [];
 
-      const mapped: PlaceItem[] = rawPlaces.map((feature: GeoapifyPlace, index: number) => {
-        const props = feature.properties;
-        const plat = props.lat;
-        const plng = props.lon;
-        const dist = calculateDistance(lat, lng, plat, plng);
+      if (category === "diagnostic") {
+        // Mock API call for diagnostics
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        
+        const dummyDiagnostics = [
+          { name: "Apollo Diagnostics", lat: lat + 0.01, lng: lng + 0.01, address: "Main Road, Near Metro" },
+          { name: "Lucid Medical Diagnostics", lat: lat - 0.015, lng: lng + 0.005, address: "Health Ave, Block B" },
+          { name: "Vijaya Diagnostic Centre", lat: lat + 0.02, lng: lng - 0.01, address: "City Center Plaza" },
+          { name: "Dr. Lal PathLabs", lat: lat - 0.005, lng: lng - 0.02, address: "Park Street, 4th Cross" },
+          { name: "SRL Diagnostics", lat: lat + 0.008, lng: lng + 0.02, address: "West Link Road" },
+        ];
+        
+        mapped = dummyDiagnostics.map((d, index) => {
+          const dist = calculateDistance(lat, lng, d.lat, d.lng);
+          return {
+            id: `diagnostic_${index}`,
+            name: d.name,
+            address: d.address,
+            distance: dist,
+            lat: d.lat,
+            lng: d.lng,
+            rating: (4.0 + Math.random() * 0.9).toFixed(1),
+            reviews: Math.floor(20 + Math.random() * 300),
+            openNow: Math.random() > 0.2,
+            phone: "+91 80000 55555",
+          };
+        });
+      } else {
+        // Always fetch max radius (10km) to allow local filtering
+        const rawPlaces = await fetchGeoapifyPlaces(
+          lat,
+          lng,
+          10000,
+          category,
+          abortControllerRef.current.signal
+        );
 
-        let address = "Address near coordinates";
-        if (props.street) {
-          address = props.housenumber
-            ? `${props.housenumber} ${props.street}`
-            : props.street;
-        } else if (props.address_line2) {
-          address = props.address_line2;
-        }
+        mapped = rawPlaces.map((feature: GeoapifyPlace, index: number) => {
+          const props = feature.properties;
+          const plat = props.lat;
+          const plng = props.lon;
+          const dist = calculateDistance(lat, lng, plat, plng);
 
-        const placeObj = {
-          id: props.place_id || `${category}_${index}`,
-          name:
-            props.name ||
-            (category === "hospital" ? "Local Hospital" : "Local Pharmacy"),
-          address: address,
-          distance: dist,
-          lat: plat,
-          lng: plng,
-          rating: (4.2 + Math.random() * 0.7).toFixed(1),
-          reviews: Math.floor(10 + Math.random() * 190),
-          openNow: Math.random() > 0.3,
-          phone:
-            props.contact?.phone ||
-            props.datasource?.raw?.phone ||
-            "+91 99000 12345",
-        };
-        cachePlace(placeObj);
-        return placeObj;
-      });
+          let address = "Address near coordinates";
+          if (props.street) {
+            address = props.housenumber
+              ? `${props.housenumber} ${props.street}`
+              : props.street;
+          } else if (props.address_line2) {
+            address = props.address_line2;
+          }
+
+          const placeObj = {
+            id: props.place_id || `${category}_${index}`,
+            name:
+              props.name ||
+              (category === "hospital" ? "Local Hospital" : "Local Pharmacy"),
+            address: address,
+            distance: dist,
+            lat: plat,
+            lng: plng,
+            rating: (4.2 + Math.random() * 0.7).toFixed(1),
+            reviews: Math.floor(10 + Math.random() * 190),
+            openNow: Math.random() > 0.3,
+            phone:
+              props.contact?.phone ||
+              props.datasource?.raw?.phone ||
+              "+91 99000 12345",
+          };
+          cachePlace(placeObj);
+          return placeObj;
+        });
+      }
 
       mapped.sort((a, b) => a.distance - b.distance);
 
@@ -198,7 +229,7 @@ export default function NearbyScreen() {
   }, []);
 
   // Reload places when tab or radius changes
-  const handleConfigChange = (newTab: "hospital" | "pharmacy", newRadius: number) => {
+  const handleConfigChange = (newTab: "hospital" | "pharmacy" | "diagnostic", newRadius: number) => {
     setActiveTab(newTab);
     setRadius(newRadius);
 
@@ -230,7 +261,7 @@ export default function NearbyScreen() {
     setRefreshing(false);
   };
 
-  const handleTabChange = (tab: "hospital" | "pharmacy") => {
+  const handleTabChange = (tab: "hospital" | "pharmacy" | "diagnostic") => {
     handleConfigChange(tab, radius);
   };
 
@@ -460,7 +491,7 @@ const styles = StyleSheet.create({
   toggleBtn: {
     flex: 1,
     paddingVertical: 10,
-    borderRadius: 20,
+    borderRadius: Radius.md,
     backgroundColor: "#F1F5F9",
     alignItems: "center",
   },

@@ -147,6 +147,7 @@ export type TranslationKeys = {
   share_card_desc: string;
   nav_nearby: string;
   hospitals: string;
+  diagnostics: string;
   pharmacies: string;
   doctors: string;
   coming_soon: string;
@@ -287,6 +288,7 @@ export const translations: Record<LangCode, TranslationKeys> = {
     share_card_desc: 'Invite friends to track their health with smart AI insights.',
     nav_nearby: 'Nearby',
     hospitals: 'Hospitals',
+    diagnostics: 'Diagnostics',
     pharmacies: 'Pharmacies',
     doctors: 'Doctors',
     coming_soon: 'Coming Soon',
@@ -426,7 +428,8 @@ export const translations: Record<LangCode, TranslationKeys> = {
     share_card_desc: 'अपने प्रियजनों के साथ HealthAI साझा करें ताकि वे बायोमार्कर, दवाओं को ट्रैक कर सकें और AI स्वास्थ्य अंतर्दृष्टि प्राप्त कर सकें।',
     nav_nearby: 'पास के स्थान',
     hospitals: 'अस्पताल',
-    pharmacies: 'दवा की दुकानें',
+    diagnostics: 'डायग्नोस्टिक्स',
+    pharmacies: 'फार्मेसियों',
     doctors: 'डॉक्टर',
     coming_soon: 'जल्द आ रहा है',
     distance_km: 'किमी दूर',
@@ -565,6 +568,7 @@ export const translations: Record<LangCode, TranslationKeys> = {
     share_card_desc: 'బయోమార్కర్లు, మందులను ట్రాక్ చేయడానికి మరియు AI ఆరోగ్య అంతర్దృష్టులను పొందడానికి మీ ప్రియమైనవారితో HealthAIని భాగస్వామ్యం చేయండి.',
     nav_nearby: 'దగ్గరలో',
     hospitals: 'ఆసుపత్రులు',
+    diagnostics: 'రೋಗನಿರ್ಣಯ',
     pharmacies: 'మందుల దుకాణాలు',
     doctors: 'వైద్యులు',
     coming_soon: 'త్వరలో వస్తుంది',
@@ -704,6 +708,7 @@ export const translations: Record<LangCode, TranslationKeys> = {
     share_card_desc: 'உயிரியல் குறிப்பான்கள், மருந்துகளைக் கண்காணிக்கவும் மற்றும் AI சுகாதார நுண்ணறிவுகளைப் பெறவும் உங்கள் அன்புகுரியவர்களுடன் HealthAI ஐப் பகிரவும்.',
     nav_nearby: 'அருகிலுள்ளவை',
     hospitals: 'மருத்துவமனைகள்',
+    diagnostics: 'கண்டறிதல்',
     pharmacies: 'மருந்தகங்கள்',
     doctors: 'மருத்துவர்கள்',
     coming_soon: 'விரைவில்',
@@ -843,6 +848,7 @@ export const translations: Record<LangCode, TranslationKeys> = {
     share_card_desc: 'ಬಯೋಮಾರ್ಕರ್ಸ್, ಔಷಧಿಗಳನ್ನು ಟ್ರ್ಯಾಕ್ ಮಾಡಲು ಮತ್ತು AI ಆರೋಗ್ಯ ಒಳನೋಟಗಳನ್ನು ಪಡೆಯಲು ನಿಮ್ಮ ಪ್ರೀತಿಪಾತ್ರರೊಂದಿಗೆ HealthAI ಅನ್ನು ಹಂಚಿಕೊಳ್ಳಿ.',
     nav_nearby: 'ಹತ್ತಿರದ',
     hospitals: 'ಆಸ್ಪತ್ರೆಗಳು',
+    diagnostics: 'ರೋಗನಿರ್ಣಯ',
     pharmacies: 'ದವಾಖಾನೆಗಳು',
     doctors: 'ವೈದ್ಯರು',
     coming_soon: 'ಶೀಘ್ರದಲ್ಲೇ ಬರಲಿದೆ',

@@ -9,7 +9,7 @@ import { useRouter } from "expo-router";
 
 interface PlaceCardProps {
   item: PlaceItem;
-  activeTab: "hospital" | "pharmacy";
+  activeTab: "hospital" | "pharmacy" | "diagnostic";
   onCall: (phone: string) => void;
   onDirections: (item: PlaceItem) => void;
 }

@@ -5,7 +5,7 @@ import { PlaceItem } from "./types";
 
 interface PlaceMarkerProps {
   place: PlaceItem;
-  activeTab: "hospital" | "pharmacy";
+  activeTab: "hospital" | "pharmacy" | "diagnostic";
   onPress: (place: PlaceItem) => void;
 }
 

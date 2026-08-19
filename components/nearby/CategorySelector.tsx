@@ -1,12 +1,12 @@
 import React from "react";
 import { View, Text, Pressable, ScrollView, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Colors } from "@/constants/Colors";
+import { Colors, Radius } from "@/constants/Colors";
 import { useLang } from "@/context/Languagecontext";
 
 interface CategorySelectorProps {
-  activeTab: "hospital" | "pharmacy";
-  onTabChange: (tab: "hospital" | "pharmacy") => void;
+  activeTab: "hospital" | "pharmacy" | "diagnostic";
+  onTabChange: (tab: "hospital" | "pharmacy" | "diagnostic") => void;
 }
 
 export default function CategorySelector({ activeTab, onTabChange }: CategorySelectorProps) {
@@ -14,11 +14,7 @@ export default function CategorySelector({ activeTab, onTabChange }: CategorySel
 
   return (
     <View style={styles.categoriesOuter}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.categoriesContainer}
-      >
+      <View style={styles.categoriesContainer}>
         <Pressable
           onPress={() => onTabChange("hospital")}
           style={[styles.catTab, activeTab === "hospital" && styles.catTabActive]}
@@ -46,7 +42,21 @@ export default function CategorySelector({ activeTab, onTabChange }: CategorySel
             {t("pharmacies")}
           </Text>
         </Pressable>
-      </ScrollView>
+
+        <Pressable
+          onPress={() => onTabChange("diagnostic")}
+          style={[styles.catTab, activeTab === "diagnostic" && styles.catTabActive]}
+        >
+          <Ionicons
+            name="pulse"
+            size={16}
+            color={activeTab === "diagnostic" ? "#FFFFFF" : Colors.textMuted}
+          />
+          <Text style={[styles.catText, activeTab === "diagnostic" && styles.catTextActive]}>
+            {t("diagnostics")}
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -58,17 +68,20 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   categoriesContainer: {
+    flexDirection: "row",
     paddingHorizontal: 16,
     gap: 8,
   },
   catTab: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     backgroundColor: "#F1F5F9",
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    gap: 6,
+    borderRadius: Radius.md,
+    paddingHorizontal: 6,
+    paddingVertical: 10,
+    gap: 4,
     borderWidth: 1,
     borderColor: Colors.border,
   },
@@ -77,8 +90,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
   },
   catText: {
-    fontSize: 13,
-    fontWeight: "600",
+    fontSize: 12,
+    fontWeight: "700",
     color: Colors.textMuted,
   },
   catTextActive: {
