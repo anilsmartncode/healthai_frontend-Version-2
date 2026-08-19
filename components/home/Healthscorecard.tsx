@@ -22,6 +22,7 @@ interface Props {
   /** When true, renders the "no reports yet" empty state (Image 1) */
   hasReports?: boolean;
   attentionReportId?: string;
+  summaryTitle?: string;
   onAttentionPress?: () => void;
 }
 
@@ -41,7 +42,7 @@ function formatDate(dateString?: string): string {
 }
 
 // ── Empty state (no reports uploaded yet) ── Image 1
-function EmptyHealthScore({ onUpload }: { onUpload: () => void }) {
+function EmptyHealthScore({ onUpload, summaryTitle }: { onUpload: () => void, summaryTitle?: string }) {
   const { width } = useWindowDimensions();
   const SIZE = Math.min(width * 0.38, 152);
   const STROKE = SIZE * 0.07;
@@ -84,45 +85,12 @@ function EmptyHealthScore({ onUpload }: { onUpload: () => void }) {
         {/* Right col */}
         <View style={styles.rightCol}>
           <View style={styles.titleRow}>
-            <Text style={styles.overallTitle}>Overall Health Score</Text>
+            <Text style={styles.overallTitle}>{summaryTitle || 'Overall Summary'}</Text>
             <Ionicons name="sparkles" size={14} color="#60A5FA" />
           </View>
-          <Text style={styles.overallSub}>Based on your uploaded reports</Text>
-
+          <Text style={styles.overallSub}>Upload your first report to get a personalized health summary.</Text>
         </View>
       </View>
-
-      {/* ── Divider ── */}
-      <View style={styles.divider} />
-
-      {/* ── Empty stats cards ── */}
-      <View style={styles.statsRow}>
-        <View style={[styles.statCard, { backgroundColor: "#F0FDF4", borderColor: "#DCFCE7" }]}>
-          <View style={[styles.statCardIcon, { backgroundColor: "#DCFCE7" }]}>
-            <Ionicons name="checkmark" size={16} color="#16a34a" />
-          </View>
-          <Text style={[styles.statCardVal, { color: "#16a34a" }]}>—</Text>
-          <Text style={[styles.statCardLabel, { color: "#16a34a" }]}>Normal</Text>
-        </View>
-
-        <View style={[styles.statCard, { backgroundColor: "#F5F3FF", borderColor: "#EDE9FE" }]}>
-          <View style={[styles.statCardIcon, { backgroundColor: "#EDE9FE" }]}>
-            <Ionicons name="document-text-outline" size={16} color="#7C3AED" />
-          </View>
-          <Text style={[styles.statCardVal, { color: "#7C3AED" }]}>—</Text>
-          <Text style={[styles.statCardLabel, { color: "#7C3AED" }]}>Reports</Text>
-        </View>
-
-        <View style={[styles.statCard, { backgroundColor: "#EFF6FF", borderColor: "#DBEAFE" }]}>
-          <View style={[styles.statCardIcon, { backgroundColor: "#DBEAFE" }]}>
-            <Ionicons name="calendar-outline" size={16} color="#2563EB" />
-          </View>
-          <Text style={[styles.statCardVal, { color: "#2563EB" }]}>—</Text>
-          <Text style={[styles.statCardLabel, { color: "#2563EB" }]}>Updated</Text>
-        </View>
-      </View>
-
-
     </Card>
   );
 }
@@ -137,6 +105,7 @@ function FilledHealthScore({
   attentionCount = 0,
   stableOverReports = 0,
   attentionReportId,
+  summaryTitle,
   onAttentionPress,
 }: Omit<Props, "hasReports">) {
   const { width } = useWindowDimensions();
@@ -186,69 +155,42 @@ function FilledHealthScore({
         {/* Right col */}
         <View style={styles.rightCol}>
           <View style={styles.titleRow}>
-            <Text style={styles.overallTitle}>Overall Health Score</Text>
+            <Text style={styles.overallTitle}>{summaryTitle || 'Overall Summary'}</Text>
             <Ionicons name="sparkles" size={14} color="#60A5FA" />
           </View>
-          <Text style={styles.overallSub}>Based on all uploaded reports</Text>
-          <View style={styles.stablePill}>
-            <Ionicons name="pulse" size={13} color={Colors.primary} />
-            <Text style={styles.stableText}>{stableOverReports > 1 ? `Stable over ${stableOverReports} reports` : stableOverReports === 1 ? "Based on 1 report" : "First report"}</Text>
+
+          <View style={styles.bulletList}>
+            {attentionCount > 0 && (
+              <View style={styles.bulletRow}>
+                <View style={[styles.bulletDot, { backgroundColor: "#F97316" }]} />
+                <Text style={styles.bulletText}>{attentionCount} value{attentionCount !== 1 ? 's' : ''} need attention</Text>
+              </View>
+            )}
+            {reportsAnalyzed > 0 && attentionCount === 0 && (
+              <View style={styles.bulletRow}>
+                <View style={[styles.bulletDot, { backgroundColor: "#16a34a" }]} />
+                <Text style={styles.bulletText}>All values are normal</Text>
+              </View>
+            )}
+            {attentionCount > 0 && (
+              <View style={styles.bulletRow}>
+                <View style={[styles.bulletDot, { backgroundColor: "#16a34a" }]} />
+                <Text style={styles.bulletText}>All other values are normal</Text>
+              </View>
+            )}
+            {reportsAnalyzed > 0 && (
+              <View style={styles.bulletRow}>
+                <View style={[styles.bulletDot, { backgroundColor: "#2563EB" }]} />
+                <Text style={styles.bulletText}>Based on {reportsAnalyzed} report{reportsAnalyzed !== 1 ? 's' : ''}</Text>
+              </View>
+            )}
           </View>
+
+          <Pressable onPress={onAttentionPress} style={styles.viewDetailsBtn}>
+            <Text style={styles.viewDetailsText}>View Details</Text>
+          </Pressable>
         </View>
       </View>
-
-      {/* ── Divider ── */}
-      <View style={styles.divider} />
-
-      {/* ── Stats cards ── */}
-      <View style={styles.statsRow}>
-        <View style={[styles.statCard, { backgroundColor: "#F0FDF4", borderColor: "#DCFCE7" }]}>
-          <View style={[styles.statCardIcon, { backgroundColor: "#DCFCE7" }]}>
-            <Ionicons name="checkmark" size={16} color="#16a34a" />
-          </View>
-          <Text style={[styles.statCardVal, { color: "#16a34a" }]}>
-            {String(normalCount).padStart(2, "0")}
-          </Text>
-          <Text style={[styles.statCardLabel, { color: "#16a34a" }]}>Normal</Text>
-        </View>
-
-        <View style={[styles.statCard, { backgroundColor: "#F5F3FF", borderColor: "#EDE9FE" }]}>
-          <View style={[styles.statCardIcon, { backgroundColor: "#EDE9FE" }]}>
-            <Ionicons name="document-text-outline" size={16} color="#7C3AED" />
-          </View>
-          <Text style={[styles.statCardVal, { color: "#7C3AED" }]}>
-            {String(reportsAnalyzed).padStart(2, "0")}
-          </Text>
-          <Text style={[styles.statCardLabel, { color: "#7C3AED" }]}>Reports</Text>
-        </View>
-
-        <View style={[styles.statCard, { backgroundColor: "#EFF6FF", borderColor: "#DBEAFE" }]}>
-          <View style={[styles.statCardIcon, { backgroundColor: "#DBEAFE" }]}>
-            <Ionicons name="calendar-outline" size={16} color="#2563EB" />
-          </View>
-          <Text style={[styles.statCardVal, { color: "#2563EB", fontSize: 11 }]} numberOfLines={1}>
-            {formatDate(lastUpdated)}
-          </Text>
-          <Text style={[styles.statCardLabel, { color: "#2563EB" }]}>Updated</Text>
-        </View>
-      </View>
-
-      {/* ── Attention banner ── */}
-      {attentionCount > 0 && (
-        <Pressable
-          style={styles.attentionBanner}
-          onPress={onAttentionPress}
-        >
-          <View style={styles.attentionIcon}>
-            <Ionicons name="alert-circle" size={20} color="#fff" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.attentionTop}>Health Alerts:</Text>
-            <Text style={styles.attentionBottom}>{attentionCount} reports need attention</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-        </Pressable>
-      )}
     </Card>
   );
 }
@@ -264,10 +206,11 @@ export function HealthScoreCard({
   stableOverReports = 0,
   hasReports = false,
   attentionReportId,
+  summaryTitle,
   onAttentionPress,
 }: Props) {
   if (!hasReports) {
-    return <EmptyHealthScore onUpload={() => router.push("/upload")} />;
+    return <EmptyHealthScore summaryTitle={summaryTitle} onUpload={() => router.push("/upload")} />;
   }
   return (
     <FilledHealthScore
@@ -279,6 +222,7 @@ export function HealthScoreCard({
       attentionCount={attentionCount}
       stableOverReports={stableOverReports}
       attentionReportId={attentionReportId}
+      summaryTitle={summaryTitle}
       onAttentionPress={onAttentionPress}
     />
   );
@@ -287,7 +231,7 @@ export function HealthScoreCard({
 const styles = StyleSheet.create({
   card: { gap: 0, padding: 16, backgroundColor: "#F4FFFA", borderColor: "#D1FAE5" },
 
-  topRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 14 },
+  topRow: { flexDirection: "row", alignItems: "center", gap: 12 },
 
   gaugeCenterInner: { flex: 1, alignItems: "center", justifyContent: "center" },
   shieldBadge: {
@@ -304,10 +248,18 @@ const styles = StyleSheet.create({
   scoreLabel: { fontWeight: "700" },
   scoreOf: { color: Colors.textMuted },
 
-  rightCol: { flex: 1, gap: 8 },
+  rightCol: { flex: 1, gap: 4 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 4, flexWrap: "wrap" },
   overallTitle: { fontSize: 14, fontWeight: "700", color: Colors.text, flexShrink: 1 },
   overallSub: { fontSize: 12, color: Colors.textMuted, lineHeight: 17 },
+
+  bulletList: { gap: 6, marginTop: 4, marginBottom: 6 },
+  bulletRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  bulletDot: { width: 6, height: 6, borderRadius: 3 },
+  bulletText: { fontSize: 12, color: Colors.text, fontWeight: '500' },
+  
+  viewDetailsBtn: { alignSelf: 'flex-start', paddingVertical: 4 },
+  viewDetailsText: { fontSize: 13, fontWeight: '600', color: Colors.primary },
 
   // Filled state stable pill
   stablePill: {

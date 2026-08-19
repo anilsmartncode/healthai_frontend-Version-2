@@ -33,6 +33,7 @@ import { Colors, Radius } from '@/constants/Colors';
 import { useReports, type FilterType } from '@/hooks/useReports';
 import type { ReportListItem } from '@/services/reportsApi';
 import { ChatInputBar } from '@/components/ui/ChatInputBar';
+import { HealthScoreCard } from '@/components/home/Healthscorecard';
 
 
 function formatIndianDateTime(isoString: string | undefined | null, fallback: string): string {
@@ -310,6 +311,27 @@ export default function ReportsScreen() {
 
   const ListHeader = (
     <View style={{ zIndex: 10 }}>
+
+      {/* Top Report Summary Card */}
+      {allReports.length > 0 && (
+        <View style={{ marginBottom: 16 }}>
+          <HealthScoreCard
+            hasReports={true}
+            summaryTitle="Report Summary"
+            score={allReports[0]?.healthScore || 0}
+            label={allReports[0]?.healthLabel || "—"}
+            normalCount={(allReports[0]?.totalValues || 0) - (allReports[0]?.abnormalCount || 0) - (allReports[0]?.borderlineCount || 0)}
+            attentionCount={(allReports[0]?.abnormalCount || 0) + (allReports[0]?.borderlineCount || 0)}
+            reportsAnalyzed={1}
+            attentionReportId={allReports[0]?.id}
+            onAttentionPress={() => {
+              if (allReports[0]) {
+                router.push({ pathname: '/report-detail', params: { id: allReports[0].id } });
+              }
+            }}
+          />
+        </View>
+      )}
 
       {/* Recent header */}
       <View style={styles.recentHeader}>
