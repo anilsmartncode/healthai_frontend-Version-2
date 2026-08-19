@@ -63,13 +63,13 @@ function getFormIcon(name: string): string {
 
 function getFormColor(name: string): string {
   const n = name.toLowerCase();
-  if (n.includes('syrup') || n.includes('suspension')) return '#D97706'; // Amber
-  if (n.includes('injection') || n.includes('vaccine') || n.includes('pen')) return '#DC2626'; // Red
-  if (n.includes('drop')) return '#0284C7'; // Blue
-  if (n.includes('cream') || n.includes('gel') || n.includes('ointment')) return '#9333EA'; // Purple
-  if (n.includes('inhaler') || n.includes('spray')) return '#059669'; // Emerald
-  if (n.includes('capsule')) return '#EA580C'; // Orange
-  return '#DB2777'; // Pink for tablets
+  if (n.includes('syrup') || n.includes('suspension')) return '#B45309'; // Clinical Bronze
+  if (n.includes('injection') || n.includes('vaccine') || n.includes('pen')) return '#BE123C'; // Muted Rose
+  if (n.includes('drop')) return '#0369A1'; // Ocean Blue
+  if (n.includes('cream') || n.includes('gel') || n.includes('ointment')) return '#6D28D9'; // Soft Violet
+  if (n.includes('inhaler') || n.includes('spray')) return '#64748B'; // Clinical Slate
+  if (n.includes('capsule')) return '#C2410C'; // Burnt Orange
+  return '#0F766E'; // Medical Teal for tablets
 }
 
 function LibraryCard({

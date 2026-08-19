@@ -19,14 +19,14 @@ export function Input({ label, style, ...rest }: Props) {
 }
 
 const styles = StyleSheet.create({
-  label: { color: Colors.text, marginBottom: 6, fontSize: 14, fontWeight: '500' },
+  label: { color: Colors.text, marginBottom: 4, fontSize: 13, fontWeight: '500' },
   input: {
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: Radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
     color: Colors.text,
     backgroundColor: Colors.surface,
   },

@@ -112,10 +112,10 @@ export function DatePickerField({
 
 const styles = StyleSheet.create({
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
     color: Colors.text,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   field: {
     flexDirection: 'row',
@@ -124,8 +124,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: Radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     backgroundColor: Colors.surface,
   },
   fieldText:   { fontSize: 15, color: Colors.text },

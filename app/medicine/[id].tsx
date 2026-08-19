@@ -54,13 +54,13 @@ function getFormIcon(name: string): string {
 
 function getFormColor(name: string): string {
   const n = name.toLowerCase();
-  if (n.includes('syrup') || n.includes('suspension')) return '#D97706';
-  if (n.includes('injection') || n.includes('vaccine') || n.includes('pen')) return '#DC2626';
-  if (n.includes('drop')) return '#0284C7';
-  if (n.includes('cream') || n.includes('gel') || n.includes('ointment')) return '#9333EA';
-  if (n.includes('inhaler') || n.includes('spray')) return '#059669';
-  if (n.includes('capsule')) return '#EA580C';
-  return '#DB2777';
+  if (n.includes('syrup') || n.includes('suspension')) return '#B45309';
+  if (n.includes('injection') || n.includes('vaccine') || n.includes('pen')) return '#BE123C';
+  if (n.includes('drop')) return '#0369A1';
+  if (n.includes('cream') || n.includes('gel') || n.includes('ointment')) return '#6D28D9';
+  if (n.includes('inhaler') || n.includes('spray')) return '#64748B';
+  if (n.includes('capsule')) return '#C2410C';
+  return '#0F766E';
 }
 
 export default function MedicineDetail() {
@@ -414,62 +414,62 @@ export default function MedicineDetail() {
         ) : null}
 
         {/* ── Expandable Details Section (Description, Warnings & Patient Summary) ── */}
-            {/* Description */}
-            {medicine.description ? (
-              <View style={styles.infoCard}>
-                <View style={styles.cardHeader}>
-                  <View style={[styles.cardHeaderIcon, { backgroundColor: '#F8FAFC' }]}>
-                    <Ionicons name="document-text-outline" size={16} color="#475569" />
-                  </View>
-                  <Text style={styles.cardHeaderTitle}>DESCRIPTION</Text>
-                </View>
-                <Text style={styles.cardBodyText}>
-                  {translatedDescription ?? medicine.description}
-                </Text>
+        {/* Description */}
+        {medicine.description ? (
+          <View style={styles.infoCard}>
+            <View style={styles.cardHeader}>
+              <View style={[styles.cardHeaderIcon, { backgroundColor: '#F8FAFC' }]}>
+                <Ionicons name="document-text-outline" size={16} color="#475569" />
               </View>
-            ) : null}
+              <Text style={styles.cardHeaderTitle}>DESCRIPTION</Text>
+            </View>
+            <Text style={styles.cardBodyText}>
+              {translatedDescription ?? medicine.description}
+            </Text>
+          </View>
+        ) : null}
 
 
 
-            {/* AI Patient Summary */}
-            {medicine.patientSummary && (
-              <View style={styles.patientSummaryCard}>
-                <View style={styles.patientHeader}>
-                  <Ionicons name="heart-circle" size={20} color="#0284C7" />
-                  <Text style={styles.patientHeaderTitle}>COMPREHENSIVE PATIENT GUIDE</Text>
-                </View>
+        {/* AI Patient Summary */}
+        {medicine.patientSummary && (
+          <View style={styles.patientSummaryCard}>
+            <View style={styles.patientHeader}>
+              <Ionicons name="heart-circle" size={20} color="#0284C7" />
+              <Text style={styles.patientHeaderTitle}>COMPREHENSIVE PATIENT GUIDE</Text>
+            </View>
 
-                {medicine.patientSummary.overview && (
-                  <View style={styles.patientSubSection}>
-                    <Text style={styles.patientSubTitle}>Overview</Text>
-                    <Text style={styles.patientSubBody}>{medicine.patientSummary.overview}</Text>
-                  </View>
-                )}
-
-                {medicine.patientSummary.howItWorks && (
-                  <View style={styles.patientSubSection}>
-                    <Text style={styles.patientSubTitle}>How It Works</Text>
-                    <Text style={styles.patientSubBody}>{medicine.patientSummary.howItWorks}</Text>
-                  </View>
-                )}
-
-                {medicine.patientSummary.administration && (
-                  <View style={styles.patientSubSection}>
-                    <Text style={styles.patientSubTitle}>Administration & Timing</Text>
-                    <Text style={styles.patientSubBody}>{medicine.patientSummary.administration}</Text>
-                  </View>
-                )}
-
-                {medicine.patientSummary.safety && (
-                  <View style={styles.patientSubSection}>
-                    <Text style={styles.patientSubTitle}>Safety & Precautions</Text>
-                    <Text style={styles.patientSubBody}>{medicine.patientSummary.safety}</Text>
-                  </View>
-                )}
-
-
+            {medicine.patientSummary.overview && (
+              <View style={styles.patientSubSection}>
+                <Text style={styles.patientSubTitle}>Overview</Text>
+                <Text style={styles.patientSubBody}>{medicine.patientSummary.overview}</Text>
               </View>
             )}
+
+            {medicine.patientSummary.howItWorks && (
+              <View style={styles.patientSubSection}>
+                <Text style={styles.patientSubTitle}>How It Works</Text>
+                <Text style={styles.patientSubBody}>{medicine.patientSummary.howItWorks}</Text>
+              </View>
+            )}
+
+            {medicine.patientSummary.administration && (
+              <View style={styles.patientSubSection}>
+                <Text style={styles.patientSubTitle}>Administration & Timing</Text>
+                <Text style={styles.patientSubBody}>{medicine.patientSummary.administration}</Text>
+              </View>
+            )}
+
+            {medicine.patientSummary.safety && (
+              <View style={styles.patientSubSection}>
+                <Text style={styles.patientSubTitle}>Safety & Precautions</Text>
+                <Text style={styles.patientSubBody}>{medicine.patientSummary.safety}</Text>
+              </View>
+            )}
+
+
+          </View>
+        )}
 
 
         {/* ── Critical Safety & Warnings ── */}
@@ -479,7 +479,7 @@ export default function MedicineDetail() {
               <Ionicons name="warning" size={20} color="#DC2626" />
               <Text style={styles.criticalWarningTitle}>CRITICAL SAFETY & WARNINGS</Text>
             </View>
-            
+
             {medicine.warnings && (
               <View style={styles.criticalWarningSection}>
                 <Text style={styles.criticalWarningSubtitle}>Precautions</Text>

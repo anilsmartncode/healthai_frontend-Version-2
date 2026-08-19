@@ -69,13 +69,13 @@ function getFormIcon(name: string): string {
 
 function getFormColor(name: string): string {
   const n = name.toLowerCase();
-  if (n.includes('syrup') || n.includes('suspension')) return '#D97706';
-  if (n.includes('injection') || n.includes('vaccine') || n.includes('pen')) return '#DC2626';
-  if (n.includes('drop')) return '#0284C7';
-  if (n.includes('cream') || n.includes('gel') || n.includes('ointment')) return '#9333EA';
-  if (n.includes('inhaler') || n.includes('spray')) return '#059669';
-  if (n.includes('capsule')) return '#EA580C';
-  return '#DB2777';
+  if (n.includes('syrup') || n.includes('suspension')) return '#B45309';
+  if (n.includes('injection') || n.includes('vaccine') || n.includes('pen')) return '#BE123C';
+  if (n.includes('drop')) return '#0369A1';
+  if (n.includes('cream') || n.includes('gel') || n.includes('ointment')) return '#6D28D9';
+  if (n.includes('inhaler') || n.includes('spray')) return '#64748B';
+  if (n.includes('capsule')) return '#C2410C';
+  return '#0F766E';
 }
 
 // ─── MEDICINE ROW ─────────────────────────────────────────────────────────────

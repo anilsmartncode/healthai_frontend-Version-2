@@ -25,7 +25,7 @@ import { api } from '@/services/api';
 import { ENDPOINTS, BASE_URL } from '@/constants/api';
 
 const BLOOD_GROUPS = ['A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−'];
-const GENDERS      = ['Male', 'Female', 'Other', 'Prefer not to say'];
+const GENDERS = ['Male', 'Female', 'Other', 'Prefer not to say'];
 
 // 🔴 REAL active | set true to roll back to 🟢 MOCK
 const USE_MOCK = false;
@@ -42,22 +42,22 @@ const MOCK_PROFILE = {
 
 export default function Account() {
   const { phone } = useAuth();
-  const { t }     = useLang();
+  const { t } = useLang();
 
-  const [name,            setName]            = useState('');
-  const [email,           setEmail]           = useState('');
-  const [phoneNumber,     setPhoneNumber]     = useState('');
-  const [dob,             setDob]             = useState<Date | null>(null);
-  const [bloodGroup,      setBloodGroup]      = useState('B+');
-  const [gender,          setGender]          = useState('Male');
-  const [height,          setHeight]          = useState('');
-  const [weight,          setWeight]          = useState('');
-  const [avatarUrl,       setAvatarUrl]       = useState<string | null>(null);
-  const [localAvatarUri,  setLocalAvatarUri]  = useState<string | null>(null);
-  const [imageLoadError,  setImageLoadError]  = useState(false);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [dob, setDob] = useState<Date | null>(null);
+  const [bloodGroup, setBloodGroup] = useState('B+');
+  const [gender, setGender] = useState('Male');
+  const [height, setHeight] = useState('');
+  const [weight, setWeight] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [localAvatarUri, setLocalAvatarUri] = useState<string | null>(null);
+  const [imageLoadError, setImageLoadError] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [loading,         setLoading]         = useState(true);
-  const [saving,          setSaving]          = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const isActualPhone = (val?: string | null) => !!val && !val.includes('@') && /\d/.test(val);
   const isActualEmail = (val?: string | null) => !!val && val.includes('@');
@@ -204,14 +204,14 @@ export default function Account() {
         await api.request(ENDPOINTS.profileMePath, {
           method: 'PATCH',
           body: JSON.stringify({
-            full_name:     name.trim(),
-            email:         email.trim(),
-            phone:         phoneNumber.trim(),
+            full_name: name.trim(),
+            email: email.trim(),
+            phone: phoneNumber.trim(),
             date_of_birth: dob ? dob.toISOString().split('T')[0] : null,
-            blood_type:    bloodGroup,
-            gender:        gender,
-            height:        height ? Number(height) || height : null,
-            weight:        weight ? Number(weight) || weight : null,
+            blood_type: bloodGroup,
+            gender: gender,
+            height: height ? Number(height) || height : null,
+            weight: weight ? Number(weight) || weight : null,
           }),
         });
       }
@@ -388,25 +388,6 @@ export default function Account() {
           </Text>
         </View>
 
-        <Pressable
-          style={({ pressed }) => [
-            styles.saveHeaderBtn,
-            saving && { opacity: 0.6 },
-            pressed && { opacity: 0.8 },
-          ]}
-          onPress={handleSave}
-          disabled={saving}
-          hitSlop={8}
-        >
-          {saving ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
-              <Text style={styles.saveLink}>{t('save_changes')}</Text>
-            </>
-          )}
-        </Pressable>
       </View>
 
       <KeyboardAvoidingView
@@ -566,8 +547,8 @@ export default function Account() {
 
           {/* ── Health & Vitals Card ── */}
           <View style={styles.sectionHeader}>
-            <View style={[styles.sectionIconWrap, { backgroundColor: '#ECFDF5' }]}>
-              <Ionicons name="heart-half" size={16} color="#16A34A" />
+            <View style={[styles.sectionIconWrap, { backgroundColor: '#EFF6FF' }]}>
+              <Ionicons name="medkit" size={16} color={Colors.primary} />
             </View>
             <Text style={styles.sectionTitle}>Health & Medical Info</Text>
           </View>
@@ -704,25 +685,6 @@ const styles = StyleSheet.create({
     color: Colors.text,
     letterSpacing: -0.2,
   },
-  saveHeaderBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 13,
-    paddingVertical: 7,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.primary,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  saveLink: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#fff',
-  },
 
   body: { padding: 16, gap: 16, paddingBottom: 40 },
 
@@ -828,17 +790,7 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
     gap: 14,
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
   },
   fieldHeaderRow: {
     flexDirection: 'row',
@@ -873,8 +825,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: Radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     backgroundColor: '#F8FAFC',
   },
   readOnlyVal: {
@@ -890,8 +842,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: Radius.pill,
     borderWidth: 1,
     borderColor: Colors.border,
