@@ -80,6 +80,7 @@ export type PrescriptionType = 'OTC' | 'Prescription' | 'High Risk';
 export type ReminderFrequency = 'daily' | 'weekly' | 'monthly' | 'custom';
 export type WhenToTake = 'before_food' | 'after_food' | 'with_food' | 'bedtime';
 export type ReminderStatus = 'upcoming' | 'taken' | 'missed' | 'cancelled';
+export type OccurrenceStatus = 'pending' | 'taken' | 'missed';
 
 export interface Category {
   id: string;
@@ -136,11 +137,84 @@ export interface Reminder {
   medicineId: string;
   medicineName: string;
   medicineType: string;
+  dosage: string;
   time: string; // "08:00 AM"
   frequency: ReminderFrequency;
+  schedule?: string;
+  dayOfWeek?: string;
+  dayOfMonth?: number;
   whenToTake: WhenToTake;
   status: ReminderStatus;
+  occurrenceStatus: OccurrenceStatus;
+  takenToday: boolean;
+  missedToday: boolean;
+  isActive: boolean;
+  memberId?: string;
+  totalCount?: number;
+  refillThreshold?: number;
+  expiresInDays?: number;
+  expiryDate?: string;
+  daysRemaining?: number;
+  isExpired?: boolean;
+  tabletsCompleted?: boolean;
+  needsRefill?: boolean;
+  stockAvailable?: boolean;
+  remindersPaused?: boolean;
+  pausedReason?: string;
   createdAt: string;
+  occurrenceDate?: string;
+}
+
+export function mapReminder(raw: any): Reminder {
+  const mapped: Reminder = {
+    id: String(raw.id),
+    medicineId: String(raw.medicine_id || raw.id),
+    medicineName: raw.medicine_name || raw.medicineName || '',
+    medicineType: raw.medicine_type || raw.medicineType || 'Tablet',
+    dosage: raw.dosage || '',
+    time: raw.reminder_time || raw.time || '',
+    frequency: (raw.frequency || 'daily').toLowerCase() as ReminderFrequency,
+    schedule: raw.schedule,
+    dayOfWeek: raw.day_of_week || raw.dayOfWeek,
+    dayOfMonth: raw.day_of_month || raw.dayOfMonth,
+    whenToTake: (raw.when_to_take || raw.whenToTake || 'after_food').toLowerCase().replace(' ', '_') as WhenToTake,
+    status: (raw.status || 'upcoming').toLowerCase() as ReminderStatus,
+    occurrenceStatus: (raw.occurrence_status || raw.occurrenceStatus || 'pending').toLowerCase() as OccurrenceStatus,
+    takenToday: !!(raw.taken_today || raw.takenToday),
+    missedToday: !!(raw.missed_today || raw.missedToday),
+    isActive: !!(raw.is_active ?? raw.isActive ?? true),
+    memberId: String(raw.member_id || raw.memberId || ''),
+    totalCount: raw.total_count ?? raw.totalCount ?? 0,
+    refillThreshold: raw.refill_threshold ?? raw.refillThreshold ?? 0,
+    expiresInDays: raw.expires_in_days ?? raw.expiresInDays ?? 0,
+    expiryDate: raw.expiry_date ?? raw.expiryDate,
+    daysRemaining: raw.days_remaining ?? raw.daysRemaining,
+    isExpired: !!(raw.is_expired ?? raw.isExpired),
+    tabletsCompleted: !!(raw.tablets_completed ?? raw.tabletsCompleted),
+    needsRefill: !!(raw.needs_refill ?? raw.needsRefill),
+    stockAvailable: !!(raw.stock_available ?? raw.stockAvailable ?? true),
+    remindersPaused: !!(raw.reminders_paused ?? raw.remindersPaused),
+    pausedReason: raw.paused_reason ?? raw.pausedReason,
+    createdAt: raw.created_at || raw.createdAt || new Date().toISOString(),
+    occurrenceDate: raw.occurrence_date || raw.occurrenceDate,
+  };
+  
+  // If backend returns expiresInDays but not expiryDate, calculate the expiryDate so the UI can show it
+  if (!mapped.expiryDate && mapped.expiresInDays > 0) {
+    const d = new Date();
+    d.setDate(d.getDate() + mapped.expiresInDays);
+    mapped.expiryDate = d.toISOString().split('T')[0];
+  }
+
+  // Ensure frontend flags are robust in case backend doesn't send boolean flags yet
+  if (mapped.totalCount !== undefined && mapped.totalCount <= 0) {
+    mapped.tabletsCompleted = true;
+  }
+  if (mapped.totalCount !== undefined && mapped.totalCount <= (mapped.refillThreshold || 5)) {
+    mapped.needsRefill = true;
+  }
+
+  return mapped;
 }
 
 export interface ScanResult {
@@ -400,30 +474,58 @@ export async function createReminder(payload: {
   dosage: string;
   time: string;
   frequency: ReminderFrequency;
+  dayOfWeek?: string;
+  dayOfMonth?: number;
+  totalCount?: number;
+  refillThreshold?: number;
+  expiresInDays?: number;
+  expiryDate?: string;
   whenToTake: WhenToTake;
 }): Promise<{ success: boolean; message: string; reminderId: string }> {
   // 🔴 REAL — active
+  const body: any = {
+    medicine_id: payload.medicineId,
+    medicine_name: payload.medicineName,
+    medicine_type: payload.medicineType,
+    dosage: payload.dosage,
+    reminder_time: payload.time,
+    frequency: FREQ_API_MAP[payload.frequency] || 'Daily',
+    when_to_take: WHEN_API_MAP[payload.whenToTake] || 'After Food',
+  };
+
+  if (payload.frequency === 'weekly' && payload.dayOfWeek) body.day_of_week = payload.dayOfWeek;
+  if (payload.frequency === 'monthly' && payload.dayOfMonth) body.day_of_month = payload.dayOfMonth;
+  if (payload.totalCount !== undefined) body.total_count = payload.totalCount;
+  if (payload.refillThreshold !== undefined) body.refill_threshold = payload.refillThreshold;
+  if (payload.expiresInDays !== undefined) body.expires_in_days = payload.expiresInDays;
+  if (payload.expiryDate !== undefined) body.expiry_date = payload.expiryDate;
+
   const data = await medicineApiCall<any>(ENDPOINTS.reminders, {
     method: 'POST',
-    body: {
-      medicine_id: payload.medicineId,
-      medicine_name: payload.medicineName,
-      medicine_type: payload.medicineType,
-      dosage: payload.dosage,
-      reminder_time: payload.time,
-      frequency: FREQ_API_MAP[payload.frequency],
-      when_to_take: WHEN_API_MAP[payload.whenToTake],
-    },
+    body,
   });
+
+  const reminderId = data?.reminder_id ?? data?.reminderId ?? `rem_${Date.now()}`;
+
   return {
     success: data?.success ?? true,
     message: data?.message ?? 'Reminder created',
-    reminderId: data?.reminder_id ?? data?.reminderId ?? `rem_${Date.now()}`,
+    reminderId,
   };
 
   // 🟢 MOCK
   // await delay(900);
   // return { success: true, message: 'Reminder created', reminderId: `rem_${Date.now()}` };
+}
+
+/**
+ * API 2.5 - Get All Reminders
+ * GET /api/reminders
+ */
+export async function getAllReminders(): Promise<Reminder[]> {
+  const raw = await medicineApiCall<any>(ENDPOINTS.reminders);
+  const list = unwrapList<any>(raw, 'reminders', 'data', 'results');
+  return list.map(mapReminder);
 }
 
 /**
@@ -434,7 +536,8 @@ export async function createReminder(payload: {
 export async function getTodaysReminders(): Promise<Reminder[]> {
   // 🔴 REAL — active
   const raw = await medicineApiCall<any>(ENDPOINTS.remindersToday);
-  return unwrapList<Reminder>(raw, 'reminders', 'data', 'results');
+  const list = unwrapList<any>(raw, 'reminders', 'data', 'results');
+  return list.map(mapReminder);
 
   // 🟢 MOCK
   // await delay(600);
@@ -456,6 +559,19 @@ export async function markReminderTaken(reminderId: string): Promise<{ success: 
   // 🟢 MOCK
   // await delay(400);
   // return { success: true };
+}
+
+/**
+ * API 4.5 – Undo Reminder Taken
+ * POST /api/reminders/{id}/untake
+ * Expected time: ~0.3 – 0.6 s
+ */
+export async function undoReminderTaken(reminderId: string): Promise<{ success: boolean }> {
+  // 🔴 REAL — active
+  return medicineApiCall(ENDPOINTS.reminderUntake(reminderId), {
+    method: 'POST',
+    body: {},
+  });
 }
 
 /**
@@ -482,7 +598,7 @@ export async function markReminderMissed(reminderId: string): Promise<{ success:
  */
 export async function getReminderHistory(): Promise<Reminder[]> {
   // 🔴 REAL — active
-  const raw = await medicineApiCall<any>(ENDPOINTS.reminderHistory);
+  const raw = await medicineApiCall<Reminder[]>(ENDPOINTS.reminderHistory);
   return unwrapList<Reminder>(raw, 'reminders', 'data', 'results');
 
   // 🟢 MOCK
@@ -497,7 +613,14 @@ export async function getReminderHistory(): Promise<Reminder[]> {
  */
 export async function updateReminder(
   reminderId: string,
-  payload: Partial<Pick<Reminder, 'time' | 'frequency' | 'whenToTake'>> & { enabled?: boolean }
+  payload: Partial<Pick<Reminder, 'time' | 'frequency' | 'whenToTake'>> & { 
+    enabled?: boolean;
+    dayOfWeek?: string;
+    dayOfMonth?: number;
+    totalCount?: number;
+    refillThreshold?: number;
+    expiresInDays?: number;
+  }
 ): Promise<{ success: boolean; message: string }> {
   // 🔴 REAL — active
   const body: Record<string, unknown> = {};
@@ -511,6 +634,12 @@ export async function updateReminder(
     body.when_to_take = WHEN_API_MAP[wKey] || payload.whenToTake;
   }
   if (payload.enabled !== undefined) body.is_active = payload.enabled;
+  if (payload.dayOfWeek !== undefined) body.day_of_week = payload.dayOfWeek;
+  if (payload.dayOfMonth !== undefined) body.day_of_month = payload.dayOfMonth;
+  if (payload.totalCount !== undefined) body.total_count = payload.totalCount;
+  if (payload.refillThreshold !== undefined) body.refill_threshold = payload.refillThreshold;
+  if (payload.expiresInDays !== undefined) body.expires_in_days = payload.expiresInDays;
+
   return medicineApiCall(ENDPOINTS.reminderUpdate(reminderId), { method: 'PUT', body });
 
   // 🟢 MOCK

@@ -1,20 +1,3 @@
-/**
- * app/medicines/reminders.tsx
- *
- * Medicine Reminder — dedicated screen.
- * Follows the reminder flow from the design doc (Image 2):
- *   1. My Medicines list     — GET /api/user/medicines      (~0.5–1.0s)
- *   2. Set Reminder form     — POST /api/reminders          (~0.8–1.2s)
- *   3. Reminder Created      — success state
- *   4. Today's Reminders     — GET /api/reminders/today     (~0.5–1.0s)
- *   5. Reminder Notification — push (no API call, Firebase/OneSignal)
- *   6. Mark as Taken/Missed  — POST /api/reminders/:id/taken|missed (~0.3–0.6s)
- *   7. History               — GET /api/reminders/history   (~0.5–1.0s)
- *   8. Edit / Delete         — PUT|DELETE /api/reminders/:id (~0.3–0.6s)
- *
- * All data is mock; replace stubs with real API calls.
- */
-
 import { useState, useEffect } from 'react';
 import {
   View,
@@ -26,79 +9,49 @@ import {
   Alert,
   Switch,
   FlatList,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Colors, Radius, Spacing } from '@/constants/Colors';
-import { NotificationCenter } from '@/services/NotificationService';
+import { Colors } from '@/constants/Colors';
 import { CustomTimePicker } from '@/components/medicines/CustomTimePicker';
-import { ENDPOINTS } from '@/constants/api';
-import { medicineApiCall } from '@/services/Medicineapiclient';
-import { requestNotificationPermissions, cancelReminderNotification, scheduleReminderNotification, parseTimeStringToNextDate } from '@/utils/notifications';
-import { updateReminder } from '@/services/medicineTabApi';
+import { requestNotificationPermissions } from '@/utils/notifications';
+import {
+  getTodaysReminders,
+  getAllReminders,
+  getReminderHistory,
+  markReminderTaken,
+  markReminderMissed,
+  undoReminderTaken,
+  updateReminder,
+  deleteReminder,
+  type Reminder,
+  type OccurrenceStatus,
+} from '@/services/medicineTabApi';
 
-// ─── TYPES ────────────────────────────────────────────────────────────────────
-type ReminderTab = 'today' | 'history';
-type WhenToTake = 'before_food' | 'after_food' | 'with_food' | 'bedtime';
-type Frequency = 'daily' | 'weekly' | 'monthly' | 'custom';
-type ReminderStatus = 'upcoming' | 'taken' | 'missed' | 'cancelled';
+type ReminderTab = 'today' | 'all' | 'history';
 
-interface Reminder {
-  id: string;
-  medicineName: string;
-  time: string;
-  frequency: Frequency;
-  whenToTake: WhenToTake;
-  enabled: boolean;
-  status?: ReminderStatus;
-}
-
-interface HistoryItem {
-  id: string;
-  date: string;
-  medicineName: string;
-  time: string;
-  status: 'taken' | 'missed';
-}
-
-// ─── MOCK DATA ────────────────────────────────────────────────────────────────
-const WHEN_LABELS: Record<WhenToTake, string> = {
+const WHEN_LABELS: Record<string, string> = {
   before_food: 'Before Food',
   after_food: 'After Food',
   with_food: 'With Food',
   bedtime: 'At Bedtime',
 };
 
-const FREQ_LABELS: Record<Frequency, string> = {
+const FREQ_LABELS: Record<string, string> = {
   daily: 'Daily',
   weekly: 'Weekly',
   monthly: 'Monthly',
   custom: 'Custom',
 };
 
-// ← plug in your API: GET /api/reminders/today
-const MOCK_TODAY_REMINDERS: Reminder[] = [
-  { id: 'r1', medicineName: 'Metformin 500mg', time: '08:00 AM', frequency: 'daily', whenToTake: 'after_food', enabled: true, status: 'upcoming' },
-  { id: 'r2', medicineName: 'Vitamin D3', time: '08:00 PM', frequency: 'daily', whenToTake: 'after_food', enabled: true, status: 'upcoming' },
-];
-
-// ← plug in your API: GET /api/reminders/history
-const MOCK_HISTORY: HistoryItem[] = [
-  { id: 'h1', date: '01 Jun 2026', medicineName: 'Metformin 500mg', time: '08:00 AM', status: 'taken' },
-  { id: 'h2', date: '01 Jun 2026', medicineName: 'Vitamin D3', time: '08:00 PM', status: 'missed' },
-  { id: 'h3', date: '31 May 2026', medicineName: 'Metformin 500mg', time: '08:00 AM', status: 'taken' },
-];
-
-// ─── STATUS CONFIG ────────────────────────────────────────────────────────────
-const STATUS_CFG = {
-  upcoming: { color: '#64748B', bg: '#F1F5F9', label: 'Upcoming' },
+const OCCURRENCE_CFG: Record<OccurrenceStatus, { color: string; bg: string; label: string }> = {
+  pending: { color: '#64748B', bg: '#F1F5F9', label: 'Upcoming' },
   taken: { color: '#16A34A', bg: '#F0FDF4', label: 'Taken' },
   missed: { color: '#DC2626', bg: '#FEF2F2', label: 'Missed' },
-  cancelled: { color: '#94A3B8', bg: '#F8FAFC', label: 'Cancelled' },
 };
 
-// ─── MARK AS TAKEN MODAL ──────────────────────────────────────────────────────
 function MarkTakenModal({ reminder, onTaken, onMissed, onClose }: { reminder: Reminder | null; onTaken: () => void; onMissed: () => void; onClose: () => void }) {
   if (!reminder) return null;
   return (
@@ -109,7 +62,6 @@ function MarkTakenModal({ reminder, onTaken, onMissed, onClose }: { reminder: Re
           <Pressable onPress={onClose} hitSlop={8}><Ionicons name="close" size={22} color="#64748B" /></Pressable>
         </View>
         <View style={styles.markPad}>
-          {/* Medicine info */}
           <View style={styles.reminderDetailCard}>
             <View style={styles.reminderDetailIcon}>
               <Ionicons name="medical-outline" size={24} color={Colors.primary} />
@@ -117,7 +69,7 @@ function MarkTakenModal({ reminder, onTaken, onMissed, onClose }: { reminder: Re
             <View style={{ flex: 1 }}>
               <Text style={styles.reminderDetailName}>{reminder.medicineName}</Text>
               <Text style={styles.reminderDetailMeta}>Time: {reminder.time}</Text>
-              <Text style={styles.reminderDetailMeta}>When to Take: {WHEN_LABELS[reminder.whenToTake]}</Text>
+              <Text style={styles.reminderDetailMeta}>When to Take: {WHEN_LABELS[reminder.whenToTake] || reminder.whenToTake}</Text>
             </View>
           </View>
           <Text style={styles.markQuestion}>Mark as Taken?</Text>
@@ -140,7 +92,6 @@ function MarkTakenModal({ reminder, onTaken, onMissed, onClose }: { reminder: Re
   );
 }
 
-// ─── EDIT REMINDER MODAL ──────────────────────────────────────────────────────
 function EditReminderModal({ reminder, onSave, onDelete, onClose }: { reminder: Reminder | null; onSave: (r: Reminder) => void; onDelete: (id: string) => void; onClose: () => void }) {
   const [edited, setEdited] = useState<Reminder | null>(null);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -151,8 +102,6 @@ function EditReminderModal({ reminder, onSave, onDelete, onClose }: { reminder: 
 
   if (!edited) return null;
 
-  const freqOptions: Frequency[] = ['daily', 'weekly', 'monthly', 'custom'];
-  const whenOptions: WhenToTake[] = ['before_food', 'after_food', 'with_food', 'bedtime'];
   return (
     <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }} edges={['top', 'bottom']}>
@@ -165,37 +114,62 @@ function EditReminderModal({ reminder, onSave, onDelete, onClose }: { reminder: 
             <Text style={styles.editLabel}>Medicine</Text>
             <Text style={styles.editValue}>{edited.medicineName}</Text>
           </View>
+
           <View style={styles.editRow}>
             <Text style={styles.editLabel}>Time</Text>
             <Pressable style={styles.editPicker} onPress={() => setShowTimePicker(true)}>
-              <Ionicons name="time-outline" size={16} color={Colors.primary} />
+              <Ionicons name="time-outline" size={18} color={Colors.primary} />
               <Text style={styles.editPickerText}>{edited.time}</Text>
             </Pressable>
           </View>
+
           <View style={styles.editRow}>
             <Text style={styles.editLabel}>Frequency</Text>
             <View style={styles.pillRow}>
-              {freqOptions.map((f) => (
-                <Pressable key={f} style={[styles.selPill, edited.frequency === f && styles.selPillActive]} onPress={() => setEdited({ ...edited, frequency: f })}>
+              {(['daily', 'weekly', 'monthly'] as const).map((f) => (
+                <Pressable
+                  key={f}
+                  style={[styles.selPill, edited.frequency === f && styles.selPillActive]}
+                  onPress={() => setEdited({ ...edited, frequency: f })}
+                >
                   <Text style={[styles.selPillText, edited.frequency === f && styles.selPillTextActive]}>{FREQ_LABELS[f]}</Text>
                 </Pressable>
               ))}
             </View>
           </View>
+
           <View style={styles.editRow}>
-            <Text style={styles.editLabel}>When to Take</Text>
-            <View style={styles.pillRow}>
-              {whenOptions.map((w) => (
-                <Pressable key={w} style={[styles.selPill, edited.whenToTake === w && styles.selPillActive]} onPress={() => setEdited({ ...edited, whenToTake: w })}>
-                  <Text style={[styles.selPillText, edited.whenToTake === w && styles.selPillTextActive]}>{WHEN_LABELS[w]}</Text>
-                </Pressable>
-              ))}
+            <Text style={styles.editLabel}>Total Tablets Remaining</Text>
+            <TextInput 
+              style={styles.input} 
+              keyboardType="number-pad" 
+              value={String(edited.totalCount ?? 0)} 
+              onChangeText={(v) => setEdited({ ...edited, totalCount: parseInt(v) || 0 })} 
+            />
+          </View>
+
+          <View style={styles.editRow}>
+            <Text style={styles.editLabel}>Status</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F8FAFC', padding: 12, borderRadius: 10 }}>
+              <Text style={styles.editValue}>{edited.isActive ? 'Active' : 'Paused'}</Text>
+              <Switch
+                value={edited.isActive}
+                onValueChange={(v) => setEdited({ ...edited, isActive: v })}
+                trackColor={{ true: Colors.primary }}
+              />
             </View>
           </View>
-          <Pressable style={styles.primaryBtn} onPress={() => { onSave(edited); onClose(); }}>
-            <Text style={styles.primaryBtnText}>Update Reminder</Text>
+
+          <Pressable style={styles.primaryBtn} onPress={() => onSave(edited)}>
+            <Text style={styles.primaryBtnText}>Save Changes</Text>
           </Pressable>
-          <Pressable style={styles.deleteBtn} onPress={() => { onDelete(edited.id); onClose(); }}>
+
+          <Pressable style={styles.deleteBtn} onPress={() => {
+            Alert.alert('Delete Reminder', 'Are you sure?', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Delete', style: 'destructive', onPress: () => onDelete(edited.id) }
+            ]);
+          }}>
             <Text style={styles.deleteBtnText}>Delete Reminder</Text>
           </Pressable>
         </ScrollView>
@@ -210,11 +184,11 @@ function EditReminderModal({ reminder, onSave, onDelete, onClose }: { reminder: 
   );
 }
 
-// ─── MAIN SCREEN ─────────────────────────────────────────────────────────────
 export default function RemindersScreen() {
   const [tab, setTab] = useState<ReminderTab>('today');
   const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [allReminders, setAllReminders] = useState<Reminder[]>([]);
+  const [history, setHistory] = useState<Reminder[]>([]);
   const [markingReminder, setMarkingReminder] = useState<Reminder | null>(null);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [loading, setLoading] = useState(true);
@@ -223,67 +197,14 @@ export default function RemindersScreen() {
     setLoading(true);
     try {
       if (tab === 'today') {
-        const res = await medicineApiCall<any>(ENDPOINTS.remindersToday);
-        console.log('=== REMINDERS SCREEN API RESPONSE (TODAY) ===', JSON.stringify(res, null, 2));
-        const data = res?.data || res?.reminders || res || [];
-        const list = Array.isArray(data) ? data : [];
-        const activeList = list.filter((r: any) => 
-          r.is_active !== false && 
-          r.is_deleted !== true && 
-          r.deleted_at == null &&
-          r.status !== 'deleted'
-        );
-        setReminders(activeList.map((r: any) => ({
-          id: String(r.id),
-          medicineName: r.medicine_name ?? r.medicineName ?? '',
-          time: r.reminder_time ?? r.time ?? '',
-          frequency: (r.frequency || 'daily').toLowerCase(),
-          whenToTake: (r.when_to_take || r.whenToTake || 'after_food').toLowerCase().replace(' ', '_').replace('at_', ''),
-          enabled: r.is_active ?? true,
-          status: (['taken', 'missed', 'cancelled'].includes(String(r.status || '').toLowerCase())) 
-            ? (String(r.status).toLowerCase() as ReminderStatus)
-            : 'upcoming'
-        })));
+        const data = await getTodaysReminders();
+        setReminders(data);
+      } else if (tab === 'all') {
+        const data = await getAllReminders();
+        setAllReminders(data);
       } else {
-        // Fetch active reminders first to map reminder_id to medicine names locally
-        let activeRemindersMap: Record<string, { name: string; dosage?: string }> = {};
-        try {
-          const activeRes = await medicineApiCall<any>(ENDPOINTS.reminders);
-          const activeData = activeRes?.data || activeRes?.reminders || activeRes || [];
-          const activeList = Array.isArray(activeData) ? activeData : [];
-          activeList.forEach((r: any) => {
-            const rId = r.id || r.reminder_id;
-            if (rId) {
-              activeRemindersMap[String(rId)] = {
-                name: r.medicine_name ?? r.medicineName ?? '',
-                dosage: r.dosage ?? '',
-              };
-            }
-          });
-        } catch (activeErr) {
-          console.warn('[Reminders] Failed to load active reminders for history mapping:', activeErr);
-        }
-
-        const res = await medicineApiCall<any>(ENDPOINTS.reminderHistory);
-        const data = res?.data || res?.history || res || [];
-        const list = Array.isArray(data) ? data : [];
-        setHistory(list.map((h: any) => {
-          const evtTime = h.event_time || h.created_at;
-          const dt = evtTime ? new Date(evtTime) : null;
-          
-          // Match local reminder info
-          const rIdStr = String(h.reminder_id || '');
-          const mapped = activeRemindersMap[rIdStr];
-
-          return {
-            id: String(h.id),
-            date: dt ? dt.toLocaleDateString() : 'Unknown Date',
-            medicineName: h.medicine_name ?? h.medicineName ?? h.reminder?.medicine_name ?? h.reminder?.medicineName ?? h.medicine?.name ?? mapped?.name ?? `Reminder #${h.reminder_id || 'Unknown'}`,
-            dosage: h.dosage ?? h.reminder?.dosage ?? mapped?.dosage ?? '',
-            time: h.reminder_time ?? h.time ?? (dt ? dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''),
-            status: h.event?.toLowerCase() ?? h.status?.toLowerCase() ?? 'taken'
-          };
-        }));
+        const data = await getReminderHistory();
+        setHistory(data);
       }
     } catch (e: any) {
       console.error('[Reminders] Fetch error:', e.message);
@@ -301,36 +222,42 @@ export default function RemindersScreen() {
 
   const handleTaken = async () => {
     if (!markingReminder) return;
+    setMarkingReminder(null);
     try {
-      await medicineApiCall(ENDPOINTS.reminderTaken(markingReminder.id), { method: 'POST' });
-      setReminders((prev) => prev.map((r) => r.id === markingReminder.id ? { ...r, status: 'taken' } : r));
-    } catch (e: any) {
-      Alert.alert('Error', 'Failed to mark as taken');
-    } finally {
-      setMarkingReminder(null);
+      await markReminderTaken(markingReminder.id);
+      fetchReminders();
+    } catch (e) {
+      Alert.alert('Error', 'Could not mark as taken.');
     }
   };
 
   const handleMissed = async () => {
     if (!markingReminder) return;
+    setMarkingReminder(null);
     try {
-      await medicineApiCall(ENDPOINTS.reminderMissed(markingReminder.id), { method: 'POST' });
-      setReminders((prev) => prev.map((r) => r.id === markingReminder.id ? { ...r, status: 'missed' } : r));
-    } catch (e: any) {
-      Alert.alert('Error', 'Failed to mark as missed');
-    } finally {
-      setMarkingReminder(null);
+      await markReminderMissed(markingReminder.id);
+      fetchReminders();
+    } catch (e) {
+      Alert.alert('Error', 'Could not mark as missed.');
+    }
+  };
+
+  const handleUntake = async (id: string) => {
+    try {
+      await undoReminderTaken(id);
+      fetchReminders();
+    } catch (e) {
+      Alert.alert('Error', 'Could not undo taken status.');
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
-      await medicineApiCall(ENDPOINTS.reminderDelete(id), { method: 'DELETE' });
-      setReminders((prev) => prev.filter((r) => r.id !== id));
-      await cancelReminderNotification(id).catch(console.warn);
-      Alert.alert('Deleted', 'Reminder removed');
-    } catch (e: any) {
-      Alert.alert('Error', 'Failed to delete reminder');
+      await deleteReminder(id);
+      setEditingReminder(null);
+      fetchReminders();
+    } catch (e) {
+      Alert.alert('Error', 'Could not delete reminder.');
     }
   };
 
@@ -340,32 +267,45 @@ export default function RemindersScreen() {
         time: r.time,
         frequency: r.frequency,
         whenToTake: r.whenToTake,
-        enabled: r.enabled
+        enabled: r.isActive,
+        totalCount: r.totalCount,
       });
-      setReminders((prev) => prev.map((rem) => rem.id === r.id ? r : rem));
-      
-      // Update local notification scheduling
-      if (r.enabled === false) {
-        await cancelReminderNotification(r.id).catch(console.warn);
-      } else {
-        const nextDate = parseTimeStringToNextDate(r.time);
-        await scheduleReminderNotification(
-          r.id,
-          `Medicine Time: ${r.medicineName}`,
-          `${WHEN_LABELS[r.whenToTake]}`,
-          nextDate,
-          (r.frequency as any)
-        ).catch(console.warn);
-      }
+      setEditingReminder(null);
+      fetchReminders();
     } catch (e: any) {
       Alert.alert('Error', 'Failed to update reminder');
     }
   };
 
+  const handleRefill = async (r: Reminder) => {
+    Alert.prompt(
+      'Refill Medicine',
+      'Enter the number of new tablets you added:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Refill', 
+          onPress: async (val?: string) => {
+            if (!val || isNaN(Number(val))) return;
+            const added = Number(val);
+            const newTotal = (r.totalCount ?? 0) + added;
+            try {
+              await updateReminder(r.id, { totalCount: newTotal });
+              fetchReminders();
+            } catch (e) {
+              Alert.alert('Error', 'Failed to refill.');
+            }
+          }
+        }
+      ],
+      'plain-text',
+      '',
+      'number-pad'
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-
-      {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
           <Ionicons name="chevron-back" size={22} color="#0F172A" />
@@ -376,22 +316,20 @@ export default function RemindersScreen() {
         </Pressable>
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabRow}>
-        {(['today', 'history'] as ReminderTab[]).map((t) => (
+        {(['today', 'all', 'history'] as ReminderTab[]).map((t) => (
           <Pressable key={t} style={[styles.tabBtn, tab === t && styles.tabBtnActive]} onPress={() => setTab(t)}>
             <Text style={[styles.tabBtnText, tab === t && styles.tabBtnTextActive]}>
-              {t === 'today' ? "Today's Reminders" : 'History'}
+              {t === 'today' ? "Today's Reminders" : t === 'all' ? 'All Reminders' : 'History'}
             </Text>
           </Pressable>
         ))}
       </View>
 
-      {/* Today's reminders */}
       {tab === 'today' && (
         <ScrollView contentContainerStyle={styles.listPad} showsVerticalScrollIndicator={false}>
           {reminders.map((r) => {
-            const st = STATUS_CFG[r.status ?? 'upcoming'];
+            const st = OCCURRENCE_CFG[r.occurrenceStatus ?? 'pending'] || OCCURRENCE_CFG['pending'];
             return (
               <View key={r.id} style={styles.reminderCard}>
                 <View style={styles.reminderCardLeft}>
@@ -402,14 +340,19 @@ export default function RemindersScreen() {
                     <Text style={styles.reminderName}>{r.medicineName}</Text>
                     <Text style={styles.reminderMeta}>{r.time} · {WHEN_LABELS[r.whenToTake] ?? r.whenToTake}</Text>
                     <View style={[styles.statusPill, { backgroundColor: st?.bg ?? '#E2E8F0' }]}>
-                      <Text style={[styles.statusText, { color: st?.color ?? '#475569' }]}>{st?.label ?? r.status}</Text>
+                      <Text style={[styles.statusText, { color: st?.color ?? '#475569' }]}>{st?.label ?? r.occurrenceStatus}</Text>
                     </View>
                   </View>
                 </View>
                 <View style={styles.reminderCardActions}>
-                  {r.status === 'upcoming' && (
+                  {r.occurrenceStatus === 'pending' && (
                     <Pressable style={styles.markBtn} onPress={() => handleMark(r)}>
                       <Text style={styles.markBtnText}>Mark</Text>
+                    </Pressable>
+                  )}
+                  {r.occurrenceStatus === 'taken' && (
+                    <Pressable style={[styles.markBtn, { backgroundColor: '#F1F5F9' }]} onPress={() => handleUntake(r.id)}>
+                      <Text style={[styles.markBtnText, { color: '#64748B' }]}>Undo</Text>
                     </Pressable>
                   )}
                   <Pressable hitSlop={8} onPress={() => setEditingReminder(r)}>
@@ -426,27 +369,96 @@ export default function RemindersScreen() {
         </ScrollView>
       )}
 
-      {/* History */}
+      {tab === 'all' && (
+        <ScrollView contentContainerStyle={styles.listPad} showsVerticalScrollIndicator={false}>
+          {allReminders.map((r) => (
+            <View key={r.id} style={[styles.reminderCard, { flexDirection: 'column', alignItems: 'stretch' }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={styles.reminderCardLeft}>
+                  <View style={[styles.reminderCardIcon, { backgroundColor: Colors.primary + '15' }]}>
+                    <Ionicons name="medical-outline" size={20} color={Colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.reminderName}>{r.medicineName}</Text>
+                    <Text style={styles.reminderMeta}>{FREQ_LABELS[r.frequency] ?? r.frequency} · {r.time}</Text>
+                    { (r.totalCount !== undefined || r.expiryDate) && (
+                      <Text style={[styles.reminderMeta, { marginTop: 4, color: '#64748B', fontWeight: '500' }]}>
+                        {[
+                          r.totalCount !== undefined ? `${r.totalCount} pills left` : null,
+                          r.expiryDate ? `Exp: ${new Date(r.expiryDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : null
+                        ].filter(Boolean).join(' • ')}
+                      </Text>
+                    )}
+                    
+                    {r.needsRefill && !r.tabletsCompleted && (
+                      <View style={[styles.statusPill, { backgroundColor: '#FEF9E8' }]}>
+                        <Ionicons name="warning-outline" size={12} color={Colors.warning} />
+                        <Text style={[styles.statusText, { color: Colors.warning }]}>Refill Soon ({r.totalCount} left)</Text>
+                      </View>
+                    )}
+                    {r.tabletsCompleted && (
+                      <View style={[styles.statusPill, { backgroundColor: '#FEF2F2' }]}>
+                        <Ionicons name="alert-circle-outline" size={12} color={Colors.danger} />
+                        <Text style={[styles.statusText, { color: Colors.danger }]}>Out of Stock</Text>
+                      </View>
+                    )}
+                    {r.isExpired && (
+                      <View style={[styles.statusPill, { backgroundColor: '#FEF2F2' }]}>
+                        <Ionicons name="alert-circle-outline" size={12} color={Colors.danger} />
+                        <Text style={[styles.statusText, { color: Colors.danger }]}>Expired</Text>
+                      </View>
+                    )}
+                    {r.remindersPaused && !r.tabletsCompleted && !r.isExpired && (
+                      <View style={[styles.statusPill, { backgroundColor: '#F1F5F9' }]}>
+                        <Ionicons name="pause-circle-outline" size={12} color="#64748B" />
+                        <Text style={[styles.statusText, { color: '#64748B' }]}>Paused: {r.pausedReason}</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+                <View style={styles.reminderCardActions}>
+                  <Pressable hitSlop={8} onPress={() => setEditingReminder(r)}>
+                    <Ionicons name="pencil-outline" size={17} color="#94A3B8" />
+                  </Pressable>
+                </View>
+              </View>
+
+              {/* Action row for Refill */}
+              {r.tabletsCompleted && (
+                 <Pressable style={[styles.addReminderRow, { paddingVertical: 10, marginTop: 10, borderColor: Colors.danger + '40' }]} onPress={() => handleRefill(r)}>
+                   <Ionicons name="refresh-outline" size={16} color={Colors.danger} />
+                   <Text style={[styles.addReminderText, { color: Colors.danger }]}>Refill Now</Text>
+                 </Pressable>
+              )}
+            </View>
+          ))}
+          <Pressable style={styles.addReminderRow} onPress={() => router.push('/medicines/reminders/new')}>
+            <Ionicons name="add-circle-outline" size={20} color={Colors.primary} />
+            <Text style={styles.addReminderText}>+ Add Reminder</Text>
+          </Pressable>
+        </ScrollView>
+      )}
+
       {tab === 'history' && (
         <FlatList
           data={history}
-          keyExtractor={(i) => i.id}
+          keyExtractor={(i) => i.id + i.createdAt}
           contentContainerStyle={styles.listPad}
           ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
           renderItem={({ item }) => {
-            const st = STATUS_CFG[item.status as keyof typeof STATUS_CFG];
+            const st = OCCURRENCE_CFG[item.occurrenceStatus] || { color: '#475569', bg: '#E2E8F0', label: item.occurrenceStatus };
             return (
               <View style={styles.historyCard}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.historyDate}>{item.date}</Text>
+                  <Text style={styles.historyDate}>{item.occurrenceDate || new Date(item.createdAt).toLocaleDateString()}</Text>
                   <Text style={styles.historyName}>{item.medicineName}{(item as any).dosage ? ` (${(item as any).dosage})` : ''}</Text>
                   <Text style={styles.historyTime}>{item.time}</Text>
                 </View>
                 <View style={[styles.statusPill, { backgroundColor: st?.bg ?? '#E2E8F0' }]}>
-                  {item.status === 'taken'
+                  {item.occurrenceStatus === 'taken'
                     ? <Ionicons name="checkmark-circle" size={13} color={st?.color ?? '#475569'} />
                     : <Ionicons name="close-circle" size={13} color={st?.color ?? '#475569'} />}
-                  <Text style={[styles.statusText, { color: st?.color ?? '#475569' }]}>{st?.label ?? item.status}</Text>
+                  <Text style={[styles.statusText, { color: st?.color ?? '#475569' }]}>{st?.label ?? item.occurrenceStatus}</Text>
                 </View>
               </View>
             );
@@ -454,7 +466,6 @@ export default function RemindersScreen() {
         />
       )}
 
-      {/* Modals */}
       {markingReminder && (
         <MarkTakenModal
           reminder={markingReminder}
@@ -475,7 +486,6 @@ export default function RemindersScreen() {
   );
 }
 
-// ─── STYLES ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F8FAFC' },
 
@@ -543,4 +553,5 @@ const styles = StyleSheet.create({
   primaryBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   deleteBtn: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#FEF2F2', borderRadius: 14, paddingVertical: 15 },
   deleteBtnText: { color: '#DC2626', fontSize: 15, fontWeight: '700' },
+  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, paddingHorizontal: 12, height: 44, fontSize: 15, color: '#0F172A' },
 });

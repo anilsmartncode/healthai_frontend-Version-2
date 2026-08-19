@@ -43,6 +43,7 @@ import {
   type WhenToTake,
 } from '@/services/medicineTabApi';
 import { CustomTimePicker } from '@/components/medicines/CustomTimePicker';
+import { DatePickerField } from '@/components/ui/DatePickerField';
 
 // ─── LABELS ──────────────────────────────────────────────────────────────────
 const FREQ_OPTIONS: { value: ReminderFrequency; label: string; icon: string }[] = [
@@ -202,6 +203,11 @@ export default function AddReminderScreen() {
   const [customPickerOpen,  setCustomPickerOpen]  = useState(false);
   const [isCustomTime,      setIsCustomTime]      = useState(false);
   const [frequency,         setFrequency]         = useState<ReminderFrequency>('daily');
+  const [dayOfWeek,         setDayOfWeek]         = useState<string>('Monday');
+  const [dayOfMonth,        setDayOfMonth]        = useState<string>('1');
+  const [totalCount,        setTotalCount]        = useState<string>('');
+  const [refillThreshold,   setRefillThreshold]   = useState<string>('');
+  const [expiryDate,        setExpiryDate]        = useState<Date | null>(null);
   const [whenToTake,        setWhenToTake]        = useState<WhenToTake>('after_food');
   const [saving,            setSaving]            = useState(false);
   const [success,           setSuccess]           = useState(false);
@@ -260,6 +266,15 @@ export default function AddReminderScreen() {
       Alert.alert('Missing Info', 'Please select a medicine first.');
       return;
     }
+    if (!totalCount || !expiryDate) {
+      Alert.alert('Missing Info', 'Total Tablets and Expiry Date are required to track stock and expiry.');
+      return;
+    }
+    
+    // Calculate expires_in_days
+    const expiresInDaysVal = Math.max(0, Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+    const expiryDateStr = expiryDate.toISOString().split('T')[0];
+
     setSaving(true);
     try {
       const res = await createReminder({
@@ -269,6 +284,12 @@ export default function AddReminderScreen() {
         dosage: selectedMed.dosage,
         time: time,
         frequency,
+        dayOfWeek: frequency === 'weekly' ? dayOfWeek : undefined,
+        dayOfMonth: frequency === 'monthly' ? parseInt(dayOfMonth) : undefined,
+        totalCount: parseInt(totalCount),
+        refillThreshold: refillThreshold ? parseInt(refillThreshold) : undefined,
+        expiresInDays: expiresInDaysVal,
+        expiryDate: expiryDateStr,
         whenToTake,
       });
       if (res.success) {
@@ -416,6 +437,59 @@ export default function AddReminderScreen() {
           ))}
         </View>
 
+        {frequency === 'weekly' && (
+          <View style={{ marginTop: 4 }}>
+            <Text style={styles.inputLabel}>Day of Week</Text>
+            <View style={styles.pillGrid}>
+              {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((d) => (
+                <Pressable
+                  key={d}
+                  style={[styles.pill, dayOfWeek === d && styles.pillActive]}
+                  onPress={() => setDayOfWeek(d)}
+                >
+                  <Text style={[styles.pillText, dayOfWeek === d && styles.pillTextActive]}>{d.slice(0, 3)}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {frequency === 'monthly' && (
+          <View style={{ marginTop: 4 }}>
+            <Text style={styles.inputLabel}>Day of Month (1-31)</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="number-pad"
+              placeholder="e.g. 15"
+              value={dayOfMonth}
+              onChangeText={setDayOfMonth}
+              maxLength={2}
+            />
+          </View>
+        )}
+
+        {/* Stock & Expiry */}
+        <Text style={styles.sectionLabel}>Stock & Expiry</Text>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.inputLabel}>Total Tablets *</Text>
+            <TextInput style={styles.input} keyboardType="number-pad" placeholder="e.g. 30" value={totalCount} onChangeText={setTotalCount} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.inputLabel}>Expiry Date *</Text>
+            <DatePickerField
+              value={expiryDate}
+              onChange={setExpiryDate}
+              minimumDate={new Date()}
+              maximumDate={new Date(new Date().getFullYear() + 10, 11, 31)}
+            />
+          </View>
+        </View>
+        <View style={{ marginTop: 6 }}>
+          <Text style={styles.inputLabel}>Alert when tablets drop to</Text>
+          <TextInput style={styles.input} keyboardType="number-pad" placeholder="e.g. 5" value={refillThreshold} onChangeText={setRefillThreshold} />
+        </View>
+
         {/* When to Take */}
         <Text style={styles.sectionLabel}>When to Take</Text>
         <View style={styles.pillGrid}>
@@ -505,6 +579,8 @@ const styles = StyleSheet.create({
 
   page:         { padding: 16, gap: 10 },
   sectionLabel: { fontSize: 13, fontWeight: '700', color: '#0F172A', marginTop: 8 },
+  inputLabel:   { fontSize: 12, fontWeight: '600', color: '#64748B', marginBottom: 6 },
+  input:        { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, paddingHorizontal: 12, height: 44, fontSize: 15, color: '#0F172A' },
 
   selectBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 10,

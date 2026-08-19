@@ -75,6 +75,7 @@ export const ENDPOINTS = {
   reminders: `${BASE_URL}/api/api/reminders`,
   remindersToday: `${BASE_URL}/api/api/reminders/today`,
   reminderTaken: (id: string) => `${BASE_URL}/api/api/reminders/${id}/taken`,
+  reminderUntake: (id: string) => `${BASE_URL}/api/api/reminders/${id}/untake`,
   reminderMissed: (id: string) => `${BASE_URL}/api/api/reminders/${id}/missed`,
   reminderHistory: `${BASE_URL}/api/api/reminders/history`,
   reminderUpdate: (id: string) => `${BASE_URL}/api/api/reminders/${id}`,
