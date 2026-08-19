@@ -23,6 +23,7 @@ import { HealthMetricsSection } from "@/components/home/HealthMetricsSection";
 import { RiskIndicatorsSection } from "@/components/home/RiskIndicatorsSection";
 import { MedicineReminderCard } from "@/components/home/MedicineReminderCard";
 import { ChatInputBar } from "@/components/ui/ChatInputBar";
+import { MyDoctorsWidget } from "@/components/home/MyDoctorsWidget";
 
 
 function EmptyState() {
@@ -186,6 +187,8 @@ export default function Home() {
           <Text style={styles.sectionHeading}>Family Members Health</Text>
           <FamilyHealthCard />
         </View>
+
+        <MyDoctorsWidget />
 
         {todayBanner && todayBanner.count > 0 && (
           <View style={styles.sectionGroup}>

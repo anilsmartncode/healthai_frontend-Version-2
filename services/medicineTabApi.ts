@@ -200,7 +200,7 @@ export function mapReminder(raw: any): Reminder {
   };
   
   // If backend returns expiresInDays but not expiryDate, calculate the expiryDate so the UI can show it
-  if (!mapped.expiryDate && mapped.expiresInDays > 0) {
+  if (!mapped.expiryDate && mapped.expiresInDays && mapped.expiresInDays > 0) {
     const d = new Date();
     d.setDate(d.getDate() + mapped.expiresInDays);
     mapped.expiryDate = d.toISOString().split('T')[0];
