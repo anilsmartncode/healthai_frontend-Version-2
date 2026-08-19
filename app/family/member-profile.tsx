@@ -38,10 +38,6 @@ const SECTIONS: Section[] = [
     bg: '#E8F5F0', color: Colors.primary, route: '/family/medications',
   },
   {
-    icon: 'navigate-outline', label: 'Activity & Commute', sub: 'Sleep, steps & daily travel',
-    bg: '#E0FDFA', color: Colors.primary, route: '/family/activity-commute',
-  },
-  {
     icon: 'calendar-outline', label: 'Appointments', sub: '2 Upcoming',
     bg: '#FEF9E8', color: Colors.warning, route: '/family/appointments',
   },
