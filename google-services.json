@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "933979596939-ki8s84abkfb46ttu2128e3ivn7j2a1h7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.smartncode.healthai",
+            "certificate_hash": "3cff6aa647db8512ebc7008bb8c12b1ad13d51f0"
+          }
+        },
+        {
           "client_id": "933979596939-p44omvqbjdbt96dn059rbrrdm4fqnvne.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

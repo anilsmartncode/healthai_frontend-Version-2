@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 const INACTIVITY_TIMEOUT_MS = 10000; 
 
 // 🔥 Toggle this to false when you want to re-enable biometrics
-const DISABLE_SECURITY = false; 
+const DISABLE_SECURITY = true; // TEMP: disabled for screenshot
 
 export function SecurityWrapper({ children }: { children: React.ReactNode }) {
   // 1. Prevent Screen Capture globally (Temporarily disabled for testing)

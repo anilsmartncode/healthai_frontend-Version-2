@@ -13,23 +13,27 @@ const SECTIONS = [
     content: "Your data is used solely to generate AI-powered health insights, manage appointments, and to share with family members you explicitly invite. We never sell or share your data with advertisers or data brokers.",
   },
   {
-    title: "3. Data Security",
+    title: "3. AI-Powered Analysis",
+    content: "When you use our AI features (report analysis, health chat, medicine insights), the following data may be sent to our AI processing service: uploaded medical reports, extracted lab values, chat messages, medication information, and basic profile details (age, gender, health conditions). This data is processed by HealthAI / SMARTnCODE Technologies and securely transmitted to our trusted third-party multimodal AI providers (which may include Google Cloud, OpenAI, or Anthropic) for analysis. Your explicit consent is required before any data is sent for AI processing, and you can revoke this consent at any time from the app's Privacy & Legal settings.",
+  },
+  {
+    title: "4. Data Security",
     content: "All data is AES-256 encrypted at rest and in transit. We implement strict technical and organizational measures to ensure your health information is kept confidential and secure at all times.",
   },
   {
-    title: "4. Third-Party Services",
-    content: "We may use trusted third-party services (like Firebase) for authentication, crash reporting, and secure data hosting. These services are bound by strict data processing agreements to protect your privacy.",
+    title: "5. Third-Party Services",
+    content: "We use trusted third-party services for authentication (Firebase), secure data hosting, and AI-powered health analysis (Google Cloud Gemini). These services are bound by strict data processing agreements to protect your privacy. Google Cloud is strictly prohibited from using your personal health data to train their general AI models, for advertising, or for any purpose other than providing the requested analysis.",
   },
   {
-    title: "5. Data Retention & Deletion",
+    title: "6. Data Retention & Deletion",
     content: "You can request the deletion of your account and all associated health data at any time from within the app. Upon request, your data will be permanently deleted from our active servers within 30 days.",
   },
   {
-    title: "6. Your Rights",
-    content: "You have the right to access, correct, or delete your personal data. If you have any questions or wish to exercise these rights, please contact our support team.",
+    title: "7. Your Rights",
+    content: "You have the right to access, correct, or delete your personal data. You also have the right to revoke consent for AI data processing at any time. If you have any questions or wish to exercise these rights, please contact our support team.",
   },
   {
-    title: "7. Contact Us",
+    title: "8. Contact Us",
     content: (
       <Text style={{ fontSize: 12, color: Colors.textMuted, lineHeight: 19, fontWeight: "400" }}>
         If you have any questions about this Privacy Policy, please contact us at:{"\n\n"}
@@ -53,6 +57,7 @@ const SECTIONS = [
     ),
   },
 ];
+
 
 export default function PrivacyPolicy() {
   return (

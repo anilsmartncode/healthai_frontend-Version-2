@@ -16,6 +16,7 @@ import type { ChatMessage } from '@/types';
 import { api } from '@/services/api';
 import { ENDPOINTS } from '@/constants/api';
 import { reportsApi } from '@/services/reportsApi';
+import { hasAIConsent } from '@/components/ai/AIDataConsentModal';
 
 // ─── Toggle ────────────────────────────────────────────────
 const USE_MOCK = false; // 🟢 MOCK | 🔴 set false when backend ready
@@ -256,6 +257,15 @@ export async function askAI(
   phone: string | null = null,
   reportId?: string,
 ): Promise<ChatMessage> {
+
+  // Apple Guideline 5.1.2(i): Verify user has consented to AI data processing
+  // before transmitting any personal health data to the AI service.
+  const consented = await hasAIConsent();
+  if (!consented) {
+    const err = new Error('AI data consent is required before using AI features.');
+    (err as any).code = 'AI_CONSENT_REQUIRED';
+    throw err;
+  }
 
   if (USE_MOCK) {
     // 🟢 MOCK

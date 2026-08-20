@@ -17,9 +17,8 @@ import { LanguageProvider } from "@/context/Languagecontext";
 import { useAuth } from "@/context/AuthContext";
 import { SecurityWrapper } from "@/components/SecurityWrapper";
 
-// Initialize notification handler globally
 import * as Notifications from "expo-notifications";
-import { setupNotificationCategories, scheduleReminderNotification, cancelReminderNotification, defineBackgroundNotificationTask } from "@/utils/notifications";
+import { setupNotificationCategories, scheduleReminderNotification, cancelReminderNotification, defineBackgroundNotificationTask, syncLocalRemindersWithBackend } from "@/utils/notifications";
 import { medicineApiCall } from "@/services/Medicineapiclient";
 import { ENDPOINTS } from "@/constants/api";
 import Purchases, { LOG_LEVEL } from "react-native-purchases";
@@ -61,12 +60,17 @@ function AlertOverlay() {
     if (Platform.OS === 'web') return; // No health alerts on web
     if (sessionAlertShown) return;
     const timer = setTimeout(() => {
+      // Check alerts
       checkHealthAlerts(phone).then(a => {
         if (a) {
           setAlert(a);
           sessionAlertShown = true;
         }
       });
+      // Sync background notifications
+      if (phone) {
+        syncLocalRemindersWithBackend();
+      }
     }, 2500); // check 2.5s after launch
     return () => clearTimeout(timer);
   }, [phone]);
@@ -120,16 +124,17 @@ export default function RootLayout() {
     setIsMounted(true);
   }, []);
 
+  // TEMP: web restriction disabled for screenshot
   let isWebLocked = false;
-  if (Platform.OS === 'web' && isMounted) {
-    const allowedWebPaths = ['/privacy', '/terms', '/cookies', '/contact', '/support', '/accountanddata'];
-    const isAllowed = pathname && allowedWebPaths.some(p => 
-      pathname === p || pathname === `${p}/` || pathname?.startsWith(`${p}?`)
-    );
-    if (!isAllowed) {
-      isWebLocked = true;
-    }
-  }
+  // if (Platform.OS === 'web' && isMounted) {
+  //   const allowedWebPaths = ['/privacy', '/terms', '/cookies', '/contact', '/support', '/accountanddata'];
+  //   const isAllowed = pathname && allowedWebPaths.some(p => 
+  //     pathname === p || pathname === `${p}/` || pathname?.startsWith(`${p}?`)
+  //   );
+  //   if (!isAllowed) {
+  //     isWebLocked = true;
+  //   }
+  // }
 
 
 

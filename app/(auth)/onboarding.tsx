@@ -151,14 +151,20 @@ export default function Onboarding() {
             styles.btnPrimary,
             pressed && { opacity: 0.85 },
           ]}
-          onPress={() => router.push("/(auth)/language")}
+          onPress={() => {
+            if (autoSlideTimer.current) clearInterval(autoSlideTimer.current);
+            router.replace("/(auth)/language");
+          }}
         >
           <Text style={styles.btnText}>{`${t("get_started")} →`}</Text>
         </Pressable>
 
         <View style={styles.loginRow}>
           <Text style={styles.loginText}>{t("have_account")} </Text>
-          <Pressable onPress={() => router.replace("/(auth)/Phonelogin")}>
+          <Pressable onPress={() => {
+            if (autoSlideTimer.current) clearInterval(autoSlideTimer.current);
+            router.replace("/(auth)/Phonelogin");
+          }}>
             <Text style={styles.loginLink}>{t("login")}</Text>
           </Pressable>
         </View>

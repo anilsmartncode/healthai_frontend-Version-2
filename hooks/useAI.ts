@@ -20,6 +20,7 @@ import {
   STORAGE_KEYS,
   type HealthAlert,
 } from '@/services/aiService';
+import { hasAIConsent } from '@/components/ai/AIDataConsentModal';
 import { useAuth } from '@/context/AuthContext';
 import type { ChatMessage } from '@/types';
 
@@ -40,8 +41,12 @@ export function useAI(initialPrefill?: string, prefillContext?: string, openSess
   const [loading, setLoading]         = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [alert, setAlert]             = useState<HealthAlert | null>(null);
+  const [needsConsent, setNeedsConsent] = useState(false);
   const hasAutoSent = useRef(false);
   const [convoLoaded, setConvoLoaded] = useState(false);
+  // Stores the last question that failed due to missing consent,
+  // so we can auto-retry after the user grants consent.
+  const pendingQuestion = useRef<string | null>(null);
 
   // Load conversation — re-runs whenever the logged-in user changes,
   // or when a specific past session is requested (from the History tab)
@@ -158,18 +163,38 @@ export function useAI(initialPrefill?: string, prefillContext?: string, openSess
       await persistConversation(finalMsgs);
       // Save memory after every 6+ message conversation
       if (finalMsgs.length >= 6) await saveAIMemory(finalMsgs, phone);
-    } catch {
-      const errMsg: ChatMessage = {
-        id: Date.now().toString(),
-        role: 'ai',
-        text: "Sorry, I couldn't connect right now. Please check your connection and try again.",
-        time: new Date().toISOString(),
-      };
-      setMessages(prev => [...prev, errMsg]);
+    } catch (err: any) {
+      // If the error is because the user hasn't given AI consent yet,
+      // surface it to the UI so the consent modal can be shown.
+      if (err?.code === 'AI_CONSENT_REQUIRED') {
+        pendingQuestion.current = question;
+        setNeedsConsent(true);
+        // Remove the user message we just added, since the AI call was blocked
+        setMessages(messages);
+      } else {
+        const errMsg: ChatMessage = {
+          id: Date.now().toString(),
+          role: 'ai',
+          text: "Sorry, I couldn't connect right now. Please check your connection and try again.",
+          time: new Date().toISOString(),
+        };
+        setMessages(prev => [...prev, errMsg]);
+      }
     } finally {
       setLoading(false);
     }
   }, [input, loading, messages, prefillContext, persistConversation, phone, reportId]);
+
+  // Called after the user grants consent via the consent modal.
+  // Automatically retries the pending question that was blocked.
+  const retryAfterConsent = useCallback(() => {
+    setNeedsConsent(false);
+    if (pendingQuestion.current) {
+      const q = pendingQuestion.current;
+      pendingQuestion.current = null;
+      setTimeout(() => send(q), 200);
+    }
+  }, [send]);
 
   // "New chat" — saves the current conversation to History (it's already
   // persisted via saveChatSession on each message), then starts a fresh session
@@ -196,8 +221,10 @@ export function useAI(initialPrefill?: string, prefillContext?: string, openSess
     suggestions,
     alert,
     sessionId,
+    needsConsent,
     send,
     clearConversation,
+    retryAfterConsent,
     dismissAlert: () => setAlert(null),
   };
 }

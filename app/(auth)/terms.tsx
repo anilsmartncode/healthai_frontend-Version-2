@@ -42,7 +42,7 @@ const SECTIONS = [
   {
     title: "8. AI-Powered Features",
     content:
-      "The App uses artificial intelligence to provide health insights and recommendations. While our AI models are designed to be accurate and helpful, they are not infallible. AI-generated content should be treated as a starting point for discussion with healthcare professionals, not as definitive medical advice. SMARTnCODE Technologies is not liable for decisions made solely based on AI recommendations.",
+      "The App uses artificial intelligence to provide health insights and recommendations. Your health data — including medical reports, lab values, chat messages, medication information, and basic profile details — may be processed by SMARTnCODE's AI infrastructure, which may include trusted third-party AI service providers. Your explicit consent is required before any data is sent for AI processing, and you may revoke this consent at any time from the Privacy & Legal settings. While our AI models are designed to be accurate and helpful, they are not infallible. AI-generated content should be treated as a starting point for discussion with healthcare professionals, not as definitive medical advice. SMARTnCODE Technologies is not liable for decisions made solely based on AI recommendations.",
   },
   {
     title: "9. Prohibited Activities",

@@ -20,6 +20,7 @@ import type { ChatMessage } from '@/types';
 import { api } from '@/services/api';
 import { ENDPOINTS } from '@/constants/api';
 import { LanguageSelectModal } from '@/components/ui/LanguageSelectModal';
+import AIDataConsentModal from '@/components/ai/AIDataConsentModal';
 
 const C = {
   primary:   '#2563EB',
@@ -404,6 +405,7 @@ export default function AIChatScreen() {
   const {
     messages, input, setInput, loading,
     suggestions, alert, send, clearConversation, dismissAlert,
+    needsConsent, retryAfterConsent,
   } = useAI(prefill, context, openSessionId, reportId);
 
   const { canSendAiChat, incrementAiChat, setShowPaywall } = useUsage();
@@ -578,6 +580,13 @@ export default function AIChatScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      {/* AI Data Consent Modal — shown when the user hasn't consented yet */}
+      <AIDataConsentModal
+        visible={needsConsent}
+        onConsent={retryAfterConsent}
+        onDecline={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/ai')}
+      />
     </SafeAreaView>
   );
 }

@@ -22,9 +22,17 @@ export const STORE_PRODUCTS = {
     ios: 'healthai_premium_monthly',
     android: 'healthai_premium_monthly',
   },
+  premium_1mo: {
+    ios: 'healthai_premium_1mo_pass',
+    android: 'healthai_premium_1mo_pass',
+  },
   family: {
     ios: 'healthai_family_monthly',
     android: 'healthai_family_monthly',
+  },
+  family_1mo: {
+    ios: 'healthai_family_1mo_pass',
+    android: 'healthai_family_1mo_pass',
   }
 };
 

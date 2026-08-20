@@ -7,7 +7,7 @@
  */
 
 import {
-  View, Text, StyleSheet, Pressable, ActivityIndicator, Alert, Modal,
+  View, Text, StyleSheet, Pressable, ActivityIndicator, Alert, Modal, ScrollView, Linking,
 } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { router, useLocalSearchParams, Stack } from 'expo-router';
@@ -67,66 +67,180 @@ function AnalysisPermissionModal({
   isSubmitting: boolean;
   context?: string;
 }) {
+  const isRx = context === 'prescription';
+  const dataLabel = isRx ? 'prescription' : 'report';
+
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={perm.overlay}>
         <View style={perm.sheet}>
-          <View style={perm.iconWrap}>
-            <Ionicons name="shield-checkmark-outline" size={36} color={Colors.primary} />
-          </View>
+          <Pressable style={perm.closeBtn} onPress={onCancel} hitSlop={12}>
+            <Ionicons name="close" size={20} color="#6b8f8f" />
+          </Pressable>
 
-          <Text style={perm.title}>Allow AI Analysis?</Text>
-          <Text style={perm.sub}>
-            Your {context === 'prescription' ? 'prescription' : 'report'} will be securely sent to our AI to extract {context === 'prescription' ? 'medicines' : 'lab values'} and
-            generate health insights. It is never shared with third parties.
-          </Text>
-
-          {file && (
-            <View style={perm.fileCard}>
-              <Ionicons
-                name={file.mimeType?.includes('pdf') ? 'document-text-outline' : 'image-outline'}
-                size={22}
-                color={Colors.primary}
-              />
-              <View style={perm.fileInfo}>
-                <Text style={perm.fileName} numberOfLines={1}>{file.name}</Text>
-                {file.size ? <Text style={perm.fileMeta}>{formatBytes(file.size)}</Text> : null}
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={perm.scrollContent}>
+            
+            {/* Header */}
+            <View style={perm.headerRow}>
+              <View style={perm.mainIconBox}>
+                <Ionicons name="shield-checkmark" size={28} color="#fff" />
               </View>
+              <Text style={perm.title}>AI Processing & Data Sharing Consent</Text>
             </View>
-          )}
 
-          <View style={perm.bullets}>
+            <Text style={perm.subtitle}>
+              HealthAI uses AI to analyze information you provide and generate health summaries, explanations, insights and recommendations.{'\n\n'}
+              Some AI features require selected information to be securely sent to third-party AI service providers.{'\n'}
+              <Text style={perm.boldGreen}>We need your explicit permission before we do that.</Text>
+            </Text>
+
+            {/* ── File being sent ── */}
+            {file && (
+              <View style={perm.fileCard}>
+                <Ionicons
+                  name={file.mimeType?.includes('pdf') ? 'document-text-outline' : 'image-outline'}
+                  size={20}
+                  color="#156C60"
+                />
+                <View style={perm.fileInfo}>
+                  <Text style={perm.fileName} numberOfLines={1}>{file.name}</Text>
+                  {file.size ? <Text style={perm.fileMeta}>{formatBytes(file.size)}</Text> : null}
+                </View>
+              </View>
+            )}
+
+            {/* Section 1: What info */}
+            <View style={perm.sectionHeader}>
+              <Ionicons name="cube-outline" size={18} color="#156C60" />
+              <Text style={perm.sectionTitle}>What information may be sent?</Text>
+            </View>
+
             {[
-              'Only used to detect lab values & generate insights',
-              'Not stored beyond your session unless you save',
-              'Encrypted in transit — no third-party sharing',
-            ].map((point, i) => (
-              <View key={i} style={perm.bullet}>
-                <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
-                <Text style={perm.bulletText}>{point}</Text>
+              {
+                icon: isRx ? 'medkit-outline' : 'document-text-outline' as const,
+                title: isRx ? 'Prescription Image' : 'Medical Report',
+                detail: isRx ? 'The file you selected to extract medicines and instructions.' : 'The file you selected to extract and analyze lab values.',
+              },
+              {
+                icon: 'person-outline' as const,
+                title: 'Age & Gender',
+                detail: 'Crucial for accurate analysis, as normal health ranges and insights vary significantly based on your age and biological gender.',
+              },
+            ].map((item, i) => (
+              <View key={i} style={perm.dataRow}>
+                <View style={perm.dataIconWrap}>
+                  <Ionicons name={item.icon as any} size={20} color="#3E8D82" />
+                </View>
+                <View style={perm.dataTextWrap}>
+                  <Text style={perm.dataTitle}>{item.title}</Text>
+                  <Text style={perm.dataDetail}>{item.detail}</Text>
+                </View>
               </View>
             ))}
-          </View>
 
-          <Pressable
-            style={[perm.confirmBtn, isSubmitting && perm.confirmBtnDisabled]}
-            onPress={onConfirm}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={perm.confirmText}>{context === 'prescription' ? 'Yes, Analyze Prescription' : 'Yes, Analyze Report'}</Text>
-            )}
-          </Pressable>
-          <Pressable style={perm.cancelBtn} onPress={onCancel}>
-            <Text style={perm.cancelText}>Cancel</Text>
-          </Pressable>
+            <View style={perm.twoColWrap}>
+              <View style={perm.twoColBox}>
+                <Text style={perm.twoColTitle}>Why is it sent?</Text>
+                <Text style={perm.twoColBody}>To analyze, summarize, explain medical information, interpret measurements and provide requested insights and recommendations.</Text>
+              </View>
+              <View style={perm.twoColDivider} />
+              <View style={perm.twoColBox}>
+                <Text style={perm.twoColTitle}>We use only what's necessary</Text>
+                <Text style={perm.twoColBody}>We <Text style={{fontWeight:'700'}}>send</Text> only the information required for the AI feature you request.</Text>
+              </View>
+            </View>
+
+            {/* Section 2: Who receives */}
+            <View style={[perm.sectionHeader, { marginTop: 24 }]}>
+              <Ionicons name="shield-half-outline" size={18} color="#156C60" />
+              <Text style={perm.sectionTitle}>Who receives your information?</Text>
+            </View>
+
+            <View style={perm.providerRow}>
+              <View style={perm.providerIconWrap}>
+                <Ionicons name="document-text-outline" size={18} color="#3E8D82" />
+              </View>
+              <View style={perm.providerTextWrap}>
+                <Text style={perm.providerName}>HealthAI / SMARTnCODE Technologies</Text>
+                <Text style={perm.providerDesc}>Operates the app and coordinates the AI processing.</Text>
+              </View>
+            </View>
+
+            <View style={[perm.providerRow, { marginTop: 12 }]}>
+              <View style={perm.providerIconWrap}>
+                <Ionicons name="sparkles-outline" size={18} color="#3E8D82" />
+              </View>
+              <View style={perm.providerTextWrap}>
+                <Text style={perm.providerName}>Google Cloud, OpenAI, Anthropic (Multimodal)</Text>
+                <Text style={perm.providerDesc}>Selected information may be securely transmitted to our trusted multimodal AI providers (e.g., Google Cloud, OpenAI, Anthropic) to generate the AI response.</Text>
+                <Pressable onPress={() => Linking.openURL('https://policies.google.com/privacy')} style={perm.providerLink}>
+                  <Text style={perm.providerLinkText}>AI Provider Details</Text>
+                  <Ionicons name="chevron-forward" size={12} color="#156C60" />
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Section 3: Training */}
+            <View style={perm.trainingCard}>
+              <View style={perm.trainingHeaderRow}>
+                <Ionicons name="pie-chart-outline" size={16} color="#156C60" />
+                <Text style={perm.trainingTitle}>AI model training</Text>
+              </View>
+              <Text style={perm.trainingBody}>
+                Your personal health information is <Text style={{fontWeight:'700', color:'#1a2e35'}}>not</Text> used to train or improve third-party general-purpose AI models.
+              </Text>
+            </View>
+
+            {/* Badges */}
+            <View style={perm.badgeRow}>
+              <View style={perm.badge}>
+                <Ionicons name="lock-closed" size={18} color="#156C60" />
+                <Text style={perm.badgeText}>Encrypted{'\n'}in transit & at rest</Text>
+              </View>
+              <View style={perm.badge}>
+                <Ionicons name="person-outline" size={18} color="#156C60" />
+                <Text style={perm.badgeText}>Access{'\n'}controls</Text>
+              </View>
+              <View style={perm.badge}>
+                <Ionicons name="hardware-chip-outline" size={18} color="#156C60" />
+                <Text style={perm.badgeText}>Secure AI{'\n'}processing</Text>
+              </View>
+            </View>
+
+            {/* Withdraw Notice */}
+            <View style={perm.withdrawBox}>
+              <Text style={perm.withdrawText}>
+                You can withdraw AI-processing consent anytime from{'\n'}
+                <Text style={{fontWeight:'700', color:'#1a2e35'}}>Settings → Privacy → AI Processing</Text>
+              </Text>
+            </View>
+
+          </ScrollView>
+
+          <View style={perm.actions}>
+            <Pressable style={[perm.agreeBtn, isSubmitting && perm.confirmBtnDisabled]} onPress={onConfirm} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+                  <Text style={perm.agreeBtnText}>
+                    {isRx ? 'I Agree — Analyze Prescription' : 'I Agree — Analyze Report'}
+                  </Text>
+                </>
+              )}
+            </Pressable>
+            <Pressable style={perm.declineBtn} onPress={onCancel}>
+              <Text style={perm.declineBtnText}>Cancel Analysis</Text>
+            </Pressable>
+            <Text style={perm.footerText}>You can change your choice later in Privacy Settings.</Text>
+          </View>
         </View>
       </View>
     </Modal>
   );
 }
+
 
 // ── Main upload screen ─────────────────────────────────────────────────────
 export default function Upload() {
@@ -478,21 +592,63 @@ const styles = StyleSheet.create({
 });
 
 const perm = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 14, paddingBottom: 36 },
-  iconWrap: { alignSelf: 'center', width: 64, height: 64, borderRadius: 32, backgroundColor: Colors.primary + '15', justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
-  title: { fontSize: 20, fontWeight: '800', color: Colors.text, textAlign: 'center' },
-  sub: { fontSize: 14, color: Colors.textMuted, textAlign: 'center', lineHeight: 21 },
-  fileCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.bg, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, padding: 12 },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '95%', paddingBottom: 24 },
+  closeBtn: { position: 'absolute', top: 16, right: 16, zIndex: 10, width: 28, height: 28, borderRadius: 14, backgroundColor: '#F0F4F4', justifyContent: 'center', alignItems: 'center' },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 32, paddingBottom: 16 },
+  
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 16, paddingRight: 20 },
+  mainIconBox: { width: 52, height: 52, borderRadius: 16, backgroundColor: '#156C60', justifyContent: 'center', alignItems: 'center' },
+  title: { flex: 1, fontSize: 18, fontWeight: '800', color: '#112228', lineHeight: 24 },
+  subtitle: { fontSize: 12.5, color: '#4A6262', lineHeight: 19, marginBottom: 24 },
+  boldGreen: { fontWeight: '700', color: '#156C60' },
+
+  // File card specific to upload.tsx
+  fileCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#ffffff', borderRadius: 12, padding: 14, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2, borderWidth: 1, borderColor: '#F0F5F5' },
   fileInfo: { flex: 1 },
-  fileName: { fontSize: 14, fontWeight: '600', color: Colors.text },
-  fileMeta: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-  bullets: { gap: 8 },
-  bullet: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  bulletText: { flex: 1, fontSize: 13, color: Colors.text, lineHeight: 20 },
-  confirmBtn: { backgroundColor: Colors.primary, borderRadius: Radius.pill, paddingVertical: 15, alignItems: 'center', marginTop: 4 },
+  fileName: { fontSize: 14, fontWeight: '700', color: '#112228' },
+  fileMeta: { fontSize: 11.5, color: '#8BA8A8', marginTop: 3 },
+
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
+  sectionTitle: { fontSize: 14, fontWeight: '800', color: '#112228' },
+
+  dataRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 16 },
+  dataIconWrap: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F2F7F6', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E5EFEF' },
+  dataTextWrap: { flex: 1 },
+  dataTitle: { fontSize: 13, fontWeight: '700', color: '#112228', marginBottom: 2 },
+  dataDetail: { fontSize: 11.5, color: '#6A8A8A' },
+
+  twoColWrap: { flexDirection: 'row', backgroundColor: '#F2F7F6', borderRadius: 12, padding: 16, marginTop: 8 },
+  twoColBox: { flex: 1, paddingHorizontal: 4 },
+  twoColDivider: { width: 1, backgroundColor: '#DCEBEA', marginHorizontal: 12 },
+  twoColTitle: { fontSize: 12, fontWeight: '700', color: '#112228', marginBottom: 6 },
+  twoColBody: { fontSize: 11, color: '#4A6262', lineHeight: 16 },
+
+  providerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  providerIconWrap: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F2F7F6', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E5EFEF' },
+  providerTextWrap: { flex: 1 },
+  providerName: { fontSize: 13, fontWeight: '700', color: '#112228', marginBottom: 2 },
+  providerDesc: { fontSize: 11.5, color: '#6A8A8A', lineHeight: 16 },
+  providerLink: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
+  providerLinkText: { fontSize: 11.5, fontWeight: '700', color: '#156C60' },
+
+  trainingCard: { marginTop: 24, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#E8F0F0', backgroundColor: '#fff' },
+  trainingHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+  trainingTitle: { fontSize: 13, fontWeight: '700', color: '#112228' },
+  trainingBody: { fontSize: 12, color: '#6A8A8A', lineHeight: 18 },
+
+  badgeRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, marginTop: 12 },
+  badge: { flex: 1, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#E8F0F0', paddingVertical: 14, paddingHorizontal: 8, alignItems: 'center', gap: 6 },
+  badgeText: { fontSize: 10, color: '#112228', fontWeight: '600', textAlign: 'center', lineHeight: 14 },
+
+  withdrawBox: { marginTop: 16, backgroundColor: '#F5F8F8', borderRadius: 10, padding: 14, alignItems: 'center' },
+  withdrawText: { fontSize: 11.5, color: '#6A8A8A', textAlign: 'center', lineHeight: 18 },
+
+  actions: { paddingHorizontal: 20, paddingTop: 16 },
+  agreeBtn: { backgroundColor: '#156C60', borderRadius: 12, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  agreeBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   confirmBtnDisabled: { opacity: 0.6 },
-  confirmText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  cancelBtn: { alignItems: 'center', paddingVertical: 10 },
-  cancelText: { color: Colors.textMuted, fontSize: 15, fontWeight: '500' },
+  declineBtn: { paddingVertical: 14, alignItems: 'center' },
+  declineBtnText: { color: '#156C60', fontSize: 13, fontWeight: '700' },
+  footerText: { textAlign: 'center', fontSize: 10.5, color: '#8BA8A8', marginTop: 4 },
 });
