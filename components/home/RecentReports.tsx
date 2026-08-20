@@ -60,17 +60,18 @@ function ReportRow({ report }: { report: ReportListItem }) {
   const statusColor = isGood ? "#16A34A" : "#F97316";
   const statusBg = isGood ? "#DCFCE7" : "#FFEDD5";
   
-  const displayLabName = report.labName && !['Unknown', 'Lab', 'General'].includes(report.labName)
+  const cleanLabName = report.labName ? report.labName.trim().toLowerCase() : "";
+  const displayLabName = report.labName && !['unknown', 'lab', 'general', 'na', 'n/a'].includes(cleanLabName)
     ? report.labName
     : (report.category && report.category !== 'Others' ? report.category : "Report");
 
-  const isJunkTitle = /^\d+$/.test(report.title.replace(/\.\w+$/, '')) || /img_|screenshot|whatsapp/i.test(report.title);
+  const isJunkTitle = /^\d+$/.test(report.title.replace(/\.\w+$/, '')) || /img_|screenshot|whatsapp/i.test(report.title) || report.title.trim().toLowerCase() === 'unknown';
   const subText = isJunkTitle ? (report.reportTypeFull || report.category || 'Report') : report.title;
 
   return (
     <View style={reportStyles.row}>
       <View style={[reportStyles.iconWrap, { backgroundColor: catStyle.bg }]}>
-        <Ionicons name={catStyle.icon as any} size={18} color={catStyle.color} />
+        <Ionicons name="document-text-outline" size={18} color={catStyle.color} />
       </View>
 
       <View style={reportStyles.info}>
@@ -89,11 +90,13 @@ function ReportRow({ report }: { report: ReportListItem }) {
         </View>
       </View>
 
-      <View style={[reportStyles.badge, { backgroundColor: statusBg }]}>
-        <Text style={[reportStyles.badgeText, { color: statusColor }]}>
-          {report.healthLabel}
-        </Text>
-      </View>
+      {report.healthLabel && !['unknown', 'n/a', 'na'].includes(report.healthLabel.trim().toLowerCase()) && (
+        <View style={[reportStyles.badge, { backgroundColor: statusBg }]}>
+          <Text style={[reportStyles.badgeText, { color: statusColor }]}>
+            {report.healthLabel}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }

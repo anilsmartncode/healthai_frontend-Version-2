@@ -64,13 +64,18 @@ const styles = StyleSheet.create({
   },
   list: {
     flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "flex-start",
+    gap: 12,
   },
   listItem: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 12,
     alignItems: "center",
-    width: 76,
-    gap: 8,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
   },
   pressed: {
     opacity: 0.7,

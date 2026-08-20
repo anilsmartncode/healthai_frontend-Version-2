@@ -86,9 +86,14 @@ export default function DoctorsListScreen() {
                 <Text style={styles.spec}>{item.specialisation}</Text>
                 {item.email ? <Text style={styles.email}>{item.email}</Text> : null}
               </View>
-              <Pressable hitSlop={8} onPress={() => handleDelete(item.id, item.name)}>
-                <Ionicons name="trash-outline" size={20} color={Colors.danger} />
-              </Pressable>
+              <View style={styles.actionsRow}>
+                <Pressable hitSlop={8} onPress={() => router.push(`/doctors/${item.id}` as any)}>
+                  <Ionicons name="pencil-outline" size={20} color={Colors.textMuted} />
+                </Pressable>
+                <Pressable hitSlop={8} onPress={() => handleDelete(item.id, item.name)}>
+                  <Ionicons name="trash-outline" size={20} color={Colors.danger} />
+                </Pressable>
+              </View>
             </View>
             <Pressable style={styles.callBtn} onPress={() => handleCall(item.phoneNumber)}>
               <Ionicons name="call" size={18} color="#fff" />
@@ -181,8 +186,13 @@ const styles = StyleSheet.create({
   },
   email: {
     fontSize: 13,
-    color: '#94A3B8',
+    color: Colors.textMuted,
     marginTop: 2,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
   },
   callBtn: {
     flexDirection: 'row',

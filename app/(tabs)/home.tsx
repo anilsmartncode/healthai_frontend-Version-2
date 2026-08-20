@@ -170,6 +170,17 @@ export default function Home() {
           onAttentionPress={handleAttentionPress}
         />
 
+        <View style={styles.quickAddRow}>
+          <Pressable style={styles.quickAddBtn} onPress={() => router.push('/doctors/new' as any)}>
+            <Ionicons name="medkit-outline" size={18} color={Colors.primary} />
+            <Text style={styles.quickAddText}>Add Family Doctor</Text>
+          </Pressable>
+          <Pressable style={styles.quickAddBtn} onPress={() => router.push('/family/add-member' as any)}>
+            <Ionicons name="person-add-outline" size={18} color={Colors.primary} />
+            <Text style={styles.quickAddText}>Add Family Member</Text>
+          </Pressable>
+        </View>
+
         <ChatInputBar />
 
         <QuickActions />
@@ -230,5 +241,27 @@ const styles = StyleSheet.create({
   },
   sectionGroup: {
     gap: 8,
+  },
+  quickAddRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: -8,
+  },
+  quickAddBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+  },
+  quickAddText: {
+    color: Colors.primary,
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

@@ -90,9 +90,24 @@ export async function deleteDoctor(id: string): Promise<{ success: boolean }> {
   MOCK_DOCTORS = MOCK_DOCTORS.filter(d => d.id !== id);
   return { success: true };
 
-  // 🔴 REAL
   // const raw = await api.request<any>(`/api/doctors/${id}`, {
   //   method: 'DELETE',
   // });
   // return { success: raw.success };
+}
+
+export async function getDoctorById(id: string): Promise<Doctor | undefined> {
+  // 🟢 MOCK
+  await delay(200);
+  return MOCK_DOCTORS.find(d => d.id === id);
+
+  // 🔴 REAL
+  // const raw = await api.request<any>(`/api/doctors/${id}`);
+  // return {
+  //   id: String(raw.data.id),
+  //   name: raw.data.name,
+  //   specialisation: raw.data.specialisation,
+  //   phoneNumber: raw.data.phone_number,
+  //   email: raw.data.email,
+  // };
 }

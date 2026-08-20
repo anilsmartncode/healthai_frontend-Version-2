@@ -319,8 +319,8 @@ export default function RemindersScreen() {
       <View style={styles.tabRow}>
         {(['today', 'all', 'history'] as ReminderTab[]).map((t) => (
           <Pressable key={t} style={[styles.tabBtn, tab === t && styles.tabBtnActive]} onPress={() => setTab(t)}>
-            <Text style={[styles.tabBtnText, tab === t && styles.tabBtnTextActive]}>
-              {t === 'today' ? "Today's Reminders" : t === 'all' ? 'All Reminders' : 'History'}
+            <Text style={[styles.tabBtnText, tab === t && styles.tabBtnTextActive]} numberOfLines={1} adjustsFontSizeToFit>
+              {t === 'today' ? "Today" : t === 'all' ? 'All' : 'History'}
             </Text>
           </Pressable>
         ))}
@@ -463,6 +463,17 @@ export default function RemindersScreen() {
               </View>
             );
           }}
+          ListEmptyComponent={
+            !loading ? (
+              <View style={{ paddingVertical: 60, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="time-outline" size={48} color="#CBD5E1" />
+                <Text style={{ marginTop: 12, fontSize: 16, fontWeight: '600', color: '#64748B' }}>No History Yet</Text>
+                <Text style={{ marginTop: 6, fontSize: 13, color: '#94A3B8', textAlign: 'center', paddingHorizontal: 32 }}>
+                  Your medicine intake history will appear here once you start taking or missing reminders.
+                </Text>
+              </View>
+            ) : null
+          }
         />
       )}
 

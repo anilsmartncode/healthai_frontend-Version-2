@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, Linking, Alert } from 'react-native';
+import React, { useState, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, Pressable, ScrollView, Linking, Alert, useWindowDimensions, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { router, useFocusEffect } from 'expo-router';
@@ -8,6 +8,11 @@ import { Doctor, getDoctors } from '@/services/doctorsApi';
 export function MyDoctorsWidget() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showScrollArrow, setShowScrollArrow] = useState(true);
+  
+  const { width } = useWindowDimensions();
+  // 32 for left/right padding (16 each), 12 for the gap between the 2 cards
+  const CARD_WIDTH = (width - 32 - 12) / 2;
 
   const fetchDoctors = async () => {
     try {
@@ -43,17 +48,30 @@ export function MyDoctorsWidget() {
         </Pressable>
       </View>
 
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        style={{ marginHorizontal: -16 }}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {doctors.map(doc => (
-          <View key={doc.id} style={styles.card}>
+      <View style={{ position: 'relative' }}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          style={{ marginHorizontal: -16 }}
+          contentContainerStyle={styles.scrollContent}
+          onScroll={(e) => {
+            const offsetX = e.nativeEvent.contentOffset.x;
+            const contentWidth = e.nativeEvent.contentSize.width;
+            const layoutWidth = e.nativeEvent.layoutMeasurement.width;
+            // Hide arrow if scrolled near the end
+            if (offsetX + layoutWidth >= contentWidth - 20) {
+              setShowScrollArrow(false);
+            } else {
+              setShowScrollArrow(true);
+            }
+          }}
+          scrollEventThrottle={16}
+        >
+          {doctors.map(doc => (
+            <View key={doc.id} style={[styles.card, { width: CARD_WIDTH }]}>
             <View style={styles.cardHeader}>
               <View style={styles.avatar}>
-                <Ionicons name="person" size={20} color={Colors.primary} />
+                <Ionicons name="person" size={16} color={Colors.primary} />
               </View>
               <View style={styles.info}>
                 <Text style={styles.name} numberOfLines={1}>{doc.name}</Text>
@@ -67,13 +85,21 @@ export function MyDoctorsWidget() {
           </View>
         ))}
 
-        <Pressable style={styles.addCard} onPress={() => router.push('/doctors/new' as any)}>
-          <View style={styles.addCircle}>
-            <Ionicons name="add" size={24} color={Colors.primary} />
+          <Pressable style={[styles.addCard, { width: CARD_WIDTH }]} onPress={() => router.push('/doctors/new' as any)}>
+            <View style={styles.addCircle}>
+              <Ionicons name="add" size={24} color={Colors.primary} />
+            </View>
+            <Text style={styles.addText}>Add Doctor</Text>
+          </Pressable>
+        </ScrollView>
+        
+        {/* Scroll Indicator Arrow */}
+        {showScrollArrow && (doctors.length + 1) > 2 && (
+          <View style={styles.scrollIndicator}>
+            <Ionicons name="chevron-forward" size={20} color={Colors.primary} />
           </View>
-          <Text style={styles.addText}>Add Doctor</Text>
-        </Pressable>
-      </ScrollView>
+        )}
+      </View>
     </View>
   );
 }
@@ -103,7 +129,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   card: {
-    width: 220,
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 12,
@@ -113,13 +138,13 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
     marginBottom: 16,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: Colors.primary + '15',
     justifyContent: 'center',
     alignItems: 'center',
@@ -152,7 +177,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   addCard: {
-    width: 140,
     backgroundColor: '#F8FAFC',
     borderRadius: 16,
     padding: 12,
@@ -175,5 +199,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: Colors.primary,
+  },
+  scrollIndicator: {
+    position: 'absolute',
+    right: -16,
+    top: '50%',
+    marginTop: -16,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: -2, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   }
 });

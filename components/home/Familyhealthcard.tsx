@@ -81,8 +81,8 @@ export function FamilyHealthCard() {
               style={styles.avatarContainer}
               onPress={() => router.push('/family/add-member')}
             >
-              <View style={[styles.avatar, { borderColor: '#3B82F6', borderStyle: 'dashed', backgroundColor: '#EFF6FF' }]}>
-                <Ionicons name="add" size={22} color="#3B82F6" />
+              <View style={[styles.avatar, { borderColor: '#585858ff', borderStyle: 'dashed', backgroundColor: '#F1F5F9' }]}>
+                <Ionicons name="add" size={22} color="#585858ff" />
               </View>
               <Text style={styles.memberName} numberOfLines={2}>
                 Add Family{"\n"}Member

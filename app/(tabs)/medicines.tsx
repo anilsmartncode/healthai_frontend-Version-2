@@ -22,6 +22,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { Colors, Radius } from '@/constants/Colors';
 import { useMedicines } from '@/hooks/useMedicines';
 import { useNotifications } from '@/hooks/useNotifications';
+import { markReminderTaken } from '@/services/medicineTabApi';
 import type { Category, Medicine, Reminder } from '@/services/Medicinesapi';
 
 const H_PAD = 16;
@@ -196,7 +197,19 @@ export default function Medicines() {
     });
   };
 
-  const handleViewReminder = () => router.push('/medicines/reminders');
+  const handleViewReminder = () => {
+    router.push('/medicines/reminders' as any);
+  };
+
+  const handleMarkTaken = async (id: string) => {
+    try {
+      await markReminderTaken(id);
+      refetch();
+    } catch (error) {
+      Alert.alert('Error', 'Failed to mark as taken');
+    }
+  };
+
   const handleScanMedicine = () => router.push('/medicines/scanner');
   const handleCheckInteractions = () => router.push('/medicines/check-interactions');
   const handleBrowseAll = () => router.push('/medicines/browse');
@@ -366,23 +379,29 @@ export default function Medicines() {
                           </Text>
                         </View>
                       </View>
-                        <View style={styles.statusWrap}>
-                          <Text style={[styles.statusLbl, taken && { color: Colors.success }]}>
-                            {taken ? 'Taken' : r.status === 'missed' ? 'Missed' : 'Due'}
-                          </Text>
-                          <View
-                            style={[
-                              styles.takenCircle,
-                              taken ? styles.takenYes : styles.takenNo,
-                            ]}
-                          >
-                            <Ionicons
-                              name={taken ? 'checkmark' : 'ellipse-outline'}
-                              size={12}
-                              color={taken ? '#fff' : Colors.textMuted}
-                            />
+                        {taken ? (
+                          <View style={styles.statusWrap}>
+                            <Text style={[styles.statusLbl, { color: Colors.success }]}>Taken</Text>
+                            <View style={[styles.takenCircle, styles.takenYes]}>
+                              <Ionicons name="checkmark" size={12} color="#fff" />
+                            </View>
                           </View>
-                        </View>
+                        ) : r.status === 'missed' ? (
+                          <View style={styles.statusWrap}>
+                            <Text style={[styles.statusLbl, { color: Colors.danger }]}>Missed</Text>
+                          </View>
+                        ) : (
+                          <Pressable 
+                            style={styles.markTakenBtn} 
+                            onPress={(e) => {
+                               e.stopPropagation();
+                               handleMarkTaken(r.id);
+                            }}
+                            hitSlop={8}
+                          >
+                            <Text style={styles.markTakenTxt}>Mark Taken</Text>
+                          </Pressable>
+                        )}
                     </Pressable>
                   );
                 })
@@ -677,6 +696,17 @@ const styles = StyleSheet.create({
   },
   takenYes: { backgroundColor: Colors.success },
   takenNo: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#CBD5E1' },
+  markTakenBtn: {
+    backgroundColor: Colors.primary + '15',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  markTakenTxt: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
   fullLink: { alignItems: 'center', paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.border },
   fullLinkTxt: { fontSize: 13, fontWeight: '700', color: Colors.primary },
 
@@ -763,6 +793,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     padding: 14,
+    alignItems: 'center',
     gap: 6,
   },
   quickIcon: {
@@ -772,8 +803,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  quickTitle: { fontSize: 13, fontWeight: '700', color: Colors.text },
-  quickSub: { fontSize: 11, color: Colors.textMuted },
+  quickTitle: { fontSize: 13, fontWeight: '700', color: Colors.text, textAlign: 'center' },
+  quickSub: { fontSize: 11, color: Colors.textMuted, textAlign: 'center' },
 
   rxBanner: {
     flexDirection: 'row',
