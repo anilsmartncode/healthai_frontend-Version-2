@@ -20,7 +20,7 @@ import {
   Platform,
   Share,
 } from 'react-native';
-import { KeyboardAwareFlatList } from 'react-native-keyboard-aware-scroll-view';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Sharing from 'expo-sharing';
 import * as WebBrowser from 'expo-web-browser';
@@ -310,8 +310,7 @@ export default function ReportsScreen() {
   ];
 
   const ListHeader = (
-    <View style={{ zIndex: 10 }}>
-
+    <View style={{ zIndex: 9999, elevation: 9999 }}>
       {/* Top Report Summary Card */}
       {allReports.length > 0 && (
         <View style={{ marginBottom: 16 }}>
@@ -332,6 +331,11 @@ export default function ReportsScreen() {
           />
         </View>
       )}
+
+      {/* Upload/Chat Input Bar placed directly below the summary card */}
+      <View style={{ marginBottom: 16, zIndex: 9999, elevation: 9999 }}>
+        <ChatInputBar />
+      </View>
 
       {/* Recent header */}
       <View style={styles.recentHeader}>
@@ -463,36 +467,31 @@ export default function ReportsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Fixed Header & Input Bar to prevent dropdown clipping by FlatList on Android */}
-      <View style={{ zIndex: 999, elevation: 999, paddingHorizontal: 16, backgroundColor: '#F8FAFC' }}>
-        <View style={styles.header}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>Reports</Text>
-            <Text style={styles.headerSub}>Manage and analyze your health reports</Text>
-          </View>
-        </View>
-        <View style={{ marginBottom: 16, zIndex: 100, elevation: 100 }}>
-          <ChatInputBar />
-        </View>
-      </View>
-
       {loading ? (
         <ActivityIndicator style={{ marginTop: 48 }} size="large" color={Colors.primary} />
       ) : (
-        <KeyboardAwareFlatList
+        <KeyboardAwareScrollView
           enableOnAndroid={true}
           extraScrollHeight={Platform.OS === 'ios' ? 60 : 80}
           keyboardShouldPersistTaps="handled"
-          data={recent}
-          keyExtractor={(r) => r.id}
           contentContainerStyle={styles.listContent}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={Colors.primary} />
           }
-          ListHeaderComponent={ListHeader}
-          ListFooterComponent={ListFooter}
-          ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-          ListEmptyComponent={
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.headerTitle}>Reports</Text>
+              <Text style={styles.headerSub}>Manage and analyze your health reports</Text>
+            </View>
+          </View>
+
+          {/* ListHeader contains Summary, InputBar, and filters */}
+          {ListHeader}
+
+          {/* List Content */}
+          {recent.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="folder-open-outline" size={44} color="#D1D5DB" />
               <Text style={styles.emptyTitle}>No reports found</Text>
@@ -504,11 +503,17 @@ export default function ReportsScreen() {
                     : 'Upload a report to get started'}
               </Text>
             </View>
-          }
-          renderItem={({ item }) => (
-            <ReportRow item={item} onDelete={deleteReport} />
+          ) : (
+            recent.map((item, index) => (
+              <View key={item.id}>
+                <ReportRow item={item} onDelete={deleteReport} />
+                {index < recent.length - 1 && <View style={{ height: 8 }} />}
+              </View>
+            ))
           )}
-        />
+
+          {ListFooter}
+        </KeyboardAwareScrollView>
       )}
     </SafeAreaView>
   );

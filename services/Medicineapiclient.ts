@@ -134,8 +134,9 @@ export async function medicineApiCall<T = any>(
     console.log('==============================');
 
     if (!response.ok) {
+      const errDetail = decrypted?.message || decrypted?.detail || 'Request failed';
       throw new MedicineApiError(
-        decrypted?.message || decrypted?.detail || 'Request failed',
+        typeof errDetail === 'string' ? errDetail : JSON.stringify(errDetail),
         response.status,
         url,
       );
@@ -144,8 +145,9 @@ export async function medicineApiCall<T = any>(
   }
 
   if (!response.ok) {
+    const errDetail = rawData?.message || rawData?.detail || 'Request failed';
     throw new MedicineApiError(
-      rawData?.message || rawData?.detail || 'Request failed',
+      typeof errDetail === 'string' ? errDetail : JSON.stringify(errDetail),
       response.status,
       url,
     );

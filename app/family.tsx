@@ -112,13 +112,6 @@ export default function FamilyScreen() {
           <Text style={styles.topTitle}>Family Health</Text>
           <Text style={styles.topSubtitle}>Care Hub</Text>
         </View>
-        <Pressable
-          style={styles.addBtn}
-          onPress={() => router.push('/family/add-member')}
-          hitSlop={8}
-        >
-          <Ionicons name="add" size={22} color="#fff" />
-        </Pressable>
       </View>
 
       <ScrollView
@@ -128,43 +121,20 @@ export default function FamilyScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
         }
       >
-        {/* Intro */}
-        <View style={styles.introRow}>
-          <Text style={styles.introText}>Manage and care for your loved ones</Text>
-          <View style={styles.introArt}>
-            <Ionicons name="people" size={28} color={Colors.primary} />
-            <View style={styles.introHeart}>
-              <Ionicons name="heart" size={12} color={Colors.primary} />
-            </View>
-          </View>
-        </View>
 
-        {/* Family Overview */}
-        <Pressable
-          style={({ pressed }) => [styles.overviewCard, pressed && { opacity: 0.92 }]}
-          onPress={() => router.push('/family/health-summary')}
-        >
-          <View style={styles.overviewIcon}>
-            <Ionicons name="people" size={22} color={Colors.primary} />
-          </View>
-          <View style={styles.overviewText}>
-            <Text style={styles.overviewTitle}>Family Overview</Text>
-            <Text style={styles.overviewSub}>{overviewSub}</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-        </Pressable>
+
+
+        {/* Pending invitations */}
+        {!loading && dashboard && (
+          <PendingBanner
+            count={dashboard.pending_invitations_count}
+            onPress={() => router.push('/family/invitations')}
+          />
+        )}
 
         {/* Members header */}
         <View style={styles.sectionHdr}>
           <Text style={styles.sectionTitle}>Family Members</Text>
-          <Pressable
-            style={styles.reorderBtn}
-            onPress={() => router.push('/family/tree')}
-            hitSlop={8}
-          >
-            <Ionicons name="menu-outline" size={16} color={Colors.textMuted} />
-            <Text style={styles.reorderTxt}>Reorder</Text>
-          </Pressable>
         </View>
 
         {/* Members list */}
@@ -230,37 +200,15 @@ export default function FamilyScreen() {
 
         {/* Invite card */}
         <Pressable
-          style={({ pressed }) => [styles.inviteCard, pressed && { opacity: 0.9 }]}
+          style={({ pressed }) => [styles.inviteCard, pressed && { backgroundColor: '#F0FDF4' }]}
           onPress={() => router.push('/family/add-member')}
         >
-          <View style={styles.inviteIcon}>
-            <Ionicons name="person-add" size={20} color="#16A34A" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.inviteTitle}>Invite Family Member</Text>
-            <Text style={styles.inviteSub}>Add a family member to manage their health</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color="#16A34A" />
+          <Text style={styles.inviteTitle}>+ Add family member</Text>
         </Pressable>
 
-        {/* Pending invitations */}
-        {!loading && dashboard && (
-          <PendingBanner
-            count={dashboard.pending_invitations_count}
-            onPress={() => router.push('/family/invitations')}
-          />
-        )}
 
-        {/* Footer banner */}
-        <View style={styles.footerBanner}>
-          <View style={styles.footerIcon}>
-            <Ionicons name="shield-checkmark" size={18} color={Colors.primary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.footerTitle}>Your family's health, always in one place.</Text>
-            <Text style={styles.footerSub}>Secure. Private. Always with you.</Text>
-          </View>
-        </View>
+
+
 
         {/* Keep secondary actions reachable */}
         <View style={styles.quickRow}>
@@ -271,13 +219,7 @@ export default function FamilyScreen() {
             <Ionicons name="git-network-outline" size={18} color={Colors.primary} />
             <Text style={styles.quickTxt}>Family Tree</Text>
           </Pressable>
-          <Pressable
-            style={({ pressed }) => [styles.quickBtn, pressed && { backgroundColor: '#E8F5F0' }]}
-            onPress={() => router.push('/family/ai-assistant')}
-          >
-            <Ionicons name="sparkles-outline" size={18} color={Colors.primary} />
-            <Text style={styles.quickTxt}>AI Assistant</Text>
-          </Pressable>
+
         </View>
       </ScrollView>
     </View>
@@ -426,27 +368,17 @@ const styles = StyleSheet.create({
   skeletonLine: { height: 11, backgroundColor: '#E5E7EB', borderRadius: 4 },
 
   inviteCard: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#ECFDF5',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1.5,
-    borderColor: '#86EFAC',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: '#065F46',
     borderStyle: 'dashed',
     marginBottom: 12,
   },
-  inviteIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#DCFCE7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  inviteTitle: { fontSize: 14, fontWeight: '700', color: '#15803D' },
-  inviteSub: { marginTop: 2, fontSize: 12, color: Colors.textMuted },
+  inviteTitle: { fontSize: 14, fontWeight: '600', color: '#065F46' },
 
   footerBanner: {
     flexDirection: 'row',

@@ -20,6 +20,6 @@ export function PendingBanner({ count, onPress }: Props) {
 }
 
 const styles = StyleSheet.create({
-  banner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FEF9E8', borderRadius: 10, padding: 11, marginTop: 6 },
+  banner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FEF9E8', borderRadius: 10, padding: 11, marginBottom: 12 },
   text:   { flex: 1, color: Colors.warning, fontWeight: '600', fontSize: 13 },
 });
