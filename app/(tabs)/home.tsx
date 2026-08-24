@@ -170,24 +170,17 @@ export default function Home() {
           onAttentionPress={handleAttentionPress}
         />
 
-        <View style={styles.quickAddRow}>
-          <Pressable style={styles.quickAddBtn} onPress={() => router.push('/doctors/new' as any)}>
-            <Ionicons name="medkit-outline" size={18} color={Colors.primary} />
-            <Text style={styles.quickAddText}>Add Family Doctor</Text>
-          </Pressable>
-          <Pressable style={styles.quickAddBtn} onPress={() => router.push('/family/add-member' as any)}>
-            <Ionicons name="person-add-outline" size={18} color={Colors.primary} />
-            <Text style={styles.quickAddText}>Add Family Member</Text>
-          </Pressable>
-        </View>
+
 
         <ChatInputBar />
 
         <QuickActions />
 
+        {/*
         {hasReports && (
           <HealthMetricsSection reports={reports} phone={phone} />
         )}
+        */}
 
         <RiskIndicatorsSection
           riskIndicators={scorecard?.riskIndicators ?? []}
@@ -195,7 +188,6 @@ export default function Home() {
         />
 
         <View style={styles.sectionGroup}>
-          <Text style={styles.sectionHeading}>Family Members Health</Text>
           <FamilyHealthCard />
         </View>
 
