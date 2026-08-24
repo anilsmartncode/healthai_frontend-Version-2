@@ -91,6 +91,12 @@ export default function MedicineDetail() {
   const [translatedSideEffects, setTranslatedSideEffects] = useState<string[] | null>(null);
   const [translatedDescription, setTranslatedDescription] = useState<string | null>(null);
   const [translatedWarnings, setTranslatedWarnings] = useState<string | null>(null);
+  const [translatedAiSummary, setTranslatedAiSummary] = useState<string | null>(null);
+  const [translatedPatientOverview, setTranslatedPatientOverview] = useState<string | null>(null);
+  const [translatedPatientHowItWorks, setTranslatedPatientHowItWorks] = useState<string | null>(null);
+  const [translatedPatientAdministration, setTranslatedPatientAdministration] = useState<string | null>(null);
+  const [translatedPatientSafety, setTranslatedPatientSafety] = useState<string | null>(null);
+  const [translatedPatientMedicalHelp, setTranslatedPatientMedicalHelp] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -150,6 +156,12 @@ export default function MedicineDetail() {
       if (medicine.dosage) { texts.push(medicine.dosage); keys.push({ key: 'dosage' }); }
       if (medicine.description) { texts.push(medicine.description); keys.push({ key: 'description' }); }
       if (medicine.warnings) { texts.push(medicine.warnings); keys.push({ key: 'warnings' }); }
+      if (medicine.aiSummary) { texts.push(medicine.aiSummary); keys.push({ key: 'aiSummary' }); }
+      if (medicine.patientSummary?.overview) { texts.push(medicine.patientSummary.overview); keys.push({ key: 'patientOverview' }); }
+      if (medicine.patientSummary?.howItWorks) { texts.push(medicine.patientSummary.howItWorks); keys.push({ key: 'patientHowItWorks' }); }
+      if (medicine.patientSummary?.administration) { texts.push(medicine.patientSummary.administration); keys.push({ key: 'patientAdministration' }); }
+      if (medicine.patientSummary?.safety) { texts.push(medicine.patientSummary.safety); keys.push({ key: 'patientSafety' }); }
+      if (medicine.patientSummary?.whenToSeekMedicalHelp) { texts.push(medicine.patientSummary.whenToSeekMedicalHelp); keys.push({ key: 'patientMedicalHelp' }); }
       if (medicine.sideEffects) {
         medicine.sideEffects.forEach((se, i) => {
           texts.push(se);
@@ -174,6 +186,12 @@ export default function MedicineDetail() {
             if (meta.key === 'dosage') setTranslatedDosage(translated);
             if (meta.key === 'description') setTranslatedDescription(translated);
             if (meta.key === 'warnings') setTranslatedWarnings(translated);
+            if (meta.key === 'aiSummary') setTranslatedAiSummary(translated);
+            if (meta.key === 'patientOverview') setTranslatedPatientOverview(translated);
+            if (meta.key === 'patientHowItWorks') setTranslatedPatientHowItWorks(translated);
+            if (meta.key === 'patientAdministration') setTranslatedPatientAdministration(translated);
+            if (meta.key === 'patientSafety') setTranslatedPatientSafety(translated);
+            if (meta.key === 'patientMedicalHelp') setTranslatedPatientMedicalHelp(translated);
             if (meta.key === 'sideEffect') newSideEffects.push(translated);
           });
           if (newSideEffects.length > 0) setTranslatedSideEffects(newSideEffects);
@@ -419,7 +437,7 @@ export default function MedicineDetail() {
               </View>
               <Text style={styles.aiCardTitle}>HEALTHAI CLINICAL INSIGHTS</Text>
             </View>
-            <Text style={styles.aiCardBody}>{medicine.aiSummary}</Text>
+            <Text style={styles.aiCardBody}>{translatedAiSummary ?? medicine.aiSummary}</Text>
           </View>
         ) : null}
 
@@ -452,28 +470,28 @@ export default function MedicineDetail() {
             {medicine.patientSummary.overview && (
               <View style={styles.patientSubSection}>
                 <Text style={styles.patientSubTitle}>Overview</Text>
-                <Text style={styles.patientSubBody}>{medicine.patientSummary.overview}</Text>
+                <Text style={styles.patientSubBody}>{translatedPatientOverview ?? medicine.patientSummary.overview}</Text>
               </View>
             )}
 
             {medicine.patientSummary.howItWorks && (
               <View style={styles.patientSubSection}>
                 <Text style={styles.patientSubTitle}>How It Works</Text>
-                <Text style={styles.patientSubBody}>{medicine.patientSummary.howItWorks}</Text>
+                <Text style={styles.patientSubBody}>{translatedPatientHowItWorks ?? medicine.patientSummary.howItWorks}</Text>
               </View>
             )}
 
             {medicine.patientSummary.administration && (
               <View style={styles.patientSubSection}>
                 <Text style={styles.patientSubTitle}>Administration & Timing</Text>
-                <Text style={styles.patientSubBody}>{medicine.patientSummary.administration}</Text>
+                <Text style={styles.patientSubBody}>{translatedPatientAdministration ?? medicine.patientSummary.administration}</Text>
               </View>
             )}
 
             {medicine.patientSummary.safety && (
               <View style={styles.patientSubSection}>
                 <Text style={styles.patientSubTitle}>Safety & Precautions</Text>
-                <Text style={styles.patientSubBody}>{medicine.patientSummary.safety}</Text>
+                <Text style={styles.patientSubBody}>{translatedPatientSafety ?? medicine.patientSummary.safety}</Text>
               </View>
             )}
 
@@ -498,9 +516,9 @@ export default function MedicineDetail() {
             )}
 
             {medicine.patientSummary?.whenToSeekMedicalHelp && (
-              <View style={styles.criticalWarningSection}>
+              <View style={[styles.criticalWarningSection, !medicine.warnings && { borderTopWidth: 0, marginTop: 0, paddingTop: 0 }]}>
                 <Text style={styles.criticalWarningSubtitle}>When to Seek Medical Help</Text>
-                <Text style={styles.criticalWarningBody}>{medicine.patientSummary.whenToSeekMedicalHelp}</Text>
+                <Text style={styles.criticalWarningBody}>{translatedPatientMedicalHelp ?? medicine.patientSummary.whenToSeekMedicalHelp}</Text>
               </View>
             )}
           </View>
