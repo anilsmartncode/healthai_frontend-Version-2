@@ -47,7 +47,21 @@ export default function EmergencyScreen() {
   useEffect(() => {
     getMemberEmergency(id)
       .then(setData)
-      .catch(() => {})
+      .catch((e) => {
+        console.warn("Failed to load emergency details, using fallback:", e);
+        setData({
+          member_id: id,
+          medical_info: {
+            blood_group: 'Unknown',
+            weight_kg: 0,
+            height_cm: 0,
+            allergies: [],
+            conditions: [],
+            emergency_notes: ''
+          },
+          emergency_contacts: []
+        });
+      })
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -64,7 +78,14 @@ export default function EmergencyScreen() {
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <View style={[styles.screen, { paddingTop: insets.top }, styles.centered]}>
+        <Ionicons name="alert-circle-outline" size={48} color={Colors.textMuted} />
+        <Text style={{ marginTop: 16, color: Colors.textMuted }}>Could not load emergency data.</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -90,18 +111,7 @@ export default function EmergencyScreen() {
           }}
         />
       )}
-      {activeView === 'edit-medical' && (
-        <EditMedicalView
-          info={data.medical_info}
-          memberId={id}
-          onBack={() => setActiveView('main')}
-          onSaved={(updated) => {
-            setData((prev) => prev ? { ...prev, medical_info: updated } : prev);
-            setActiveView('main');
-            showSuccess('Medical info updated');
-          }}
-        />
-      )}
+
     </View>
   );
 }
@@ -119,7 +129,6 @@ function MainView({
   setData: React.Dispatch<React.SetStateAction<EmergencyDetailsResponse | null>>;
   memberId: string;
   onAddContact: () => void;
-  onEditMedical: () => void;
   onBack: () => void;
   successMsg: string;
   showSuccess: (msg: string) => void;
@@ -149,10 +158,8 @@ function MainView({
   return (
     <View style={{ flex: 1 }}>
       <FamilyTopBar
-        title="Emergency Details"
+        title="Emergency / SOS"
         onBack={onBack}
-        rightIcon="create-outline"
-        onRight={onEditMedical}
       />
 
       <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
@@ -165,69 +172,38 @@ function MainView({
           </View>
         )}
 
-        {/* ── Medical Info card ────────────────────── */}
-        <View style={styles.sosCard}>
-          <View style={styles.sosHeader}>
-            <View style={styles.sosHeaderLeft}>
-              <Ionicons name="heart-circle-outline" size={18} color={Colors.danger} />
-              <Text style={styles.sosTitle}>Medical info</Text>
-            </View>
-            <Pressable onPress={onEditMedical}>
-              <Text style={styles.editLink}>Edit</Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.medGrid}>
-            <View>
-              <Text style={styles.medGridLbl}>Blood group</Text>
-              <Text style={styles.medGridVal}>{mi.blood_group}</Text>
-            </View>
-            <View>
-              <Text style={styles.medGridLbl}>Weight</Text>
-              <Text style={styles.medGridVal}>{mi.weight_kg} kg</Text>
-            </View>
-          </View>
-
-          {mi.allergies.length > 0 && (
-            <View style={{ marginBottom: 8 }}>
-              <Text style={styles.medSubLbl}>Allergies</Text>
-              <View style={styles.chipsRow}>
-                {mi.allergies.map((a) => (
-                  <View key={a} style={styles.allergyChip}><Text style={styles.allergyTxt}>{a}</Text></View>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {mi.conditions.length > 0 && (
-            <View>
-              <Text style={styles.medSubLbl}>Known conditions</Text>
-              <View style={styles.chipsRow}>
-                {mi.conditions.map((c) => (
-                  <View key={c} style={styles.condChip}><Text style={styles.condTxt}>{c}</Text></View>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {!!mi.emergency_notes && (
-            <View style={styles.notesBox}>
-              <Ionicons name="information-circle-outline" size={13} color={Colors.danger} />
-              <Text style={styles.notesTxt}>{mi.emergency_notes}</Text>
-            </View>
-          )}
+        {/* ── Top SOS Card ─────────────────────────── */}
+        <View style={styles.topSosCard}>
+          <Text style={styles.topSosTxt}>Emergency help is one tap away</Text>
+          <Pressable
+            style={styles.topSosBtn}
+            onPress={() => Alert.alert('SOS', 'Call emergency services?', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Call 108', onPress: () => Linking.openURL('tel:108') },
+            ])}
+          >
+            <Ionicons name="call" size={16} color="#fff" />
+            <Text style={styles.topSosBtnTxt}>Call emergency — 108</Text>
+          </Pressable>
         </View>
+
+        {/* ── Add Contact Button ───────────────────── */}
+        <Pressable style={styles.outlineAddBtn} onPress={onAddContact}>
+          <Text style={styles.outlineAddTxt}>Add emergency contact</Text>
+        </Pressable>
 
         {/* ── Contacts section ─────────────────────── */}
         <View style={styles.sectionRow}>
           <Text style={styles.section}>Emergency contacts</Text>
-          <Pressable style={styles.addBtn} onPress={onAddContact}>
-            <Ionicons name="add" size={13} color="#fff" />
-            <Text style={styles.addBtnTxt}>Add</Text>
-          </Pressable>
         </View>
 
-        {contacts.map((c) => (
+        {contacts.length === 0 ? (
+          <View style={styles.emptyContacts}>
+            <Ionicons name="people-outline" size={32} color="#CBD5E1" />
+            <Text style={styles.emptyContactsTxt}>No emergency contacts added yet</Text>
+          </View>
+        ) : (
+          contacts.map((c) => (
           <View key={c.contact_id} style={styles.contactRow}>
             <View style={styles.contactAvatar}>
               <Ionicons name={c.relationship === 'Doctor' ? 'medkit-outline' : 'person-outline'} size={18} color={Colors.primary} />
@@ -250,25 +226,8 @@ function MainView({
               </Pressable>
             </View>
           </View>
-        ))}
-
-        {/* ── Dashed add row ────────────────────────── */}
-        <Pressable style={styles.dashedAdd} onPress={onAddContact}>
-          <Ionicons name="add-circle-outline" size={18} color={Colors.primary} />
-          <Text style={styles.dashedTxt}>Add emergency contact</Text>
-        </Pressable>
-
-        {/* ── SOS button ───────────────────────────── */}
-        <Pressable
-          style={styles.sosBtn}
-          onPress={() => Alert.alert('SOS', 'Call emergency services?', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Call 112', onPress: () => Linking.openURL('tel:112') },
-          ])}
-        >
-          <Ionicons name="alert-circle-outline" size={18} color="#fff" />
-          <Text style={styles.sosBtnTxt}>SOS — Call emergency</Text>
-        </Pressable>
+          ))
+        )}
 
       </ScrollView>
     </View>
@@ -376,167 +335,7 @@ function AddContactView({
   );
 }
 
-// ════════════════════════════════════════════════════════════════════════
-// EDIT MEDICAL VIEW
-// ════════════════════════════════════════════════════════════════════════
 
-function EditMedicalView({
-  info, memberId, onBack, onSaved,
-}: {
-  info: MedicalInfo;
-  memberId: string;
-  onBack: () => void;
-  onSaved: (updated: MedicalInfo) => void;
-}) {
-  const [bloodGroup,  setBloodGroup]  = useState(info.blood_group);
-  const [weight,      setWeight]      = useState(String(info.weight_kg));
-  const [height,      setHeight]      = useState(info.height_cm ? String(info.height_cm) : '');
-  const [allergies,   setAllergies]   = useState<string[]>([...info.allergies]);
-  const [conditions,  setConditions]  = useState<string[]>([...info.conditions]);
-  const [notes,       setNotes]       = useState(info.emergency_notes);
-  const [allergyInp,  setAllergyInp]  = useState('');
-  const [condInp,     setCondInp]     = useState('');
-  const [saving,      setSaving]      = useState(false);
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const updated: MedicalInfo = {
-        blood_group:     bloodGroup,
-        weight_kg:       Number(weight) || 0,
-        height_cm:       Number(height) || 0,
-        allergies,
-        conditions,
-        emergency_notes: notes,
-      };
-      await updateMedicalInfo(memberId, updated);
-      onSaved(updated);
-    } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'Failed to save');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <View style={{ flex: 1 }}>
-      <FamilyTopBar title="Edit Medical Info" onBack={onBack} />
-
-      <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-
-        {/* Blood group */}
-        <Text style={styles.fl}>Blood group</Text>
-        <View style={styles.relWrap}>
-          {BLOOD_GROUPS.map((bg) => (
-            <Pressable
-              key={bg}
-              style={[styles.relChip, bloodGroup === bg && styles.relChipOn]}
-              onPress={() => setBloodGroup(bg)}
-            >
-              <Text style={[styles.relTxt, bloodGroup === bg && styles.relTxtOn]}>{bg}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {/* Weight + Height */}
-        <View style={styles.twoCol}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.fl}>Weight (kg)</Text>
-            <TextInput style={styles.inp} keyboardType="numeric" value={weight} onChangeText={setWeight} placeholderTextColor={Colors.textMuted} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.fl}>Height (cm)</Text>
-            <TextInput style={styles.inp} keyboardType="numeric" placeholder="e.g. 158" value={height} onChangeText={setHeight} placeholderTextColor={Colors.textMuted} />
-          </View>
-        </View>
-
-        {/* Allergies */}
-        <Text style={styles.fl}>Allergies</Text>
-        <View style={styles.tagWrap}>
-          {allergies.map((a) => (
-            <View key={a} style={styles.tagChip}>
-              <Text style={styles.tagAllergyTxt}>{a}</Text>
-              <Pressable onPress={() => setAllergies((prev) => prev.filter((x) => x !== a))}>
-                <Text style={styles.tagX}>×</Text>
-              </Pressable>
-            </View>
-          ))}
-        </View>
-        <View style={styles.inpAddRow}>
-          <TextInput
-            style={[styles.inp, { flex: 1 }]}
-            placeholder="Add allergy"
-            value={allergyInp}
-            onChangeText={setAllergyInp}
-            placeholderTextColor={Colors.textMuted}
-          />
-          <Pressable
-            style={styles.inpAddBtn}
-            onPress={() => {
-              if (allergyInp.trim()) {
-                setAllergies((prev) => [...prev, allergyInp.trim()]);
-                setAllergyInp('');
-              }
-            }}
-          >
-            <Text style={styles.inpAddTxt}>Add</Text>
-          </Pressable>
-        </View>
-
-        {/* Conditions */}
-        <Text style={styles.fl}>Known conditions</Text>
-        <View style={styles.tagWrap}>
-          {conditions.map((c) => (
-            <View key={c} style={styles.tagCondChip}>
-              <Text style={styles.tagCondTxt}>{c}</Text>
-              <Pressable onPress={() => setConditions((prev) => prev.filter((x) => x !== c))}>
-                <Text style={styles.tagX}>×</Text>
-              </Pressable>
-            </View>
-          ))}
-        </View>
-        <View style={styles.inpAddRow}>
-          <TextInput
-            style={[styles.inp, { flex: 1 }]}
-            placeholder="Add condition"
-            value={condInp}
-            onChangeText={setCondInp}
-            placeholderTextColor={Colors.textMuted}
-          />
-          <Pressable
-            style={styles.inpAddBtn}
-            onPress={() => {
-              if (condInp.trim()) {
-                setConditions((prev) => [...prev, condInp.trim()]);
-                setCondInp('');
-              }
-            }}
-          >
-            <Text style={styles.inpAddTxt}>Add</Text>
-          </Pressable>
-        </View>
-
-        {/* Emergency notes */}
-        <Text style={styles.fl}>Emergency notes</Text>
-        <TextInput
-          style={[styles.inp, { height: 68, textAlignVertical: 'top' }]}
-          multiline
-          placeholder="e.g. Insulin dependent, keep glucose tablets nearby"
-          value={notes}
-          onChangeText={setNotes}
-          placeholderTextColor={Colors.textMuted}
-        />
-
-        <Pressable style={[styles.saveBtn, saving && { opacity: 0.7 }]} onPress={handleSave} disabled={saving}>
-          {saving
-            ? <ActivityIndicator color="#fff" size="small" />
-            : <Text style={styles.saveTxt}>Save Medical Info</Text>}
-        </Pressable>
-
-      </ScrollView>
-    </View>
-  );
-}
 
 // ── Styles ────────────────────────────────────────────────────────────
 
@@ -574,6 +373,8 @@ const styles = StyleSheet.create({
   addBtnTxt:  { fontSize: 11, color: '#fff', fontWeight: '600' },
 
   // Contact row
+  emptyContacts:  { alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', borderStyle: 'dashed' },
+  emptyContactsTxt:{ fontSize: 13, color: Colors.textMuted, marginTop: 8, fontWeight: '500' },
   contactRow:     { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 7, gap: 10 },
   contactAvatar:  { width: 40, height: 40, borderRadius: 20, backgroundColor: '#E8F5F0', justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   contactName:    { fontSize: 13, fontWeight: '600', color: Colors.text },
@@ -582,13 +383,15 @@ const styles = StyleSheet.create({
   callBtn:        { width: 30, height: 30, borderRadius: 8, backgroundColor: '#E8F5F0', justifyContent: 'center', alignItems: 'center' },
   delBtn:         { width: 30, height: 30, borderRadius: 8, backgroundColor: '#FFE8E8', justifyContent: 'center', alignItems: 'center' },
 
-  // Dashed add
-  dashedAdd: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderWidth: 1.5, borderStyle: 'dashed', borderColor: Colors.border, borderRadius: 12, padding: 13, marginBottom: 10 },
-  dashedTxt: { fontSize: 13, fontWeight: '600', color: Colors.primary },
+  // Top SOS card
+  topSosCard:  { backgroundColor: '#FFF1F2', borderWidth: 1, borderColor: '#FECACA', borderRadius: 12, padding: 14, marginBottom: 16 },
+  topSosTxt:   { color: '#991B1B', fontSize: 13, fontWeight: '600', marginBottom: 12 },
+  topSosBtn:   { backgroundColor: '#B91C1C', borderRadius: 10, padding: 14, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
+  topSosBtnTxt:{ color: '#fff', fontSize: 15, fontWeight: '700' },
 
-  // SOS button
-  sosBtn:    { backgroundColor: Colors.danger, borderRadius: 12, padding: 14, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 4 },
-  sosBtnTxt: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  // Green Outline Add Button
+  outlineAddBtn: { borderWidth: 1, borderColor: Colors.primary, borderRadius: 12, padding: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
+  outlineAddTxt: { color: Colors.primary, fontSize: 14, fontWeight: '600' },
 
   // Form
   fl:         { fontSize: 12, fontWeight: '600', color: Colors.textMuted, marginBottom: 6, marginTop: 14 },

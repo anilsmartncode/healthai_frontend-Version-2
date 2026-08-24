@@ -525,14 +525,16 @@ export async function updateMedicalInfo(
   payload: Partial<MedicalInfo>,
 ): Promise<{ success: boolean; message: string }> {
   // 🔴 REAL
+  /*
   const raw = await medicineApiCall<any>(ENDPOINTS.familyMemberMedicalInfo(member_id), {
     method: 'PATCH' as any,
     body: payload,
   });
   return (raw?.data ?? raw) as { success: boolean; message: string };
+  */
 
   // 🟢 MOCK
-  // await delay(700);
-  // console.log(`🚨 [profileSubScreenApi] updateMedicalInfo id=${member_id} — MOCK`);
-  // return { success: true, message: 'Medical info updated' };
+  await new Promise(resolve => setTimeout(resolve, 600));
+  console.log(`🚨 [profileSubScreenApi] updateMedicalInfo id=${member_id} — MOCK`);
+  return { success: true, message: 'Medical info updated' };
 }
