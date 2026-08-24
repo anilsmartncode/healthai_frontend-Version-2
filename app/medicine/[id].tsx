@@ -52,6 +52,16 @@ function getFormIcon(name: string): string {
   return 'pill';
 }
 
+function getFormEmoji(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes('syrup') || n.includes('suspension') || n.includes('liquid')) return '🧪';
+  if (n.includes('injection') || n.includes('vaccine') || n.includes('pen')) return '💉';
+  if (n.includes('drop')) return '💧';
+  if (n.includes('cream') || n.includes('gel') || n.includes('ointment')) return '🧴';
+  if (n.includes('inhaler') || n.includes('spray')) return '💨';
+  return '💊';
+}
+
 function getFormColor(name: string): string {
   const n = name.toLowerCase();
   if (n.includes('syrup') || n.includes('suspension')) return '#B45309';
@@ -309,7 +319,7 @@ export default function MedicineDetail() {
         {/* ── Header Hero Card ── */}
         <View style={styles.headerCard}>
           <View style={[styles.heroIconLg, { backgroundColor: getFormColor(medicine.name) + '15' }]}>
-            <MaterialCommunityIcons name={getFormIcon(medicine.name) as any} size={42} color={getFormColor(medicine.name)} />
+            <Text style={{ fontSize: 32 }}>{getFormEmoji(medicine.name)}</Text>
           </View>
           <Text style={styles.heroNameLg}>{medicine.name}</Text>
           {medicine.type && !medicine.name.toLowerCase().includes(medicine.type.toLowerCase()) ? (

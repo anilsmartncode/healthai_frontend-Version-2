@@ -21,6 +21,7 @@ import { router } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { Colors, Radius } from '@/constants/Colors';
 import { useMedicines } from '@/hooks/useMedicines';
+import { ChatInputBar } from '@/components/ui/ChatInputBar';
 import { useNotifications } from '@/hooks/useNotifications';
 import { markReminderTaken } from '@/services/medicineTabApi';
 import type { Category, Medicine, Reminder } from '@/services/Medicinesapi';
@@ -60,6 +61,16 @@ function getFormIcon(name: string): string {
   if (n.includes('inhaler') || n.includes('spray')) return 'spray';
   if (n.includes('capsule')) return 'pill';
   return 'pill'; // default tablet/pill
+}
+
+function getFormEmoji(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes('syrup') || n.includes('suspension') || n.includes('liquid')) return '🧪';
+  if (n.includes('injection') || n.includes('vaccine') || n.includes('pen')) return '💉';
+  if (n.includes('drop')) return '💧';
+  if (n.includes('cream') || n.includes('gel') || n.includes('ointment')) return '🧴';
+  if (n.includes('inhaler') || n.includes('spray')) return '💨';
+  return '💊';
 }
 
 function getFormColor(name: string): string {
@@ -114,7 +125,7 @@ function MedicineRow({
       onPress={onPress}
     >
       <View style={[styles.medIcon, { backgroundColor: getFormColor(med.name) + '15' }]}>
-        <MaterialCommunityIcons name={getFormIcon(med.name) as any} size={22} color={getFormColor(med.name)} />
+        <Text style={{ fontSize: 18 }}>{getFormEmoji(med.name)}</Text>
       </View>
       <View style={styles.medInfo}>
         <Text style={styles.medName}>{med.name}</Text>
@@ -222,7 +233,7 @@ export default function Medicines() {
       });
       if (r.canceled || !r.assets || r.assets.length === 0) return;
       const file = r.assets[0];
-      
+
       router.push({
         pathname: '/upload',
         params: {
@@ -282,19 +293,6 @@ export default function Medicines() {
           <Text style={styles.title}>Medicines</Text>
           <Text style={styles.subtitle}>Manage your medicines and reminders</Text>
         </View>
-        <Pressable
-          style={styles.iconBtn}
-          onPress={() => router.push('/medicines/my-medicines')}
-          hitSlop={8}
-          accessibilityLabel="Saved Medicines"
-        >
-          <Ionicons name="bookmark-outline" size={20} color={Colors.text} />
-          {savedMedicines.length > 0 && (
-            <View style={[styles.badge, { backgroundColor: '#16A34A' }]}>
-              <Text style={styles.badgeText}>{savedMedicines.length}</Text>
-            </View>
-          )}
-        </Pressable>
         <Pressable style={styles.iconBtn} onPress={() => router.push('/notifications')} hitSlop={8}>
           <Ionicons name="notifications-outline" size={20} color={Colors.text} />
           {unreadCount > 0 && (
@@ -332,7 +330,7 @@ export default function Medicines() {
             <Ionicons name="search-outline" size={18} color={Colors.textMuted} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search medicines, conditions..."
+              placeholder="Search medicines..."
               placeholderTextColor={Colors.textMuted}
               value={searchQ}
               onChangeText={setSearchQ}
@@ -341,11 +339,30 @@ export default function Medicines() {
             />
           </View>
 
+          {/* Quick actions kept reachable */}
+          <View style={styles.quickRow}>
+            <Pressable style={styles.quickCard} onPress={handleScanMedicine}>
+              <View style={[styles.quickIcon, { backgroundColor: '#F0FDF4' }]}>
+                <Ionicons name="scan-outline" size={16} color="#16A34A" />
+              </View>
+              <Text style={styles.quickTitle}>Scan Medicine</Text>
+            </Pressable>
+            <Pressable style={styles.quickCard} onPress={handleCheckInteractions}>
+              <View style={[styles.quickIcon, { backgroundColor: '#FFF7ED' }]}>
+                <Ionicons name="git-compare-outline" size={16} color="#EA580C" />
+              </View>
+              <Text style={styles.quickTitle}>Check Interactions</Text>
+            </Pressable>
+          </View>
+
+          <View style={{ marginBottom: 16, paddingHorizontal: H_PAD, zIndex: 9999, elevation: 9999 }}>
+            <ChatInputBar context="prescription" />
+          </View>
 
           {/* Today's Schedule */}
           <View style={styles.section}>
             <View style={styles.secHeader}>
-              <Text style={styles.secTitle}>Today's Schedule</Text>
+              <Text style={styles.secTitle}>Active Medicines</Text>
             </View>
 
             <View style={styles.card}>
@@ -365,43 +382,23 @@ export default function Medicines() {
                       onPress={handleViewReminder}
                     >
                       <View style={[styles.pillIcon, { backgroundColor: getFormColor(r.medicineName) + '15' }]}>
-                        <MaterialCommunityIcons name={getFormIcon(r.medicineName) as any} size={22} color={getFormColor(r.medicineName)} />
+                        <Text style={{ fontSize: 16 }}>{getFormEmoji(r.medicineName)}</Text>
                       </View>
-                      
+
                       <View style={{ flex: 1, minWidth: 0, justifyContent: 'center' }}>
                         <Text style={styles.medName} numberOfLines={1}>
                           {r.medicineName}
                         </Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                          <Ionicons name="time-outline" size={12} color="#64748B" />
                           <Text style={styles.medHint} numberOfLines={1}>
                             {r.time} • {whenLabel(r.whenToTake)}
                           </Text>
                         </View>
                       </View>
-                        {taken ? (
-                          <View style={styles.statusWrap}>
-                            <Text style={[styles.statusLbl, { color: Colors.success }]}>Taken</Text>
-                            <View style={[styles.takenCircle, styles.takenYes]}>
-                              <Ionicons name="checkmark" size={12} color="#fff" />
-                            </View>
-                          </View>
-                        ) : r.status === 'missed' ? (
-                          <View style={styles.statusWrap}>
-                            <Text style={[styles.statusLbl, { color: Colors.danger }]}>Missed</Text>
-                          </View>
-                        ) : (
-                          <Pressable 
-                            style={styles.markTakenBtn} 
-                            onPress={(e) => {
-                               e.stopPropagation();
-                               handleMarkTaken(r.id);
-                            }}
-                            hitSlop={8}
-                          >
-                            <Text style={styles.markTakenTxt}>Mark Taken</Text>
-                          </Pressable>
-                        )}
+
+                      <View style={styles.activeBadge}>
+                        <Text style={styles.activeBadgeTxt}>Active</Text>
+                      </View>
                     </Pressable>
                   );
                 })
@@ -416,79 +413,6 @@ export default function Medicines() {
 
 
 
-
-          {/* Quick actions kept reachable */}
-          <View style={styles.quickRow}>
-            <Pressable style={styles.quickCard} onPress={handleScanMedicine}>
-              <View style={[styles.quickIcon, { backgroundColor: '#F0FDF4' }]}>
-                <Ionicons name="scan-outline" size={20} color="#16A34A" />
-              </View>
-              <Text style={styles.quickTitle}>Scan Medicine</Text>
-              <Text style={styles.quickSub}>Identify with camera</Text>
-            </Pressable>
-            <Pressable style={styles.quickCard} onPress={handleCheckInteractions}>
-              <View style={[styles.quickIcon, { backgroundColor: '#FFF7ED' }]}>
-                <Ionicons name="git-compare-outline" size={20} color="#EA580C" />
-              </View>
-              <Text style={styles.quickTitle}>Check Interactions</Text>
-              <Text style={styles.quickSub}>Safety check together</Text>
-            </Pressable>
-          </View>
-
-          <Pressable
-            style={styles.rxBanner}
-            onPress={handleUploadPrescription}
-          >
-            <View style={styles.rxIcon}>
-              <Ionicons name="document-text" size={20} color="#0284C7" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.rxTitle}>Upload Prescription</Text>
-              <Text style={styles.rxSub}>Extract all your medicines instantly</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-          </Pressable>
-
-          {/* ── Saved Medicines ── */}
-          <View style={[styles.section, { marginTop: 18 }]}>
-            <View style={styles.secHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="bookmark" size={18} color="#16A34A" />
-                <Text style={styles.secTitle}>Saved Medicines</Text>
-              </View>
-              <Pressable onPress={() => router.push('/medicines/my-medicines')} hitSlop={8}>
-                <Text style={styles.linkTxt}>
-                  {savedMedicines.length > 0 ? `View all (${savedMedicines.length}) ›` : 'View all ›'}
-                </Text>
-              </Pressable>
-            </View>
-
-            {savedMedicines.length === 0 ? (
-              <Pressable
-                style={[styles.card, styles.emptySchedule]}
-                onPress={handleBrowseAll}
-              >
-                <Ionicons name="bookmark-outline" size={28} color="#16A34A" />
-                <Text style={styles.emptyTitle}>No saved medicines yet</Text>
-                <Text style={styles.emptySub}>Tap the bookmark icon on any medicine to save it here</Text>
-              </Pressable>
-            ) : (
-              <View style={styles.medList}>
-                {savedMedicines.slice(0, 4).map((med, idx) => (
-                  <SavedMedicineRow
-                    key={`saved_${med.id}_${idx}`}
-                    med={med}
-                    onPress={() =>
-                      router.push({
-                        pathname: '/medicine/[id]',
-                        params: { id: med.id, isSaved: 'true' },
-                      })
-                    }
-                  />
-                ))}
-              </View>
-            )}
-          </View>
 
           {/* ── Recently Viewed ── */}
           {/* @ts-ignore - recentlyViewed might be defined in the original branch */}
@@ -685,27 +609,16 @@ const styles = StyleSheet.create({
   },
   medName: { fontSize: 14, fontWeight: '700', color: Colors.text },
   medHint: { fontSize: 12, color: '#64748B' },
-  statusWrap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  statusLbl: { fontSize: 11, fontWeight: '600', color: Colors.textMuted },
-  takenCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  takenYes: { backgroundColor: Colors.success },
-  takenNo: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#CBD5E1' },
-  markTakenBtn: {
-    backgroundColor: Colors.primary + '15',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+  activeBadge: {
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 8,
   },
-  markTakenTxt: {
+  activeBadgeTxt: {
+    color: '#059669',
     fontSize: 11,
     fontWeight: '700',
-    color: Colors.primary,
   },
   fullLink: { alignItems: 'center', paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.border },
   fullLinkTxt: { fontSize: 13, fontWeight: '700', color: Colors.primary },
@@ -788,23 +701,25 @@ const styles = StyleSheet.create({
   },
   quickCard: {
     flex: 1,
+    flexDirection: 'row',
     backgroundColor: '#fff',
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.border,
-    padding: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'center',
+    gap: 8,
   },
   quickIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   quickTitle: { fontSize: 13, fontWeight: '700', color: Colors.text, textAlign: 'center' },
-  quickSub: { fontSize: 11, color: Colors.textMuted, textAlign: 'center' },
 
   rxBanner: {
     flexDirection: 'row',

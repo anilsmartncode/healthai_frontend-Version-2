@@ -37,7 +37,11 @@ function validatePickedFile(name: string): boolean {
   return true;
 }
 
-export function ChatInputBar() {
+interface ChatInputBarProps {
+  context?: 'prescription';
+}
+
+export function ChatInputBar({ context }: ChatInputBarProps = {}) {
   const [input, setInput] = useState('');
   const [inputHeight, setInputHeight] = useState(36);
   const [attachedFile, setAttachedFile] = useState<any>(null);
@@ -161,12 +165,13 @@ export function ChatInputBar() {
           fileName: attachedFile.name,
           mimeType: attachedFile.mimeType,
           prefillText: input.trim(),
+          context: context,
         }
       });
     } else {
       router.push({
         pathname: '/upload',
-        params: { prefillText: input.trim() }
+        params: { prefillText: input.trim(), context: context }
       });
     }
 

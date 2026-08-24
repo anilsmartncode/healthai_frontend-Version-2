@@ -67,6 +67,16 @@ function getFormIcon(name: string): string {
   return 'pill';
 }
 
+function getFormEmoji(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes('syrup') || n.includes('suspension') || n.includes('liquid')) return '🧪';
+  if (n.includes('injection') || n.includes('vaccine') || n.includes('pen')) return '💉';
+  if (n.includes('drop')) return '💧';
+  if (n.includes('cream') || n.includes('gel') || n.includes('ointment')) return '🧴';
+  if (n.includes('inhaler') || n.includes('spray')) return '💨';
+  return '💊';
+}
+
 function getFormColor(name: string): string {
   const n = name.toLowerCase();
   if (n.includes('syrup') || n.includes('suspension')) return '#B45309';
@@ -92,7 +102,7 @@ function MedicineRow({
       onPress={onPress}
     >
       <View style={[styles.medIcon, { backgroundColor: getFormColor(med.name) + '15' }]}>
-        <MaterialCommunityIcons name={getFormIcon(med.name) as any} size={22} color={getFormColor(med.name)} />
+        <Text style={{ fontSize: 18 }}>{getFormEmoji(med.name)}</Text>
       </View>
       <View style={styles.medInfo}>
         <Text style={styles.medName}>{med.name}</Text>
@@ -475,7 +485,6 @@ export default function BrowseMedicinesScreen() {
   const [popular, setPopular] = useState<Medicine[]>([]);
   const [recently, setRecently] = useState<Medicine[]>([]);
   const [selectedMed, setSelectedMed] = useState<Medicine | null>(null);
-  const [detailVisible, setDetailVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [listLoading, setListLoading] = useState(false);
   const [searchReason, setSearchReason] = useState<string | null>(null);
@@ -574,30 +583,15 @@ export default function BrowseMedicinesScreen() {
     return () => { cancelled = true; };
   }, [selectedCategory]);
 
-  const openDetail = async (medId: string) => {
-    setListLoading(true);
-    try {
-      // API 4 — GET /api/medicines/:id
-      const med = await getMedicineDetails(medId);
-      if (med) {
-        setSelectedMed(med);
-        setDetailVisible(true);
-      }
-    } catch {
-      Alert.alert('Error', 'Could not load medicine details.');
-    } finally {
-      setListLoading(false);
-    }
+  const openDetail = (medId: string) => {
+    router.push({
+      pathname: '/medicine/[id]',
+      params: { id: medId },
+    });
   };
 
   const openDetailFromMed = (med: Medicine) => {
-    // If we already have full detail (uses/dosage), open directly
-    if (med.uses) {
-      setSelectedMed(med);
-      setDetailVisible(true);
-    } else {
-      openDetail(med.id);
-    }
+    openDetail(med.id);
   };
 
   const isSearching = searchQ.trim().length > 0;
@@ -833,15 +827,6 @@ export default function BrowseMedicinesScreen() {
         </ScrollView>
       )}
 
-      {/* Medicine Detail Modal */}
-      <MedicineDetailModal
-        med={selectedMed}
-        visible={detailVisible}
-        onClose={() => setDetailVisible(false)}
-        onSave={(_med) => {
-          // Optionally refresh recently viewed
-        }}
-      />
     </SafeAreaView>
   );
 }
