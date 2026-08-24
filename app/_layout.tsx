@@ -124,17 +124,16 @@ export default function RootLayout() {
     setIsMounted(true);
   }, []);
 
-  // TEMP: web restriction disabled for screenshot
   let isWebLocked = false;
-  // if (Platform.OS === 'web' && isMounted) {
-  //   const allowedWebPaths = ['/privacy', '/terms', '/cookies', '/contact', '/support', '/accountanddata'];
-  //   const isAllowed = pathname && allowedWebPaths.some(p => 
-  //     pathname === p || pathname === `${p}/` || pathname?.startsWith(`${p}?`)
-  //   );
-  //   if (!isAllowed) {
-  //     isWebLocked = true;
-  //   }
-  // }
+  if (Platform.OS === 'web' && isMounted) {
+    const allowedWebPaths = ['/privacy', '/terms', '/cookies', '/contact', '/support', '/accountanddata'];
+    const isAllowed = pathname && allowedWebPaths.some(p => 
+      pathname === p || pathname === `${p}/` || pathname?.startsWith(`${p}?`)
+    );
+    if (!isAllowed) {
+      isWebLocked = true;
+    }
+  }
 
 
 

@@ -403,8 +403,8 @@ function scoreToLabel(score: number): string {
 function parseHealthScore(raw?: ApiSummary | string): number {
   if (!raw) return 0;
   const summary = typeof raw === 'string' ? (() => { try { return JSON.parse(raw) as ApiSummary; } catch { return null; } })() : raw;
-  if (!summary?.health_score) return 0;
-  const n = parseInt(summary.health_score.split('/')[0]);
+  if (summary?.health_score == null) return 0;
+  const n = parseInt(String(summary.health_score).split('/')[0], 10);
   return isNaN(n) ? 0 : n;
 }
 

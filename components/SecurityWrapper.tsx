@@ -6,15 +6,15 @@ import { useAuth } from '@/context/AuthContext';
 import { Colors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 
-// 🔴 Set to 10 seconds for testing. Change to 5 * 60 * 1000 (5 minutes) for production.
-const INACTIVITY_TIMEOUT_MS = 10000; 
+// Inactivity timeout: 5 minutes for production.
+const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
 
-// 🔥 Toggle this to false when you want to re-enable biometrics
-const DISABLE_SECURITY = true; // TEMP: disabled for screenshot
+// Set to true only to temporarily disable biometrics (e.g. for screenshots/testing)
+const DISABLE_SECURITY = false;
 
 export function SecurityWrapper({ children }: { children: React.ReactNode }) {
-  // 1. Prevent Screen Capture globally (Temporarily disabled for testing)
-  // usePreventScreenCapture();
+  // Prevent Screen Capture globally
+  usePreventScreenCapture();
 
   const { token, ready } = useAuth();
   const [isLocked, setIsLocked] = useState(false);
