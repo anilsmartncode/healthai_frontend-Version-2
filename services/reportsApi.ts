@@ -954,6 +954,27 @@ export const reportsApi = {
   },
 
   /**
+   * SHARE REPORT
+   * ─────────────
+   */
+  share: async (id: string, payload?: { recipient_email?: string, expires_in_hours?: number }): Promise<{ success: boolean, share_url: string, expires_at: string }> => {
+    if (USE_MOCK) {
+      return {
+        success: true,
+        share_url: `https://healthai.smartncode.com/share/${id}`,
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      };
+    }
+    
+    // 🔴 REAL
+    const data: any = await reportsApiCall(ENDPOINTS.reportShare(id), {
+      method: 'POST',
+      body: JSON.stringify(payload || {})
+    });
+    return data;
+  },
+
+  /**
    * HEALTH SCORECARD
    * ─────────────────
    */

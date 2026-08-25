@@ -24,6 +24,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Sharing from 'expo-sharing';
 import * as WebBrowser from 'expo-web-browser';
+import { generateReportPdf } from '@/utils/pdfGenerator';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -31,7 +32,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Colors, Radius } from '@/constants/Colors';
 import { useReports, type FilterType } from '@/hooks/useReports';
-import type { ReportListItem } from '@/services/reportsApi';
+import { reportsApi, type ReportListItem } from '@/services/reportsApi';
 import { ChatInputBar } from '@/components/ui/ChatInputBar';
 import { HealthScoreCard } from '@/components/home/Healthscorecard';
 
@@ -124,27 +125,30 @@ function ReportRow({
           {formatIndianDateTime(item.analyzedAt, item.date)} • {subText}
         </Text>
       </View>
-
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <Pressable
           onPress={async () => {
-            if (!item.fileUri) {
-              Alert.alert(
-                'File not available',
-                'The original file for this report is no longer stored on this device.'
-              );
-              return;
-            }
             try {
+              // Fetch full report details to construct PDF
+              const fullReport = await reportsApi.getById(item.id);
+              if (!fullReport) {
+                Alert.alert('Error', 'Could not load report details to generate PDF.');
+                return;
+              }
+
+              // Generate PDF
+              const pdfUri = await generateReportPdf(fullReport as any);
+
+              // Share PDF natively
               const canShare = await Sharing.isAvailableAsync();
               if (canShare) {
-                await Sharing.shareAsync(item.fileUri, {
-                  mimeType: item.fileType === 'PDF' ? 'application/pdf' : 'image/jpeg',
-                  dialogTitle: 'Share report',
-                  UTI: item.fileType === 'PDF' ? 'com.adobe.pdf' : 'public.image',
+                await Sharing.shareAsync(pdfUri, {
+                  mimeType: 'application/pdf',
+                  dialogTitle: 'Share Report PDF',
+                  UTI: 'com.adobe.pdf',
                 });
               } else {
-                await WebBrowser.openBrowserAsync(item.fileUri);
+                Alert.alert('Sharing Unavailable', 'Sharing is not available on this device.');
               }
             } catch (e: any) {
               Alert.alert('Cannot share file', e?.message ?? 'Unknown error');

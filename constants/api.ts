@@ -48,6 +48,7 @@ export const ENDPOINTS = {
   scorecardReport: `${BASE_URL}/api/reports/scorecard`,
   reportDetail: (id: string) => `${BASE_URL}/api/reports/${id}`,
   reportDelete: (id: string) => `${BASE_URL}/api/reports/${id}`,
+  reportShare: (id: string) => `${BASE_URL}/api/api/reports/${id}/share`,
 
   // ── AI Assistant 
   aiChatPath: '/api/ai/chat',
