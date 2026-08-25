@@ -138,6 +138,13 @@ export function AIExplanationCard({ text }: Props) {
 
   return (
     <View style={styles.card}>
+      <View style={styles.aiHeader}>
+        <Text style={styles.cardTitle}>AI Summary</Text>
+        <View style={styles.aiBadge}>
+          <Ionicons name="sparkles" size={12} color="#fff" />
+          <Text style={styles.aiBadgeText}>HealthAI</Text>
+        </View>
+      </View>
 
       {/* ── Emergency banner ── */}
       {p.is_emergency && p.emergency_warning ? (
@@ -398,6 +405,24 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     padding: 18,
   },
+  
+  aiHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  cardTitle: { fontSize: 16, fontWeight: '700', color: Colors.text },
+  aiBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#7C3AED',
+    borderRadius: Radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  aiBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
 
   body: {
     fontSize: 14,

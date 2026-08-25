@@ -33,9 +33,9 @@ import {
 } from '@/services/reportsApi';
 import type { ApiSummary, LabValue } from '@/types/Report/reportype';
 
-type TabKey = 'Summary' | 'Results' | 'Trends' | 'About Test';
+type TabKey = 'Summary' | 'Results';
 
-const TABS: TabKey[] = ['Summary', 'Results', 'Trends', 'About Test'];
+const TABS: TabKey[] = ['Summary', 'Results'];
 
 async function openReportFile(
   fileUri: string | null | undefined,
@@ -363,6 +363,17 @@ export default function ReportDetailScreen() {
                 <Text style={styles.primaryBtnText}>View Full Results</Text>
               </Pressable>
             </View>
+
+            <View style={{ marginTop: 16 }}>
+              <Pressable
+                style={styles.secondaryBtn}
+                onPress={handleViewReport}
+              >
+                <Text style={styles.secondaryBtnText}>
+                  {opening ? 'Opening…' : 'View original report file'}
+                </Text>
+              </Pressable>
+            </View>
           </>
         )}
 
@@ -397,50 +408,6 @@ export default function ReportDetailScreen() {
           </View>
         )}
 
-        {tab === 'Trends' && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Trends</Text>
-            <View style={styles.trendScore}>
-              <Text style={styles.trendScoreNum}>{report.healthScore}</Text>
-              <Text style={styles.trendScoreLabel}>/ 100 health score</Text>
-            </View>
-            <Text style={styles.emptyHint}>
-              Trend charts appear as you upload more reports of the same type over time.
-            </Text>
-            <Pressable
-              style={[styles.secondaryBtn, { marginTop: 12 }]}
-              onPress={() => router.push('/(tabs)/home' as any)}
-            >
-              <Text style={styles.secondaryBtnText}>View health overview</Text>
-            </Pressable>
-          </View>
-        )}
-
-        {tab === 'About Test' && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>About this test</Text>
-            <Text style={styles.aiBody}>
-              {parsed?.report_description?.what_this_report_is ||
-                `${report.reportTypeFull || report.title} helps your clinician assess related biomarkers and overall health status.`}
-            </Text>
-            {!!parsed?.report_description?.what_was_checked && (
-              <>
-                <Text style={[styles.cardTitle, { marginTop: 14, fontSize: 14 }]}>
-                  What was checked
-                </Text>
-                <Text style={styles.aiBody}>{parsed.report_description.what_was_checked}</Text>
-              </>
-            )}
-            <Pressable
-              style={[styles.secondaryBtn, { marginTop: 14 }]}
-              onPress={handleViewReport}
-            >
-              <Text style={styles.secondaryBtnText}>
-                {opening ? 'Opening…' : 'View original report file'}
-              </Text>
-            </Pressable>
-          </View>
-        )}
       </ScrollView>
 
       {/* Rename modal */}
