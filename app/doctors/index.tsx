@@ -63,14 +63,14 @@ export default function DoctorsListScreen() {
 
       <FlatList
         data={doctors}
-        keyExtractor={item => item.id}
+        keyExtractor={item => String(item.id)}
         contentContainerStyle={styles.listPad}
         refreshing={loading}
         onRefresh={fetchDoctors}
         ListEmptyComponent={
           !loading ? (
             <View style={styles.empty}>
-              <Ionicons name="medical" size={48} color="#CBD5E1" />
+              <Text style={{ fontSize: 48, opacity: 0.5 }}>👨‍⚕️</Text>
               <Text style={styles.emptyText}>No doctors added yet.</Text>
             </View>
           ) : null
@@ -82,22 +82,38 @@ export default function DoctorsListScreen() {
                 <Ionicons name="person" size={24} color={Colors.primary} />
               </View>
               <View style={styles.info}>
-                <Text style={styles.name}>{item.name}</Text>
-                <Text style={styles.spec}>{item.specialisation}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <Text style={styles.name}>{item.name}</Text>
+                  {!item.is_mine && (
+                    <View style={styles.sharedBadge}>
+                      <Text style={styles.sharedBadgeText}>Shared by family</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.spec}>{item.specialty || 'General Physician'}</Text>
                 {item.email ? <Text style={styles.email}>{item.email}</Text> : null}
               </View>
               <View style={styles.actionsRow}>
-                <Pressable hitSlop={8} onPress={() => router.push(`/doctors/${item.id}` as any)}>
-                  <Ionicons name="pencil-outline" size={20} color={Colors.textMuted} />
-                </Pressable>
-                <Pressable hitSlop={8} onPress={() => handleDelete(item.id, item.name)}>
-                  <Ionicons name="trash-outline" size={20} color={Colors.danger} />
-                </Pressable>
+                {item.is_mine && (
+                  <>
+                    <Pressable hitSlop={8} onPress={() => router.push(`/doctors/${item.id}` as any)}>
+                      <Ionicons name="pencil-outline" size={20} color={Colors.textMuted} />
+                    </Pressable>
+                    <Pressable hitSlop={8} onPress={() => handleDelete(item.id, item.name)}>
+                      <Ionicons name="trash-outline" size={20} color={Colors.danger} />
+                    </Pressable>
+                  </>
+                )}
+                {!item.is_mine && (
+                  <Pressable hitSlop={8} onPress={() => router.push(`/doctors/${item.id}` as any)}>
+                    <Ionicons name="information-circle-outline" size={24} color={Colors.primary} />
+                  </Pressable>
+                )}
               </View>
             </View>
-            <Pressable style={styles.callBtn} onPress={() => handleCall(item.phoneNumber)}>
+            <Pressable style={styles.callBtn} onPress={() => handleCall(item.phone || '')}>
               <Ionicons name="call" size={18} color="#fff" />
-              <Text style={styles.callText}>Call {item.phoneNumber}</Text>
+              <Text style={styles.callText}>Call {item.phone}</Text>
             </Pressable>
           </View>
         )}
@@ -178,6 +194,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#0F172A',
     marginBottom: 4,
+  },
+  sharedBadge: {
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  sharedBadgeText: {
+    color: '#1D4ED8',
+    fontSize: 10,
+    fontWeight: '600',
   },
   spec: {
     fontSize: 14,

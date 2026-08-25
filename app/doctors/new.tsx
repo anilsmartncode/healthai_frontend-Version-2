@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Pressable, ScrollView, Alert, KeyboardAvoidingView, Platform, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
@@ -9,14 +9,18 @@ import { Button } from '@/components/ui/Button';
 
 export default function NewDoctorScreen() {
   const [name, setName] = useState('');
-  const [specialisation, setSpecialisation] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [specialty, setSpecialty] = useState('');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [clinicName, setClinicName] = useState('');
+  const [address, setAddress] = useState('');
+  const [notes, setNotes] = useState('');
+  const [showToFamily, setShowToFamily] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
-    if (!name.trim() || !specialisation.trim() || !phoneNumber.trim()) {
-      Alert.alert('Required Fields', 'Please fill out the name, specialisation, and phone number.');
+    if (!name.trim() || !specialty.trim() || !phone.trim()) {
+      Alert.alert('Required Fields', 'Please fill out the name, specialty, and phone number.');
       return;
     }
 
@@ -24,9 +28,13 @@ export default function NewDoctorScreen() {
     try {
       const res = await addDoctor({
         name: name.trim(),
-        specialisation: specialisation.trim(),
-        phoneNumber: phoneNumber.trim(),
+        specialty: specialty.trim(),
+        phone: phone.trim(),
         email: email.trim() || undefined,
+        clinic_name: clinicName.trim() || undefined,
+        address: address.trim() || undefined,
+        notes: notes.trim() || undefined,
+        show_to_family: showToFamily,
       });
 
       if (res.success) {
@@ -70,12 +78,12 @@ export default function NewDoctorScreen() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Specialisation *</Text>
+            <Text style={styles.label}>Specialty *</Text>
             <TextInput
               style={styles.input}
               placeholder="e.g. Pediatrician, General Physician"
-              value={specialisation}
-              onChangeText={setSpecialisation}
+              value={specialty}
+              onChangeText={setSpecialty}
             />
           </View>
 
@@ -85,8 +93,9 @@ export default function NewDoctorScreen() {
               style={styles.input}
               placeholder="e.g. +1 234 567 8900"
               keyboardType="phone-pad"
-              value={phoneNumber}
-              onChangeText={setPhoneNumber}
+              maxLength={10}
+              value={phone}
+              onChangeText={setPhone}
             />
           </View>
 
@@ -99,6 +108,49 @@ export default function NewDoctorScreen() {
               autoCapitalize="none"
               value={email}
               onChangeText={setEmail}
+            />
+          </View>
+          
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Clinic Name (Optional)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. City Hospital"
+              value={clinicName}
+              onChangeText={setClinicName}
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Address (Optional)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. 123 Main St"
+              value={address}
+              onChangeText={setAddress}
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Notes (Optional)</Text>
+            <TextInput
+              style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+              placeholder="e.g. Available on weekdays"
+              multiline
+              value={notes}
+              onChangeText={setNotes}
+            />
+          </View>
+
+          <View style={styles.switchRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.switchLabel}>Share with Family</Text>
+              <Text style={styles.switchDesc}>Allow family members to see this doctor</Text>
+            </View>
+            <Switch
+              value={showToFamily}
+              onValueChange={setShowToFamily}
+              trackColor={{ false: '#CBD5E1', true: Colors.primary }}
             />
           </View>
         </ScrollView>
@@ -169,5 +221,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
-  }
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    marginTop: 8,
+  },
+  switchLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#0F172A',
+  },
+  switchDesc: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 2,
+  },
 });

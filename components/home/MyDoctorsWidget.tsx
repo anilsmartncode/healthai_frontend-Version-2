@@ -75,10 +75,10 @@ export function MyDoctorsWidget() {
               </View>
               <View style={styles.info}>
                 <Text style={styles.name} numberOfLines={1}>{doc.name}</Text>
-                <Text style={styles.spec} numberOfLines={1}>{doc.specialisation}</Text>
+                <Text style={styles.spec} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{doc.specialty || 'General Physician'}</Text>
               </View>
             </View>
-            <Pressable style={styles.callBtn} onPress={() => handleCall(doc.phoneNumber)}>
+            <Pressable style={styles.callBtn} onPress={() => handleCall(doc.phone || '')}>
               <Ionicons name="call" size={16} color="#fff" />
               <Text style={styles.callText}>Call Now</Text>
             </Pressable>
@@ -86,9 +86,7 @@ export function MyDoctorsWidget() {
         ))}
 
           <Pressable style={[styles.addCard, { width: CARD_WIDTH }]} onPress={() => router.push('/doctors/new' as any)}>
-            <View style={styles.addCircle}>
-              <Ionicons name="add" size={24} color={Colors.primary} />
-            </View>
+            <Ionicons name="add" size={28} color={Colors.primary} />
             <Text style={styles.addText}>Add Doctor</Text>
           </Pressable>
         </ScrollView>
@@ -159,7 +157,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   spec: {
-    fontSize: 13,
+    fontSize: 12,
     color: Colors.textMuted,
   },
   callBtn: {
@@ -182,18 +180,10 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    borderStyle: 'dashed',
+    borderStyle: 'solid',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
-  },
-  addCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.primary + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   addText: {
     fontSize: 14,

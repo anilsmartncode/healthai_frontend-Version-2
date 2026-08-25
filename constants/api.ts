@@ -50,6 +50,10 @@ export const ENDPOINTS = {
   reportDelete: (id: string) => `${BASE_URL}/api/reports/${id}`,
   reportShare: (id: string) => `${BASE_URL}/api/api/reports/${id}/share`,
 
+  // ── Doctors 
+  doctors: `${BASE_URL}/api/doctors`,
+  doctorDetail: (id: string | number) => `${BASE_URL}/api/doctors/${id}`,
+
   // ── AI Assistant 
   aiChatPath: '/api/ai/chat',
   aiSuggestedPromptsPath: '/api/api/ai/suggested-prompts',
