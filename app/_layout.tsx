@@ -27,6 +27,13 @@ import { getRevenueCatKey } from "@/config/purchases";
 // Register headless background task to handle 'snooze' and 'take' when app is closed
 defineBackgroundNotificationTask();
 
+// --- SUPPRESS LOGS IN PRODUCTION ---
+if (!__DEV__) {
+  console.log = () => {};
+  console.warn = () => {};
+  console.error = () => {};
+}
+
 // --- GLOBAL NETWORK LATENCY TRACKER ---
 const originalFetch = global.fetch;
 global.fetch = async (...args) => {
@@ -340,10 +347,6 @@ export default function RootLayout() {
                     />
                     <Stack.Screen
                       name="help-support"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="rate-app"
                       options={{ headerShown: false }}
                     />
                   </Stack>

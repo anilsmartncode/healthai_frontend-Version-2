@@ -11,6 +11,14 @@ import { SecureAsyncStorage as AsyncStorage } from '@/utils/storage';
 import { api } from '@/services/api';
 import { ENDPOINTS, BASE_URL } from '@/constants/api';
 import { medicineApiCall } from '@/services/Medicineapiclient';
+import * as StoreReview from 'expo-store-review';
+import { Linking, Platform } from 'react-native';
+
+const STORE_URL =
+  Platform.OS === 'ios'
+    ? 'https://apps.apple.com/app/healthai/id6794323149'
+    : 'https://play.google.com/store/apps/details?id=com.smartncode.healthai';
+
 
 export default function Profile() {
   const { phone, signOut } = useAuth();
@@ -109,8 +117,14 @@ export default function Profile() {
     { icon: 'notifications-outline', label: t('notifications'), href: '/notifications' },
     { icon: 'shield-checkmark-outline', label: t('legal_privacy'), href: '/legal-privacy' },
     { icon: 'help-circle-outline', label: t('help_support'), href: '/help-support' },
-    { icon: 'star-outline', label: t('rate_app'), href: '/rate-app' },
-  ] as const;
+    { icon: 'star-outline', label: t('rate_app'), action: async () => {
+      try {
+        await Linking.openURL(STORE_URL);
+      } catch (error) {
+        Alert.alert("Error", "Could not open the App Store.");
+      }
+    } },
+  ];
 
   const initial = displayName.trim() ? displayName.trim()[0].toUpperCase() : null;
 
@@ -143,7 +157,13 @@ export default function Profile() {
 
         <View style={{ paddingHorizontal: 16, gap: 4 }}>
           {items.map((it) => (
-            <Pressable key={it.label} style={styles.row} onPress={() => router.push(it.href as any)}>
+            <Pressable key={it.label} style={styles.row} onPress={() => {
+              if (it.action) {
+                it.action();
+              } else if (it.href) {
+                router.push(it.href as any);
+              }
+            }}>
               <Ionicons name={it.icon as any} size={22} color={Colors.text} />
               <Text style={styles.rowLabel}>{it.label}</Text>
               <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />

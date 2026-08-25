@@ -24,6 +24,7 @@ function getAuth() {
   return (mod.default || mod)();
 }
 import { useAuth } from "@/context/AuthContext";
+import * as AppleAuthentication from 'expo-apple-authentication';
 
 // ── Scalers ───────────────────────────────────────────
 function useScalers() {
@@ -87,18 +88,7 @@ function GoogleIcon() {
   );
 }
 
-// ── Apple Icon ────────────────────────────────────────
-function AppleIcon() {
-  const { ms } = useScalers();
-  return (
-    <Svg width={ms(20)} height={ms(20)} viewBox="0 0 814 1000">
-      <Path
-        fill="#1a1a1a"
-        d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76.5 0-103.7 40.8-165.9 40.8s-105.6-57.8-155.5-127.4C46 690.7 0 601.1 0 514.4c0-162.7 106.4-248.8 210.3-248.8 55.4 0 101.5 36.7 136.5 36.7 33.5 0 85.3-38.8 147.8-38.8 23.5 0 108.2 2.6 168.4 90.6zm-56.4-190.5c26.3-30.8 45-72.7 45-114.6 0-5.8-.6-11.6-1.3-17.4-42.8 1.9-93.4 28.5-124.1 63.9-23.5 26.3-46.4 68.2-46.4 110.7 0 6.4.6 12.9 1.3 15.1 2.6.6 6.4 1.3 10.3 1.3 38.8 0 87.5-25.7 115.2-59z"
-      />
-    </Svg>
-  );
-}
+
 
 // ── OTP Input (4-box) — auto-reads OTP on Android ─────
 function OtpInput({
@@ -246,7 +236,7 @@ function MockAccountPicker({
             alignItems: "center",
             gap: rs(10),
           }}>
-            {isGoogle ? <GoogleIcon /> : <AppleIcon />}
+            {isGoogle ? <GoogleIcon /> : <Ionicons name="logo-apple" size={16} color="#1a2e35" />}
             <View style={{ flex: 1 }}>
               <Text style={{ color: "#fff", fontSize: ms(15), fontWeight: "800" }}>
                 Sign in with {brandName}
@@ -768,14 +758,24 @@ export default function PhoneSignup() {
                 <GoogleIcon />
                 <Text style={styles.socialText}>Continue with Google</Text>
               </Pressable>
-              <Pressable
-                style={({ pressed }) => [styles.socialBtn, pressed && { opacity: 0.8 }]}
-                onPress={() => Alert.alert('Apple Sign-In is not supported')}
-                disabled={loading}
-              >
-                <AppleIcon />
-                <Text style={styles.socialText}>Continue with Apple</Text>
-              </Pressable>
+              {Platform.OS === 'ios' ? (
+                <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
+                  cornerRadius={30}
+                  style={{ width: '100%', height: 50, marginTop: 12 }}
+                  onPress={handleAppleSignIn}
+                />
+              ) : (
+                <Pressable
+                  style={({ pressed }) => [styles.socialBtn, { marginTop: 12 }, pressed && { opacity: 0.8 }]}
+                  onPress={handleAppleSignIn}
+                  disabled={loading}
+                >
+                  <Ionicons name="logo-apple" size={22} color="#1a2e35" />
+                  <Text style={styles.socialText}>Continue with Apple</Text>
+                </Pressable>
+              )}
 
               {/* Login link */}
               <View style={styles.loginRow}>
