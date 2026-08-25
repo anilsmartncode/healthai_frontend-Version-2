@@ -109,7 +109,23 @@
           "cameraPermission": "We need camera access to scan your documents."
         }
       ],
-      "expo-share-intent",
+      [
+        "expo-share-intent",
+        {
+          "iosActivationRules": {
+            "NSExtensionActivationSupportsWebURLWithMaxCount": 1,
+            "NSExtensionActivationSupportsWebPageWithMaxCount": 1,
+            "NSExtensionActivationSupportsImageWithMaxCount": 5,
+            "NSExtensionActivationSupportsText": true,
+            "NSExtensionActivationSupportsFileWithMaxCount": 5
+          },
+          "androidIntentFilters": [
+            "text/*",
+            "image/*",
+            "*/*"
+          ]
+        }
+      ],
       "./plugins/with-rnfb-fix.js"
     ],
     "experiments": {
