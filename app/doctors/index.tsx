@@ -104,7 +104,6 @@ export default function DoctorsListScreen() {
         ListFooterComponent={
           !loading ? (
             <Pressable style={styles.addDoctorRow} onPress={() => router.push('/doctors/new' as any)}>
-              <Ionicons name="add-circle-outline" size={20} color={Colors.primary} />
               <Text style={styles.addDoctorText}>+ Add Doctor</Text>
             </Pressable>
           ) : null
@@ -215,9 +214,8 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: '#fff',
     borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: Colors.primary + '40',
-    borderStyle: 'dashed',
+    borderWidth: 1,
+    borderColor: Colors.primary,
     paddingVertical: 14,
     marginTop: 8,
   },

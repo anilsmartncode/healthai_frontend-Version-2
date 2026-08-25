@@ -15,7 +15,7 @@ const ACTIONS: {
   {
     emoji: "👨‍⚕️",
     label: "Add Doctor",
-    route: "/doctors/new",
+    route: "/doctors",
   },
   {
     emoji: "🔄",

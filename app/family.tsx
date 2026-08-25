@@ -375,7 +375,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderWidth: 1,
     borderColor: '#065F46',
-    borderStyle: 'dashed',
     marginBottom: 12,
   },
   inviteTitle: { fontSize: 14, fontWeight: '600', color: '#065F46' },
