@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable, ScrollView, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, Image, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
@@ -26,6 +26,7 @@ export default function Profile() {
   const { activePlan } = useUsage();
   const [displayName, setDisplayName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   // Refresh the display name from the real backend every time this tab is
   // focused — falls back to the local cache (written by account.tsx) if the
@@ -110,6 +111,32 @@ export default function Profile() {
     );
   };
 
+  const handleLogout = () => {
+    Alert.alert(
+      t('log_out') || 'Log Out',
+      'Are you sure you want to log out of your account?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: t('log_out') || 'Log Out',
+          style: 'destructive',
+          onPress: async () => {
+            setLoggingOut(true);
+            try {
+              await signOut();
+              router.replace('/(auth)/onboarding');
+            } catch (error) {
+              console.error('[Profile] Logout error:', error);
+              Alert.alert('Error', 'Failed to log out. Please try again.');
+            } finally {
+              setLoggingOut(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const items = [
     { icon: 'person-outline', label: t('account_info'), href: '/account' },
     { icon: 'star', label: 'Subscription & Plans', href: '/plans' },
@@ -119,9 +146,17 @@ export default function Profile() {
     { icon: 'help-circle-outline', label: t('help_support'), href: '/help-support' },
     { icon: 'star-outline', label: t('rate_app'), action: async () => {
       try {
-        await Linking.openURL(STORE_URL);
+        if (await StoreReview.isAvailableAsync()) {
+          await StoreReview.requestReview();
+        } else {
+          await Linking.openURL(STORE_URL);
+        }
       } catch (error) {
-        Alert.alert("Error", "Could not open the App Store.");
+        try {
+          await Linking.openURL(STORE_URL);
+        } catch {
+          Alert.alert("Error", "Could not open the App Store.");
+        }
       }
     } },
   ];
@@ -171,19 +206,24 @@ export default function Profile() {
           ))}
           <Pressable
             style={styles.row}
-            onPress={async () => {
-              await signOut();
-              router.replace('/(auth)/onboarding');
-            }}
+            onPress={handleLogout}
+            disabled={loggingOut}
           >
-            <Ionicons name="log-out-outline" size={22} color={Colors.danger} />
-            <Text style={[styles.rowLabel, { color: Colors.danger }]}>{t('log_out')}</Text>
+            {loggingOut ? (
+              <ActivityIndicator size="small" color={Colors.danger} style={{ width: 22 }} />
+            ) : (
+              <Ionicons name="log-out-outline" size={22} color={Colors.danger} />
+            )}
+            <Text style={[styles.rowLabel, { color: Colors.danger }]}>
+              {loggingOut ? 'Logging out...' : t('log_out')}
+            </Text>
             <View />
           </Pressable>
 
           <Pressable
             style={styles.row}
             onPress={handleDeleteAccount}
+            disabled={loggingOut}
           >
             <Ionicons name="trash-outline" size={22} color={Colors.danger} />
             <Text style={[styles.rowLabel, { color: Colors.danger }]}>Delete Account</Text>
@@ -191,6 +231,16 @@ export default function Profile() {
           </Pressable>
         </View>
       </ScrollView>
+
+      {/* Loading Overlay */}
+      {loggingOut && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Text style={styles.loadingText}>Logging out...</Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -218,5 +268,29 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontSize: 10,
     fontWeight: '700',
-  }
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  loadingCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingVertical: 24,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  loadingText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.text,
+  },
 });

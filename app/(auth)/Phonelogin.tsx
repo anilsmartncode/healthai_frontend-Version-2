@@ -12,7 +12,10 @@ import {
   useWindowDimensions,
   Platform,
   Alert,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Path, G, ClipPath, Rect, Defs } from "react-native-svg";
@@ -369,6 +372,7 @@ export default function Phonelogin() {
 
   // 🟢 MOCK — Google Sign-In
   const handleGoogleSignIn = async () => {
+    Keyboard.dismiss();
     try {
       setLoading(true);
       const result = await signInWithGoogle();
@@ -391,6 +395,7 @@ export default function Phonelogin() {
   };
 
   const handleAppleSignIn = async () => {
+    Keyboard.dismiss();
     try {
       setLoading(true);
       setErrors({});
@@ -482,14 +487,19 @@ export default function Phonelogin() {
 
   return (
     <>
-      <ScrollView
+      <KeyboardAwareScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
+        enableOnAndroid={true}
+        extraScrollHeight={Platform.OS === 'ios' ? 20 : 100}
       >
-        {/* ── Hero ── */}
-        <View style={styles.hero}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={{ flex: 1 }}>
+            {/* ── Hero ── */}
+            <View style={styles.hero}>
           {/* Logo row */}
           <View style={styles.logoRow}>
             <View style={styles.logoBox}>
@@ -650,8 +660,8 @@ export default function Phonelogin() {
                 <AppleAuthentication.AppleAuthenticationButton
                   buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
                   buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
-                  cornerRadius={30}
-                  style={{ width: '100%', height: 50, marginTop: 12 }}
+                  cornerRadius={rs(14)}
+                  style={{ width: '100%', height: vs(50), marginTop: vs(12) }}
                   onPress={handleAppleSignIn}
                 />
               ) : (
@@ -782,8 +792,10 @@ export default function Phonelogin() {
               </Pressable>
             </>
           )}
-        </View>
-      </ScrollView>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </KeyboardAwareScrollView>
 
       {/* Country Picker Modal */}
       <CountryPicker

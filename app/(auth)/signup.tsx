@@ -10,6 +10,8 @@ import {
   Alert,
   useWindowDimensions,
   Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { router } from "expo-router";
@@ -274,6 +276,7 @@ export default function SignUp() {
   // ── Google Sign Up ─────────────────────────────────
 
   const handleGoogleSignUp = async () => {
+    Keyboard.dismiss();
     try {
       setLoading(true);
       const result = await signInWithGoogle();
@@ -298,6 +301,7 @@ export default function SignUp() {
   };
 
   const handleAppleSignUp = async () => {
+    Keyboard.dismiss();
     try {
       setLoading(true);
       setErrors({});
@@ -409,8 +413,8 @@ export default function SignUp() {
               <AppleAuthentication.AppleAuthenticationButton
                 buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
                 buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
-                cornerRadius={12}
-                style={{ width: '30%', height: 44 }}
+                cornerRadius={rs(14)}
+                style={{ flex: 1, height: '100%', minHeight: vs(72) }}
                 onPress={handleAppleSignUp}
               />
             ) : (

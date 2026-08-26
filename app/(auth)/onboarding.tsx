@@ -10,8 +10,8 @@ import {
   StatusBar,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router } from "expo-router";
-import { useRef, useState, useCallback, useEffect } from "react";
+import { router, useFocusEffect } from "expo-router";
+import { useRef, useState, useCallback } from "react";
 import { Colors, Radius } from "@/constants/Colors";
 import { useLang } from "@/context/Languagecontext";
 
@@ -56,6 +56,7 @@ export default function Onboarding() {
   const [activeIndex, setActiveIndex] = useState(0);
   const flatRef = useRef<FlatList>(null);
   const autoSlideTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isScreenFocused = useRef(false);
 
   const onViewRef = useRef(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -64,23 +65,41 @@ export default function Onboarding() {
   );
   const viewConfig = useRef({ viewAreaCoveragePercentThreshold: 50 });
 
+  const stopAutoSlide = useCallback(() => {
+    if (autoSlideTimer.current) {
+      clearInterval(autoSlideTimer.current);
+      autoSlideTimer.current = null;
+    }
+  }, []);
+
   const startAutoSlide = useCallback(() => {
-    if (autoSlideTimer.current) clearInterval(autoSlideTimer.current);
+    stopAutoSlide();
+    if (!isScreenFocused.current) return;
     autoSlideTimer.current = setInterval(() => {
+      if (!isScreenFocused.current) {
+        stopAutoSlide();
+        return;
+      }
       setActiveIndex((prev) => {
         const next = (prev + 1) % SLIDES.length;
         flatRef.current?.scrollToIndex({ index: next, animated: true });
         return next;
       });
     }, 3000);
-  }, []);
+  }, [stopAutoSlide]);
 
-  useEffect(() => {
-    startAutoSlide();
-    return () => {
-      if (autoSlideTimer.current) clearInterval(autoSlideTimer.current);
-    };
-  }, [startAutoSlide]);
+  useFocusEffect(
+    useCallback(() => {
+      isScreenFocused.current = true;
+      startAutoSlide();
+
+      // Immediately cancel the timer as soon as the user leaves the onboarding screen
+      return () => {
+        isScreenFocused.current = false;
+        stopAutoSlide();
+      };
+    }, [startAutoSlide, stopAutoSlide])
+  );
 
   // Bottom bar height so image area = screen minus bottom bar
   const bottomBarHeight = 130 + Math.max(insets.bottom, 16);
@@ -152,8 +171,8 @@ export default function Onboarding() {
             pressed && { opacity: 0.85 },
           ]}
           onPress={() => {
-            if (autoSlideTimer.current) clearInterval(autoSlideTimer.current);
-            router.replace("/(auth)/language");
+            stopAutoSlide();
+            router.push("/(auth)/language");
           }}
         >
           <Text style={styles.btnText}>{`${t("get_started")} →`}</Text>
@@ -162,8 +181,8 @@ export default function Onboarding() {
         <View style={styles.loginRow}>
           <Text style={styles.loginText}>{t("have_account")} </Text>
           <Pressable onPress={() => {
-            if (autoSlideTimer.current) clearInterval(autoSlideTimer.current);
-            router.replace("/(auth)/Phonelogin");
+            stopAutoSlide();
+            router.push("/(auth)/Phonelogin");
           }}>
             <Text style={styles.loginLink}>{t("login")}</Text>
           </Pressable>

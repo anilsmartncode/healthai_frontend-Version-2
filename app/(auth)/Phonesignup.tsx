@@ -12,7 +12,10 @@ import {
   useWindowDimensions,
   Platform,
   Alert,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Path, G, ClipPath, Rect, Defs } from "react-native-svg";
@@ -417,14 +420,6 @@ export default function PhoneSignup() {
 
   const phoneInputRef = useRef<TextInput>(null);
 
-  // Auto-focus phone input when screen mounts
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      phoneInputRef.current?.focus();
-    }, 400);
-    return () => clearTimeout(timer);
-  }, []);
-
   // Resend countdown
   useEffect(() => {
     if (resendTimer <= 0) return;
@@ -486,26 +481,8 @@ export default function PhoneSignup() {
     }
   };
 
-  // 🟢 MOCK — uncomment this and comment out REAL above to use mock
-  /*
-  const handleVerifyOtp = async (otpValue?: string) => {
-    const code = otpValue ?? otp;
-    if (code.replace(/\s/g, "").length < 4) { setErrors({ otp: "Enter the 4-digit code" }); return; }
-    try {
-      setLoading(true);
-      await new Promise((r) => setTimeout(r, 800));        // fake network delay
-      if (code.trim() !== "1234") throw new Error("Invalid OTP. Use: 1234");
-      await signIn("mock-token-phonesignup", fullNumber);
-      router.replace("/(auth)/PersonOnboardingScreen");
-    } catch (e: any) {
-      setErrors({ otp: e.message || "Invalid or expired code" });
-    } finally {
-      setLoading(false);
-    }
-  };
-  */
-
   const handleGoogleSignIn = async () => {
+    Keyboard.dismiss();
     try {
       setLoading(true);
       setErrors({});
@@ -537,6 +514,7 @@ export default function PhoneSignup() {
   };
 
   const handleAppleSignIn = async () => {
+    Keyboard.dismiss();
     try {
       setLoading(true);
       setErrors({});
@@ -607,14 +585,19 @@ export default function PhoneSignup() {
 
   return (
     <>
-      <ScrollView
+      <KeyboardAwareScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="always"
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
+        enableOnAndroid={true}
+        extraScrollHeight={Platform.OS === 'ios' ? 20 : 100}
       >
-        {/* ── Hero ── */}
-        <View style={styles.hero}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={{ flex: 1 }}>
+            {/* ── Hero ── */}
+            <View style={styles.hero}>
           <View style={styles.logoRow}>
             <View style={styles.logoBox}>
               <Ionicons name="heart" size={ms(22)} color="#2D9C8E" />
@@ -693,7 +676,6 @@ export default function PhoneSignup() {
                     onChangeText={(v) => { setPhone(v.replace(/[^0-9]/g, "")); clearError("phone"); }}
                     keyboardType="phone-pad"
                     maxLength={13}
-                    autoFocus
                   />
                 </View>
                 {!!errors.phone && (
@@ -762,8 +744,8 @@ export default function PhoneSignup() {
                 <AppleAuthentication.AppleAuthenticationButton
                   buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
                   buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
-                  cornerRadius={30}
-                  style={{ width: '100%', height: 50, marginTop: 12 }}
+                  cornerRadius={rs(14)}
+                  style={{ width: '100%', height: vs(50), marginTop: vs(12) }}
                   onPress={handleAppleSignIn}
                 />
               ) : (
@@ -889,7 +871,9 @@ export default function PhoneSignup() {
             </>
           )}
         </View>
-      </ScrollView>
+          </View>
+        </TouchableWithoutFeedback>
+      </KeyboardAwareScrollView>
 
       <CountryPicker
         visible={pickerVisible}

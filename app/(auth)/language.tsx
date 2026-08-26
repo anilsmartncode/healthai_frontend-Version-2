@@ -25,7 +25,7 @@ export default function LanguagePicker() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Pressable style={styles.backBtn} onPress={() => router.replace("/(auth)/onboarding")}>
+        <Pressable style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={Colors.text} />
         </Pressable>
         <Text style={styles.title}>{t("choose_lang")}</Text>
