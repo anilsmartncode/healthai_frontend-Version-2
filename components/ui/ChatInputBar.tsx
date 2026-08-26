@@ -278,7 +278,7 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
             const h = e.nativeEvent.contentSize.height;
             if (h > 0) setInputHeight(h);
           }}
-          placeholder="Upload & Ask about reports..."
+          placeholder={context === 'prescription' ? "Upload prescription..." : "Upload & Ask about reports..."}
           placeholderTextColor={Colors.textMuted}
           multiline
           scrollEnabled={inputHeight >= 76}

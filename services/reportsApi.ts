@@ -26,6 +26,7 @@ import type {
   ApiSummary,
   DetectedMedicine,
   ReportCategory,
+  ApiPrescription,
 } from '@/types/Report/reportype';
 import { mapApiLabValues, deriveCategory } from '@/types/Report/reportype';
 
@@ -107,6 +108,7 @@ export interface AnalyzeResult {
   totalValues: number;
   abnormalCount: number;
   detectedMedicines: DetectedMedicine[]; // ← NEW
+  prescription?: ApiPrescription;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -418,9 +420,9 @@ function extractDetectedMedicines(summary?: any): DetectedMedicine[] {
 // ─── Shared real-API JSON caller (GET/DELETE) — mirrors medicineApiCall ──────
 async function reportsApiCall<T = any>(
   url: string,
-  options: { method?: 'GET' | 'POST' | 'PUT' | 'DELETE' } = {},
+  options: { method?: 'GET' | 'POST' | 'PUT' | 'DELETE'; body?: string } = {},
 ): Promise<T> {
-  const { method = 'GET' } = options;
+  const { method = 'GET', body } = options;
   const token = await storage.get<string>('token');
 
   console.log('[reportsApi] REQUEST', method, url);
@@ -437,6 +439,7 @@ async function reportsApiCall<T = any>(
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
+      ...(body ? { body } : {}),
     });
   } catch (networkErr: any) {
     console.log('[reportsApi] NETWORK ERROR', networkErr?.message || networkErr);
@@ -559,11 +562,16 @@ async function apiFileCall(url: string, formData: FormData, externalSignal?: Abo
 }
 
 function apiToAnalyzeResult(result: any): AnalyzeResult {
+  // Unwrap `{ success: true, data: { ... } }` if the backend wrapped the response
+  const raw = (result?.data && typeof result.data === 'object' && !Array.isArray(result.data))
+    ? result.data
+    : result;
+
   // 1. Aggressively look for medicines at the root (in case backend sent a prescription-specific response)
-  const rootMeds = result.medicines || result.detectedMedicines || result.detected_medicines || result.data?.medicines;
+  const rootMeds = raw.medicines || raw.detectedMedicines || raw.detected_medicines;
   if (rootMeds && Array.isArray(rootMeds) && rootMeds.length > 0) {
     return {
-      reportId: result.report_id || Date.now(),
+      reportId: raw.report_id || Date.now(),
       patientName: '',
       hospitalName: '',
       reportType: 'Prescription',
@@ -575,29 +583,30 @@ function apiToAnalyzeResult(result: any): AnalyzeResult {
       healthLabel: '',
       totalValues: 0,
       abnormalCount: 0,
-      detectedMedicines: result.medicines,
+      detectedMedicines: raw.medicines,
+      prescription: raw.prescription,
     };
   }
 
   const summaryStr =
-    typeof result.summary === 'string'
-      ? result.summary
-      : result.summary
-        ? JSON.stringify(result.summary)
+    typeof raw.summary === 'string'
+      ? raw.summary
+      : raw.summary
+        ? JSON.stringify(raw.summary)
         : '{}';
 
-  const safeData = Array.isArray(result.data) ? result.data : [];
+  const safeData = Array.isArray(raw.data) ? raw.data : (Array.isArray(result.data) ? result.data : []);
   const values = mapApiLabValues(safeData);
   const abnormalCount = values.filter(v => v.status === 'high' || v.status === 'low').length;
-  const healthScore = parseHealthScore(result.summary);
-  const category = deriveCategory(result.report_type ?? '');
+  const healthScore = parseHealthScore(raw.summary);
+  const category = deriveCategory(raw.report_type ?? '');
 
   return {
-    reportId: result.report_id,
+    reportId: raw.report_id,
     patientName: safeData[0]?.['Patient Name'] ?? '',
     hospitalName: safeData[0]?.['Hospital Name'] ?? '',
-    reportType: result.report_type ?? '',
-    reportTypeFull: result.report_type_full ?? '',
+    reportType: raw.report_type ?? '',
+    reportTypeFull: raw.report_type_full ?? '',
     category,
     summary: summaryStr,
     values,
@@ -605,7 +614,8 @@ function apiToAnalyzeResult(result: any): AnalyzeResult {
     healthLabel: scoreToLabel(healthScore),
     totalValues: values.length,
     abnormalCount,
-    detectedMedicines: extractDetectedMedicines(result.summary),
+    detectedMedicines: extractDetectedMedicines(raw.summary),
+    prescription: raw.prescription,
   };
 }
 
@@ -887,6 +897,7 @@ export const reportsApi = {
             totalValues: mappedValues.length,
             abnormalCount,
             detectedMedicines: extractDetectedMedicines(raw.summary),
+            prescription: raw.prescription,
           };
           console.log('[reportsApi.getById] ✅ mapped report:', item.title, '| values:', mappedValues.length, '| score:', finalHealthScore);
           return { ...item, ...analyzeResult, id: item.id };
@@ -1006,8 +1017,25 @@ export const reportsApi = {
         const raw = await reportsApiCall<any>(ENDPOINTS.scorecardReport);
         const payload = (raw?.data && typeof raw.data === 'object') ? raw.data : raw;
 
-        const overallScore = payload.health_score ?? payload.overall_score ?? payload.overallScore ?? payload.healthScore ?? 0;
-        const scoreLabel = payload.health_status ?? payload.score_label ?? payload.scoreLabel ?? payload.healthLabel ?? scoreToLabel(overallScore);
+        let overallScore = payload.health_score ?? payload.overall_score ?? payload.overallScore ?? payload.healthScore ?? 0;
+        let scoreLabel = payload.health_status ?? payload.score_label ?? payload.scoreLabel ?? payload.healthLabel ?? scoreToLabel(overallScore);
+        
+        // ── BUGFIX: The Staging Backend currently uses the most recent document for the scorecard.
+        // If the most recent document is a PRESCRIPTION, it has 0 lab values and returns 0/100.
+        // As a frontend workaround, we'll fetch the local list, find the most recent LAB REPORT, 
+        // and use its score instead.
+        if (overallScore === 0) {
+          try {
+            const allReports = await reportsApi.list();
+            const latestLab = allReports.find(r => r.reportType?.toUpperCase() !== 'PRESCRIPTION');
+            if (latestLab && latestLab.healthScore > 0) {
+              overallScore = latestLab.healthScore;
+              scoreLabel = latestLab.healthLabel ?? scoreToLabel(overallScore);
+            }
+          } catch (e) {
+            console.log('[reportsApi.getScorecard] Failed to fetch fallback lab report', e);
+          }
+        }
         const totalReports = payload.total_reports ?? payload.totalReports ?? payload.totalReports ?? 0;
         const trend = payload.trend ?? 'stable';
         const lastUpdated = payload.last_updated ?? payload.lastUpdated ?? 'Recently';

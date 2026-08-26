@@ -6,7 +6,7 @@ import { Colors, Radius } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import { Button } from "@/components/ui/Button";
 import { useReports } from "@/hooks/useReports";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { reportsApi } from "@/services/reportsApi";
 import { useAuth } from "@/context/AuthContext";
 import { useMedicines } from "@/hooks/useMedicines";
@@ -48,7 +48,9 @@ const emptyStyles = StyleSheet.create({
 });
 
 export default function Home() {
-  const { reports, refreshing, refresh } = useReports();
+  const { reports: rawReports, refreshing, refresh } = useReports();
+  const reports = useMemo(() => rawReports.filter(r => r.reportType?.toUpperCase() !== 'PRESCRIPTION'), [rawReports]);
+  
   const [scorecard, setScorecard] = useState<{
     overallScore: number;
     scoreLabel: string;

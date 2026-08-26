@@ -90,6 +90,36 @@ export interface ApiAnalyzeResponse {
   report_type_full?: string;
   summary?: ApiSummary | string;
   data: ApiLabValue[];
+  prescription?: ApiPrescription;
+}
+
+export interface ApiPrescriptionMedicine {
+  name: string;
+  generic_name?: string;
+  dosage?: string;
+  units?: string;
+  frequency?: string;
+  duration?: string;
+  route?: string;
+  instructions?: string;
+  why_prescribed?: string;
+  usage_explanation?: string;
+  precautions?: string[];
+  side_effects_to_watch?: string[];
+}
+
+export interface ApiPrescription {
+  prescription_available?: boolean;
+  prescription_id?: number | null;
+  prescription_date?: string;
+  doctor_name?: string;
+  hospital_name?: string;
+  diagnosis?: string;
+  instructions?: string[];
+  precautions?: string[];
+  follow_up?: string;
+  disclaimer?: string;
+  medicines?: ApiPrescriptionMedicine[];
 }
 
 // App-internal shape used by LabValueRow, etc.

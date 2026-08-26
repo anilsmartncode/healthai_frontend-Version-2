@@ -168,6 +168,11 @@ export default function Upload() {
       const usableValues = (result.values || []).filter(isUsableValue);
 
       let finalMedicines = result.detectedMedicines || [];
+      
+      // NEW SPEC: Prescriptions have their medicines inside result.prescription.medicines
+      if (context === 'prescription' && result.prescription?.medicines) {
+        finalMedicines = result.prescription.medicines;
+      }
 
       // If backend parsed the prescription as a generic lab report, medicines might be inside usableValues
       if (context === 'prescription' && finalMedicines.length === 0 && usableValues.length > 0) {
@@ -196,8 +201,8 @@ export default function Upload() {
         await incrementReportUpload();
       }
 
-      if (context === 'prescription') {
-        router.replace({ pathname: '/medicines/prescription-review', params: { detectedMedicines: JSON.stringify(finalMedicines) } });
+      if (context === 'prescription' || result.reportType?.toUpperCase() === 'PRESCRIPTION') {
+        router.replace({ pathname: '/prescription/[id]', params: { id: String(result.reportId) } });
       } else {
         router.replace({
           pathname: '/analysis',

@@ -3,7 +3,7 @@
  * Keeps existing routes: browse, reminders, scanner, interactions, my-medicines, upload.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,13 +17,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { Colors, Radius } from '@/constants/Colors';
 import { useMedicines } from '@/hooks/useMedicines';
 import { ChatInputBar } from '@/components/ui/ChatInputBar';
 import { useNotifications } from '@/hooks/useNotifications';
 import { markReminderTaken } from '@/services/medicineTabApi';
+import { useReports } from '@/hooks/useReports';
+import { reportsApi } from '@/services/reportsApi';
+import * as Sharing from 'expo-sharing';
+import { generatePrescriptionPdf } from '@/utils/pdfGenerator';
 import type { Category, Medicine, Reminder } from '@/services/Medicinesapi';
 
 const H_PAD = 16;
@@ -185,6 +189,116 @@ function SavedMedicineRow({
   );
 }
 
+// ─── PRESCRIPTION ROW ─────────────────────────────────────────────────────────
+function formatIndianDateTime(isoString: string | undefined | null, fallback: string): string {
+  if (!isoString) return fallback;
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return fallback;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = d.toLocaleString('en-US', { month: 'short' });
+    const year = d.getFullYear();
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const strTime = `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
+    return `${day} ${month} ${year}, ${strTime}`;
+  } catch {
+    return fallback;
+  }
+}
+
+function PrescriptionRow({
+  item,
+  onPress,
+  onDelete,
+}: {
+  item: any;
+  onPress: () => void;
+  onDelete: (id: string) => void;
+}) {
+  const isJunkTitle = /^\d+$/.test(item.title.replace(/\.\w+$/, '')) || /img_|screenshot|whatsapp/i.test(item.title);
+  const subText = isJunkTitle ? (item.reportTypeFull || item.category || 'Prescription') : item.title;
+
+  const handleDelete = () => {
+    Alert.alert('Delete Prescription', `Remove "${item.title}" from your prescriptions?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => onDelete(item.id),
+      },
+    ]);
+  };
+
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.reportRow, pressed && { opacity: 0.85 }]}
+      onPress={onPress}
+    >
+      <View style={[styles.reportIcon, { backgroundColor: '#F0FDF4' }]}>
+        <Ionicons name="document-text-outline" size={16} color="#16A34A" />
+      </View>
+      <View style={styles.reportInfo}>
+        <Text style={styles.reportTitle} numberOfLines={1}>
+          {item.labName || 'Prescription'}
+        </Text>
+        <Text style={styles.reportMeta} numberOfLines={1}>
+          {formatIndianDateTime(item.analyzedAt, item.date)} • {subText}
+        </Text>
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Pressable
+          onPress={async () => {
+            try {
+              const fullReport = await reportsApi.getById(item.id);
+              if (!fullReport) {
+                Alert.alert('Error', 'Could not load prescription details to generate PDF.');
+                return;
+              }
+              const pdfUri = await generatePrescriptionPdf(fullReport as any);
+              const canShare = await Sharing.isAvailableAsync();
+              if (canShare) {
+                await Sharing.shareAsync(pdfUri, {
+                  mimeType: 'application/pdf',
+                  dialogTitle: 'Share Prescription PDF',
+                  UTI: 'com.adobe.pdf',
+                });
+              } else {
+                Alert.alert('Sharing Unavailable', 'Sharing is not available on this device.');
+              }
+            } catch (e: any) {
+              Alert.alert('Cannot share file', e?.message ?? 'Unknown error');
+            }
+          }}
+          style={({ pressed }) => [
+            styles.actionBtnInline,
+            pressed && { opacity: 0.7, transform: [{ scale: 0.9 }] },
+            { backgroundColor: Colors.primary + '15' }
+          ]}
+          hitSlop={12}
+        >
+          <Ionicons name="share-social-outline" size={16} color={Colors.primary} />
+        </Pressable>
+
+        <Pressable
+          onPress={handleDelete}
+          style={({ pressed }) => [
+            styles.actionBtnInline,
+            pressed && { opacity: 0.7, transform: [{ scale: 0.9 }] },
+            { backgroundColor: '#FEF2F2' }
+          ]}
+          hitSlop={12}
+        >
+          <Ionicons name="trash-outline" size={16} color={Colors.danger} />
+        </Pressable>
+      </View>
+    </Pressable>
+  );
+}
+
 export default function Medicines() {
   const [searchQ, setSearchQ] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -200,6 +314,17 @@ export default function Medicines() {
     refetch,
     removeRecentlyViewed,
   } = useMedicines();
+
+  const { allReports: rawReports, deleteReport, refresh: refreshReports } = useReports();
+  const prescriptions = useMemo(() => {
+    return rawReports.filter(r => r.reportType?.toUpperCase() === 'PRESCRIPTION');
+  }, [rawReports]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshReports();
+    }, [refreshReports])
+  );
 
   const handleCategoryPress = (cat: Category) => {
     router.push({
@@ -410,9 +535,33 @@ export default function Medicines() {
             </View>
           </View>
 
-
-
-
+          {/* My Prescriptions */}
+          <View style={[styles.section, { marginTop: 20 }]}>
+            <View style={styles.secHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="document-text-outline" size={18} color={Colors.textMuted} />
+                <Text style={styles.secTitle}>My Prescriptions</Text>
+              </View>
+            </View>
+            <View style={styles.medList}>
+              {prescriptions.length > 0 ? (
+                prescriptions.map((item) => (
+                  <PrescriptionRow
+                    key={item.id}
+                    item={item}
+                    onPress={() => router.push({ pathname: '/prescription/[id]', params: { id: item.id } })}
+                    onDelete={deleteReport}
+                  />
+                ))
+              ) : (
+                <View style={{ padding: 24, alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: Colors.border, borderStyle: 'dashed' }}>
+                  <Ionicons name="document-text-outline" size={32} color={Colors.textMuted} style={{ opacity: 0.5, marginBottom: 8 }} />
+                  <Text style={{ color: Colors.textMuted, textAlign: 'center', fontSize: 13, fontWeight: '500' }}>No prescriptions uploaded yet</Text>
+                  <Text style={{ color: Colors.textMuted, textAlign: 'center', fontSize: 12, marginTop: 4 }}>Upload one to see the list here!</Text>
+                </View>
+              )}
+            </View>
+          </View>
 
           {/* ── Recently Viewed ── */}
           {/* @ts-ignore - recentlyViewed might be defined in the original branch */}
@@ -744,5 +893,32 @@ const styles = StyleSheet.create({
   rxTitle: { fontSize: 14, fontWeight: '700', color: Colors.text },
   rxSub: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
 
+  reportRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 0.5,
+    borderColor: '#E2E8F0',
+    padding: 12,
+  },
+  reportIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reportInfo: { flex: 1, minWidth: 0, justifyContent: 'center' },
+  reportTitle: { fontSize: 15, fontWeight: '700', color: Colors.text, marginBottom: 2 },
+  reportMeta: { fontSize: 13, color: Colors.textMuted },
+  actionBtnInline: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
 });

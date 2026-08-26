@@ -110,9 +110,13 @@ function ReportRow({
   return (
     <Pressable
       style={({ pressed }: { pressed: boolean }) => [styles.reportRow, pressed && { opacity: 0.85 }]}
-      onPress={() =>
-        router.push({ pathname: '/report-detail', params: { id: item.id } })
-      }
+      onPress={() => {
+        if (item.reportType?.toUpperCase() === 'PRESCRIPTION') {
+          router.push({ pathname: '/prescription/[id]', params: { id: item.id } });
+        } else {
+          router.push({ pathname: '/report-detail', params: { id: item.id } });
+        }
+      }}
     >
       <View style={[styles.reportIcon, { backgroundColor: icon.bg }]}>
         <Ionicons name="document-text-outline" size={16} color={icon.color} />
@@ -218,8 +222,8 @@ function FilterTab({
 
 export default function ReportsScreen() {
   const {
-    reports,
-    allReports,
+    reports: _reports,
+    allReports: _allReports,
     loading,
     refreshing,
     refresh,
@@ -232,6 +236,9 @@ export default function ReportsScreen() {
     setFilterDate,
     deleteReport,
   } = useReports();
+
+  const reports = useMemo(() => _reports.filter(r => r.reportType?.toUpperCase() !== 'PRESCRIPTION'), [_reports]);
+  const allReports = useMemo(() => _allReports.filter(r => r.reportType?.toUpperCase() !== 'PRESCRIPTION'), [_allReports]);
 
   const [showSearch, setShowSearch] = useState(false);
   const [showAllRecent, setShowAllRecent] = useState(false);
