@@ -10,7 +10,7 @@ import { PaywallModal } from "@/components/PaywallModal";
 import { useEffect, useState } from "react";
 import { checkHealthAlerts, type HealthAlert } from "@/services/aiService";
 import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
-import { router, usePathname, useGlobalSearchParams } from "expo-router";
+import { router, usePathname, useGlobalSearchParams, useRootNavigationState } from "expo-router";
 import { useShareIntent } from "expo-share-intent";
 import { Colors, Radius } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
@@ -53,30 +53,78 @@ global.fetch = async (...args) => {
   }
 };
 
+// Helper function to get mime type from filename
+function getMimeTypeFromFilename(filename: string): string {
+  if (!filename) return 'application/octet-stream';
+  const ext = filename.split('.').pop()?.toLowerCase();
+  switch (ext) {
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    case 'pdf':
+      return 'application/pdf';
+    case 'doc':
+      return 'application/msword';
+    case 'docx':
+      return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    default:
+      return 'application/octet-stream';
+  }
+}
+
   // Share Intent Tracker Component
 function ShareIntentListener() {
-  const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntent();
+  const { hasShareIntent, shareIntent, resetShareIntent, error } = useShareIntent();
   const { ready, token } = useAuth(); // Now safe because it's inside AuthProvider
+  const rootNavigationState = useRootNavigationState();
 
   useEffect(() => {
+    // Log the complete share-intent lifecycle state
+    console.log('[ShareIntent Lifecycle] State updated:', { 
+      hasShareIntent, 
+      error, 
+      filesCount: shareIntent?.files?.length, 
+      ready, 
+      hasToken: !!token 
+    });
+
+    // Only proceed if root navigation is fully mounted to avoid "Attempted to navigate before mounting"
+    if (!rootNavigationState?.key) {
+      return;
+    }
+
     if (hasShareIntent && shareIntent?.files && ready && token) {
       if (Array.isArray(shareIntent.files) && shareIntent.files.length > 0) {
         const file = shareIntent.files[0] as any;
+        
+        // Log the raw incoming file object to determine what Android actually delivered
+        console.log('[ShareIntent Lifecycle] Received raw file object:', JSON.stringify(file, null, 2));
+
         if (file?.contentUri || file?.path) {
-          console.log('[ShareIntent] Received file:', file);
+          const fileName = file.fileName || 'Shared_Document';
+          // Infer MIME type if missing (Phase 1 fix)
+          const mimeType = file.mimeType || getMimeTypeFromFilename(fileName);
+          const uri = file.contentUri || file.path;
+
+          console.log('[ShareIntent Lifecycle] Normalized file:', { uri, fileName, mimeType });
+
           router.replace({
             pathname: '/(tabs)/home',
             params: {
-              sharedFileUri: file.contentUri || file.path,
-              sharedFileName: file.fileName || 'Shared_Document',
-              sharedFileMimeType: file.mimeType || 'application/pdf'
+              sharedFileUri: uri,
+              sharedFileName: fileName,
+              sharedFileMimeType: mimeType
             }
           });
           resetShareIntent();
+        } else {
+          console.log('[ShareIntent Lifecycle] File missing contentUri or path:', file);
         }
       }
     }
-  }, [hasShareIntent, shareIntent, ready, token]);
+  }, [hasShareIntent, shareIntent, ready, token, error]);
 
   return null;
 }
