@@ -20,7 +20,11 @@ import type { ChatMessage } from '@/types';
 import { api } from '@/services/api';
 import { ENDPOINTS } from '@/constants/api';
 import { LanguageSelectModal } from '@/components/ui/LanguageSelectModal';
+<<<<<<< HEAD
 import * as Clipboard from 'expo-clipboard';
+=======
+import AIDataConsentModal from '@/components/ai/AIDataConsentModal';
+>>>>>>> 3b6f39ecaf14c4ca645b90d551af04861d6eb50d
 
 const C = {
   primary:   '#2563EB',
@@ -538,8 +542,8 @@ const condStyles = StyleSheet.create({
 
 export default function AIChatScreen() {
   const insets = useSafeAreaInsets();
-  const { prefill, context, sessionId: openSessionId, newSession } = useLocalSearchParams<{
-    prefill?: string; context?: string; sessionId?: string; newSession?: string;
+  const { prefill, context, sessionId: openSessionId, reportId } = useLocalSearchParams<{
+    prefill?: string; context?: string; sessionId?: string; reportId?: string;
   }>();
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -548,16 +552,9 @@ export default function AIChatScreen() {
 
   const {
     messages, input, setInput, loading,
-    suggestions, send, clearConversation,
-  } = useAI(prefill, context, openSessionId, newSession);
-
-  const [inputHeight, setInputHeight] = useState(36);
-
-  useEffect(() => {
-    if (!input || input.trim().length === 0) {
-      setInputHeight(36);
-    }
-  }, [input]);
+    suggestions, alert, send, clearConversation, dismissAlert,
+    needsConsent, retryAfterConsent,
+  } = useAI(prefill, context, openSessionId, reportId);
 
   const { canSendAiChat, incrementAiChat, setShowPaywall } = useUsage();
 
@@ -733,6 +730,13 @@ export default function AIChatScreen() {
           <Text style={styles.disclaimerText}>Your health matters. Use these insights as a guide and reach out to a healthcare professional when needed.</Text>
         </View>
       </KeyboardAvoidingView>
+
+      {/* AI Data Consent Modal — shown when the user hasn't consented yet */}
+      <AIDataConsentModal
+        visible={needsConsent}
+        onConsent={retryAfterConsent}
+        onDecline={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/ai')}
+      />
     </SafeAreaView>
   );
 }

@@ -6,15 +6,20 @@ import { useAuth } from '@/context/AuthContext';
 import { Colors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 
-// 🔴 Set to 10 seconds for testing. Change to 5 * 60 * 1000 (5 minutes) for production.
-const INACTIVITY_TIMEOUT_MS = 10000; 
+// Inactivity timeout: 5 minutes for production.
+const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
 
-// 🔥 Toggle this to false when you want to re-enable biometrics
-const DISABLE_SECURITY = false; 
+// Set to true to disable biometrics and screen capture blocking (e.g. for Mac/testing/screenshots)
+const DISABLE_SECURITY = true;
+
+function ScreenCapturePreventer() {
+  usePreventScreenCapture();
+  return null;
+}
 
 export function SecurityWrapper({ children }: { children: React.ReactNode }) {
-  // 1. Prevent Screen Capture globally (Temporarily disabled for testing)
-  // usePreventScreenCapture();
+  // Prevent Screen Capture globally only when security is active
+  // (Disabled during testing/on Mac so the screen is bright and fully interactive)
 
   const { token, ready } = useAuth();
   const [isLocked, setIsLocked] = useState(false);
@@ -105,6 +110,7 @@ export function SecurityWrapper({ children }: { children: React.ReactNode }) {
 
   return (
     <View style={styles.container}>
+      {!DISABLE_SECURITY && <ScreenCapturePreventer />}
       {/* 
         We still render the app in the background so it doesn't unmount everything,
         but the Lock Overlay will cover it entirely if locked.

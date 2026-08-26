@@ -135,9 +135,15 @@ export default function Account() {
           setPhoneNumber(data.phone ?? '');
           const dobValue = data.date_of_birth ?? data.dob;
           setDob(dobValue ? new Date(dobValue) : null);
-
-          let avUrl = data.avatar_url ?? data.profile_image ?? data.avatar ?? null;
-          avUrl = sanitizeAvatarUrl(avUrl);
+          let avUrl = data.avatar_url ?? data.image_url ?? data.profile_image ?? data.profile_image_url ?? data.avatar ?? null;
+          
+          if (avUrl) {
+            if (avUrl.includes('.smartncode.com/uploads/')) {
+              avUrl = avUrl.replace('.smartncode.com/uploads/', '.smartncode.com/api/uploads/');
+            } else if (!avUrl.startsWith('http')) {
+              avUrl = avUrl.startsWith('/') ? BASE_URL + avUrl : `${BASE_URL}/${avUrl}`;
+            }
+          }
 
           const userKey = data.email || data.phone || authKey;
 
@@ -154,6 +160,7 @@ export default function Account() {
             try {
               await AsyncStorage.setItem(`healthai_avatar_${userKey}`, avUrl);
             } catch { /* ignore */ }
+          }
           }
 
           if (avUrl) {
@@ -294,36 +301,33 @@ export default function Account() {
 
           console.log('[Account] RAW AVATAR UPLOAD RESPONSE:', JSON.stringify(response, null, 2));
 
-          const serverUrl =
-            response?.avatar_url ||
-            response?.user?.avatar_url ||
-            response?.data?.avatar_url ||
-            response?.data?.user?.avatar_url ||
-            response?.url ||
-            response?.data?.url ||
-            response?.file_url ||
-            response?.data?.file_url ||
-            response?.image ||
-            response?.profile_image;
-
-          if (serverUrl) {
-            const formattedUrl = sanitizeAvatarUrl(serverUrl);
-            console.log('[Account] Parsed server avatar URL:', formattedUrl);
-            if (formattedUrl) {
-              setAvatarUrl(formattedUrl);
-              setImageLoadError(false);
-              await AsyncStorage.setItem(`healthai_avatar_${userKey}`, formattedUrl);
+          let newAvatarUrl = response?.user?.avatar_url || response?.avatar_url || response?.image_url || response?.profile_image || response?.user?.image_url || response?.user?.profile_image || response?.url || response?.file_url;
+          
+          if (newAvatarUrl) {
+            if (newAvatarUrl.includes('.smartncode.com/uploads/')) {
+              newAvatarUrl = newAvatarUrl.replace('.smartncode.com/uploads/', '.smartncode.com/api/uploads/');
+            } else if (!newAvatarUrl.startsWith('http')) {
+              newAvatarUrl = newAvatarUrl.startsWith('/') ? BASE_URL + newAvatarUrl : `${BASE_URL}/${newAvatarUrl}`;
             }
+            
+            console.log('[Account] Parsed server avatar URL:', newAvatarUrl);
+            setAvatarUrl(newAvatarUrl);
+            setImageLoadError(false);
+            await AsyncStorage.setItem(`healthai_avatar_${userKey}`, newAvatarUrl);
             Alert.alert('Success', 'Profile photo updated and saved on server!');
           } else {
             console.log('[Account] Backend returned success status but no URL in response body. Querying fresh profile...');
             // Check fresh profile from server
             try {
               const freshProfile = await api.request<any>(ENDPOINTS.profileMePath);
-              console.log('[Account] FRESH PROFILE RAW:', JSON.stringify(freshProfile, null, 2));
               const freshData = freshProfile?.user ?? freshProfile;
-              const freshUrl = sanitizeAvatarUrl(freshData?.avatar_url ?? freshData?.profile_image);
+              let freshUrl = freshData?.avatar_url ?? freshData?.image_url ?? freshData?.profile_image;
               if (freshUrl) {
+                if (freshUrl.includes('.smartncode.com/uploads/')) {
+                  freshUrl = freshUrl.replace('.smartncode.com/uploads/', '.smartncode.com/api/uploads/');
+                } else if (!freshUrl.startsWith('http')) {
+                  freshUrl = freshUrl.startsWith('/') ? BASE_URL + freshUrl : `${BASE_URL}/${freshUrl}`;
+                }
                 setAvatarUrl(freshUrl);
                 setImageLoadError(false);
                 await AsyncStorage.setItem(`healthai_avatar_${userKey}`, freshUrl);
@@ -333,8 +337,6 @@ export default function Account() {
             } catch (freshErr) {
               console.warn('[Account] Fresh profile fetch error:', freshErr);
             }
-
-            // Local preview remains active
             Alert.alert('Photo Updated', 'Profile photo preview updated on this device.');
           }
         } catch (err: any) {

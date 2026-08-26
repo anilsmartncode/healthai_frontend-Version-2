@@ -16,6 +16,7 @@ import type { ChatMessage } from '@/types';
 import { api } from '@/services/api';
 import { ENDPOINTS } from '@/constants/api';
 import { reportsApi } from '@/services/reportsApi';
+import { hasAIConsent } from '@/components/ai/AIDataConsentModal';
 
 // ─── Toggle ────────────────────────────────────────────────
 const USE_MOCK = false; // 🟢 MOCK | 🔴 set false when backend ready
@@ -254,7 +255,17 @@ export async function askAI(
   conversationHistory: ChatMessage[],
   prefillContext?: string,
   phone: string | null = null,
+  reportId?: string,
 ): Promise<ChatMessage> {
+
+  // Apple Guideline 5.1.2(i): Verify user has consented to AI data processing
+  // before transmitting any personal health data to the AI service.
+  const consented = await hasAIConsent();
+  if (!consented) {
+    const err = new Error('AI data consent is required before using AI features.');
+    (err as any).code = 'AI_CONSENT_REQUIRED';
+    throw err;
+  }
 
   if (USE_MOCK) {
     // 🟢 MOCK
@@ -274,16 +285,25 @@ export async function askAI(
   console.log('[askAI] System Prompt sent to AI:', systemPrompt);
 
   try {
-    const data = await api.request<any>(ENDPOINTS.aiChatPath, {
+    const endpoint = reportId ? ENDPOINTS.aiAskWithReportPath : ENDPOINTS.aiChatPath;
+    const body = reportId 
+      ? JSON.stringify({
+          question,
+          report_id: reportId,
+          prefill_context: prefillContext,
+        })
+      : JSON.stringify({
+          system_prompt: systemPrompt,
+          question,
+          conversation_history: conversationHistory.map(m => ({
+            role: m.role === 'ai' ? 'assistant' : 'user',
+            content: m.text
+          })),
+        });
+
+    const data = await api.request<any>(endpoint, {
       method: 'POST',
-      body: JSON.stringify({
-        system_prompt: systemPrompt,
-        question,
-        conversation_history: conversationHistory.map(m => ({
-          role: m.role === 'ai' ? 'assistant' : 'user',
-          content: m.text
-        })),
-      }),
+      body,
     });
     
     console.log('[askAI] AI Response:', JSON.stringify(data, null, 2));
@@ -447,6 +467,36 @@ export async function checkHealthAlerts(phone: string | null = null): Promise<He
 //      DELETE /ai/sessions/:id           -> delete a session
 //      DELETE /ai/sessions               -> clear all sessions
 // ─────────────────────────────────────────────────────────
+
+export async function getChatHistory(phone: string | null = null): Promise<{ messages: ChatMessage[], total: number } | null> {
+  if (USE_MOCK) {
+    // 🟢 MOCK - we don't return anything here so useAI falls back to AsyncStorage
+    return null;
+  }
+  
+  // 🔴 REAL
+  try {
+    const data = await api.request<any>(ENDPOINTS.aiHistoryPath);
+    return data;
+  } catch (error) {
+    console.error('[getChatHistory] real API failed:', error);
+    return null;
+  }
+}
+
+export async function clearChatHistory(phone: string | null = null): Promise<void> {
+  if (USE_MOCK) {
+    // 🟢 MOCK - handled by AsyncStorage in useAI
+    return;
+  }
+  
+  // 🔴 REAL
+  try {
+    await api.request(ENDPOINTS.aiHistoryPath, { method: 'DELETE' });
+  } catch (error) {
+    console.error('[clearChatHistory] real API failed:', error);
+  }
+}
 
 function deriveSessionTitle(messages: ChatMessage[]): string {
   const firstUser = messages.find(m => m.role === 'user');

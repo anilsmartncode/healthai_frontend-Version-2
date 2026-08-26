@@ -32,6 +32,8 @@ import {
   type AnalyzeResult,
 } from '@/services/reportsApi';
 import type { ApiSummary, LabValue } from '@/types/Report/reportype';
+import { AnalysisSummaryCard } from '@/components/reports/AnalysisSummaryCard';
+import { AskAIButton } from '@/components/ai/AskAIButton';
 
 type TabKey = 'Summary' | 'Results';
 
@@ -408,6 +410,76 @@ export default function ReportDetailScreen() {
           </View>
         )}
 
+        {/* Health Score */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Health Score</Text>
+          <AnalysisSummaryCard
+            abnormalCount={report.abnormalCount ?? abnormalValues.length}
+            totalCount={totalCount}
+            abnormalValues={abnormalValues}
+            healthScore={report.healthScore}
+            conditionSeverity={parsed?.condition_severity}
+            conditionColor={parsed?.condition_color}
+          />
+        </View>
+
+        {/* Key Findings */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Key Findings</Text>
+          <View style={styles.findingsRow}>
+            <View style={styles.findingPill}>
+              <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
+              <Text style={styles.findingText}>{report.totalValues - report.abnormalCount} Normal</Text>
+            </View>
+            {report.abnormalCount > 0 && (
+              <View style={[styles.findingPill, { backgroundColor: '#FEE2E2' }]}>
+                <Ionicons name="alert-circle" size={16} color={Colors.danger} />
+                <Text style={[styles.findingText, { color: Colors.danger }]}>
+                  {report.abnormalCount} Abnormal
+                </Text>
+              </View>
+            )}
+            {(report.borderlineCount ?? 0) > 0 && (
+              <View style={[styles.findingPill, { backgroundColor: '#FEF3C7' }]}>
+                <Ionicons name="warning" size={16} color={Colors.warning} />
+                <Text style={[styles.findingText, { color: Colors.warning }]}>
+                  {report.borderlineCount} Borderline
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* View Full Analysis CTA */}
+        <Pressable
+          style={styles.primaryBtn}
+          onPress={() =>
+            report.values
+              ? router.push({
+                  pathname: '/analysis',
+                  params: {
+                    reportId:         String(report.reportId ?? ''),
+                    patientName:      report.patientName ?? '',
+                    hospitalName:     report.hospitalName ?? report.labName,
+                    summary:          report.summary ?? '',
+                    values:           JSON.stringify(report.values ?? []),
+                    detectedMedicines: JSON.stringify(report.detectedMedicines ?? []),
+                  },
+                })
+              : router.push({ pathname: '/scorecard', params: { id: report.id } })
+          }
+        >
+          <Text style={styles.primaryBtnText}>View Full Analysis</Text>
+          <Ionicons name="arrow-forward" size={18} color="#fff" />
+        </Pressable>
+
+        {/* Ask AI */}
+        <AskAIButton
+          variant="banner"
+          label="Ask AI about this report"
+          prefill={`My ${report.title} report (score: ${report.healthScore ?? '?'}/100) has ${report.abnormalCount ?? 0} abnormal values. What should I know about this?`}
+          reportId={report.id}
+        />
       </ScrollView>
 
       {/* Rename modal */}
@@ -637,6 +709,39 @@ const styles = StyleSheet.create({
   trendScore: { alignItems: 'center', paddingVertical: 16, gap: 4 },
   trendScoreNum: { fontSize: 40, fontWeight: '800', color: Colors.primary },
   trendScoreLabel: { fontSize: 13, color: Colors.textMuted, fontWeight: '600' },
+
+  section: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.text,
+    marginBottom: 12,
+  },
+  findingsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  findingPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: Radius.pill,
+    gap: 4,
+  },
+  findingText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.success,
+  },
 
   modalOverlay: {
     flex: 1,

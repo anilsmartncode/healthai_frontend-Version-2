@@ -64,7 +64,11 @@ export async function signInWithApple() {
     if (credential.fullName && (credential.fullName.givenName || credential.fullName.familyName)) {
        displayName = `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim();
        if (displayName) {
-          await user.updateProfile({ displayName });
+          try {
+            await user.updateProfile({ displayName });
+          } catch (e) {
+            console.warn('[AppleAuth] Failed to update profile display name', e);
+          }
        }
     }
 
@@ -74,7 +78,15 @@ export async function signInWithApple() {
 
     return { user, idToken };
   } catch (error: any) {
-    if (error.code === 'ERR_REQUEST_CANCELED') {
+    const isCanceled =
+      error.code === 'ERR_REQUEST_CANCELED' ||
+      error.code === 'ERR_CANCELED' ||
+      error.code === '1001' ||
+      error.message?.toLowerCase().includes('canceled') ||
+      error.message?.toLowerCase().includes('cancelled') ||
+      error.message?.includes('1001');
+
+    if (isCanceled) {
       console.log('[AppleAuth] User cancelled Apple Sign-In');
       return null;
     }

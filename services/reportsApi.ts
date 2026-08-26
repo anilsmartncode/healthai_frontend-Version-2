@@ -405,9 +405,8 @@ function scoreToLabel(score: number): string {
 function parseHealthScore(raw?: ApiSummary | string): number {
   if (!raw) return 0;
   const summary = typeof raw === 'string' ? (() => { try { return JSON.parse(raw) as ApiSummary; } catch { return null; } })() : raw;
-  if (!summary?.health_score) return 0;
-  if (typeof summary.health_score === 'number') return summary.health_score;
-  const n = parseInt(String(summary.health_score).split('/')[0]);
+  if (summary?.health_score == null) return 0;
+  const n = parseInt(String(summary.health_score).split('/')[0], 10);
   return isNaN(n) ? 0 : n;
 }
 
@@ -650,7 +649,7 @@ export const reportsApi = {
       // which was always false for this shape, silently returning an empty
       // list every time (no error, no log — just nothing rendered in the UI).
       const renames = await getReportRenames(phone);
-      
+
       const rawList = data?.data?.reports || data?.reports || data;
       const list = Array.isArray(rawList) ? rawList : [];
 
@@ -976,7 +975,7 @@ export const reportsApi = {
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       };
     }
-    
+
     // 🔴 REAL
     const data: any = await reportsApiCall(ENDPOINTS.reportShare(id), {
       method: 'POST',
@@ -1019,7 +1018,7 @@ export const reportsApi = {
 
         let overallScore = payload.health_score ?? payload.overall_score ?? payload.overallScore ?? payload.healthScore ?? 0;
         let scoreLabel = payload.health_status ?? payload.score_label ?? payload.scoreLabel ?? payload.healthLabel ?? scoreToLabel(overallScore);
-        
+
         // ── BUGFIX: The Staging Backend currently uses the most recent document for the scorecard.
         // If the most recent document is a PRESCRIPTION, it has 0 lab values and returns 0/100.
         // As a frontend workaround, we'll fetch the local list, find the most recent LAB REPORT, 

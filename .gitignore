@@ -16,7 +16,7 @@ web-build/
 .agents/
 *.bak
 *.session_bak
-.env
+
 .env.local
 android/
 ios/
@@ -25,13 +25,11 @@ ios/
 
 expo-env.d.ts
 
-*.p8
-AuthKey_QKF4UXM4BD.p8
+
 HealthAI_API_integration_status (1).xlsx
 homescreen (5).jpeg
 *.jks
 *.crdownload
-Dockerfile
-nginx.conf
-.github
-eas.json
+*.ipa
+*.apk
+*.aab

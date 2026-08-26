@@ -9,20 +9,27 @@
  * needs at least ONE non-null token. v16 of @react-native-google-signin
  * often returns null for idToken but a valid accessToken — so we now
  * capture both and pass both to Firebase.
+ *
+ * iPad fix (App Store Guideline 2.1a):
+ * - hasPlayServices() is Android-only — calling it on iOS/iPadOS can
+ *   throw a native crash since there are no Google Play Services.
+ * - The entire sign-in flow is wrapped in a defensive try/catch to
+ *   prevent uncaught native exceptions from crashing the app.
  */
 
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
 const isExpoGo = Constants.appOwnership === 'expo';
 let _configured = false;
 
 // Configure early so native modules register the webClientId before sign-in is clicked
-if (!isExpoGo) {
+if (!isExpoGo && Platform.OS !== 'web') {
   try {
     const { GoogleSignin } = require('@react-native-google-signin/google-signin');
     GoogleSignin.configure({
       webClientId: '933979596939-kbakttimkce7033728vfank66tgimu7f.apps.googleusercontent.com',
-      iosClientId: '933979596939-68suovtthpu7b3sitqlc2p692hgfe14a.apps.googleusercontent.com',
+      iosClientId: '933979596939-laqosq3i8u2n3gq9v1dqdb62akf4a52p.apps.googleusercontent.com',
       offlineAccess: true,
     });
     _configured = true;
@@ -36,7 +43,7 @@ function getGoogleSignin() {
   if (!_configured) {
     GoogleSignin.configure({
       webClientId: '933979596939-kbakttimkce7033728vfank66tgimu7f.apps.googleusercontent.com',
-      iosClientId: '933979596939-68suovtthpu7b3sitqlc2p692hgfe14a.apps.googleusercontent.com',
+      iosClientId: '933979596939-laqosq3i8u2n3gq9v1dqdb62akf4a52p.apps.googleusercontent.com',
       offlineAccess: true,
     });
     _configured = true;
@@ -54,7 +61,11 @@ export const signInWithGoogle = async () => {
     const GoogleSignin = getGoogleSignin();
     const auth = getFirebaseAuth();
 
-    await GoogleSignin.hasPlayServices();
+    // hasPlayServices() is Android-only — calling it on iOS/iPadOS can throw
+    // a native crash since Google Play Services don't exist on Apple devices.
+    if (Platform.OS === 'android') {
+      await GoogleSignin.hasPlayServices();
+    }
 
     // Step 1: Force account picker by clearing the previous session
     // This prevents Google from automatically picking the last used account
@@ -65,10 +76,37 @@ export const signInWithGoogle = async () => {
     }
 
     // Step 2: Open the Google account picker
-    const userInfo = await GoogleSignin.signIn();
+    let userInfo: any;
+    try {
+      userInfo = await GoogleSignin.signIn();
+    } catch (signInError: any) {
+      // Catch native presentation errors (common on iPad where the popover
+      // anchor may fail) before they propagate as uncaught native exceptions.
+      console.log('[GoogleAuth] signIn() native error:', signInError);
+
+      // Check for cancellation first
+      try {
+        const { statusCodes } = require('@react-native-google-signin/google-signin');
+        if (signInError.code === statusCodes.SIGN_IN_CANCELLED) {
+          return { success: false, error: 'Sign-in cancelled' };
+        }
+        if (signInError.code === statusCodes.IN_PROGRESS) {
+          return { success: false, error: 'Sign-in in progress' };
+        }
+        if (signInError.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+          return { success: false, error: 'Play services not available' };
+        }
+      } catch (_) { /* statusCodes not available in Expo Go */ }
+
+      return {
+        success: false,
+        error: signInError.message || 'Google Sign-In failed. Please try again.',
+      };
+    }
+
     console.log('[GoogleAuth] signIn result keys:', Object.keys(userInfo || {}));
 
-    // Step 2: Extract idToken + accessToken from signIn() response
+    // Step 3: Extract idToken + accessToken from signIn() response
     // v16 changed the response shape — tokens might be nested under .data
     let idToken: string | null =
       (userInfo as any)?.idToken ||
@@ -79,7 +117,7 @@ export const signInWithGoogle = async () => {
       (userInfo as any)?.data?.accessToken ||
       null;
 
-    // Step 3: If either token is missing, fetch from getTokens()
+    // Step 4: If either token is missing, fetch from getTokens()
     // In v16, getTokens() returns { idToken, accessToken }
     // idToken may be null but accessToken is usually present
     if (!idToken || !accessToken) {
@@ -98,7 +136,7 @@ export const signInWithGoogle = async () => {
 
     console.log('[GoogleAuth] final tokens:', { hasIdToken: !!idToken, hasAccessToken: !!accessToken });
 
-    // Step 4: At least one token must be non-null for Firebase
+    // Step 5: At least one token must be non-null for Firebase
     if (!idToken && !accessToken) {
       throw new Error(
         'Google Sign-In completed but returned no tokens. ' +
@@ -106,14 +144,14 @@ export const signInWithGoogle = async () => {
       );
     }
 
-    // Step 5: Create Firebase credential — passes both tokens,
+    // Step 6: Create Firebase credential — passes both tokens,
     // Firebase uses whichever is available (idToken preferred)
     const googleCredential = auth.GoogleAuthProvider.credential(idToken, accessToken);
 
-    // Step 6: Sign in to Firebase with the Google credential
+    // Step 7: Sign in to Firebase with the Google credential
     const userCredential = await auth().signInWithCredential(googleCredential);
 
-    // Step 7: Get the Firebase ID Token to send to your backend
+    // Step 8: Get the Firebase ID Token to send to your backend
     const firebaseIdToken = await userCredential.user.getIdToken();
 
     return {

@@ -7,9 +7,7 @@ export default function Index() {
 
   // On web, don't redirect — the web lockdown overlay in _layout.tsx handles everything.
   // Without this guard, the Redirect fights with legal page routes and kicks users away.
-  if (Platform.OS === 'web') {
-    return null;
-  }
+
 
   if (!ready) {
     return (

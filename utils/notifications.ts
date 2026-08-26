@@ -1,16 +1,19 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import * as Device from 'expo-device';
 import * as TaskManager from 'expo-task-manager';
 import { medicineApiCall } from '@/services/Medicineapiclient';
 import { ENDPOINTS } from '@/constants/api';
+import { getTodaysReminders } from '@/services/medicineTabApi';
+import type { Reminder } from '@/types';
 
 // Determine if we are running inside the Expo Go app.
 // expo-notifications native code was removed from Expo Go in SDK 53+
 const isExpoGo = Constants.appOwnership === 'expo';
 
 // Configure how notifications behave when the app is in the foreground
-if (!isExpoGo) {
+if (!isExpoGo && Platform.OS !== 'web') {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
@@ -26,7 +29,7 @@ if (!isExpoGo) {
 export const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND-NOTIFICATION-TASK';
 
 // FCM Background Handler (Must be registered early)
-if (!isExpoGo) {
+if (!isExpoGo && Platform.OS !== 'web') {
   try {
     import('@react-native-firebase/messaging').then((messagingModule) => {
       const messaging = messagingModule.default;
@@ -345,5 +348,40 @@ export async function testNotification() {
     console.log('[Notifications] ✅ Test notification scheduled in 5 seconds, ID:', id);
   } catch (e) {
     console.error('[Notifications] ❌ Test notification FAILED:', e);
+  }
+}
+
+/**
+ * Sync Local Reminders with Backend
+ * Cancels all locally scheduled notifications and re-schedules active ones 
+ * to clean up any "ghost" reminders from deleted medicines or multiple devices.
+ */
+export async function syncLocalRemindersWithBackend() {
+  if (isExpoGo) return;
+  
+  try {
+    // 1. Fetch active reminders from backend
+    const activeReminders = await getTodaysReminders();
+    
+    // 2. Wipe the slate clean locally
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    console.log('[Notifications] Wiped all ghost notifications');
+    
+    // 3. Re-schedule only the active ones
+    for (const r of activeReminders) {
+      if (r.enabled !== false) {
+        const nextDate = parseTimeStringToNextDate(r.time);
+        await scheduleReminderNotification(
+          r.id,
+          `Medicine Time: ${r.medicineName}`,
+          r.whenToTake ? r.whenToTake.replace(/_/g, ' ') : 'Now',
+          nextDate,
+          (r.frequency as any)
+        ).catch(console.warn);
+      }
+    }
+    console.log(`[Notifications] Synced ${activeReminders.length} active reminders`);
+  } catch (e) {
+    console.warn('[Notifications] Sync failed:', e);
   }
 }

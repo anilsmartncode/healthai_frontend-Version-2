@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   ScrollView, Text, StyleSheet, View,
   Pressable, ActivityIndicator, RefreshControl,
@@ -10,6 +10,12 @@ import { Colors, Radius, Spacing } from '@/constants/Colors';
 import { useLang } from '@/context/Languagecontext';
 import { useNotifications } from '@/hooks/useNotifications';
 import { UnifiedNotification, NotificationCategory } from '@/types/notifications';
+import {
+  getFamilyNotifications,
+  markNotificationsRead,
+  markAllGlobalNotificationsRead,
+  type FamilyNotification,
+} from '@/services/familyApi';
 
 const CATEGORIES: { id: NotificationCategory | 'all', label: string }[] = [
   { id: 'all', label: 'All' },
@@ -18,11 +24,20 @@ const CATEGORIES: { id: NotificationCategory | 'all', label: string }[] = [
   { id: 'family', label: 'Family' },
 ];
 
-const ICON_MAP: Record<NotificationCategory, { icon: any; bg: string; color: string }> = {
+const ICON_MAP: Record<string, { icon: any; bg: string; color: string }> = {
   report: { icon: 'document-text-outline', bg: '#FCEBEB', color: Colors.danger },
   medicine: { icon: 'medkit-outline', bg: '#FAEEDA', color: '#854F0B' },
   family: { icon: 'people-outline', bg: '#E1F5EE', color: Colors.primary },
   system: { icon: 'information-circle-outline', bg: Colors.surface, color: Colors.textMuted },
+  
+  // API specific icons
+  invite_accepted: { icon: 'person-add-outline', bg: '#E1F5EE', color: Colors.primary },
+  invite_pending: { icon: 'mail-outline', bg: '#E6F1FB', color: '#185FA5' },
+  health_alert: { icon: 'alert-circle-outline', bg: '#FCEBEB', color: Colors.danger },
+  medicine_alert: { icon: 'medkit-outline', bg: '#FAEEDA', color: '#854F0B' },
+  report_ready: { icon: 'document-text-outline', bg: '#E1F5EE', color: Colors.primary },
+  health_tip: { icon: 'bulb-outline', bg: '#FFF4E5', color: '#D97706' },
+  default: { icon: 'notifications-outline', bg: Colors.surface, color: Colors.textMuted },
 };
 
 function timeAgo(iso: string): string {
@@ -36,7 +51,11 @@ function timeAgo(iso: string): string {
 }
 
 function NotifRow({ item, onPress }: { item: UnifiedNotification; onPress: () => void }) {
-  const cfg = ICON_MAP[item.category] ?? ICON_MAP.system;
+  // If it's from the API, we can use the original type for a better icon match
+  const originalApiItem = item.payload?.originalApiItem as FamilyNotification | undefined;
+  const cfgKey = originalApiItem?.type || item.category;
+  const cfg = ICON_MAP[cfgKey] ?? ICON_MAP.system ?? ICON_MAP.default;
+  
   const isUnread = item.status === 'unread';
   const isArchived = item.status === 'archived';
   return (
@@ -52,7 +71,7 @@ function NotifRow({ item, onPress }: { item: UnifiedNotification; onPress: () =>
         <Text style={[styles.rowTitle, isUnread && { fontWeight: '700' }]}>
           {item.title}
         </Text>
-        {(item as any).body ? <Text style={styles.rowBody}>{(item as any).body}</Text> : null}
+        {item.message ? <Text style={styles.rowBody}>{item.message}</Text> : null}
       </View>
       <Text style={styles.rowTime}>{timeAgo(item.timestamp)}</Text>
     </Pressable>
@@ -61,27 +80,109 @@ function NotifRow({ item, onPress }: { item: UnifiedNotification; onPress: () =>
 
 export default function Notifications() {
   const { t } = useLang();
-  const { notifications, loading, refresh, unreadCount, markAllRead, markAsRead } = useNotifications();
+  
+  // 1. Hook Notifications
+  const { notifications: hookNotifications, loading: hookLoading, refresh, unreadCount, markAllRead, markAsRead } = useNotifications();
+  
+  // 2. API Notifications
+  const [apiItems, setApiItems] = useState<FamilyNotification[]>([]);
+  const [apiUnread, setApiUnread] = useState(0);
+  const [apiLoading, setApiLoading] = useState(true);
+
+  const loadApi = useCallback(async () => {
+    try {
+      const data = await getFamilyNotifications();
+      setApiItems(data.notifications || []);
+      setApiUnread(data.unread_count || 0);
+    } catch (err) {
+      console.log('Error loading API notifications', err);
+    } finally {
+      setApiLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadApi(); }, [loadApi]);
+
   const [filter, setFilter] = useState<NotificationCategory | 'all'>('all');
   const [refreshing, setRefreshing] = useState(false);
 
-  const filteredItems = notifications.filter(n => filter === 'all' || n.category === filter);
+  // Merge hook and API notifications
+  const allNotifications = useMemo(() => {
+    const mappedApiItems: UnifiedNotification[] = apiItems.map(item => {
+      const type = item.type as string;
+      let cat: NotificationCategory = 'system';
+      if (type === 'report_ready' || type === 'report') cat = 'report';
+      else if (type === 'medicine_alert' || type === 'medicine') cat = 'medicine';
+      else if (type === 'invite_pending' || type === 'invite_accepted' || type === 'family' || type === 'health_alert' || type === 'health_tip') cat = 'family';
+      
+      let route = '/(tabs)/reports';
+      if (type === 'invite_pending' || type === 'family') route = '/family/invitations';
+      else if (type === 'invite_accepted' || type === 'health_alert' || type === 'health_tip') route = '/family';
+      else if (type === 'medicine_alert' || type === 'medicine') route = '/medicines';
 
-  const handlePress = (item: UnifiedNotification) => {
-    markAsRead(item.id);
+      return {
+        id: `api_${item.notif_id}`,
+        title: item.title,
+        message: (item as any).message || '',
+        category: cat,
+        priority: 'MEDIUM',
+        status: item.read ? 'read' : 'unread',
+        timestamp: item.created_at,
+        action: { type: 'navigate', route },
+        payload: { originalApiItem: item }
+      };
+    });
+
+    // Merge and sort by timestamp
+    const combined = [...hookNotifications, ...mappedApiItems];
+    return combined.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [hookNotifications, apiItems]);
+
+  const filteredItems = allNotifications.filter(n => filter === 'all' || n.category === filter);
+  const totalUnread = unreadCount + apiUnread;
+  const isLoading = hookLoading || apiLoading;
+
+  const handlePress = async (item: UnifiedNotification) => {
+    // Handle Hook mark as read
+    if (!item.id.startsWith('api_')) {
+      markAsRead(item.id);
+    }
+    
+    // Handle API mark as read
+    const apiItem = item.payload?.originalApiItem as FamilyNotification | undefined;
+    if (apiItem && !apiItem.read) {
+      await markNotificationsRead([apiItem.notif_id]);
+      setApiItems(prev => prev.map(n => n.notif_id === apiItem.notif_id ? { ...n, read: true } : n));
+      setApiUnread(prev => Math.max(0, prev - 1));
+    }
+
+    // Navigation
     if (item.action.type === 'navigate' && item.action.route) {
       if (item.action.params) {
         router.push({ pathname: item.action.route, params: item.action.params });
       } else {
-        router.push(item.action.route);
+        router.push(item.action.route as any);
       }
     }
   };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await refresh();
+    await Promise.all([refresh(), loadApi()]);
     setRefreshing(false);
+  };
+
+  const handleMarkAllRead = async () => {
+    markAllRead(); // Hook
+    const unreadIds = apiItems.filter(n => !n.read).map(n => n.notif_id);
+    if (unreadIds.length > 0) {
+      await Promise.all([
+        markNotificationsRead(unreadIds),
+        markAllGlobalNotificationsRead()
+      ]);
+      setApiItems(prev => prev.map(n => ({ ...n, read: true })));
+      setApiUnread(0);
+    }
   };
 
   return (
@@ -90,9 +191,9 @@ export default function Notifications() {
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={Colors.text} />
         </Pressable>
-        <Text style={styles.title}>{t('notif_title')}</Text>
-        {unreadCount > 0 && (
-          <Pressable onPress={markAllRead}>
+        <Text style={styles.title}>{t('notif_title') || 'Notifications'}</Text>
+        {totalUnread > 0 && (
+          <Pressable onPress={handleMarkAllRead}>
             <Text style={styles.markAll}>Mark all read</Text>
           </Pressable>
         )}
@@ -113,7 +214,7 @@ export default function Notifications() {
         </ScrollView>
       </View>
 
-      {loading && notifications.length === 0 ? (
+      {isLoading && allNotifications.length === 0 ? (
         <ActivityIndicator style={{ flex: 1, marginTop: 40 }} size="large" color={Colors.primary} />
       ) : (
         <ScrollView

@@ -16,13 +16,14 @@ interface Props {
   context?: string;
   label?: string;
   variant?: 'button' | 'chip' | 'icon' | 'banner';
+  reportId?: string;
 }
 
-export function AskAIButton({ prefill, context, label = 'Ask AI', variant = 'button' }: Props) {
+export function AskAIButton({ prefill, context, label = 'Ask AI', variant = 'button', reportId }: Props) {
   const handlePress = () => {
     router.push({
       pathname: '/ai-chat',
-      params: { prefill, context: context ?? '' },
+      params: { prefill, context: context ?? '', reportId },
     });
   };
 

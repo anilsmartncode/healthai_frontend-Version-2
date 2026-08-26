@@ -8,20 +8,20 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/Colors';
-import { FamilyTopBar }       from '@/components/family/FamilyTopBar';
-import { MemberProfileCard }  from '@/components/family/MemberProfileCard';
-import { useMemberProfile }   from '@/hooks/useFamily';
+import { FamilyTopBar } from '@/components/family/FamilyTopBar';
+import { MemberProfileCard } from '@/components/family/MemberProfileCard';
+import { useMemberProfile } from '@/hooks/useFamily';
 import { AskAIButton } from '@/components/ai/AskAIButton';
 
 type SectionIcon = keyof typeof Ionicons.glyphMap;
 
 interface Section {
-  icon:    SectionIcon;
-  label:   string;
-  sub:     string;
-  bg:      string;
-  color:   string;
-  route:   string;
+  icon: SectionIcon;
+  label: string;
+  sub: string;
+  bg: string;
+  color: string;
+  route: string;
 }
 
 const SECTIONS: Section[] = [
@@ -135,16 +135,16 @@ export default function MemberProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen:   { flex: 1, backgroundColor: '#F4F7F6' },
+  screen: { flex: 1, backgroundColor: '#F4F7F6' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10 },
   emptyTxt: { fontSize: 14, color: Colors.textMuted, textAlign: 'center', paddingHorizontal: 32 },
-  page:     { padding: 12, paddingBottom: 40 },
-  section:  { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, padding: 13, marginBottom: 7 },
-  secIcon:  { width: 38, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginRight: 12, flexShrink: 0 },
+  page: { padding: 12, paddingBottom: 40 },
+  section: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, padding: 13, marginBottom: 7 },
+  secIcon: { width: 38, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginRight: 12, flexShrink: 0 },
   secLabel: { fontSize: 14, fontWeight: '500', color: Colors.text },
-  secSub:   { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
+  secSub: { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
   newBadge: { backgroundColor: '#F0EAFF', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3, marginRight: 4 },
   newBadgeTxt: { fontSize: 10, fontWeight: '600', color: '#6D28D9' },
-  permBtn:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#E8F5F0', borderRadius: 12, padding: 13, marginTop: 10 },
-  permTxt:  { fontSize: 14, fontWeight: '700', color: Colors.primary },
+  permBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#E8F5F0', borderRadius: 12, padding: 13, marginTop: 10 },
+  permTxt: { fontSize: 14, fontWeight: '700', color: Colors.primary },
 });

@@ -1,12 +1,4 @@
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  ScrollView,
-  Image,
-  Alert,
-} from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, Image, Alert, ActivityIndicator, Linking, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
@@ -20,80 +12,31 @@ import { api } from '@/services/api';
 import { ENDPOINTS, BASE_URL } from '@/constants/api';
 import { medicineApiCall } from '@/services/Medicineapiclient';
 
-type ProfileData = {
-  name: string;
-  email: string;
-  avatarUrl: string | null;
-  plan: string | null;
-};
+const STORE_URL =
+  Platform.OS === 'ios'
+    ? 'https://apps.apple.com/app/healthai/id6794323149'
+    : 'https://play.google.com/store/apps/details?id=com.smartncode.healthai';
 
 export default function Profile() {
   const { phone, memberId, signOut } = useAuth();
   const { t } = useLang();
   const { activePlan } = useUsage();
-
-  const isActualPhone = (val?: string | null) => !!val && !val.includes('@') && /\d/.test(val);
-  const isActualEmail = (val?: string | null) => !!val && val.includes('@');
-
-  const [profile, setProfile] = useState<ProfileData>({
-    name: '',
-    email: isActualEmail(phone) ? phone! : '',
-    avatarUrl: null,
-    plan: null,
-  });
-
-  const [avatarLoadError, setAvatarLoadError] = useState(false);
-
-  const sanitizeAvatarUrl = (url?: string | null): string | null => {
-    if (!url) return null;
-    let clean = String(url).trim();
-    if (!clean) return null;
-    if (clean.includes('localhost') || clean.includes('127.0.0.1')) {
-      clean = clean.replace(/http:\/\/(localhost|127\.0\.0\.1)(:\d+)?/, BASE_URL);
-    }
-    if (clean.startsWith('http://healthai.smartncode.com')) {
-      clean = clean.replace('http://', 'https://');
-    }
-    if (clean.startsWith('https://healthai.smartncode.com/uploads/')) {
-      clean = clean.replace('https://healthai.smartncode.com/uploads/', 'https://healthai.smartncode.com/api/uploads/');
-    } else if (clean.startsWith('http://healthai.smartncode.com/uploads/')) {
-      clean = clean.replace('http://healthai.smartncode.com/uploads/', 'https://healthai.smartncode.com/api/uploads/');
-    } else if (clean.startsWith('/uploads/')) {
-      clean = `${BASE_URL}/api${clean}`;
-    } else if (clean.startsWith('uploads/')) {
-      clean = `${BASE_URL}/api/${clean}`;
-    } else if (
-      !clean.startsWith('http://') &&
-      !clean.startsWith('https://') &&
-      !clean.startsWith('file://') &&
-      !clean.startsWith('content://') &&
-      !clean.startsWith('blob:')
-    ) {
-      clean = clean.startsWith('/') ? `${BASE_URL}${clean}` : `${BASE_URL}/${clean}`;
-    }
-    return clean;
-  };
+  const [displayName, setDisplayName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      const userKey = profile.email || (isActualPhone(phone) ? phone! : 'guest');
-      const cacheKey = `healthai_profile_name_${userKey}`;
-      setAvatarLoadError(false);
+      const cacheKey = `healthai_profile_name_${phone ?? 'guest'}`;
+      const avatarCacheKey = `healthai_profile_avatar_${phone ?? 'guest'}`;
 
       (async () => {
         try {
-          const [cachedName, cachedAvatar] = await Promise.all([
-            AsyncStorage.getItem(cacheKey),
-            AsyncStorage.getItem(`healthai_avatar_${userKey}`),
-          ]);
-          if (!cancelled) {
-            setProfile((p) => ({
-              ...p,
-              ...(cachedName ? { name: cachedName } : {}),
-              ...(cachedAvatar ? { avatarUrl: sanitizeAvatarUrl(cachedAvatar) } : {}),
-            }));
-          }
+          const cached = await AsyncStorage.getItem(cacheKey);
+          if (cached && !cancelled) setDisplayName(cached);
+          const cachedAvatar = await AsyncStorage.getItem(avatarCacheKey);
+          if (cachedAvatar && !cancelled) setAvatarUrl(cachedAvatar);
         } catch { /* ignore */ }
 
         try {
@@ -101,42 +44,25 @@ export default function Profile() {
           const data = raw?.user ?? raw;
           if (cancelled) return;
 
-          const displayName = (data?.full_name ?? data?.name ?? '').trim();
-          let avUrl = data?.avatar_url ?? data?.profile_image ?? data?.avatar ?? null;
-          avUrl = sanitizeAvatarUrl(avUrl);
-
-          const key = data?.email || (isActualPhone(phone) ? phone : 'guest');
-
-          let localPhone = '';
-          let localAvatar = '';
-          try {
-            const [pVal, aVal] = await Promise.all([
-              AsyncStorage.getItem(`healthai_phone_${key}`),
-              AsyncStorage.getItem(`healthai_avatar_${key}`),
-            ]);
-            localPhone = pVal || '';
-            localAvatar = aVal || '';
-          } catch { /* ignore */ }
-
-          if (!avUrl && localAvatar) {
-            avUrl = sanitizeAvatarUrl(localAvatar);
-          } else if (avUrl) {
-            try { await AsyncStorage.setItem(`healthai_avatar_${key}`, avUrl); } catch { /* ignore */ }
+          const name = (data?.full_name ?? data?.name ?? '').trim();
+          if (name) {
+            setDisplayName(name);
+            try { await AsyncStorage.setItem(cacheKey, name); } catch { /* ignore */ }
+          }
+          
+          let avUrl = data.avatar_url ?? data.image_url ?? data.profile_image ?? data.profile_image_url ?? null;
+          if (avUrl) {
+            if (avUrl.includes('.smartncode.com/uploads/')) {
+              avUrl = avUrl.replace('.smartncode.com/uploads/', '.smartncode.com/api/uploads/');
+            } else if (!avUrl.startsWith('http')) {
+              avUrl = avUrl.startsWith('/') ? BASE_URL + avUrl : `${BASE_URL}/${avUrl}`;
+            }
+          }
+          if (avUrl) {
+            setAvatarUrl(avUrl);
+            try { await AsyncStorage.setItem(avatarCacheKey, avUrl); } catch { /* ignore */ }
           }
 
-          const resolvedEmail = data?.email || (isActualEmail(phone) ? phone : '');
-
-          const next: ProfileData = {
-            name: displayName || '',
-            email: isActualEmail(resolvedEmail) ? resolvedEmail : '',
-            avatarUrl: avUrl,
-            plan: data?.plan || data?.subscription_tier || data?.subscription || null,
-          };
-          setProfile(next);
-
-          if (displayName) {
-            try { await AsyncStorage.setItem(cacheKey, displayName); } catch { /* ignore */ }
-          }
         } catch (e) {
           console.warn('[Profile] Failed to refresh profile', e);
         }
@@ -146,8 +72,7 @@ export default function Profile() {
     }, [phone, memberId])
   );
 
-  const currentPlan = (profile.plan || activePlan || 'FREE').toUpperCase();
-  const planLabel = currentPlan === 'FAMILY' ? 'FAMILY' : (currentPlan === 'PREMIUM' ? 'PREMIUM' : 'FREE');
+  const initial = displayName ? displayName.charAt(0).toUpperCase() : '';
 
   const handleDeleteAccount = () => {
     Alert.alert(
@@ -161,13 +86,13 @@ export default function Profile() {
           onPress: async () => {
             try {
               await medicineApiCall(ENDPOINTS.deleteAccount, { method: 'DELETE' });
+
               Alert.alert('Account Deleted', 'Your account and data have been permanently deleted.', [
                 {
-                  text: 'OK',
-                  onPress: () => {
+                  text: 'OK', onPress: () => {
                     signOut().then(() => router.replace('/(auth)/onboarding'));
-                  },
-                },
+                  }
+                }
               ]);
             } catch (error: any) {
               Alert.alert('Error', error?.message || 'Failed to delete account. Please contact support.');
@@ -178,140 +103,147 @@ export default function Profile() {
     );
   };
 
-  const settingsItems = [
-    { icon: 'person-outline', title: 'Personal Information', href: '/account' },
-    { icon: 'people-outline', title: 'Family Health', href: '/family' },
-    { icon: 'shield-checkmark-outline', title: 'Legal & Privacy', href: '/legal-privacy' },
-    { icon: 'card-outline', title: 'Subscription & Plans', href: '/plans' },
-    { icon: 'help-circle-outline', title: 'Help & Support', href: '/help-support' },
-    { icon: 'star-outline', title: 'Rate the app', href: '/rate-app' },
-  ];
-
-  const formatDisplayName = (name: string): string => {
-    return name
-      .trim()
-      .split(/\s+/)
-      .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : w))
-      .join(' ');
+  const handleLogout = () => {
+    Alert.alert(
+      t('log_out') || 'Log Out',
+      'Are you sure you want to log out of your account?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: t('log_out') || 'Log Out',
+          style: 'destructive',
+          onPress: async () => {
+            setLoggingOut(true);
+            try {
+              await signOut();
+              router.replace('/(auth)/onboarding');
+            } catch (error) {
+              console.error('[Profile] Logout error:', error);
+              Alert.alert('Error', 'Failed to log out. Please try again.');
+            } finally {
+              setLoggingOut(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
+  const items = [
+    { icon: 'person-outline', label: t('account_info'), href: '/account' },
+    { icon: 'star', label: 'Subscription & Plans', href: '/plans' },
+    { icon: 'people-outline', label: t('family_health'), href: '/family' },
+    { icon: 'notifications-outline', label: t('notifications'), href: '/notifications' },
+    { icon: 'shield-checkmark-outline', label: t('legal_privacy'), href: '/legal-privacy' },
+    { icon: 'help-circle-outline', label: t('help_support'), href: '/help-support' },
+    { icon: 'star-outline', label: t('rate_app'), action: async () => {
+      try {
+        await Linking.openURL(STORE_URL);
+      } catch {
+        Alert.alert("Error", "Could not open the App Store.");
+      }
+    } },
+  ];
+
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-
-        {/* Header */}
-        <Text style={styles.headerTitle}>Profile and Settings</Text>
-
-        {/* Profile Info */}
-        <View style={styles.profileSection}>
-          <View style={styles.avatarWrap}>
-            {profile.avatarUrl && !avatarLoadError ? (
-              <Image
-                source={{ uri: profile.avatarUrl }}
-                style={styles.avatarImg}
-                onError={() => setAvatarLoadError(true)}
-              />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Ionicons name="person" size={32} color={Colors.primary} />
-              </View>
-            )}
-          </View>
-          <View style={styles.profileInfo}>
-            <View style={styles.nameRow}>
-              <Text style={styles.nameText}>
-                {profile.name ? formatDisplayName(profile.name) : 'Guest User'}
-              </Text>
-              <View style={styles.planBadge}>
-                <Text style={styles.planBadgeText}>{planLabel}</Text>
-              </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.bg }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        <View style={{ padding: 16 }}>
+          <Text style={styles.title}>{t('profile_settings')}</Text>
+          <View style={styles.profile}>
+            <View style={[styles.avatar, avatarUrl ? { backgroundColor: 'transparent' } : {}]}>
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#E5E7EB' }} resizeMode="cover" />
+              ) : initial ? (
+                <Text style={styles.avatarInitial}>{initial}</Text>
+              ) : (
+                <Ionicons name="person" size={28} color="#fff" />
+              )}
             </View>
-            {!!profile.email && (
-              <Text style={styles.emailText}>{profile.email}</Text>
-            )}
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={styles.name}>{displayName || t('profile')}</Text>
+                <View style={styles.planBadge}>
+                  <Text style={styles.planBadgeText}>{activePlan}</Text>
+                </View>
+              </View>
+              <Text style={styles.sub}>{phone ?? 'guest@healthai.app'}</Text>
+            </View>
           </View>
         </View>
 
-        {/* Links */}
-        <View style={styles.linksContainer}>
-          {settingsItems.map((item, index) => (
-            <Pressable
-              key={index}
-              style={styles.linkRow}
-              onPress={() => router.push(item.href as any)}
-            >
-              <Ionicons name={item.icon as any} size={22} color="#1F2937" style={styles.linkIcon} />
-              <Text style={styles.linkText}>{item.title}</Text>
-              <Ionicons name="chevron-forward" size={20} color="#6B7280" />
+        <View style={{ paddingHorizontal: 16, gap: 4 }}>
+          {items.map((it) => (
+            <Pressable key={it.label} style={styles.row} onPress={() => {
+              if (it.action) {
+                it.action();
+              } else if (it.href) {
+                router.push(it.href as any);
+              }
+            }}>
+              <Ionicons name={it.icon as any} size={22} color={Colors.text} />
+              <Text style={styles.rowLabel}>{it.label}</Text>
+              <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
             </Pressable>
           ))}
-
-          <Pressable style={styles.linkRow} onPress={async () => {
-            await signOut();
-            router.replace('/(auth)/onboarding');
-          }}>
-            <Ionicons name="log-out-outline" size={22} color="#EF4444" style={styles.linkIcon} />
-            <Text style={[styles.linkText, { color: '#EF4444' }]}>Log Out</Text>
+          <Pressable
+            style={styles.row}
+            onPress={handleLogout}
+            disabled={loggingOut}
+          >
+            {loggingOut ? (
+              <ActivityIndicator size="small" color={Colors.danger} style={{ width: 22 }} />
+            ) : (
+              <Ionicons name="log-out-outline" size={22} color={Colors.danger} />
+            )}
+            <Text style={[styles.rowLabel, { color: Colors.danger }]}>
+              {loggingOut ? 'Logging out...' : t('log_out')}
+            </Text>
+            <View />
           </Pressable>
 
-          <Pressable style={styles.linkRow} onPress={handleDeleteAccount}>
-            <Ionicons name="trash-outline" size={22} color="#EF4444" style={styles.linkIcon} />
-            <Text style={[styles.linkText, { color: '#EF4444' }]}>Delete Account</Text>
+          <Pressable
+            style={styles.row}
+            onPress={handleDeleteAccount}
+            disabled={loggingOut}
+          >
+            <Ionicons name="trash-outline" size={22} color={Colors.danger} />
+            <Text style={[styles.rowLabel, { color: Colors.danger }]}>Delete Account</Text>
+            <View />
           </Pressable>
         </View>
-
       </ScrollView>
+
+      {/* Loading Overlay */}
+      {loggingOut && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Text style={styles.loadingText}>Logging out...</Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
-  scroll: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 24,
+  title: { fontSize: 22, fontWeight: '700', color: Colors.text },
+  profile: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16 },
+  avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center' },
+  avatarInitial: { fontSize: 22, fontWeight: '700', color: '#fff' },
+  name: { fontSize: 16, fontWeight: '700', color: Colors.text },
+  sub: { color: Colors.textMuted },
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 14, paddingHorizontal: 12,
+    borderRadius: 10,
   },
-  profileSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  avatarWrap: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 16,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  avatarImg: {
-    width: '100%',
-    height: '100%',
-  },
-  avatarPlaceholder: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileInfo: {
+  rowLabel: {
     flex: 1,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  nameText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginRight: 8,
+    fontSize: 15,
+    fontWeight: '500',
+    color: Colors.text,
   },
   planBadge: {
     backgroundColor: '#D1FAE5',
@@ -324,27 +256,28 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
-  emailText: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  linksContainer: {
-    marginTop: 8,
-  },
-  linkRow: {
-    flexDirection: 'row',
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 16,
+    zIndex: 9999,
   },
-  linkIcon: {
-    marginRight: 16,
-    width: 24,
-    textAlign: 'center',
+  loadingCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingVertical: 24,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  linkText: {
-    flex: 1,
-    fontSize: 16,
-    color: '#374151',
-    fontWeight: '400',
+  loadingText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.text,
   },
 });

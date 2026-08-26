@@ -32,13 +32,13 @@ type ViewMode = 'parameter' | 'category';
 function isUsableValue(v: LabValue): boolean {
   if (!v || !v.value) return false;
   const val = String(v.value).trim().toLowerCase();
-  
+
   if (val === '') return false;
 
   // Split by whitespace to handle cases like "N/A N/A" or "Unknown Unknown"
   const words = val.split(/\s+/);
   const dummyWords = new Set(['n/a', 'na', 'unknown', 'null', 'undefined', '-', '--']);
-  
+
   const isAllDummy = words.every(
     (word) => dummyWords.has(word) || word === 'not' || word === 'available' || word === 'provided'
   );
@@ -930,7 +930,7 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     fontSize: 14,
   },
-  
+
   emptyStateCard: {
     backgroundColor: '#fff',
     borderRadius: 16,

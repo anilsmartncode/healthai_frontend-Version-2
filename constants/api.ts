@@ -56,6 +56,7 @@ export const ENDPOINTS = {
 
   // ── AI Assistant 
   aiChatPath: '/api/ai/chat',
+  aiHistoryPath: '/api/ai/history',
   aiSuggestedPromptsPath: '/api/api/ai/suggested-prompts',
   aiMemoryPath: '/api/api/ai/memory',
   aiAskWithReportPath: '/api/api/ai/ask-with-report',
@@ -131,6 +132,10 @@ export const ENDPOINTS = {
   familyNotifications: `${BASE_URL}/api/api/family/notifications`,
   familyNotificationsRead: `${BASE_URL}/api/api/family/notifications/read`,
 
+  // ── Global Notifications 
+  globalNotifications: `${BASE_URL}/api/api/notifications`,
+  globalNotificationsReadAll: `${BASE_URL}/api/api/notifications/read-all`,
+
   // ── Family — Member Sub-screens 
   familyMemberHealthSummary: (id: string) => `${BASE_URL}/api/api/family/member/${id}/health-summary`,
   familyMemberReports: (id: string) => `${BASE_URL}/api/api/family/member/${id}/reports`,
@@ -142,15 +147,7 @@ export const ENDPOINTS = {
   familyMemberEmergencyContact: (id: string, contactId: string) => `${BASE_URL}/api/api/family/member/${id}/emergency/contacts/${contactId}`,
   familyMemberMedicalInfo: (id: string) => `${BASE_URL}/api/api/family/member/${id}/emergency/medical-info`,
 
-  // ── Family — Commute & Activity Tracking
-  familyMemberGeofences: (id: string) => `${BASE_URL}/api/api/family/member/${id}/geofences`,
-  familyMemberGeofenceDelete: (id: string, zoneId: string) => `${BASE_URL}/api/api/family/member/${id}/geofences/${zoneId}`,
-  familyCommuteEvent: `${BASE_URL}/api/api/family/commute/event`,
-  familyMemberCommuteHistory: (id: string) => `${BASE_URL}/api/api/family/member/${id}/commute/history`,
-  familyMemberCommuteStatus: (id: string) => `${BASE_URL}/api/api/family/member/${id}/commute/status`,
-  familyMemberSleep: (id: string) => `${BASE_URL}/api/api/family/member/${id}/sleep`,
-  healthDataSync: `${BASE_URL}/api/api/user/health-data`,
-  familyMemberTrackingPermissions: (id: string) => `${BASE_URL}/api/api/family/member/${id}/tracking-permissions`,
+
 
   // ── Translations
   supportedLanguagesPath: '/api/supported-languages',

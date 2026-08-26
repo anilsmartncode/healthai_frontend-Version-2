@@ -18,9 +18,8 @@ import { LanguageProvider } from "@/context/Languagecontext";
 import { useAuth } from "@/context/AuthContext";
 import { SecurityWrapper } from "@/components/SecurityWrapper";
 
-// Initialize notification handler globally
 import * as Notifications from "expo-notifications";
-import { setupNotificationCategories, scheduleReminderNotification, cancelReminderNotification, defineBackgroundNotificationTask } from "@/utils/notifications";
+import { setupNotificationCategories, scheduleReminderNotification, cancelReminderNotification, defineBackgroundNotificationTask, syncLocalRemindersWithBackend } from "@/utils/notifications";
 import { medicineApiCall } from "@/services/Medicineapiclient";
 import { ENDPOINTS } from "@/constants/api";
 import Purchases, { LOG_LEVEL } from "react-native-purchases";
@@ -28,6 +27,13 @@ import { getRevenueCatKey } from "@/config/purchases";
 
 // Register headless background task to handle 'snooze' and 'take' when app is closed
 defineBackgroundNotificationTask();
+
+// --- SUPPRESS LOGS IN PRODUCTION ---
+if (!__DEV__) {
+  console.log = () => { };
+  console.warn = () => { };
+  console.error = () => { };
+}
 
 // --- GLOBAL NETWORK LATENCY TRACKER ---
 const originalFetch = global.fetch;
@@ -53,7 +59,7 @@ global.fetch = async (...args) => {
   }
 };
 
-  // Share Intent Tracker Component
+// Share Intent Tracker Component
 function ShareIntentListener() {
   const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntent();
   const { ready, token } = useAuth(); // Now safe because it's inside AuthProvider
@@ -99,8 +105,8 @@ export default function RootLayout() {
 
   let isWebLocked = false;
   if (Platform.OS === 'web' && isMounted) {
-    const allowedWebPaths = ['/privacy', '/terms', '/cookies', '/contact', '/support'];
-    const isAllowed = pathname && allowedWebPaths.some(p => 
+    const allowedWebPaths = ['/privacy', '/terms', '/cookies', '/contact', '/support', '/accountanddata'];
+    const isAllowed = pathname && allowedWebPaths.some(p =>
       pathname === p || pathname === `${p}/` || pathname?.startsWith(`${p}?`)
     );
     if (!isAllowed) {
@@ -166,7 +172,8 @@ export default function RootLayout() {
                     <Stack.Screen name="contact" options={{ headerShown: false }} />
                     <Stack.Screen name="cookies" options={{ headerShown: false }} />
                     <Stack.Screen name="support" options={{ headerShown: false }} />
-                    
+                    <Stack.Screen name="accountanddata" options={{ headerShown: false }} />
+
                     <Stack.Screen
                       name="upload"
                       options={{ headerShown: false, presentation: 'transparentModal', animation: 'fade' }}
@@ -293,9 +300,9 @@ export default function RootLayout() {
                       name="family/appointments/book"
                       options={{ headerShown: false }}
                     />
-                    {/* Son-side invite flow — deep link: healthai://family/invite/[code] */}
+                    {/* Son-side invite flow — deep link: healthai://family/join/[code] */}
                     <Stack.Screen
-                      name="family/invite/[code]"
+                      name="family/join/[code]"
                       options={{ headerShown: false }}
                     />
                     <Stack.Screen
@@ -314,10 +321,6 @@ export default function RootLayout() {
                       name="help-support"
                       options={{ headerShown: false }}
                     />
-                    <Stack.Screen
-                      name="rate-app"
-                      options={{ headerShown: false }}
-                    />
                   </Stack>
                   <PaywallModal />
                   {isWebLocked && (
@@ -331,26 +334,32 @@ export default function RootLayout() {
                           HealthcareAI is designed exclusively for mobile devices. Please download our app on iOS or Android to access your health dashboard.
                         </Text>
                       </View>
-                      
+
                       {/* Footer Legal Links */}
                       <View style={{ paddingBottom: 40, flexDirection: 'row', justifyContent: 'center', gap: 20 }}>
-                        <Text 
+                        <Text
                           style={{ color: Colors.primary, fontSize: 13, fontWeight: '600' }}
                           onPress={() => window.location.href = '/privacy'}
                         >
                           Privacy Policy
                         </Text>
-                        <Text 
+                        <Text
                           style={{ color: Colors.primary, fontSize: 13, fontWeight: '600' }}
                           onPress={() => window.location.href = '/terms'}
                         >
                           Terms of Service
                         </Text>
-                        <Text 
+                        <Text
                           style={{ color: Colors.primary, fontSize: 13, fontWeight: '600' }}
                           onPress={() => window.location.href = '/support'}
                         >
                           Support
+                        </Text>
+                        <Text
+                          style={{ color: Colors.primary, fontSize: 13, fontWeight: '600' }}
+                          onPress={() => window.location.href = '/accountanddata'}
+                        >
+                          Account & Data
                         </Text>
                       </View>
                     </View>

@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Linking, Modal, Platform } from 'react-native';
 import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,15 +12,31 @@ export default function PlansScreen() {
   const [isProcessingPremium, setIsProcessingPremium] = useState(false);
   const [isProcessingFamily, setIsProcessingFamily] = useState(false);
 
-  const handlePayment = async (plan: 'PREMIUM' | 'FAMILY') => {
+  // Modal State
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [selectedPlanType, setSelectedPlanType] = useState<'PREMIUM' | 'FAMILY' | null>(null);
+  const [selectedPaymentOption, setSelectedPaymentOption] = useState<'AUTO_RENEW' | 'ONE_TIME'>('AUTO_RENEW');
+
+  const openPaymentModal = (planType: 'PREMIUM' | 'FAMILY') => {
+    setSelectedPlanType(planType);
+    setSelectedPaymentOption('AUTO_RENEW'); // Default
+    setPaymentModalVisible(true);
+  };
+
+  const handlePayment = async () => {
+    if (!selectedPlanType) return;
+    setPaymentModalVisible(false);
+
+    const isOneTime = selectedPaymentOption === 'ONE_TIME';
+    const plan = selectedPlanType;
     try {
       if (plan === 'PREMIUM') {
         setIsProcessingPremium(true);
-        await upgradeToPremium();
+        await upgradeToPremium(isOneTime);
         alert('Payment Successful! Welcome to Premium! 🎉');
       } else {
         setIsProcessingFamily(true);
-        await upgradeToFamily();
+        await upgradeToFamily(isOneTime);
         alert('Payment Successful! Welcome to the Family Plan! 🎉');
       }
     } catch (error: any) {
@@ -88,10 +104,8 @@ export default function PlansScreen() {
           )}
 
           <View style={styles.cardHeader}>
-            <View>
-              <Text style={styles.planName}>Free Plan</Text>
-              <Text style={styles.planSubtitle}>Standard Access</Text>
-            </View>
+            <Text style={styles.planName}>Free Plan</Text>
+            <Text style={styles.planSubtitle}>Standard Access</Text>
             <View style={styles.priceContainer}>
               <Text style={styles.price}>₹0 <Text style={styles.period}>/mo</Text></Text>
             </View>
@@ -125,6 +139,7 @@ export default function PlansScreen() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.planName, { color: '#0F172A' }]}>Premium</Text>
               <Text style={styles.planSubtitle}>Single User</Text>
+              <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2, fontWeight: '500' }}>Pay Once or Auto-Renew Monthly</Text>
               <View style={styles.offerBadge}>
                 <Ionicons name="flame" size={11} color="#EA580C" />
                 <Text style={styles.offerBadgeText}>Limited Period Offer</Text>
@@ -155,7 +170,7 @@ export default function PlansScreen() {
           {activePlan !== 'PREMIUM' ? (
             <Pressable
               style={({ pressed }) => [styles.upgradeBtn, styles.premiumUpgradeBtn, pressed && { opacity: 0.88, transform: [{ scale: 0.99 }] }]}
-              onPress={() => handlePayment('PREMIUM')}
+              onPress={() => openPaymentModal('PREMIUM')}
               disabled={isProcessingPremium || isProcessingFamily}
             >
               {isProcessingPremium ? (
@@ -193,6 +208,7 @@ export default function PlansScreen() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.planName, { color: '#0F172A' }]}>Family Plan</Text>
               <Text style={styles.planSubtitle}>Up to {PLAN_LIMITS.FAMILY.maxFamilyMembers} Members</Text>
+              <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2, fontWeight: '500' }}>Pay Once or Auto-Renew Monthly</Text>
               <View style={[styles.offerBadge, styles.offerBadgeFamily]}>
                 <Ionicons name="flame" size={11} color="#7C3AED" />
                 <Text style={[styles.offerBadgeText, { color: '#7C3AED' }]}>Limited Period Offer</Text>
@@ -224,7 +240,7 @@ export default function PlansScreen() {
           {activePlan !== 'FAMILY' ? (
             <Pressable
               style={({ pressed }) => [styles.upgradeBtn, styles.familyUpgradeBtn, pressed && { opacity: 0.88, transform: [{ scale: 0.99 }] }]}
-              onPress={() => handlePayment('FAMILY')}
+              onPress={() => openPaymentModal('FAMILY')}
               disabled={isProcessingPremium || isProcessingFamily}
             >
               {isProcessingFamily ? (
@@ -264,10 +280,17 @@ export default function PlansScreen() {
           <Text style={styles.restoreBtnText}>Restore Purchases</Text>
         </Pressable>
 
-        {/* ── Legal Links for App Store Compliance ── */}
-        <View style={styles.legalRow}>
-          <Pressable onPress={() => Linking.openURL('https://healthai.smartncode.com/terms')} hitSlop={8}>
-            <Text style={styles.legalText}>Terms of Service</Text>
+        {/* Apple/Google-required subscription disclosure */}
+        <View style={{ backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: 14, borderWidth: 1, borderColor: Colors.border, gap: 6, marginTop: 10 }}>
+          <Text style={{ fontSize: 11, color: Colors.textMuted, lineHeight: 17, textAlign: 'center' }}>
+            A ₹99/month "Premium" or ₹299/month "Family Plan" auto-renewing subscription will be charged to your {Platform.OS === 'ios' ? 'Apple ID' : 'Google Play'} account at confirmation of purchase. Subscription automatically renews unless canceled at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period. You can manage and cancel your subscriptions by going to your account settings in the {Platform.OS === 'ios' ? 'App Store' : 'Google Play Store'} after purchase.
+          </Text>
+        </View>
+
+        {/* Legal Links for App Store Compliance */}
+        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 20, paddingBottom: 20 }}>
+          <Pressable onPress={() => Linking.openURL('https://healthai.smartncode.com/terms')}>
+            <Text style={{ color: Colors.textMuted, fontSize: 13, textDecorationLine: 'underline' }}>Terms of Use (EULA)</Text>
           </Pressable>
           <Text style={styles.legalDot}>•</Text>
           <Pressable onPress={() => Linking.openURL('https://healthai.smartncode.com/privacy')} hitSlop={8}>
@@ -276,6 +299,84 @@ export default function PlansScreen() {
         </View>
 
       </ScrollView>
+
+      {/* Choose Payment Option Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={paymentModalVisible}
+        onRequestClose={() => setPaymentModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Choose Payment Option</Text>
+            </View>
+
+            {/* Option A: Auto-Renew */}
+            <Pressable
+              style={[
+                styles.optionCard,
+                selectedPaymentOption === 'AUTO_RENEW' && styles.optionCardSelected
+              ]}
+              onPress={() => setSelectedPaymentOption('AUTO_RENEW')}
+            >
+              <View style={styles.optionHeader}>
+                <Text style={styles.optionTitle}>Auto-Renewing Subscription</Text>
+                <View style={styles.modalPopularBadge}>
+                  <Text style={styles.modalPopularBadgeText}>Most Popular</Text>
+                </View>
+              </View>
+              <Text style={styles.optionDesc}>Enjoy continuous access to all premium features without interruption.</Text>
+              <View style={styles.optionPriceRow}>
+                <Text style={styles.optionPrice}>
+                  {selectedPlanType === 'FAMILY' ? '₹299' : '₹99'}
+                  <Text style={styles.optionPeriod}>/month</Text>
+                </Text>
+                {selectedPaymentOption === 'AUTO_RENEW' && (
+                  <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
+                )}
+              </View>
+            </Pressable>
+
+            {/* Option B: One-Time Pass */}
+            <Pressable
+              style={[
+                styles.optionCard,
+                selectedPaymentOption === 'ONE_TIME' && styles.optionCardSelected
+              ]}
+              onPress={() => setSelectedPaymentOption('ONE_TIME')}
+            >
+              <View style={styles.optionHeader}>
+                <Text style={styles.optionTitle}>One-Time Pass</Text>
+              </View>
+              <Text style={styles.optionDesc}>Full access for 30 days. No automatic renewal, pay manually next time.</Text>
+              <View style={styles.optionPriceRow}>
+                <Text style={styles.optionPrice}>
+                  {selectedPlanType === 'FAMILY' ? '₹299' : '₹99'}
+                  <Text style={styles.optionPeriod}> for 30 days</Text>
+                </Text>
+                {selectedPaymentOption === 'ONE_TIME' && (
+                  <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
+                )}
+              </View>
+            </Pressable>
+
+            <Text style={styles.modalDisclaimer}>
+              By proceeding, you agree to our Terms of Use & Privacy Policy.
+            </Text>
+
+            <Pressable style={styles.modalSubmitBtn} onPress={handlePayment}>
+              <Text style={styles.modalSubmitText}>Subscribe & Pay</Text>
+            </Pressable>
+
+            <Pressable style={styles.modalCancelBtn} onPress={() => setPaymentModalVisible(false)}>
+              <Text style={styles.modalCancelText}>I'll choose later</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -625,6 +726,112 @@ const styles = StyleSheet.create({
     color: '#15803D',
     fontSize: 9,
     fontWeight: '800',
+  },
+
+  // --- Modal Styles ---
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: Colors.bg,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40, // Account for safe area
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  optionCard: {
+    backgroundColor: Colors.surface,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    borderRadius: Radius.lg,
+    padding: 16,
+    marginBottom: 16,
+  },
+  optionCardSelected: {
+    borderColor: Colors.primary,
+    backgroundColor: '#EFF6FF', // light blue tint
+  },
+  optionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  optionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  modalPopularBadge: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  modalPopularBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  optionDesc: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  optionPriceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  optionPrice: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: Colors.primary,
+  },
+  optionPeriod: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.textMuted,
+  },
+  modalDisclaimer: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  modalSubmitBtn: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 14,
+    borderRadius: Radius.lg,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalSubmitText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  modalCancelBtn: {
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    color: Colors.textMuted,
+    fontSize: 14,
+    fontWeight: '600',
   },
 
   divider: {

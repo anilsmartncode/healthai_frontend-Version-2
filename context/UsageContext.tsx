@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PLAN_LIMITS, DEFAULT_TESTING_PLAN, PlanType } from '../constants/plans';
 import Purchases, { LOG_LEVEL } from 'react-native-purchases';
@@ -36,8 +36,8 @@ interface UsageContextType {
   incrementFamilyMember: () => Promise<void>;
   showPaywall: boolean;
   setShowPaywall: (show: boolean) => void;
-  upgradeToPremium: () => Promise<void>;
-  upgradeToFamily: () => Promise<void>;
+  upgradeToPremium: (isOneTime?: boolean) => Promise<void>;
+  upgradeToFamily: (isOneTime?: boolean) => Promise<void>;
   restorePurchases: () => Promise<boolean>;
 }
 
@@ -56,6 +56,7 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const ensureRevenueCat = async () => {
+    if (Platform.OS === 'web') return;
     const isConfigured = await Purchases.isConfigured();
     if (!isConfigured) {
       Purchases.setLogLevel(LOG_LEVEL.DEBUG);
@@ -97,8 +98,9 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
       
       // Fetch RevenueCat status
       try {
-        await ensureRevenueCat();
-        const customerInfo = await Purchases.getCustomerInfo();
+        if (Platform.OS !== 'web') {
+          await ensureRevenueCat();
+          const customerInfo = await Purchases.getCustomerInfo();
         if (typeof customerInfo.entitlements.active[ENTITLEMENTS.FAMILY] !== "undefined") {
           setActivePlan('FAMILY');
           await AsyncStorage.setItem('@healthai_active_plan', 'FAMILY');
@@ -108,6 +110,7 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
         } else {
           setActivePlan('FREE');
           await AsyncStorage.setItem('@healthai_active_plan', 'FREE');
+        }
         }
       } catch (e) {
         console.warn('RevenueCat sync failed, falling back to cached plan:', e);
@@ -134,7 +137,7 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
     // });
   };
 
-  const upgradeToPremium = async () => {
+  const upgradeToPremium = async (isOneTime: boolean = false) => {
     try {
       await traceAlert('Trace 1/4', 'Connecting to RevenueCat...');
       await ensureRevenueCat();
@@ -143,8 +146,11 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
       const offerings = await Purchases.getOfferings();
       
       if (offerings.current !== null && offerings.current.availablePackages.length !== 0) {
+        const targetIdIos = isOneTime ? STORE_PRODUCTS.premium_1mo.ios : STORE_PRODUCTS.premium.ios;
+        const targetIdAndroid = isOneTime ? STORE_PRODUCTS.premium_1mo.android : STORE_PRODUCTS.premium.android;
+        
         const premiumPackage = offerings.current.availablePackages.find(p => 
-          p.product.identifier === STORE_PRODUCTS.premium.ios || p.product.identifier === STORE_PRODUCTS.premium.android
+          p.product.identifier === targetIdIos || p.product.identifier === targetIdAndroid
         ) || offerings.current.availablePackages[0];
         
         await traceAlert('Trace 3/4', `Found package: ${premiumPackage.product.identifier}.\n\nSending request to App Store. Please authenticate when prompted...`);
@@ -174,7 +180,7 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const upgradeToFamily = async () => {
+  const upgradeToFamily = async (isOneTime: boolean = false) => {
     try {
       await traceAlert('Trace 1/4', 'Connecting to RevenueCat...');
       await ensureRevenueCat();
@@ -183,8 +189,11 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
       const offerings = await Purchases.getOfferings();
       
       if (offerings.current !== null && offerings.current.availablePackages.length !== 0) {
+        const targetIdIos = isOneTime ? STORE_PRODUCTS.family_1mo.ios : STORE_PRODUCTS.family.ios;
+        const targetIdAndroid = isOneTime ? STORE_PRODUCTS.family_1mo.android : STORE_PRODUCTS.family.android;
+        
         const familyPackage = offerings.current.availablePackages.find(p => 
-          p.product.identifier === STORE_PRODUCTS.family.ios || p.product.identifier === STORE_PRODUCTS.family.android
+          p.product.identifier === targetIdIos || p.product.identifier === targetIdAndroid
         ) || offerings.current.availablePackages[1] || offerings.current.availablePackages[0];
         
         await traceAlert('Trace 3/4', `Found package: ${familyPackage.product.identifier}.\n\nSending request to App Store. Please authenticate when prompted...`);
