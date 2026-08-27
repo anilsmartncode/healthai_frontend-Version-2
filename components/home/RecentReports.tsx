@@ -13,13 +13,7 @@ function formatIndianDateTime(isoString: string | undefined | null, fallback: st
     const day = String(d.getDate()).padStart(2, '0');
     const month = d.toLocaleString('en-US', { month: 'short' });
     const year = d.getFullYear();
-    let hours = d.getHours();
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12; 
-    const strTime = `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
-    return `${day} ${month} ${year}, ${strTime}`;
+    return `${day} ${month} ${year}`;
   } catch {
     return fallback;
   }
@@ -65,8 +59,17 @@ function ReportRow({ report }: { report: ReportListItem }) {
     ? report.labName
     : (report.category && report.category !== 'Others' ? report.category : "Report");
 
-  const isJunkTitle = /^\d+$/.test(report.title.replace(/\.\w+$/, '')) || /img_|screenshot|whatsapp/i.test(report.title) || report.title.trim().toLowerCase() === 'unknown';
-  const subText = isJunkTitle ? (report.reportTypeFull || report.category || 'Report') : report.title;
+  // Determine what to show in the badge
+  const hasScore = report.healthScore != null && report.healthScore > 0;
+  const validLabel = report.healthLabel && !['unknown', 'n/a', 'na'].includes(report.healthLabel.trim().toLowerCase());
+  
+  let badgeText = "";
+  if (hasScore) {
+    badgeText = String(report.healthScore);
+  } else if (validLabel) {
+    badgeText = report.healthLabel as string;
+  }
+  const showBadge = badgeText !== "";
 
   return (
     <View style={reportStyles.row}>
@@ -80,20 +83,16 @@ function ReportRow({ report }: { report: ReportListItem }) {
         </Text>
         <View style={reportStyles.metaRow}>
           <Text style={reportStyles.date} numberOfLines={1}>{formatIndianDateTime(report.analyzedAt, report.date)}</Text>
-          <Text style={reportStyles.dotDivider}>•</Text>
-          <Text style={reportStyles.lab} numberOfLines={1}>
-            {subText}
-          </Text>
           <View style={reportStyles.typeBadge}>
             <Text style={reportStyles.typeText}>{report.fileType}</Text>
           </View>
         </View>
       </View>
 
-      {report.healthLabel && !['unknown', 'n/a', 'na'].includes(report.healthLabel.trim().toLowerCase()) && (
+      {showBadge && (
         <View style={[reportStyles.badge, { backgroundColor: statusBg }]}>
           <Text style={[reportStyles.badgeText, { color: statusColor }]}>
-            {report.healthLabel}
+            {badgeText}
           </Text>
         </View>
       )}
@@ -106,17 +105,14 @@ const reportStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: Colors.card,
-    borderRadius: 12,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     width: "100%",
   },
   iconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
     flexShrink: 0,
@@ -124,7 +120,7 @@ const reportStyles = StyleSheet.create({
   info: {
     flex: 1,
     minWidth: 0,
-    gap: 4,
+    gap: 2,
   },
   name: {
     fontSize: 14,
@@ -134,23 +130,13 @@ const reportStyles = StyleSheet.create({
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    gap: 8,
     flexWrap: "wrap",
   },
   date: {
     fontSize: 12,
     color: Colors.textMuted,
     fontWeight: "500",
-  },
-  dotDivider: {
-    fontSize: 12,
-    color: Colors.border,
-  },
-  lab: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    fontWeight: "500",
-    maxWidth: 75,
   },
   typeBadge: {
     backgroundColor: "#F1F5F9",
@@ -164,15 +150,16 @@ const reportStyles = StyleSheet.create({
     color: Colors.textMuted,
   },
   badge: {
-    borderRadius: 8,
-    paddingHorizontal: 8,
+    borderRadius: 12,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     flexShrink: 0,
+    minWidth: 32,
+    alignItems: "center",
   },
   badgeText: {
     fontSize: 11,
     fontWeight: "700",
-    textTransform: "uppercase",
   },
 });
 
@@ -255,17 +242,21 @@ export function RecentReports({ reports }: Props) {
       {reports.length === 0 ? (
         <EmptyReports />
       ) : (
-        <View style={styles.list}>
-          {reports.slice(0, 3).map((r) => (
-            <Pressable
-              key={r.id}
-              onPress={() =>
-                router.push({ pathname: "/report-detail", params: { id: r.id } })
-              }
-              style={({ pressed }) => [styles.pressable, pressed && styles.pressed]}
-            >
-              <ReportRow report={r} />
-            </Pressable>
+        <View style={styles.listContainer}>
+          {reports.slice(0, 3).map((r, index) => (
+            <View key={r.id}>
+              <Pressable
+                onPress={() =>
+                  router.push({ pathname: "/report-detail", params: { id: r.id } })
+                }
+                style={({ pressed }) => [styles.pressable, pressed && styles.pressed]}
+              >
+                <ReportRow report={r} />
+              </Pressable>
+              {index < Math.min(reports.length, 3) - 1 && (
+                <View style={styles.divider} />
+              )}
+            </View>
           ))}
         </View>
       )}
@@ -289,7 +280,19 @@ const styles = StyleSheet.create({
   },
   viewAllBtn: { flexShrink: 0 },
   viewAll: { fontSize: 13, color: Colors.primary, fontWeight: "600" },
-  list: { gap: 10, width: "100%" },
+  listContainer: {
+    backgroundColor: Colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: "hidden",
+    width: "100%",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginHorizontal: 16,
+  },
   pressable: { width: "100%" },
-  pressed: { opacity: 0.8 },
+  pressed: { backgroundColor: "#F8FAFC" },
 });

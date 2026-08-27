@@ -55,10 +55,10 @@ export default function DoctorsListScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-          <Ionicons name="chevron-back" size={24} color="#0F172A" />
+          <Ionicons name="arrow-back" size={22} color="#0F172A" />
         </Pressable>
         <Text style={styles.headerTitle}>Family Doctors</Text>
-        <View style={{ width: 24 }} />
+        <View style={{ width: 32 }} />
       </View>
 
       <FlatList
@@ -99,7 +99,7 @@ export default function DoctorsListScreen() {
                     <Pressable hitSlop={8} onPress={() => router.push(`/doctors/${item.id}` as any)}>
                       <Ionicons name="pencil-outline" size={20} color={Colors.textMuted} />
                     </Pressable>
-                    <Pressable hitSlop={8} onPress={() => handleDelete(item.id, item.name)}>
+                    <Pressable hitSlop={8} onPress={() => handleDelete(String(item.id), item.name)}>
                       <Ionicons name="trash-outline" size={20} color={Colors.danger} />
                     </Pressable>
                   </>
@@ -145,7 +145,10 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F1F5F9',
   },
   backBtn: {
-    width: 24,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 18,

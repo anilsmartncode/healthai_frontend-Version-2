@@ -45,13 +45,14 @@ function formatIndianDateTime(isoString: string | undefined | null, fallback: st
     const day = String(d.getDate()).padStart(2, '0');
     const month = d.toLocaleString('en-US', { month: 'short' });
     const year = d.getFullYear();
-    let hours = d.getHours();
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12; 
-    const strTime = `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
-    return `${day} ${month} ${year}, ${strTime}`;
+    // let hours = d.getHours();
+    // const minutes = String(d.getMinutes()).padStart(2, '0');
+    // const ampm = hours >= 12 ? 'PM' : 'AM';
+    // hours = hours % 12;
+    // hours = hours ? hours : 12; 
+    // const strTime = `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
+    // return `${day} ${month} ${year}, ${strTime}`;
+    return `${day} ${month} ${year}`;
   } catch {
     return fallback;
   }
@@ -59,10 +60,10 @@ function formatIndianDateTime(isoString: string | undefined | null, fallback: st
 
 function statusTag(item: ReportListItem) {
   if (item.status === 'attention') {
-    return { label: 'Active', bg: '#FFEDD5', color: '#C2410C' };
+    return { label: 'Attention', bg: '#FFEDD5', color: '#C2410C' };
   }
   if (item.healthScore >= 80) {
-    return { label: 'Analyzed', bg: '#DCFCE7', color: '#15803D' };
+    return { label: 'Good', bg: '#DCFCE7', color: '#15803D' };
   }
   return { label: 'Reviewed', bg: '#DBEAFE', color: '#1D4ED8' };
 }
@@ -126,8 +127,11 @@ function ReportRow({
           {displayLabName}
         </Text>
         <Text style={styles.reportMeta} numberOfLines={1}>
-          {formatIndianDateTime(item.analyzedAt, item.date)} • {subText}
+          {formatIndianDateTime(item.analyzedAt, item.date)}
         </Text>
+      </View>
+      <View style={[styles.statusPill, { backgroundColor: tag.bg }]}>
+        <Text style={[styles.statusPillText, { color: tag.color }]}>{tag.label}</Text>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <Pressable
@@ -323,7 +327,7 @@ export default function ReportsScreen() {
   const ListHeader = (
     <View style={{ zIndex: 9999, elevation: 9999 }}>
       {/* Top Report Summary Card */}
-      {allReports.length > 0 && (
+      {/* {allReports.length > 0 && (
         <View style={{ marginBottom: 16 }}>
           <HealthScoreCard
             hasReports={true}
@@ -341,63 +345,67 @@ export default function ReportsScreen() {
             }}
           />
         </View>
-      )}
+      )} */}
 
       {/* Upload/Chat Input Bar placed directly below the summary card */}
       <View style={{ marginBottom: 16, zIndex: 9999, elevation: 9999 }}>
         <ChatInputBar />
       </View>
 
-      {/* Recent header */}
-      <View style={styles.recentHeader}>
-        <Text style={styles.sectionTitle}>Your Reports</Text>
-      </View>
+      {allReports.length > 0 && (
+        <>
+          {/* Recent header */}
+          <View style={styles.recentHeader}>
+            <Text style={styles.sectionTitle}>Your Reports</Text>
+          </View>
 
-      {/* Filter Label & Date Filter */}
-      <View style={styles.filterHeaderRow}>
-        <Text style={styles.filterLabel}>Filter by report category:</Text>
-        <Pressable
-          style={styles.dateFilterBtn}
-          onPress={() => setShowDatePicker(true)}
-        >
-          <Ionicons name="calendar-outline" size={14} color={filterDate ? Colors.primary : Colors.textMuted} />
-          <Text style={[styles.dateFilterText, filterDate && { color: Colors.primary, fontWeight: '700' }]}>
-            {filterDate ? filterDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Filter by Date'}
-          </Text>
-          {filterDate && (
-            <Pressable onPress={clearDate} hitSlop={8} style={{ marginLeft: 4 }}>
-              <Ionicons name="close-circle" size={16} color={Colors.primary} />
+          {/* Filter Label & Date Filter */}
+          <View style={styles.filterHeaderRow}>
+            <Text style={styles.filterLabel}>Filter by report category:</Text>
+            <Pressable
+              style={styles.dateFilterBtn}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Ionicons name="calendar-outline" size={14} color={filterDate ? Colors.primary : Colors.textMuted} />
+              <Text style={[styles.dateFilterText, filterDate && { color: Colors.primary, fontWeight: '700' }]}>
+                {filterDate ? filterDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Filter by Date'}
+              </Text>
+              {filterDate && (
+                <Pressable onPress={clearDate} hitSlop={8} style={{ marginLeft: 4 }}>
+                  <Ionicons name="close-circle" size={16} color={Colors.primary} />
+                </Pressable>
+              )}
             </Pressable>
+          </View>
+
+          {showDatePicker && (
+            <DateTimePicker
+              value={filterDate || new Date()}
+              mode="date"
+              display="default"
+              onChange={onDateChange}
+              maximumDate={new Date()}
+            />
           )}
-        </Pressable>
-      </View>
 
-      {showDatePicker && (
-        <DateTimePicker
-          value={filterDate || new Date()}
-          mode="date"
-          display="default"
-          onChange={onDateChange}
-          maximumDate={new Date()}
-        />
+          {/* Tabs */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tabsRow}
+            style={styles.tabsScroll}
+          >
+            {availableFilters.map((f) => (
+              <FilterTab
+                key={f}
+                label={f}
+                active={activeFilter === f}
+                onPress={() => setActiveFilter(f as FilterType)}
+              />
+            ))}
+          </ScrollView>
+        </>
       )}
-
-      {/* Tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabsRow}
-        style={styles.tabsScroll}
-      >
-        {availableFilters.map((f) => (
-          <FilterTab
-            key={f}
-            label={f}
-            active={activeFilter === f}
-            onPress={() => setActiveFilter(f as FilterType)}
-          />
-        ))}
-      </ScrollView>
     </View>
   );
 
@@ -478,6 +486,14 @@ export default function ReportsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Reports</Text>
+          <Text style={styles.headerSub}>Manage and analyze your health reports</Text>
+        </View>
+      </View>
+
       {loading ? (
         <ActivityIndicator style={{ marginTop: 48 }} size="large" color={Colors.primary} />
       ) : (
@@ -490,37 +506,36 @@ export default function ReportsScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={Colors.primary} />
           }
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.headerTitle}>Reports</Text>
-              <Text style={styles.headerSub}>Manage and analyze your health reports</Text>
-            </View>
-          </View>
-
           {/* ListHeader contains Summary, InputBar, and filters */}
           {ListHeader}
 
           {/* List Content */}
           {recent.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="folder-open-outline" size={44} color="#D1D5DB" />
-              <Text style={styles.emptyTitle}>No reports found</Text>
+              <View style={styles.emptyIconWrap}>
+                <Ionicons name="document-text-outline" size={44} color={Colors.primary} />
+              </View>
+              <Text style={styles.emptyTitle}>
+                {allReports.length === 0 ? 'No reports yet' : 'No reports found'}
+              </Text>
               <Text style={styles.emptySub}>
-                {searchQuery
-                  ? 'Try a different search term'
-                  : activeFilter !== 'All'
-                    ? `No ${activeFilter} reports yet`
-                    : 'Upload a report to get started'}
+                {allReports.length === 0 
+                  ? 'Upload your first lab report and get an AI-powered explanation in seconds.'
+                  : searchQuery
+                    ? 'Try a different search term'
+                    : activeFilter !== 'All'
+                      ? `No ${activeFilter} reports yet`
+                      : 'Upload a report to get started'}
               </Text>
             </View>
           ) : (
-            recent.map((item, index) => (
-              <View key={item.id}>
-                <ReportRow item={item} onDelete={deleteReport} />
-                {index < recent.length - 1 && <View style={{ height: 8 }} />}
-              </View>
-            ))
+            <View style={styles.reportsCard}>
+              {recent.map((item, index) => (
+                <View key={item.id} style={index < recent.length - 1 ? styles.reportRowBorder : null}>
+                  <ReportRow item={item} onDelete={deleteReport} />
+                </View>
+              ))}
+            </View>
           )}
 
           {ListFooter}
@@ -540,6 +555,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingTop: 8,
     marginBottom: 14,
+    paddingHorizontal: 16,
   },
   headerTitle: { fontSize: 26, fontWeight: '800', color: Colors.text, letterSpacing: -0.3 },
   headerSub: { marginTop: 2, fontSize: 13, color: Colors.textMuted },
@@ -639,20 +655,29 @@ const styles = StyleSheet.create({
   },
   viewAll: { fontSize: 13, fontWeight: '600', color: Colors.primary, marginBottom: 12 },
 
-  reportRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  reportsCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.border,
-    padding: 8,
+    overflow: 'hidden',
+  },
+  reportRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  reportRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: 'transparent',
   },
   reportIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -676,9 +701,10 @@ const styles = StyleSheet.create({
   },
   scoreCircleText: { fontSize: 11, fontWeight: '800' },
 
-  emptyState: { alignItems: 'center', paddingVertical: 36, gap: 8 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: Colors.text },
-  emptySub: { fontSize: 13, color: Colors.textMuted, textAlign: 'center' },
+  emptyState: { alignItems: 'center', paddingVertical: 64, gap: 12, paddingHorizontal: 32 },
+  emptyIconWrap: { width: 80, height: 80, borderRadius: 24, backgroundColor: '#E1F5EE', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#9FE1CB' },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: Colors.text, textAlign: 'center' },
+  emptySub: { fontSize: 13, color: Colors.textMuted, textAlign: 'center', lineHeight: 20, paddingHorizontal: 8 },
 
   aiBanner: {
     flexDirection: 'row',

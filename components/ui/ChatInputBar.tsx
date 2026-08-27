@@ -189,26 +189,6 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
 
   return (
     <View style={styles.container}>
-      {/* File Pill */}
-      {attachedFile && (
-        <View style={styles.pillContainer}>
-          <View style={styles.pill}>
-            <Ionicons
-              name={attachedFile.mimeType?.includes('pdf') ? 'document-text' : 'image'}
-              size={18}
-              color={Colors.primary}
-            />
-            <View style={styles.pillTextWrap}>
-              <Text style={styles.pillName} numberOfLines={1}>{attachedFile.name}</Text>
-              <Text style={styles.pillMeta}>{formatBytes(attachedFile.size)}</Text>
-            </View>
-            <Pressable onPress={() => setAttachedFile(null)} hitSlop={8} style={styles.pillClose}>
-              <Ionicons name="close-circle" size={20} color={Colors.textMuted} />
-            </Pressable>
-          </View>
-        </View>
-      )}
-
       <View ref={containerRef} style={[styles.inputWrap, { zIndex: showMenu ? 50 : 1 }]}>
 
         {/* Giant invisible backdrop to catch outside taps without a Modal */}
@@ -263,6 +243,7 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
           </View>
         )}
 
+<<<<<<< HEAD
         <Pressable style={styles.innerPlusBtn} onPress={handlePlusPress} hitSlop={8}>
           <Ionicons name="add" size={22} color={Colors.primary} />
         </Pressable>
@@ -295,6 +276,60 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
         >
           <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
         </Pressable>
+=======
+        {/* File Pill inside the input wrap */}
+        {attachedFile && (
+          <View style={styles.pillContainer}>
+            <View style={styles.pill}>
+              <Ionicons
+                name={attachedFile.mimeType?.includes('pdf') ? 'document-text' : 'image'}
+                size={18}
+                color={Colors.primary}
+              />
+              <View style={styles.pillTextWrap}>
+                <Text style={styles.pillName} numberOfLines={1}>{attachedFile.name}</Text>
+                <Text style={styles.pillMeta}>{formatBytes(attachedFile.size)}</Text>
+              </View>
+              <Pressable onPress={() => setAttachedFile(null)} hitSlop={8} style={styles.pillClose}>
+                <Ionicons name="close-circle" size={20} color={Colors.textMuted} />
+              </Pressable>
+            </View>
+          </View>
+        )}
+
+        <View style={styles.inputRow}>
+          <Pressable style={styles.innerPlusBtn} onPress={handlePlusPress} hitSlop={8}>
+            <Ionicons name="add" size={24} color={showMenu ? Colors.primary : Colors.textMuted} />
+          </Pressable>
+
+          <TextInput
+            style={[
+              styles.input,
+              { height: Math.min(Math.max(36, inputHeight), 76) }
+            ]}
+            value={input}
+            onChangeText={setInput}
+            onContentSizeChange={(e) => {
+              const h = e.nativeEvent.contentSize.height;
+              if (h > 0) setInputHeight(h);
+            }}
+            placeholder={context === 'prescription' ? "Upload prescription..." : "Upload & Ask about reports..."}
+            placeholderTextColor={Colors.textMuted}
+            multiline
+            scrollEnabled={inputHeight >= 76}
+            maxLength={1000}
+          />
+
+          <Pressable
+            style={[styles.innerMicBtn, hasInput ? { backgroundColor: Colors.primary } : { backgroundColor: '#F1F5F9' }]}
+            onPress={handleSend}
+            disabled={!hasInput}
+          >
+            <Ionicons name="arrow-up" size={18} color={hasInput ? "#fff" : Colors.textMuted} />
+          </Pressable>
+        </View>
+
+>>>>>>> 35801f13d3126c10020d1b4f88087536d45af131
       </View>
       <Text style={styles.disclaimerText}>HealthAI acts as an assistant, not a doctor.</Text>
 
@@ -308,14 +343,25 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   pillContainer: {
+<<<<<<< HEAD
     paddingHorizontal: 6,
     marginBottom: 8,
+=======
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 4,
+>>>>>>> 35801f13d3126c10020d1b4f88087536d45af131
   },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
+<<<<<<< HEAD
     backgroundColor: '#F8FAFC',
     borderRadius: 14,
+=======
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+>>>>>>> 35801f13d3126c10020d1b4f88087536d45af131
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
@@ -349,6 +395,7 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
   inputWrap: {
+<<<<<<< HEAD
     flexDirection: 'row',
     alignItems: 'flex-end',
     backgroundColor: '#FFFFFF',
@@ -361,6 +408,17 @@ const styles = StyleSheet.create({
     maxHeight: 90,
     shadowColor: '#000',
     shadowOpacity: 0.04,
+=======
+    flexDirection: 'column',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 24,
+    paddingVertical: 6,
+    minHeight: 48,
+    shadowColor: Colors.text,
+    shadowOpacity: 0.03,
+>>>>>>> 35801f13d3126c10020d1b4f88087536d45af131
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 3 },
     elevation: 2,
@@ -373,6 +431,12 @@ const styles = StyleSheet.create({
     fontSize: 14.5,
     color: Colors.text,
     minHeight: 36,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    width: '100%',
+    paddingHorizontal: 8,
   },
   innerPlusBtn: {
     width: 36,

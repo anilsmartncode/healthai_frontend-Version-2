@@ -380,6 +380,29 @@ async function deleteDetail(id: string, phone: string | null): Promise<void> {
   }
 }
 
+async function loadDeletedBlacklist(phone: string | null): Promise<string[]> {
+  try {
+    const key = `healthai_deleted_reports_${phone ? phone.replace(/\D/g, '') : 'guest'}`;
+    const raw = await AsyncStorage.getItem(key);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function addToDeletedBlacklist(id: string, phone: string | null): Promise<void> {
+  try {
+    const key = `healthai_deleted_reports_${phone ? phone.replace(/\D/g, '') : 'guest'}`;
+    const list = await loadDeletedBlacklist(phone);
+    if (!list.includes(id)) {
+      list.push(id);
+      await AsyncStorage.setItem(key, JSON.stringify(list));
+    }
+  } catch (e) {
+    console.warn('[reportsApi] Failed to save to deleted blacklist', e);
+  }
+}
+
 /**
  * Simple, fast, dependency-free string hash (djb2).
  * Used to fingerprint an uploaded file by name + size + lastModified date,
@@ -436,6 +459,8 @@ async function reportsApiCall<T = any>(
       method,
       headers: {
         'Content-Type': 'application/json',
+        'Cache-Control': 'no-store, no-cache',
+        'Pragma': 'no-cache',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       ...(body ? { body } : {}),
@@ -653,7 +678,9 @@ export const reportsApi = {
       const rawList = data?.data?.reports || data?.reports || data;
       const list = Array.isArray(rawList) ? rawList : [];
 
-      return list.map((r: any): ReportListItem => {
+      const blacklist = new Set(await loadDeletedBlacklist(phone));
+
+      return list.filter((r: any) => !blacklist.has(String(r.id ?? r.report_id))).map((r: any): ReportListItem => {
         const idStr = String(r.id ?? r.report_id);
         return {
           id: idStr,
@@ -955,6 +982,7 @@ export const reportsApi = {
       const stored = await loadStoredReports(phone);
       await saveReports(stored.filter(r => r.id !== id), phone);
       await deleteDetail(id, phone);
+      await addToDeletedBlacklist(id, phone);
     }
 
     // 🟢 MOCK

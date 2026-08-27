@@ -14,7 +14,7 @@ import { useLang } from "@/context/Languagecontext";
 
 import { HomeHeader } from "@/components/home/HomeHeader";
 import { HealthScoreCard } from "@/components/home/Healthscorecard";
-import { FamilyHealthCard } from "@/components/home/Familyhealthcard";
+
 import { RecentReports } from "@/components/home/RecentReports";
 import { AskAIButton } from "@/components/ai/AskAIButton";
 import { QuickActions } from "@/components/home/QuickActions";
@@ -189,11 +189,9 @@ export default function Home() {
           hasReports={hasReports}
         />
 
-        <View style={styles.sectionGroup}>
-          <FamilyHealthCard />
-        </View>
 
-        <MyDoctorsWidget />
+
+        {/* <MyDoctorsWidget /> */}
 
         {todayBanner && todayBanner.count > 0 && (
           <View style={styles.sectionGroup}>
@@ -202,7 +200,7 @@ export default function Home() {
           </View>
         )}
 
-        <HealthTipCard />
+        {/* <HealthTipCard /> */}
 
         {hasReports ? <RecentReports reports={reports} /> : <EmptyState />}
       </KeyboardAwareScrollView>
