@@ -516,11 +516,11 @@ export default function ReportsScreen() {
                 <Ionicons name="document-text-outline" size={44} color={Colors.primary} />
               </View>
               <Text style={styles.emptyTitle}>
-                {allReports.length === 0 ? 'Welcome to HealthAI' : 'No reports found'}
+                {allReports.length === 0 ? 'No reports yet' : 'No reports found'}
               </Text>
               <Text style={styles.emptySub}>
                 {allReports.length === 0 
-                  ? 'Upload your first lab report to get your personalized health score and AI insights.'
+                  ? 'Upload your first lab report and get an AI-powered explanation in seconds.'
                   : searchQuery
                     ? 'Try a different search term'
                     : activeFilter !== 'All'
@@ -669,15 +669,15 @@ const styles = StyleSheet.create({
   reportRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 12,
+    gap: 10,
+    paddingVertical: 10,
     paddingHorizontal: 12,
     backgroundColor: 'transparent',
   },
   reportIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
