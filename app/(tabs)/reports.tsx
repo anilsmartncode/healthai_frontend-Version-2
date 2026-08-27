@@ -45,13 +45,14 @@ function formatIndianDateTime(isoString: string | undefined | null, fallback: st
     const day = String(d.getDate()).padStart(2, '0');
     const month = d.toLocaleString('en-US', { month: 'short' });
     const year = d.getFullYear();
-    let hours = d.getHours();
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12; 
-    const strTime = `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
-    return `${day} ${month} ${year}, ${strTime}`;
+    // let hours = d.getHours();
+    // const minutes = String(d.getMinutes()).padStart(2, '0');
+    // const ampm = hours >= 12 ? 'PM' : 'AM';
+    // hours = hours % 12;
+    // hours = hours ? hours : 12; 
+    // const strTime = `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
+    // return `${day} ${month} ${year}, ${strTime}`;
+    return `${day} ${month} ${year}`;
   } catch {
     return fallback;
   }
@@ -126,7 +127,7 @@ function ReportRow({
           {displayLabName}
         </Text>
         <Text style={styles.reportMeta} numberOfLines={1}>
-          {formatIndianDateTime(item.analyzedAt, item.date)} • {subText}
+          {formatIndianDateTime(item.analyzedAt, item.date)}
         </Text>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -323,7 +324,7 @@ export default function ReportsScreen() {
   const ListHeader = (
     <View style={{ zIndex: 9999, elevation: 9999 }}>
       {/* Top Report Summary Card */}
-      {allReports.length > 0 && (
+      {/* {allReports.length > 0 && (
         <View style={{ marginBottom: 16 }}>
           <HealthScoreCard
             hasReports={true}
@@ -341,7 +342,7 @@ export default function ReportsScreen() {
             }}
           />
         </View>
-      )}
+      )} */}
 
       {/* Upload/Chat Input Bar placed directly below the summary card */}
       <View style={{ marginBottom: 16, zIndex: 9999, elevation: 9999 }}>
@@ -478,6 +479,14 @@ export default function ReportsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Reports</Text>
+          <Text style={styles.headerSub}>Manage and analyze your health reports</Text>
+        </View>
+      </View>
+
       {loading ? (
         <ActivityIndicator style={{ marginTop: 48 }} size="large" color={Colors.primary} />
       ) : (
@@ -490,14 +499,6 @@ export default function ReportsScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={Colors.primary} />
           }
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.headerTitle}>Reports</Text>
-              <Text style={styles.headerSub}>Manage and analyze your health reports</Text>
-            </View>
-          </View>
-
           {/* ListHeader contains Summary, InputBar, and filters */}
           {ListHeader}
 
@@ -540,6 +541,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingTop: 8,
     marginBottom: 14,
+    paddingHorizontal: 16,
   },
   headerTitle: { fontSize: 26, fontWeight: '800', color: Colors.text, letterSpacing: -0.3 },
   headerSub: { marginTop: 2, fontSize: 13, color: Colors.textMuted },
