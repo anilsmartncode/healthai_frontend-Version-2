@@ -60,10 +60,10 @@ function formatIndianDateTime(isoString: string | undefined | null, fallback: st
 
 function statusTag(item: ReportListItem) {
   if (item.status === 'attention') {
-    return { label: 'Active', bg: '#FFEDD5', color: '#C2410C' };
+    return { label: 'Attention', bg: '#FFEDD5', color: '#C2410C' };
   }
   if (item.healthScore >= 80) {
-    return { label: 'Analyzed', bg: '#DCFCE7', color: '#15803D' };
+    return { label: 'Good', bg: '#DCFCE7', color: '#15803D' };
   }
   return { label: 'Reviewed', bg: '#DBEAFE', color: '#1D4ED8' };
 }
@@ -129,6 +129,9 @@ function ReportRow({
         <Text style={styles.reportMeta} numberOfLines={1}>
           {formatIndianDateTime(item.analyzedAt, item.date)}
         </Text>
+      </View>
+      <View style={[styles.statusPill, { backgroundColor: tag.bg }]}>
+        <Text style={[styles.statusPillText, { color: tag.color }]}>{tag.label}</Text>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <Pressable
@@ -349,56 +352,60 @@ export default function ReportsScreen() {
         <ChatInputBar />
       </View>
 
-      {/* Recent header */}
-      <View style={styles.recentHeader}>
-        <Text style={styles.sectionTitle}>Your Reports</Text>
-      </View>
+      {allReports.length > 0 && (
+        <>
+          {/* Recent header */}
+          <View style={styles.recentHeader}>
+            <Text style={styles.sectionTitle}>Your Reports</Text>
+          </View>
 
-      {/* Filter Label & Date Filter */}
-      <View style={styles.filterHeaderRow}>
-        <Text style={styles.filterLabel}>Filter by report category:</Text>
-        <Pressable
-          style={styles.dateFilterBtn}
-          onPress={() => setShowDatePicker(true)}
-        >
-          <Ionicons name="calendar-outline" size={14} color={filterDate ? Colors.primary : Colors.textMuted} />
-          <Text style={[styles.dateFilterText, filterDate && { color: Colors.primary, fontWeight: '700' }]}>
-            {filterDate ? filterDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Filter by Date'}
-          </Text>
-          {filterDate && (
-            <Pressable onPress={clearDate} hitSlop={8} style={{ marginLeft: 4 }}>
-              <Ionicons name="close-circle" size={16} color={Colors.primary} />
+          {/* Filter Label & Date Filter */}
+          <View style={styles.filterHeaderRow}>
+            <Text style={styles.filterLabel}>Filter by report category:</Text>
+            <Pressable
+              style={styles.dateFilterBtn}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Ionicons name="calendar-outline" size={14} color={filterDate ? Colors.primary : Colors.textMuted} />
+              <Text style={[styles.dateFilterText, filterDate && { color: Colors.primary, fontWeight: '700' }]}>
+                {filterDate ? filterDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Filter by Date'}
+              </Text>
+              {filterDate && (
+                <Pressable onPress={clearDate} hitSlop={8} style={{ marginLeft: 4 }}>
+                  <Ionicons name="close-circle" size={16} color={Colors.primary} />
+                </Pressable>
+              )}
             </Pressable>
+          </View>
+
+          {showDatePicker && (
+            <DateTimePicker
+              value={filterDate || new Date()}
+              mode="date"
+              display="default"
+              onChange={onDateChange}
+              maximumDate={new Date()}
+            />
           )}
-        </Pressable>
-      </View>
 
-      {showDatePicker && (
-        <DateTimePicker
-          value={filterDate || new Date()}
-          mode="date"
-          display="default"
-          onChange={onDateChange}
-          maximumDate={new Date()}
-        />
+          {/* Tabs */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tabsRow}
+            style={styles.tabsScroll}
+          >
+            {availableFilters.map((f) => (
+              <FilterTab
+                key={f}
+                label={f}
+                active={activeFilter === f}
+                onPress={() => setActiveFilter(f as FilterType)}
+              />
+            ))}
+          </ScrollView>
+        </>
       )}
-
-      {/* Tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabsRow}
-        style={styles.tabsScroll}
-      >
-        {availableFilters.map((f) => (
-          <FilterTab
-            key={f}
-            label={f}
-            active={activeFilter === f}
-            onPress={() => setActiveFilter(f as FilterType)}
-          />
-        ))}
-      </ScrollView>
     </View>
   );
 
@@ -505,23 +512,30 @@ export default function ReportsScreen() {
           {/* List Content */}
           {recent.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="folder-open-outline" size={44} color="#D1D5DB" />
-              <Text style={styles.emptyTitle}>No reports found</Text>
+              <View style={styles.emptyIconWrap}>
+                <Ionicons name="document-text-outline" size={44} color={Colors.primary} />
+              </View>
+              <Text style={styles.emptyTitle}>
+                {allReports.length === 0 ? 'Welcome to HealthAI' : 'No reports found'}
+              </Text>
               <Text style={styles.emptySub}>
-                {searchQuery
-                  ? 'Try a different search term'
-                  : activeFilter !== 'All'
-                    ? `No ${activeFilter} reports yet`
-                    : 'Upload a report to get started'}
+                {allReports.length === 0 
+                  ? 'Upload your first lab report to get your personalized health score and AI insights.'
+                  : searchQuery
+                    ? 'Try a different search term'
+                    : activeFilter !== 'All'
+                      ? `No ${activeFilter} reports yet`
+                      : 'Upload a report to get started'}
               </Text>
             </View>
           ) : (
-            recent.map((item, index) => (
-              <View key={item.id}>
-                <ReportRow item={item} onDelete={deleteReport} />
-                {index < recent.length - 1 && <View style={{ height: 8 }} />}
-              </View>
-            ))
+            <View style={styles.reportsCard}>
+              {recent.map((item, index) => (
+                <View key={item.id} style={index < recent.length - 1 ? styles.reportRowBorder : null}>
+                  <ReportRow item={item} onDelete={deleteReport} />
+                </View>
+              ))}
+            </View>
           )}
 
           {ListFooter}
@@ -641,15 +655,24 @@ const styles = StyleSheet.create({
   },
   viewAll: { fontSize: 13, fontWeight: '600', color: Colors.primary, marginBottom: 12 },
 
-  reportRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  reportsCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.border,
-    padding: 8,
+    overflow: 'hidden',
+  },
+  reportRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  reportRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: 'transparent',
   },
   reportIcon: {
     width: 34,
@@ -678,9 +701,10 @@ const styles = StyleSheet.create({
   },
   scoreCircleText: { fontSize: 11, fontWeight: '800' },
 
-  emptyState: { alignItems: 'center', paddingVertical: 36, gap: 8 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: Colors.text },
-  emptySub: { fontSize: 13, color: Colors.textMuted, textAlign: 'center' },
+  emptyState: { alignItems: 'center', paddingVertical: 64, gap: 12, paddingHorizontal: 32 },
+  emptyIconWrap: { width: 80, height: 80, borderRadius: 24, backgroundColor: '#E1F5EE', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#9FE1CB' },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: Colors.text, textAlign: 'center' },
+  emptySub: { fontSize: 13, color: Colors.textMuted, textAlign: 'center', lineHeight: 20, paddingHorizontal: 8 },
 
   aiBanner: {
     flexDirection: 'row',
