@@ -8,9 +8,9 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Colors, Radius } from '@/constants/Colors';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -19,10 +19,25 @@ import {
   type AnalyzeResult,
 } from '@/services/reportsApi';
 import type { ApiPrescription, ApiPrescriptionMedicine } from '@/types/Report/reportype';
+import {
+  parsePrescriptionMedicineForReminder,
+  batchCreatePrescriptionReminders,
+  isMedicineReminderActive,
+} from '@/utils/prescriptionReminderHelper';
+import { getAllReminders, type Reminder } from '@/services/medicineTabApi';
 
 // ─── Component: Expandable Medicine Card ───
-function MedicineCard({ med }: { med: ApiPrescriptionMedicine }) {
+function MedicineCard({
+  med,
+  existingReminders,
+  onSetReminder,
+}: {
+  med: ApiPrescriptionMedicine;
+  existingReminders: Reminder[];
+  onSetReminder: (med: ApiPrescriptionMedicine) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
+  const status = isMedicineReminderActive(med.name, existingReminders);
 
   return (
     <Pressable
@@ -46,15 +61,41 @@ function MedicineCard({ med }: { med: ApiPrescriptionMedicine }) {
         />
       </View>
 
-      <View style={styles.medInstructionsRow}>
-        <View style={styles.badge}>
-          <Ionicons name="time-outline" size={12} color={Colors.primary} />
-          <Text style={styles.badgeText}>{med.frequency}</Text>
-        </View>
-        <View style={styles.badge}>
-          <Ionicons name="calendar-outline" size={12} color={Colors.primary} />
-          <Text style={styles.badgeText}>{med.duration}</Text>
-        </View>
+      {/* ── All 3 in a row: Frequency/Timing, Duration, and Set Reminder ── */}
+      <View style={styles.medChipsRow}>
+        {med.frequency ? (
+          <View style={styles.badge}>
+            <Ionicons name="time-outline" size={12} color={Colors.primary} />
+            <Text style={styles.badgeText}>{med.frequency}</Text>
+          </View>
+        ) : null}
+
+        {med.duration ? (
+          <View style={styles.badge}>
+            <Ionicons name="calendar-outline" size={12} color={Colors.primary} />
+            <Text style={styles.badgeText}>{med.duration}</Text>
+          </View>
+        ) : null}
+
+        {status.active ? (
+          <View style={styles.reminderActiveBadge}>
+            <Ionicons name="checkmark-circle" size={13} color="#16A34A" />
+            <Text style={styles.reminderActiveText}>
+              {status.times.length > 0 ? `Set (${status.times[0]})` : 'Reminder Set'}
+            </Text>
+          </View>
+        ) : (
+          <Pressable
+            style={({ pressed }) => [styles.setReminderBtn, pressed && { opacity: 0.85 }]}
+            onPress={(e) => {
+              e.stopPropagation();
+              onSetReminder(med);
+            }}
+          >
+            <Ionicons name="notifications-outline" size={12} color={Colors.primary} />
+            <Text style={styles.setReminderBtnText}>Set Reminder</Text>
+          </Pressable>
+        )}
       </View>
 
       {expanded && (
@@ -111,6 +152,17 @@ export default function PrescriptionDetailScreen() {
   const { phone } = useAuth();
   const [report, setReport] = useState<(ReportListItem & Partial<AnalyzeResult>) | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [batchLoading, setBatchLoading] = useState(false);
+
+  const fetchReminders = useCallback(async () => {
+    try {
+      const list = await getAllReminders();
+      setReminders(list);
+    } catch (e) {
+      console.warn('[PrescriptionDetail] Error fetching reminders', e);
+    }
+  }, []);
 
   useEffect(() => {
     reportsApi.getById(id ?? '', phone).then((r) => {
@@ -118,6 +170,59 @@ export default function PrescriptionDetailScreen() {
       setLoading(false);
     });
   }, [id, phone]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchReminders();
+    }, [fetchReminders])
+  );
+
+  const handleSetIndividualReminder = (med: ApiPrescriptionMedicine) => {
+    const parsed = parsePrescriptionMedicineForReminder(med);
+    router.push({
+      pathname: '/medicines/reminders/new',
+      params: {
+        medicineId: `rx_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        medicineName: parsed.medicineName,
+        dosage: parsed.dosage,
+        frequency: parsed.frequency,
+        whenToTake: parsed.whenToTake,
+        time: parsed.times[0] || '08:00 AM',
+        totalCount: String(parsed.totalCount),
+      },
+    });
+  };
+
+  const handleBatchAddReminders = async () => {
+    if (!report?.prescription?.medicines || report.prescription.medicines.length === 0) return;
+    const meds = report.prescription.medicines;
+
+    // Filter to medicines that are not already active
+    const unadded = meds.filter((m) => !isMedicineReminderActive(m.name, reminders).active);
+    const targetMedicines = unadded.length > 0 ? unadded : meds;
+
+    setBatchLoading(true);
+    try {
+      const { successCount } = await batchCreatePrescriptionReminders(targetMedicines);
+      await fetchReminders();
+      if (successCount > 0) {
+        Alert.alert(
+          'Reminders Scheduled!',
+          `Successfully scheduled reminders for ${successCount} prescription medicine dose${successCount > 1 ? 's' : ''}.`,
+          [
+            { text: 'View Reminders', onPress: () => router.push('/medicines/reminders') },
+            { text: 'OK', style: 'cancel' },
+          ]
+        );
+      } else {
+        Alert.alert('Notice', 'Could not schedule reminders. Please try again.');
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Failed to schedule reminders.');
+    } finally {
+      setBatchLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -236,9 +341,43 @@ export default function PrescriptionDetailScreen() {
         {/* ── Medicines ── */}
         {p.medicines && p.medicines.length > 0 && (
           <View style={styles.sectionWrap}>
-            <Text style={styles.sectionTitle}>Prescribed Medicines</Text>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>Prescribed Medicines</Text>
+
+              {p.medicines.every((m) => isMedicineReminderActive(m.name, reminders).active) ? (
+                <View style={styles.allScheduledHeaderBadge}>
+                  <Ionicons name="checkmark-circle" size={13} color="#16A34A" />
+                  <Text style={styles.allScheduledHeaderText}>All Reminders Set</Text>
+                </View>
+              ) : (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.headerAddAllBtn,
+                    pressed && { opacity: 0.8 },
+                    batchLoading && { opacity: 0.6 },
+                  ]}
+                  disabled={batchLoading}
+                  onPress={handleBatchAddReminders}
+                >
+                  {batchLoading ? (
+                    <ActivityIndicator size="small" color={Colors.primary} />
+                  ) : (
+                    <>
+                      <Ionicons name="notifications-outline" size={13} color={Colors.primary} />
+                      <Text style={styles.headerAddAllBtnText}>+ Add All Reminders</Text>
+                    </>
+                  )}
+                </Pressable>
+              )}
+            </View>
+
             {p.medicines.map((m, idx) => (
-              <MedicineCard key={idx} med={m} />
+              <MedicineCard
+                key={idx}
+                med={m}
+                existingReminders={reminders}
+                onSetReminder={handleSetIndividualReminder}
+              />
             ))}
           </View>
         )}
@@ -374,7 +513,51 @@ const styles = StyleSheet.create({
   emergencyText: { color: '#fff', flex: 1, fontSize: 13, fontWeight: '600', lineHeight: 18 },
 
   sectionWrap: { gap: 12 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: Colors.text, marginLeft: 4, marginTop: 8 },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    marginTop: 6,
+    marginBottom: 2,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  headerAddAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  headerAddAllBtnText: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  allScheduledHeaderBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  allScheduledHeaderText: {
+    color: '#16A34A',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   
   medCard: {
     backgroundColor: '#fff',
@@ -400,22 +583,58 @@ const styles = StyleSheet.create({
   medName: { fontSize: 16, fontWeight: '700', color: Colors.text },
   medSub: { fontSize: 13, color: Colors.textMuted, marginTop: 2 },
   
-  medInstructionsRow: {
+  medChipsRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 8,
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingBottom: 14,
   },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1,
+    borderColor: '#CCFBF1',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 7,
   },
   badgeText: { fontSize: 12, fontWeight: '600', color: Colors.primary },
+  setReminderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 7,
+  },
+  setReminderBtnText: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  reminderActiveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 7,
+  },
+  reminderActiveText: {
+    color: '#16A34A',
+    fontSize: 11,
+    fontWeight: '600',
+  },
   
   medExpandedContent: {
     padding: 16,

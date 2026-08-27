@@ -14,6 +14,7 @@ import { router, usePathname, useGlobalSearchParams } from "expo-router";
 import { useShareIntent } from "expo-share-intent";
 import { Colors, Radius } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
+import { CountryProvider, currentAppCountryCode } from "@/context/CountryContext";
 import { LanguageProvider } from "@/context/Languagecontext";
 import { useAuth } from "@/context/AuthContext";
 import { SecurityWrapper } from "@/components/SecurityWrapper";
@@ -41,6 +42,16 @@ global.fetch = async (...args) => {
   const startMs = Date.now();
   const url = typeof args[0] === 'string' ? args[0] : (args[0] as Request).url;
   const method = (args[1]?.method) || (typeof args[0] !== 'string' ? (args[0] as Request).method : 'GET');
+
+  // Automatically attach x-country-code to backend API requests
+  if (url && typeof url === 'string' && (url.includes('smartncode.com') || url.includes('/api'))) {
+    const init = args[1] || {};
+    init.headers = {
+      ...(init.headers || {}),
+      'x-country-code': currentAppCountryCode,
+    };
+    args[1] = init;
+  }
 
   try {
     const res = await originalFetch(...args);
@@ -154,7 +165,8 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <LanguageProvider>
+        <CountryProvider>
+          <LanguageProvider>
           <UsageProvider>
             <AuthProvider>
               <ShareIntentListener />
@@ -369,7 +381,8 @@ export default function RootLayout() {
             </AuthProvider>
           </UsageProvider>
         </LanguageProvider>
-      </SafeAreaProvider>
+      </CountryProvider>
+    </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

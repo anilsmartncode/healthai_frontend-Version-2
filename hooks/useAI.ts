@@ -236,6 +236,7 @@ export function useAI(initialPrefill?: string, prefillContext?: string, openSess
     loading,
     suggestions,
     sessionId,
+    alert,
     needsConsent,
     send,
     clearConversation,

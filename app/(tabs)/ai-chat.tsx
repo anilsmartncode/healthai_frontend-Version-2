@@ -20,22 +20,19 @@ import type { ChatMessage } from '@/types';
 import { api } from '@/services/api';
 import { ENDPOINTS } from '@/constants/api';
 import { LanguageSelectModal } from '@/components/ui/LanguageSelectModal';
-<<<<<<< HEAD
 import * as Clipboard from 'expo-clipboard';
-=======
 import AIDataConsentModal from '@/components/ai/AIDataConsentModal';
->>>>>>> 3b6f39ecaf14c4ca645b90d551af04861d6eb50d
 
 const C = {
-  primary:   '#2563EB',
+  primary: '#2563EB',
   primaryBg: '#EFF6FF',
-  text:      '#0F172A',
+  text: '#0F172A',
   textMuted: '#64748B',
-  border:    '#E2E8F0',
-  bg:        '#FFFFFF',
-  surface:   '#F8FAFC',
-  success:   '#16A34A',
-  chatBg:    '#F0F4F8',
+  border: '#E2E8F0',
+  bg: '#FFFFFF',
+  surface: '#F8FAFC',
+  success: '#16A34A',
+  chatBg: '#F0F4F8',
 };
 
 // ── Avatar helper ─────────────────────────────────────────────────────────────
@@ -139,8 +136,8 @@ function ChatBubble({ message }: { message: ChatMessage }) {
                       ? '#A7F3D0'
                       : 'rgba(255,255,255,0.85)'
                     : copied
-                    ? C.success
-                    : C.textMuted
+                      ? C.success
+                      : C.textMuted
                 }
               />
               <Text
@@ -152,8 +149,8 @@ function ChatBubble({ message }: { message: ChatMessage }) {
                         ? '#A7F3D0'
                         : 'rgba(255,255,255,0.85)'
                       : copied
-                      ? C.success
-                      : C.textMuted,
+                        ? C.success
+                        : C.textMuted,
                   },
                 ]}
               >
@@ -355,7 +352,7 @@ function SymptomChips({ onSelect }: { onSelect: (s: string) => void }) {
 }
 
 const chipStyles = StyleSheet.create({
-  wrap:      { marginBottom: 8, gap: 10 },
+  wrap: { marginBottom: 8, gap: 10 },
   bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, maxWidth: '86%' },
   bubble: {
     flex: 1, backgroundColor: C.bg,
@@ -363,15 +360,15 @@ const chipStyles = StyleSheet.create({
     borderWidth: 1, borderColor: C.border,
     padding: 12,
   },
-  question:       { fontSize: 14, fontWeight: '700', color: C.text, lineHeight: 20 },
-  chips:          { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingLeft: 42 },
+  question: { fontSize: 14, fontWeight: '700', color: C.text, lineHeight: 20 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingLeft: 42 },
   chip: {
     borderWidth: 1.5, borderColor: '#CBD5E1',
     borderRadius: 999, paddingHorizontal: 16, paddingVertical: 8,
     backgroundColor: C.bg,
   },
-  chipActive:     { borderColor: C.primary, backgroundColor: '#EFF6FF' },
-  chipText:       { fontSize: 13, color: C.text, fontWeight: '500' },
+  chipActive: { borderColor: C.primary, backgroundColor: '#EFF6FF' },
+  chipText: { fontSize: 13, color: C.text, fontWeight: '500' },
   chipTextActive: { color: C.primary, fontWeight: '700' },
 });
 
@@ -386,9 +383,9 @@ const CONDITION_TIPS = [
 ];
 
 const HELP_ACTIONS: { icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
-  { icon: 'calendar-outline',      label: 'Book Doctor Appointment' },
-  { icon: 'medkit-outline',        label: 'Order Recommended Medicines' },
-  { icon: 'location-outline',      label: 'Find Nearby Clinics' },
+  { icon: 'calendar-outline', label: 'Book Doctor Appointment' },
+  { icon: 'medkit-outline', label: 'Order Recommended Medicines' },
+  { icon: 'location-outline', label: 'Find Nearby Clinics' },
   { icon: 'document-text-outline', label: 'Upload Reports' },
 ];
 
@@ -471,7 +468,7 @@ function ConditionCard() {
 }
 
 const condStyles = StyleSheet.create({
-  outerRow:   { flexDirection: 'row', alignItems: 'flex-start', gap: 8, maxWidth: '97%', marginBottom: 8 },
+  outerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, maxWidth: '97%', marginBottom: 8 },
   card: {
     flex: 1, backgroundColor: C.bg,
     borderRadius: 18, borderBottomLeftRadius: 4,
@@ -480,7 +477,7 @@ const condStyles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
-  intro:     { fontSize: 14, color: C.text, lineHeight: 20 },
+  intro: { fontSize: 14, color: C.text, lineHeight: 20 },
   introTime: { fontSize: 10, color: C.textMuted, alignSelf: 'flex-end', marginTop: -6 },
 
   conditionBox: {
@@ -497,19 +494,19 @@ const condStyles = StyleSheet.create({
     backgroundColor: '#DBEAFE', alignItems: 'center', justifyContent: 'center',
   },
   conditionName: { fontSize: 18, fontWeight: '800', color: C.text },
-  conditionSub:  { fontSize: 12, color: C.textMuted, marginTop: 1 },
+  conditionSub: { fontSize: 12, color: C.textMuted, marginTop: 1 },
   conditionDesc: { fontSize: 13, color: C.text, lineHeight: 19 },
 
   sectionTitle: { fontSize: 13, fontWeight: '700', color: C.text },
-  tipRow:       { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  tipText:      { fontSize: 13, color: C.text, flex: 1 },
+  tipRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  tipText: { fontSize: 13, color: C.text, flex: 1 },
 
   doctorBox: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: '#F0F9FF', borderRadius: 12,
     borderWidth: 1, borderColor: '#BAE6FD', padding: 12,
   },
-  doctorText:        { flex: 1, fontSize: 12, color: C.text, lineHeight: 18 },
+  doctorText: { flex: 1, fontSize: 12, color: C.text, lineHeight: 18 },
   doctorAvatarCircle: {
     width: 38, height: 38, borderRadius: 19,
     backgroundColor: '#DBEAFE',
@@ -549,12 +546,19 @@ export default function AIChatScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showSymptomChips, setShowSymptomChips] = useState(false);
   const [inputText, setInputText] = useState('');
+  const [inputHeight, setInputHeight] = useState(36);
 
   const {
     messages, input, setInput, loading,
     suggestions, alert, send, clearConversation, dismissAlert,
     needsConsent, retryAfterConsent,
   } = useAI(prefill, context, openSessionId, reportId);
+
+  useEffect(() => {
+    if (!input || input.trim().length === 0) {
+      setInputHeight(36);
+    }
+  }, [input]);
 
   const { canSendAiChat, incrementAiChat, setShowPaywall } = useUsage();
 
@@ -646,7 +650,7 @@ export default function AIChatScreen() {
       )}
 
       {/* Alert banner removed */}
-      
+
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -672,16 +676,16 @@ export default function AIChatScreen() {
 
         {/* Autocomplete Suggestions */}
         {filteredSuggestions.length > 0 && (
-          <ScrollView 
-            horizontal 
+          <ScrollView
+            horizontal
             showsHorizontalScrollIndicator={false}
             style={styles.suggestionsContainer}
             contentContainerStyle={styles.suggestionsContent}
             keyboardShouldPersistTaps="always"
           >
             {filteredSuggestions.map(s => (
-              <Pressable 
-                key={s} 
+              <Pressable
+                key={s}
                 style={({ pressed }) => [styles.suggestionChip, pressed && { opacity: 0.7 }]}
                 onPress={() => setInput(s)}
               >
@@ -698,7 +702,7 @@ export default function AIChatScreen() {
             <Pressable style={styles.innerPlusBtn}>
               <Ionicons name="add" size={24} color={C.textMuted} />
             </Pressable>
-            
+
             <TextInput
               style={[
                 styles.input,
@@ -717,8 +721,8 @@ export default function AIChatScreen() {
               maxLength={1000}
             />
 
-            <Pressable 
-              style={[styles.innerMicBtn, input.trim() ? { backgroundColor: C.primary } : { backgroundColor: '#F1F5F9' }]} 
+            <Pressable
+              style={[styles.innerMicBtn, input.trim() ? { backgroundColor: C.primary } : { backgroundColor: '#F1F5F9' }]}
               onPress={handleSend}
             >
               {input.trim()
@@ -750,12 +754,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderColor: C.border,
     backgroundColor: C.bg,
   },
-  headerLeft:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  backBtn:     { marginRight: 2 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  backBtn: { marginRight: 2 },
   headerTitle: { fontSize: 16, fontWeight: '800', color: C.text },
-  onlineRow:   { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 },
-  onlineDot:   { width: 7, height: 7, borderRadius: 3.5, backgroundColor: C.success },
-  onlineText:  { fontSize: 11, color: C.success, fontWeight: '600' },
+  onlineRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 },
+  onlineDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: C.success },
+  onlineText: { fontSize: 11, color: C.success, fontWeight: '600' },
 
   menuBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10 },
   menu: {
@@ -766,8 +770,8 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 10, shadowOffset: { width: 0, height: 4 },
     elevation: 8,
   },
-  menuItem:    { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 14 },
-  menuText:    { fontSize: 14, fontWeight: '500', color: C.text },
+  menuItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 14 },
+  menuText: { fontSize: 14, fontWeight: '500', color: C.text },
   menuDivider: { height: 1, backgroundColor: C.border },
 
   list: { padding: 16, gap: 2, paddingBottom: 10 },
@@ -784,10 +788,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     lineHeight: 14,
   },
-  inputWrap: { 
+  inputWrap: {
     flexDirection: 'row', alignItems: 'flex-end',
     backgroundColor: '#FFFFFF',
-    borderWidth: 1.5, 
+    borderWidth: 1.5,
     borderColor: '#E2E8F0',
     borderRadius: 24,
     paddingHorizontal: 8,

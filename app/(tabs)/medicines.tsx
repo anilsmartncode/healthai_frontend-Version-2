@@ -302,6 +302,7 @@ function PrescriptionRow({
 export default function Medicines() {
   const [searchQ, setSearchQ] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const { unreadCount } = useNotifications();
 
   const {
@@ -413,20 +414,103 @@ export default function Medicines() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { zIndex: 100 }]}>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>Medicines</Text>
           <Text style={styles.subtitle}>Manage your medicines and reminders</Text>
         </View>
-        <Pressable style={styles.iconBtn} onPress={() => router.push('/notifications')} hitSlop={8}>
-          <Ionicons name="notifications-outline" size={20} color={Colors.text} />
-          {unreadCount > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{unreadCount}</Text>
-            </View>
-          )}
+
+        <Pressable
+          style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.75, transform: [{ scale: 0.95 }] }]}
+          onPress={() => setShowMenu((prev) => !prev)}
+          hitSlop={8}
+        >
+          <Ionicons name="ellipsis-vertical" size={20} color={Colors.text} />
+          {unreadCount > 0 && <View style={styles.smallDotBadge} />}
         </Pressable>
 
+        {/* ── 3-Dots Dropdown Menu ── */}
+        {showMenu && (
+          <>
+            <Pressable
+              style={styles.menuBackdrop}
+              onPress={() => setShowMenu(false)}
+            />
+            <View style={styles.dropdownMenu}>
+              <Pressable
+                style={styles.dropdownItem}
+                onPress={() => {
+                  setShowMenu(false);
+                  router.push('/prescription' as any);
+                }}
+              >
+                <View style={[styles.dropdownIconWrap, { backgroundColor: '#EFF6FF' }]}>
+                  <Ionicons name="document-text-outline" size={16} color="#2563EB" />
+                </View>
+                <Text style={styles.dropdownItemText}>My Prescriptions</Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.dropdownItem}
+                onPress={() => {
+                  setShowMenu(false);
+                  router.push('/medicines/my-medicines' as any);
+                }}
+              >
+                <View style={[styles.dropdownIconWrap, { backgroundColor: '#ECFDF5' }]}>
+                  <Ionicons name="bookmark-outline" size={16} color="#059669" />
+                </View>
+                <Text style={styles.dropdownItemText}>Saved Medicines</Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.dropdownItem}
+                onPress={() => {
+                  setShowMenu(false);
+                  handleBrowseAll();
+                }}
+              >
+                <View style={[styles.dropdownIconWrap, { backgroundColor: '#F5F3FF' }]}>
+                  <Ionicons name="time-outline" size={16} color="#7C3AED" />
+                </View>
+                <Text style={styles.dropdownItemText}>Recent Searches</Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.dropdownItem}
+                onPress={() => {
+                  setShowMenu(false);
+                  router.push('/(tabs)/nearby' as any);
+                }}
+              >
+                <View style={[styles.dropdownIconWrap, { backgroundColor: '#FFF7ED' }]}>
+                  <Ionicons name="storefront-outline" size={16} color="#EA580C" />
+                </View>
+                <Text style={styles.dropdownItemText}>Nearby Pharmacies</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.dropdownItem, { borderBottomWidth: 0 }]}
+                onPress={() => {
+                  setShowMenu(false);
+                  router.push('/notifications');
+                }}
+              >
+                <View style={[styles.dropdownIconWrap, { backgroundColor: '#FEF2F2' }]}>
+                  <Ionicons name="notifications-outline" size={16} color="#DC2626" />
+                </View>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={styles.dropdownItemText}>Notifications</Text>
+                  {unreadCount > 0 && (
+                    <View style={styles.notifPill}>
+                      <Text style={styles.notifPillText}>{unreadCount}</Text>
+                    </View>
+                  )}
+                </View>
+              </Pressable>
+            </View>
+          </>
+        )}
       </View>
 
       {loading ? (
@@ -464,75 +548,69 @@ export default function Medicines() {
             />
           </View>
 
-          {/* Quick actions kept reachable */}
-          <View style={styles.quickRow}>
-            <Pressable style={styles.quickCard} onPress={handleScanMedicine}>
-              <View style={[styles.quickIcon, { backgroundColor: '#F0FDF4' }]}>
-                <Ionicons name="scan-outline" size={16} color="#16A34A" />
-              </View>
-              <Text style={styles.quickTitle}>Scan Medicine</Text>
-            </Pressable>
-            <Pressable style={styles.quickCard} onPress={handleCheckInteractions}>
-              <View style={[styles.quickIcon, { backgroundColor: '#FFF7ED' }]}>
-                <Ionicons name="git-compare-outline" size={16} color="#EA580C" />
-              </View>
-              <Text style={styles.quickTitle}>Check Interactions</Text>
-            </Pressable>
+          {/* ── 2x2 Quick Action Grid ── */}
+          <View style={styles.grid2Container}>
+            {/* Row 1 */}
+            <View style={styles.gridRow}>
+              <Pressable
+                style={({ pressed }) => [styles.gridTile, pressed && styles.gridTilePressed]}
+                onPress={handleCheckInteractions}
+              >
+                <View style={[styles.gridTileIcon, { backgroundColor: '#FFF7ED' }]}>
+                  <Ionicons name="git-compare-outline" size={20} color="#EA580C" />
+                </View>
+                <View style={styles.gridTileTextWrap}>
+                  <Text style={styles.gridTileTitle} numberOfLines={1}>Interactions</Text>
+                  <Text style={styles.gridTileSubtitle} numberOfLines={1}>Compare 2+ drugs</Text>
+                </View>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.gridTile, pressed && styles.gridTilePressed]}
+                onPress={handleScanMedicine}
+              >
+                <View style={[styles.gridTileIcon, { backgroundColor: '#F0FDF4' }]}>
+                  <Ionicons name="camera-outline" size={20} color="#16A34A" />
+                </View>
+                <View style={styles.gridTileTextWrap}>
+                  <Text style={styles.gridTileTitle} numberOfLines={1}>Scan Medicine</Text>
+                  <Text style={styles.gridTileSubtitle} numberOfLines={1}>Point camera to identify</Text>
+                </View>
+              </Pressable>
+            </View>
+
+            {/* Row 2 */}
+            <View style={styles.gridRow}>
+              <Pressable
+                style={({ pressed }) => [styles.gridTile, pressed && styles.gridTilePressed]}
+                onPress={handleViewReminder}
+              >
+                <View style={[styles.gridTileIcon, { backgroundColor: '#EFF6FF' }]}>
+                  <Ionicons name="alarm-outline" size={20} color="#2563EB" />
+                </View>
+                <View style={styles.gridTileTextWrap}>
+                  <Text style={styles.gridTileTitle} numberOfLines={1}>Reminders</Text>
+                  <Text style={styles.gridTileSubtitle} numberOfLines={1}>Daily dosage</Text>
+                </View>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.gridTile, pressed && styles.gridTilePressed]}
+                onPress={handleBrowseAll}
+              >
+                <View style={[styles.gridTileIcon, { backgroundColor: '#F5F3FF' }]}>
+                  <Ionicons name="library-outline" size={20} color="#7C3AED" />
+                </View>
+                <View style={styles.gridTileTextWrap}>
+                  <Text style={styles.gridTileTitle} numberOfLines={1}>Browse</Text>
+                  <Text style={styles.gridTileSubtitle} numberOfLines={1}>A–Z directory</Text>
+                </View>
+              </Pressable>
+            </View>
           </View>
 
           <View style={{ marginBottom: 16, paddingHorizontal: H_PAD, zIndex: 9999, elevation: 9999 }}>
             <ChatInputBar context="prescription" />
-          </View>
-
-          {/* Today's Schedule */}
-          <View style={styles.section}>
-            <View style={styles.secHeader}>
-              <Text style={styles.secTitle}>Active Medicines</Text>
-            </View>
-
-            <View style={styles.card}>
-              {scheduleItems.length === 0 ? (
-                <Pressable style={styles.emptySchedule} onPress={handleViewReminder}>
-                  <Ionicons name="alarm-outline" size={28} color={Colors.primary} />
-                  <Text style={styles.emptyTitle}>No doses scheduled today</Text>
-                  <Text style={styles.emptySub}>Add a reminder to stay on track</Text>
-                </Pressable>
-              ) : (
-                scheduleItems.map((r, idx) => {
-                  const taken = r.status === 'taken';
-                  return (
-                    <Pressable
-                      key={r.id}
-                      style={[styles.schedRow, idx > 0 && styles.schedDivider]}
-                      onPress={handleViewReminder}
-                    >
-                      <View style={[styles.pillIcon, { backgroundColor: getFormColor(r.medicineName) + '15' }]}>
-                        <Text style={{ fontSize: 16 }}>{getFormEmoji(r.medicineName)}</Text>
-                      </View>
-
-                      <View style={{ flex: 1, minWidth: 0, justifyContent: 'center' }}>
-                        <Text style={styles.medName} numberOfLines={1}>
-                          {r.medicineName}
-                        </Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                          <Text style={styles.medHint} numberOfLines={1}>
-                            {r.time} • {whenLabel(r.whenToTake)}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.activeBadge}>
-                        <Text style={styles.activeBadgeTxt}>Active</Text>
-                      </View>
-                    </Pressable>
-                  );
-                })
-              )}
-
-              <Pressable style={styles.fullLink} onPress={handleViewReminder}>
-                <Text style={styles.fullLinkTxt}>View full schedule ›</Text>
-              </Pressable>
-            </View>
           </View>
 
           {/* My Prescriptions */}
@@ -542,6 +620,9 @@ export default function Medicines() {
                 <Ionicons name="document-text-outline" size={18} color={Colors.textMuted} />
                 <Text style={styles.secTitle}>My Prescriptions</Text>
               </View>
+              <Pressable onPress={() => router.push('/prescription' as any)} hitSlop={8}>
+                <Text style={styles.linkTxt}>View all ›</Text>
+              </Pressable>
             </View>
             <View style={styles.medList}>
               {prescriptions.length > 0 ? (
@@ -652,6 +733,75 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 10,
     fontWeight: "800",
+  },
+  smallDotBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.danger,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  menuBackdrop: {
+    position: 'absolute',
+    top: -2000,
+    bottom: -2000,
+    left: -2000,
+    right: -2000,
+    zIndex: 90,
+  },
+  dropdownMenu: {
+    position: 'absolute',
+    top: 56,
+    right: H_PAD,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    width: 220,
+    zIndex: 100,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8FAFC',
+    gap: 10,
+  },
+  dropdownIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dropdownItemText: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  notifPill: {
+    backgroundColor: Colors.danger,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  notifPillText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
   },
 
 
@@ -841,6 +991,59 @@ const styles = StyleSheet.create({
   },
   libLabel: { fontSize: 11, fontWeight: '600', color: Colors.text, textAlign: 'center', lineHeight: 15 },
   libCount: { fontSize: 13, fontWeight: '800', color: Colors.primary },
+
+  grid2Container: {
+    marginHorizontal: H_PAD,
+    marginBottom: 16,
+    gap: 10,
+  },
+  gridRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  gridTile: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  gridTilePressed: {
+    opacity: 0.75,
+    transform: [{ scale: 0.98 }],
+  },
+  gridTileIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  gridTileTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  gridTileTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  gridTileSubtitle: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
 
   quickRow: {
     flexDirection: 'row',

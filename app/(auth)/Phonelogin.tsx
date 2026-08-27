@@ -30,6 +30,9 @@ function getAuth() {
 }
 import { useAuth } from "@/context/AuthContext";
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { COUNTRIES, CountryConfig } from "@/constants/countries";
+import { useCountry } from "@/context/CountryContext";
+import { useLang } from "@/context/Languagecontext";
 
 // ── Scalers ───────────────────────────────────────────
 function useScalers() {
@@ -42,37 +45,6 @@ function useScalers() {
 
 // ── Types ─────────────────────────────────────────────
 type Step = "phone" | "otp";
-
-interface Country {
-  name: string;
-  code: string;
-  dial: string;
-  flag: string;
-}
-
-// ── Country list ──────────────────────────────────────
-const COUNTRIES: Country[] = [
-  { name: "India", code: "IN", dial: "+91", flag: "🇮🇳" },
-  { name: "United States", code: "US", dial: "+1", flag: "🇺🇸" },
-  { name: "United Kingdom", code: "GB", dial: "+44", flag: "🇬🇧" },
-  { name: "Australia", code: "AU", dial: "+61", flag: "🇦🇺" },
-  { name: "Canada", code: "CA", dial: "+1", flag: "🇨🇦" },
-  { name: "Germany", code: "DE", dial: "+49", flag: "🇩🇪" },
-  { name: "France", code: "FR", dial: "+33", flag: "🇫🇷" },
-  { name: "UAE", code: "AE", dial: "+971", flag: "🇦🇪" },
-  { name: "Singapore", code: "SG", dial: "+65", flag: "🇸🇬" },
-  { name: "Japan", code: "JP", dial: "+81", flag: "🇯🇵" },
-  { name: "Brazil", code: "BR", dial: "+55", flag: "🇧🇷" },
-  { name: "South Africa", code: "ZA", dial: "+27", flag: "🇿🇦" },
-  { name: "Nigeria", code: "NG", dial: "+234", flag: "🇳🇬" },
-  { name: "Pakistan", code: "PK", dial: "+92", flag: "🇵🇰" },
-  { name: "Bangladesh", code: "BD", dial: "+880", flag: "🇧🇩" },
-  { name: "Indonesia", code: "ID", dial: "+62", flag: "🇮🇩" },
-  { name: "Philippines", code: "PH", dial: "+63", flag: "🇵🇭" },
-  { name: "Malaysia", code: "MY", dial: "+60", flag: "🇲🇾" },
-  { name: "Kenya", code: "KE", dial: "+254", flag: "🇰🇪" },
-  { name: "Mexico", code: "MX", dial: "+52", flag: "🇲🇽" },
-];
 
 // ── Google SVG ────────────────────────────────────────
 function GoogleIcon() {
@@ -188,8 +160,8 @@ function CountryPicker({
   onClose,
 }: {
   visible: boolean;
-  selected: Country;
-  onSelect: (c: Country) => void;
+  selected: CountryConfig;
+  onSelect: (c: CountryConfig) => void;
   onClose: () => void;
 }) {
   const { rs, vs, ms, SH } = useScalers();
@@ -247,7 +219,12 @@ function CountryPicker({
               onPress={() => { onSelect(item); onClose(); setSearch(""); }}
             >
               <Text style={pickerStyles.flag}>{item.flag}</Text>
-              <Text style={pickerStyles.countryName}>{item.name}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={pickerStyles.countryName}>{item.name}</Text>
+                {item.isLaunchCountry && (
+                  <Text style={{ fontSize: ms(10), fontWeight: "700", color: "#2D9C8E" }}>Launch Market</Text>
+                )}
+              </View>
               <Text style={pickerStyles.countryDial}>{item.dial}</Text>
               {item.code === selected.code && (
                 <Ionicons name="checkmark-circle" size={ms(16)} color="#2D9C8E" />
@@ -347,9 +324,11 @@ export default function Phonelogin() {
   const { rs, vs, ms } = useScalers();
   const styles = makeStyles(rs, vs, ms);
   const { signIn } = useAuth();
+  const { country: globalCountry, setCountryCode } = useCountry();
+  const { isRTL, rowDirection, textAlign } = useLang();
 
   const [step, setStep] = useState<Step>("phone");
-  const [country, setCountry] = useState<Country>(COUNTRIES[0]); // default India
+  const [country, setCountry] = useState<CountryConfig>(globalCountry);
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
@@ -357,6 +336,13 @@ export default function Phonelogin() {
   const [resendTimer, setResendTimer] = useState(0);
   const [confirm, setConfirm] = useState<any>(null);
   const [errors, setErrors] = useState<{ phone?: string; otp?: string }>({});
+
+  // Sync with global country preference
+  useEffect(() => {
+    if (globalCountry) {
+      setCountry(globalCountry);
+    }
+  }, [globalCountry]);
 
   // Resend countdown
   useEffect(() => {
@@ -784,10 +770,10 @@ export default function Phonelogin() {
 
               {/* Back to phone */}
               <Pressable
-                style={styles.backRow}
+                style={[styles.backRow, { flexDirection: rowDirection }]}
                 onPress={() => { setStep("phone"); setOtp(""); }}
               >
-                <Ionicons name="arrow-back" size={ms(14)} color="#2D9C8E" />
+                <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={ms(14)} color="#2D9C8E" />
                 <Text style={styles.backText}>Back to phone entry</Text>
               </Pressable>
             </>
@@ -801,7 +787,10 @@ export default function Phonelogin() {
       <CountryPicker
         visible={pickerVisible}
         selected={country}
-        onSelect={setCountry}
+        onSelect={(c) => {
+          setCountry(c);
+          setCountryCode(c.code);
+        }}
         onClose={() => setPickerVisible(false)}
       />
     </>

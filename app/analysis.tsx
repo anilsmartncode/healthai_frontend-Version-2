@@ -662,24 +662,43 @@ export default function AnalysisScreen() {
                 <Text style={styles.sectionTitle}>Medicines Detected</Text>
                 <View style={styles.sectionCard}>
                   {detectedMedicines.map((m, i) => (
-                    <Pressable
+                    <View
                       key={m.name}
                       style={[styles.medRow, i > 0 && styles.rowDivider]}
-                      onPress={() =>
-                        router.push({
-                          pathname: '/medicines/browse',
-                          params: { query: m.name },
-                        })
-                      }
                     >
-                      <View style={{ flex: 1 }}>
+                      <Pressable
+                        style={{ flex: 1 }}
+                        onPress={() =>
+                          router.push({
+                            pathname: '/medicines/browse',
+                            params: { query: m.name },
+                          })
+                        }
+                      >
                         <Text style={styles.resultName}>{m.name}</Text>
                         <Text style={styles.expandText} numberOfLines={2}>
                           {m.reason}
                         </Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
-                    </Pressable>
+                      </Pressable>
+                      <Pressable
+                        style={styles.analysisReminderBtn}
+                        onPress={() =>
+                          router.push({
+                            pathname: '/medicines/reminders/new',
+                            params: {
+                              medicineName: m.name,
+                              frequency: 'daily',
+                              whenToTake: 'after_food',
+                              time: '08:00 AM',
+                              totalCount: '10',
+                            },
+                          })
+                        }
+                      >
+                        <Ionicons name="notifications-outline" size={13} color="#0284C7" />
+                        <Text style={styles.analysisReminderBtnText}>Reminder</Text>
+                      </Pressable>
+                    </View>
                   ))}
                 </View>
               </View>
@@ -890,6 +909,22 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
+  },
+  analysisReminderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 7,
+  },
+  analysisReminderBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.primary,
   },
 
   askBanner: {

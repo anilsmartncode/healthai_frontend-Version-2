@@ -193,7 +193,15 @@ function MedicinePicker({
 
 // ─── MAIN SCREEN ─────────────────────────────────────────────────────────────
 export default function AddReminderScreen() {
-  const params = useLocalSearchParams<{ medicineId?: string; medicineName?: string }>();
+  const params = useLocalSearchParams<{
+    medicineId?: string;
+    medicineName?: string;
+    dosage?: string;
+    frequency?: ReminderFrequency;
+    whenToTake?: WhenToTake;
+    time?: string;
+    totalCount?: string;
+  }>();
 
   const [medicines,         setMedicines]         = useState<Medicine[]>([]);
   const [loadingMeds,       setLoadingMeds]       = useState(true);
@@ -205,9 +213,9 @@ export default function AddReminderScreen() {
   const [frequency,         setFrequency]         = useState<ReminderFrequency>('daily');
   const [dayOfWeek,         setDayOfWeek]         = useState<string>('Monday');
   const [dayOfMonth,        setDayOfMonth]        = useState<string>('1');
-  const [totalCount,        setTotalCount]        = useState<string>('');
-  const [refillThreshold,   setRefillThreshold]   = useState<string>('');
-  const [expiryDate,        setExpiryDate]        = useState<Date | null>(null);
+  const [totalCount,        setTotalCount]        = useState<string>('10');
+  const [refillThreshold,   setRefillThreshold]   = useState<string>('2');
+  const [expiryDate,        setExpiryDate]        = useState<Date | null>(() => new Date(Date.now() + 180 * 24 * 60 * 60 * 1000));
   const [whenToTake,        setWhenToTake]        = useState<WhenToTake>('after_food');
   const [saving,            setSaving]            = useState(false);
   const [success,           setSuccess]           = useState(false);
@@ -243,13 +251,46 @@ export default function AddReminderScreen() {
           type: 'Tablet',
           category: '',
           uses: '',
-          dosage: '',
+          dosage: params.dosage || prev?.dosage || '',
           sideEffects: [],
           prescriptionType: 'OTC',
         };
       });
     }
-  }, [params.medicineId, params.medicineName]);
+
+    if (params.dosage) {
+      setSelectedMed((prev) => prev ? { ...prev, dosage: params.dosage || prev.dosage } : null);
+    }
+
+    if (params.frequency && ['daily', 'weekly', 'monthly'].includes(params.frequency)) {
+      setFrequency(params.frequency);
+    }
+
+    if (params.whenToTake && ['before_food', 'after_food', 'with_food', 'bedtime'].includes(params.whenToTake)) {
+      setWhenToTake(params.whenToTake);
+    }
+
+    if (params.time) {
+      setTime(params.time);
+      setIsCustomTime(!TIME_SLOTS.includes(params.time));
+    }
+
+    if (params.totalCount) {
+      setTotalCount(params.totalCount);
+      const countNum = parseInt(params.totalCount, 10);
+      if (!isNaN(countNum)) {
+        setRefillThreshold(String(Math.max(Math.floor(countNum * 0.2), 2)));
+      }
+    }
+  }, [
+    params.medicineId,
+    params.medicineName,
+    params.dosage,
+    params.frequency,
+    params.whenToTake,
+    params.time,
+    params.totalCount,
+  ]);
 
   const handleSelectPreset = (slot: string) => {
     setTime(slot);

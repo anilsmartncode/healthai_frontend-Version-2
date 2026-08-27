@@ -264,7 +264,7 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
         )}
 
         <Pressable style={styles.innerPlusBtn} onPress={handlePlusPress} hitSlop={8}>
-          <Ionicons name="add" size={24} color={showMenu ? Colors.primary : Colors.textMuted} />
+          <Ionicons name="add" size={22} color={Colors.primary} />
         </Pressable>
 
         <TextInput
@@ -278,7 +278,7 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
             const h = e.nativeEvent.contentSize.height;
             if (h > 0) setInputHeight(h);
           }}
-          placeholder={context === 'prescription' ? "Upload prescription..." : "Upload & Ask about reports..."}
+          placeholder={context === 'prescription' ? "Type question or prescription text..." : "Upload & Ask about reports..."}
           placeholderTextColor={Colors.textMuted}
           multiline
           scrollEnabled={inputHeight >= 76}
@@ -286,11 +286,14 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
         />
 
         <Pressable
-          style={[styles.innerMicBtn, hasInput ? { backgroundColor: Colors.primary } : { backgroundColor: '#F1F5F9' }]}
-          onPress={handleSend}
-          disabled={!hasInput}
+          style={({ pressed }) => [
+            styles.innerMicBtn,
+            pressed && { opacity: 0.8, transform: [{ scale: 0.95 }] }
+          ]}
+          onPress={hasInput ? handleSend : handlePlusPress}
+          hitSlop={6}
         >
-          <Ionicons name="arrow-up" size={18} color={hasInput ? "#fff" : Colors.textMuted} />
+          <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
         </Pressable>
       </View>
       <Text style={styles.disclaimerText}>HealthAI acts as an assistant, not a doctor.</Text>
@@ -301,18 +304,18 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 10,
+    paddingVertical: 6,
     width: '100%',
   },
   pillContainer: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     marginBottom: 8,
   },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F8FAFC',
-    borderRadius: 12,
+    borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
@@ -338,73 +341,88 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   disclaimerText: {
-    fontSize: 10,
+    fontSize: 10.5,
     color: '#94A3B8',
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: 6,
     paddingHorizontal: 8,
     lineHeight: 14,
   },
   inputWrap: {
-    flexDirection: 'row', alignItems: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
     borderColor: '#E2E8F0',
-    borderRadius: 24,
+    borderRadius: 28,
     paddingHorizontal: 8,
     paddingVertical: 6,
-    minHeight: 48,
-    maxHeight: 88,
-    shadowColor: Colors.text,
-    shadowOpacity: 0.03,
+    minHeight: 52,
+    maxHeight: 90,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
     shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 3 },
     elevation: 2,
   },
   input: {
     flex: 1,
-    paddingHorizontal: 8,
-    paddingTop: Platform.OS === 'ios' ? 8 : 4,
-    paddingBottom: Platform.OS === 'ios' ? 8 : 4,
-    fontSize: 15,
+    paddingHorizontal: 10,
+    paddingTop: Platform.OS === 'ios' ? 8 : 6,
+    paddingBottom: Platform.OS === 'ios' ? 8 : 6,
+    fontSize: 14.5,
     color: Colors.text,
     minHeight: 36,
   },
   innerPlusBtn: {
-    width: 32, height: 32,
-    alignItems: 'center', justifyContent: 'center',
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 2,
-    borderRadius: 16,
+    borderRadius: 18,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
   },
   innerMicBtn: {
-    width: 32, height: 32, borderRadius: 16,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 2,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 1,
+    backgroundColor: '#0F766E',
+    shadowColor: '#0F766E',
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   inlineMenuContainer: {
     position: 'absolute',
     left: 8,
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 18,
     paddingVertical: 6,
     paddingHorizontal: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
     elevation: 8,
     borderWidth: 1,
     borderColor: '#F1F5F9',
-    width: 200,
+    width: 210,
     zIndex: 100,
   },
   menuUp: {
     bottom: '100%',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   menuDrop: {
     top: '100%',
-    marginTop: 8,
+    marginTop: 10,
   },
   giantBackdrop: {
     position: 'absolute',
@@ -417,15 +435,15 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 6,
+    paddingVertical: 9,
+    paddingHorizontal: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#F8FAFC',
   },
   menuIconWrap: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -434,8 +452,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   menuItemText: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '600',
     color: Colors.text,
   },
 });

@@ -136,6 +136,7 @@ export default function Account() {
           const dobValue = data.date_of_birth ?? data.dob;
           setDob(dobValue ? new Date(dobValue) : null);
           let avUrl = data.avatar_url ?? data.image_url ?? data.profile_image ?? data.profile_image_url ?? data.avatar ?? null;
+          const userKey = data.email || data.phone || authKey;
           
           if (avUrl) {
             if (avUrl.includes('.smartncode.com/uploads/')) {
@@ -144,8 +145,6 @@ export default function Account() {
               avUrl = avUrl.startsWith('/') ? BASE_URL + avUrl : `${BASE_URL}/${avUrl}`;
             }
           }
-
-          const userKey = data.email || data.phone || authKey;
 
           // If API didn't return an avatar, look up local storage
           if (!avUrl) {
@@ -160,7 +159,6 @@ export default function Account() {
             try {
               await AsyncStorage.setItem(`healthai_avatar_${userKey}`, avUrl);
             } catch { /* ignore */ }
-          }
           }
 
           if (avUrl) {
