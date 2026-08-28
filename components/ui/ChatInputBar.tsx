@@ -10,11 +10,13 @@ import {
   Alert,
   Keyboard,
   Dimensions,
+  Vibration,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useGlobalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import * as Clipboard from 'expo-clipboard';
 import { Colors, Radius } from '@/constants/Colors';
 import { useLang } from '@/context/Languagecontext';
 
@@ -146,13 +148,82 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
       });
 
       if (scannedImages && scannedImages.length > 0) {
-        // We'll just take the first scanned page as an image for now,
-        // or if it returns multiple we can pass it, but our backend currently accepts a single file per request.
         const uri = scannedImages[0];
         setAttachedFile({ uri, name: 'scanned_document.jpg', mimeType: 'image/jpeg', size: 0 });
       }
     } catch (e: any) {
       Alert.alert('Scanner Error', 'Failed to start the document scanner.');
+    }
+  };
+
+  const pasteClipboard = async () => {
+    setShowMenu(false);
+    try {
+      const hasImg = await Clipboard.hasImageAsync();
+      if (hasImg) {
+        const img = await Clipboard.getImageAsync({ format: 'jpeg' });
+        if (img && img.data) {
+          setAttachedFile({
+            uri: `data:image/jpeg;base64,${img.data}`,
+            name: 'whatsapp_report.jpg',
+            mimeType: 'image/jpeg',
+            size: 0,
+          });
+          return;
+        }
+      }
+
+      const text = await Clipboard.getStringAsync();
+      if (text && text.trim().length > 0) {
+        const trimmed = text.trim();
+        const lower = trimmed.toLowerCase();
+        const isFileUri =
+          trimmed.startsWith('file://') ||
+          trimmed.startsWith('content://') ||
+          ALLOWED_EXTENSIONS.some(ext => lower.endsWith('.' + ext));
+
+        if (isFileUri && (trimmed.startsWith('file://') || trimmed.startsWith('content://') || trimmed.startsWith('http'))) {
+          const rawName = trimmed.split('/').pop()?.split('?')[0] || 'whatsapp_document.pdf';
+          const cleanName = decodeURIComponent(rawName);
+          const isPdf = cleanName.toLowerCase().endsWith('.pdf');
+          setAttachedFile({
+            uri: trimmed,
+            name: cleanName,
+            mimeType: isPdf ? 'application/pdf' : 'image/jpeg',
+            size: 0,
+          });
+          return;
+        }
+
+        setInput(prev => (prev ? `${prev}\n${trimmed}` : trimmed));
+      } else {
+        Alert.alert('Clipboard Empty', 'No document, image, or text found on your clipboard.');
+      }
+    } catch (e) {
+      console.warn('Clipboard read error:', e);
+    }
+  };
+
+  const longPressTimerRef = useRef<any>(null);
+
+  const startLongPressTimer = () => {
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(async () => {
+      try {
+        const hasImg = await Clipboard.hasImageAsync();
+        const hasStr = await Clipboard.hasStringAsync();
+        if (hasImg || hasStr) {
+          Vibration.vibrate(40);
+          await pasteClipboard();
+        }
+      } catch (e) {}
+    }, 450);
+  };
+
+  const cancelLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
     }
   };
 
@@ -191,7 +262,14 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
 
   return (
     <View style={styles.container}>
-      <View ref={containerRef} style={[styles.inputWrap, { zIndex: showMenu ? 50 : 1 }]}>
+      <View
+        ref={containerRef}
+        style={[styles.inputWrap, { zIndex: showMenu ? 50 : 1 }]}
+        onTouchStart={startLongPressTimer}
+        onTouchEnd={cancelLongPressTimer}
+        onTouchCancel={cancelLongPressTimer}
+        onTouchMove={cancelLongPressTimer}
+      >
 
         {/* Giant invisible backdrop to catch outside taps without a Modal */}
         {showMenu && (
@@ -207,6 +285,15 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
             styles.inlineMenuContainer,
             autoDirection === 'down' ? styles.menuDrop : styles.menuUp
           ]}>
+            <Pressable style={styles.menuItem} onPress={pasteClipboard}>
+              <View style={[styles.menuIconWrap, { backgroundColor: '#ECFDF5' }]}>
+                <Ionicons name="clipboard-outline" size={16} color="#059669" />
+              </View>
+              <View style={styles.menuTextContent}>
+                <Text style={styles.menuItemText}>Paste from WhatsApp</Text>
+              </View>
+            </Pressable>
+
             <Pressable style={styles.menuItem} onPress={scanDoc}>
               <View style={[styles.menuIconWrap, { backgroundColor: '#F3E8FF' }]}>
                 <Ionicons name="scan-outline" size={16} color="#9333EA" />
@@ -266,7 +353,16 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
         )}
 
         <View style={[styles.inputRow, { flexDirection: rowDirection }]}>
-          <Pressable style={styles.innerPlusBtn} onPress={handlePlusPress} hitSlop={8}>
+          <Pressable
+            style={styles.innerPlusBtn}
+            onPress={handlePlusPress}
+            onLongPress={pasteClipboard}
+            delayLongPress={250}
+            hitSlop={8}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Attach or long press to paste from WhatsApp"
+          >
             <Ionicons name="add" size={24} color={showMenu ? Colors.primary : Colors.textMuted} />
           </Pressable>
 
@@ -275,8 +371,32 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
               styles.input,
               { height: Math.min(Math.max(36, inputHeight), 76), textAlign }
             ]}
-            value={input}
-            onChangeText={setInput}
+            onTouchStart={startLongPressTimer}
+            onTouchEnd={cancelLongPressTimer}
+            onTouchCancel={cancelLongPressTimer}
+            onTouchMove={cancelLongPressTimer}
+            onChangeText={(text) => {
+              const trimmed = text.trim();
+              const lower = trimmed.toLowerCase();
+              const isFileUri =
+                (trimmed.startsWith('file://') || trimmed.startsWith('content://') || trimmed.startsWith('http')) &&
+                ALLOWED_EXTENSIONS.some(ext => lower.endsWith('.' + ext));
+
+              if (isFileUri) {
+                const rawName = trimmed.split('/').pop()?.split('?')[0] || 'document.pdf';
+                const cleanName = decodeURIComponent(rawName);
+                const isPdf = cleanName.toLowerCase().endsWith('.pdf');
+                setAttachedFile({
+                  uri: trimmed,
+                  name: cleanName,
+                  mimeType: isPdf ? 'application/pdf' : 'image/jpeg',
+                  size: 0,
+                });
+                setInput('');
+                return;
+              }
+              setInput(text);
+            }}
             onContentSizeChange={(e) => {
               const h = e.nativeEvent.contentSize.height;
               if (h > 0) setInputHeight(h);

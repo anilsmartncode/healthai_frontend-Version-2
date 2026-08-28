@@ -7,11 +7,13 @@ import { useEffect, useRef, useState } from 'react';
 import {
   View, FlatList, StyleSheet, Text, Image, ScrollView,
   KeyboardAvoidingView, Platform, Pressable, TextInput, Alert,
-  ActivityIndicator,
+  ActivityIndicator, ActionSheetIOS, Vibration,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { useAI } from '@/hooks/useAI';
 import { AlertBanner } from '@/components/ai/AlertBanner';
 import { ChatInput } from '@/components/ai/ChatInput';
@@ -563,15 +565,245 @@ export default function AIChatScreen() {
     }
   }, [input]);
 
+  const [attachedFile, setAttachedFile] = useState<{
+    uri: string;
+    name: string;
+    mimeType: string;
+    size?: number;
+  } | null>(null);
+
   const { canSendAiChat, incrementAiChat, setShowPaywall } = useUsage();
 
+  const longPressTimerRef = useRef<any>(null);
+
+  const startLongPressTimer = () => {
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(async () => {
+      try {
+        const hasImg = await Clipboard.hasImageAsync();
+        const hasStr = await Clipboard.hasStringAsync();
+        if (hasImg || hasStr) {
+          Vibration.vibrate(40);
+          await handlePasteClipboard();
+        }
+      } catch (e) {}
+    }, 450);
+  };
+
+  const cancelLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  function formatBytes(bytes?: number): string {
+    if (!bytes) return '';
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
   const handleSend = async () => {
+    if (!input.trim() && !attachedFile) return;
+
+    if (attachedFile) {
+      router.push({
+        pathname: '/upload',
+        params: {
+          fileUri: attachedFile.uri,
+          fileName: attachedFile.name,
+          mimeType: attachedFile.mimeType,
+          prefillText: input.trim(),
+        },
+      });
+      setInput('');
+      setAttachedFile(null);
+      return;
+    }
+
     if (!canSendAiChat()) {
       setShowPaywall(true);
       return;
     }
     await incrementAiChat();
     send();
+  };
+
+  const handlePasteClipboard = async () => {
+    try {
+      const hasImg = await Clipboard.hasImageAsync();
+      if (hasImg) {
+        const img = await Clipboard.getImageAsync({ format: 'jpeg' });
+        if (img && img.data) {
+          setAttachedFile({
+            uri: `data:image/jpeg;base64,${img.data}`,
+            name: 'whatsapp_report.jpg',
+            mimeType: 'image/jpeg',
+          });
+          return;
+        }
+      }
+
+      const text = await Clipboard.getStringAsync();
+      if (text && text.trim().length > 0) {
+        const trimmed = text.trim();
+        const lower = trimmed.toLowerCase();
+        const isFileUri =
+          trimmed.startsWith('file://') ||
+          trimmed.startsWith('content://') ||
+          lower.endsWith('.pdf') ||
+          lower.endsWith('.docx') ||
+          lower.endsWith('.doc') ||
+          lower.endsWith('.jpg') ||
+          lower.endsWith('.png');
+
+        if (isFileUri && (trimmed.startsWith('file://') || trimmed.startsWith('content://') || trimmed.startsWith('http'))) {
+          const rawName = trimmed.split('/').pop()?.split('?')[0] || 'whatsapp_document.pdf';
+          const cleanName = decodeURIComponent(rawName);
+          const isPdf = cleanName.toLowerCase().endsWith('.pdf');
+          setAttachedFile({
+            uri: trimmed,
+            name: cleanName,
+            mimeType: isPdf ? 'application/pdf' : 'image/jpeg',
+          });
+          return;
+        }
+
+        setInput(prev => (prev ? `${prev}\n${trimmed}` : trimmed));
+      } else {
+        Alert.alert('Clipboard Empty', 'No document, image, or text found on your clipboard.');
+      }
+    } catch (e) {
+      console.warn('Clipboard read error:', e);
+    }
+  };
+
+  const handleAttachmentPress = () => {
+    const handlePickDocument = async () => {
+      try {
+        const res = await DocumentPicker.getDocumentAsync({
+          type: [
+            'application/pdf',
+            'image/*',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          ],
+        });
+        if (!res.canceled && res.assets?.[0]) {
+          const doc = res.assets[0];
+          setAttachedFile({
+            uri: doc.uri,
+            name: doc.name,
+            mimeType: doc.mimeType || 'application/pdf',
+            size: doc.size,
+          });
+        }
+      } catch (e) {
+        console.warn('Doc pick error:', e);
+      }
+    };
+
+    const handleCamera = async () => {
+      try {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Camera Permission Required', 'Please allow camera access to take a picture of your medical report.');
+          return;
+        }
+        const res = await ImagePicker.launchCameraAsync({ quality: 0.9 });
+        if (!res.canceled && res.assets?.[0]) {
+          const photo = res.assets[0];
+          setAttachedFile({
+            uri: photo.uri,
+            name: photo.fileName || 'report_photo.jpg',
+            mimeType: photo.mimeType || 'image/jpeg',
+            size: (photo as any).fileSize,
+          });
+        }
+      } catch (e) {
+        console.warn('Camera error:', e);
+      }
+    };
+
+    const handleGallery = async () => {
+      try {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Gallery Permission Required', 'Please allow photo library access.');
+          return;
+        }
+        const res = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          quality: 0.9,
+        });
+        if (!res.canceled && res.assets?.[0]) {
+          const photo = res.assets[0];
+          setAttachedFile({
+            uri: photo.uri,
+            name: photo.fileName || 'report_image.jpg',
+            mimeType: photo.mimeType || 'image/jpeg',
+            size: (photo as any).fileSize,
+          });
+        }
+      } catch (e) {
+        console.warn('Gallery error:', e);
+      }
+    };
+
+    const handleScanDocument = async () => {
+      try {
+        const DocumentScanner = require('react-native-document-scanner-plugin').default;
+        const { scannedImages } = await DocumentScanner.scanDocument({
+          croppedImageQuality: 100,
+        });
+        if (scannedImages && scannedImages.length > 0) {
+          setAttachedFile({
+            uri: scannedImages[0],
+            name: 'scanned_report.jpg',
+            mimeType: 'image/jpeg',
+            size: 0,
+          });
+        }
+      } catch (e: any) {
+        console.warn('Scan doc error:', e);
+      }
+    };
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: [
+            'Cancel',
+            '📄 Upload Document / PDF',
+            '📸 Take Photo of Report',
+            '🖼️ Choose from Photos',
+            '🔍 Scan Document',
+            '📋 Paste from WhatsApp / Clipboard',
+          ],
+          cancelButtonIndex: 0,
+        },
+        (btnIdx) => {
+          if (btnIdx === 1) handlePickDocument();
+          else if (btnIdx === 2) handleCamera();
+          else if (btnIdx === 3) handleGallery();
+          else if (btnIdx === 4) handleScanDocument();
+          else if (btnIdx === 5) handlePasteClipboard();
+        }
+      );
+    } else {
+      Alert.alert(
+        'Add Medical Report or Document',
+        'Choose an option:',
+        [
+          { text: '📄 Upload Document / PDF', onPress: handlePickDocument },
+          { text: '📸 Take Photo', onPress: handleCamera },
+          { text: '🖼️ Choose Photo', onPress: handleGallery },
+          { text: '🔍 Scan Document', onPress: handleScanDocument },
+          { text: '📋 Paste from WhatsApp / Clipboard', onPress: handlePasteClipboard },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+    }
   };
 
   const filteredSuggestions = input.trim().length > 0
@@ -701,38 +933,103 @@ export default function AIChatScreen() {
 
         {/* Input bar */}
         <View style={[styles.inputBar, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 16 }]}>
-          <View style={[styles.inputWrap, { flexDirection: rowDirection }]}>
-            <Pressable style={styles.innerPlusBtn}>
-              <Ionicons name="add" size={24} color={C.textMuted} />
-            </Pressable>
+          <View
+            style={styles.inputWrap}
+            onTouchStart={startLongPressTimer}
+            onTouchEnd={cancelLongPressTimer}
+            onTouchCancel={cancelLongPressTimer}
+            onTouchMove={cancelLongPressTimer}
+          >
+            {/* ChatGPT-style Document Pill */}
+            {attachedFile && (
+              <View style={styles.pillContainer}>
+                <View style={styles.pill}>
+                  <Ionicons
+                    name={attachedFile.mimeType?.includes('pdf') ? 'document-text' : 'image'}
+                    size={18}
+                    color={C.primary}
+                  />
+                  <View style={styles.pillTextWrap}>
+                    <Text style={styles.pillName} numberOfLines={1}>{attachedFile.name}</Text>
+                    {attachedFile.size ? <Text style={styles.pillMeta}>{formatBytes(attachedFile.size)}</Text> : null}
+                  </View>
+                  <Pressable onPress={() => setAttachedFile(null)} hitSlop={8} style={styles.pillClose}>
+                    <Ionicons name="close-circle" size={18} color={C.textMuted} />
+                  </Pressable>
+                </View>
+              </View>
+            )}
 
-            <TextInput
-              style={[
-                styles.input,
-                { height: Math.min(Math.max(36, inputHeight), 76), textAlign }
-              ]}
-              value={input}
-              onChangeText={setInput}
-              onContentSizeChange={(e) => {
-                const h = e.nativeEvent.contentSize.height;
-                if (h > 0) setInputHeight(h);
-              }}
-              placeholder={t('ai_placeholder')}
-              placeholderTextColor={C.textMuted}
-              multiline
-              scrollEnabled={inputHeight >= 76}
-              maxLength={1000}
-            />
+            <View style={[styles.inputRow, { flexDirection: rowDirection }]}>
+              <Pressable
+                style={styles.innerPlusBtn}
+                onPress={handleAttachmentPress}
+                onLongPress={handlePasteClipboard}
+                delayLongPress={250}
+                hitSlop={8}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel="Attach document or long press to paste from WhatsApp"
+              >
+                <Ionicons name="add" size={24} color={C.textMuted} />
+              </Pressable>
 
-            <Pressable
-              style={[styles.innerMicBtn, input.trim() ? { backgroundColor: C.primary } : { backgroundColor: '#F1F5F9' }]}
-              onPress={handleSend}
-            >
-              {input.trim()
-                ? <Ionicons name="arrow-up" size={18} color="#fff" />
-                : <Ionicons name="mic" size={18} color={C.textMuted} />
-              }
-            </Pressable>
+              <TextInput
+                style={[
+                  styles.input,
+                  { height: Math.min(Math.max(36, inputHeight), 120), textAlign }
+                ]}
+                value={input}
+                onTouchStart={startLongPressTimer}
+                onTouchEnd={cancelLongPressTimer}
+                onTouchCancel={cancelLongPressTimer}
+                onTouchMove={cancelLongPressTimer}
+                onChangeText={(text) => {
+                  const trimmed = text.trim();
+                  const lower = trimmed.toLowerCase();
+                  const isFileUri =
+                    (trimmed.startsWith('file://') || trimmed.startsWith('content://') || trimmed.startsWith('http')) &&
+                    (lower.endsWith('.pdf') || lower.endsWith('.docx') || lower.endsWith('.doc') || lower.endsWith('.jpg') || lower.endsWith('.png'));
+
+                  if (isFileUri) {
+                    const rawName = trimmed.split('/').pop()?.split('?')[0] || 'document.pdf';
+                    const cleanName = decodeURIComponent(rawName);
+                    const isPdf = cleanName.toLowerCase().endsWith('.pdf');
+                    setAttachedFile({
+                      uri: trimmed,
+                      name: cleanName,
+                      mimeType: isPdf ? 'application/pdf' : 'image/jpeg',
+                    });
+                    setInput('');
+                    return;
+                  }
+                  setInput(text);
+                }}
+                onContentSizeChange={(e) => {
+                  const h = e.nativeEvent.contentSize.height;
+                  if (h > 0) setInputHeight(h);
+                }}
+                placeholder={attachedFile ? 'Ask anything about this document...' : t('ai_placeholder')}
+                placeholderTextColor={C.textMuted}
+                multiline
+                scrollEnabled={inputHeight >= 120}
+                maxLength={15000}
+              />
+
+              <Pressable
+                style={[
+                  styles.innerMicBtn,
+                  (input.trim() || attachedFile) ? { backgroundColor: C.primary } : { backgroundColor: '#F1F5F9' }
+                ]}
+                onPress={handleSend}
+                disabled={!input.trim() && !attachedFile}
+              >
+                {(input.trim() || attachedFile)
+                  ? <Ionicons name="arrow-up" size={18} color="#fff" />
+                  : <Ionicons name="mic" size={18} color={C.textMuted} />
+                }
+              </Pressable>
+            </View>
           </View>
           <Text style={[styles.disclaimerText, { textAlign }]}>{t('ai_medical_disclaimer')}</Text>
         </View>
@@ -792,7 +1089,7 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
   inputWrap: {
-    flexDirection: 'row', alignItems: 'flex-end',
+    flexDirection: 'column',
     backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
     borderColor: '#E2E8F0',
@@ -800,12 +1097,52 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 6,
     minHeight: 48,
-    maxHeight: 88,
+    maxHeight: 200,
     shadowColor: C.text,
     shadowOpacity: 0.03,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
+  },
+  pillContainer: {
+    paddingHorizontal: 4,
+    paddingTop: 2,
+    paddingBottom: 6,
+    width: '100%',
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    alignSelf: 'flex-start',
+    maxWidth: '96%',
+  },
+  pillTextWrap: {
+    marginLeft: 8,
+    flexShrink: 1,
+  },
+  pillName: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: C.text,
+  },
+  pillMeta: {
+    fontSize: 10.5,
+    color: C.textMuted,
+    marginTop: 1,
+  },
+  pillClose: {
+    marginLeft: 8,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    width: '100%',
   },
   input: {
     flex: 1,

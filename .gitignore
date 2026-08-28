@@ -21,15 +21,44 @@ web-build/
 android/
 ios/
 
+# ── Personal & Local Development Files ──
+# Prototypes & HTML Mockups
+*Prototype*
+*prototype*
+*.html
 
+# Task Logs & Progress Walkthroughs
+*TASKLOG*
+*tasklog*
+TASKLOG.md
+tasklog.md
+walkthrough.md
+*walkthrough*
 
-expo-env.d.ts
+# Scratch & Temporary Scripts
+scratch/
+scratch_*
+*.scratch
+refactor.js
+test_*.js
+test_*.ts
 
+# Spreadsheets, Media & Design References
+*.xlsx
+*.xls
+*.csv
+HealthAI_API_integration_status*.xlsx
+homescreen*.jpeg
+homescreen*.jpg
+homescreen*.png
 
-HealthAI_API_integration_status (1).xlsx
-homescreen (5).jpeg
+# Security & Private Signing Keys (Local Only)
+*.p8
 *.jks
+*.keystore
 *.crdownload
+
+# Build artifacts
 *.ipa
 *.apk
 *.aab
