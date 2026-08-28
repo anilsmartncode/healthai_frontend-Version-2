@@ -1,0 +1,298 @@
+import { View, Text, Pressable, StyleSheet } from "react-native";
+import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { Colors, Radius } from "@/constants/Colors";
+import { useLang } from "@/context/Languagecontext";
+import type { ReportListItem } from "@/services/reportsApi";
+
+function formatIndianDateTime(isoString: string | undefined | null, fallback: string): string {
+  if (!isoString) return fallback;
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return fallback;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = d.toLocaleString('en-US', { month: 'short' });
+    const year = d.getFullYear();
+    return `${day} ${month} ${year}`;
+  } catch {
+    return fallback;
+  }
+}
+
+interface CategoryStyle {
+  icon: string;
+  bg: string;
+  color: string;
+}
+
+function getCategoryStyle(category?: string, fileType?: string): CategoryStyle {
+  const cat = category ? category.toLowerCase() : "";
+  if (cat.includes("cbc") || cat.includes("blood")) {
+    return { icon: "water", bg: "#FEE2E2", color: "#EF4444" }; // Red
+  }
+  if (cat.includes("lipid") || cat.includes("cholesterol")) {
+    return { icon: "heart", bg: "#FCE7F3", color: "#EC4899" }; // Pink
+  }
+  if (cat.includes("thyroid")) {
+    return { icon: "flask", bg: "#FEF3C7", color: "#D97706" }; // Amber
+  }
+  if (cat.includes("diabet") || cat.includes("hba1c")) {
+    return { icon: "pulse", bg: "#ECFDF5", color: "#10B981" }; // Emerald
+  }
+  if (cat.includes("vitamin")) {
+    return { icon: "sunny", bg: "#FEF9C3", color: "#EAB308" }; // Yellow
+  }
+  if (fileType === "IMAGE") {
+    return { icon: "image", bg: "#E0F2FE", color: "#0284C7" }; // Light Blue
+  }
+  return { icon: "document-text", bg: "#F3E8FF", color: "#8B5CF6" }; // Purple
+}
+
+function ReportRow({ report }: { report: ReportListItem }) {
+  const catStyle = getCategoryStyle(report.category || report.reportType, report.fileType);
+  const isGood = report.status === "good";
+  const statusColor = isGood ? "#16A34A" : "#F97316";
+  const statusBg = isGood ? "#DCFCE7" : "#FFEDD5";
+  
+  const cleanLabName = report.labName ? report.labName.trim().toLowerCase() : "";
+  const displayLabName = report.labName && !['unknown', 'lab', 'general', 'na', 'n/a'].includes(cleanLabName)
+    ? report.labName
+    : (report.category && report.category !== 'Others' ? report.category : "Report");
+
+  // Determine what to show in the badge
+  const hasScore = report.healthScore != null && report.healthScore > 0;
+  const validLabel = report.healthLabel && !['unknown', 'n/a', 'na'].includes(report.healthLabel.trim().toLowerCase());
+  
+  let badgeText = "";
+  if (hasScore) {
+    badgeText = String(report.healthScore);
+  } else if (validLabel) {
+    badgeText = report.healthLabel as string;
+  }
+  const showBadge = badgeText !== "";
+
+  return (
+    <View style={reportStyles.row}>
+      <View style={[reportStyles.iconWrap, { backgroundColor: catStyle.bg }]}>
+        <Ionicons name="document-text-outline" size={18} color={catStyle.color} />
+      </View>
+
+      <View style={reportStyles.info}>
+        <Text style={reportStyles.name} numberOfLines={1}>
+          {displayLabName}
+        </Text>
+        <View style={reportStyles.metaRow}>
+          <Text style={reportStyles.date} numberOfLines={1}>{formatIndianDateTime(report.analyzedAt, report.date)}</Text>
+          <View style={reportStyles.typeBadge}>
+            <Text style={reportStyles.typeText}>{report.fileType}</Text>
+          </View>
+        </View>
+      </View>
+
+      {showBadge && (
+        <View style={[reportStyles.badge, { backgroundColor: statusBg }]}>
+          <Text style={[reportStyles.badgeText, { color: statusColor }]}>
+            {badgeText}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+const reportStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    width: "100%",
+  },
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    flexShrink: 0,
+  },
+  info: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  name: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: Colors.text,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  date: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    fontWeight: "500",
+  },
+  typeBadge: {
+    backgroundColor: "#F1F5F9",
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+  },
+  typeText: {
+    fontSize: 8,
+    fontWeight: "700",
+    color: Colors.textMuted,
+  },
+  badge: {
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    flexShrink: 0,
+    minWidth: 32,
+    alignItems: "center",
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+});
+
+// ── Empty state ──────────────────────────────────────
+function EmptyReports() {
+  return (
+    <View style={emptyStyles.container}>
+      <View style={emptyStyles.iconWrap}>
+        <Ionicons name="folder-open-outline" size={40} color="#94A3B8" />
+      </View>
+      <Text style={emptyStyles.title}>No reports found</Text>
+      <Text style={emptyStyles.sub}>
+        Your recent reports will appear here after you upload.
+      </Text>
+    </View>
+  );
+}
+
+const emptyStyles = StyleSheet.create({
+  container: {
+    backgroundColor: Colors.card,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingVertical: 36,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    gap: 8,
+    width: "100%",
+  },
+  iconWrap: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 2,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: Colors.text,
+  },
+  sub: {
+    fontSize: 13,
+    color: Colors.textMuted,
+    textAlign: "center",
+    lineHeight: 18,
+  },
+});
+
+// ── Main export ──────────────────────────────────────
+interface Props {
+  reports: ReportListItem[];
+}
+
+export function RecentReports({ reports }: Props) {
+  const { t } = useLang();
+
+  return (
+    <View style={styles.container}>
+      {/* Header row */}
+      <View style={styles.header}>
+        <Text style={styles.title} numberOfLines={1}>
+          {t("recent_reports")}
+        </Text>
+        {reports.length > 0 && (
+          <Pressable
+            onPress={() => router.push("/(tabs)/reports")}
+            hitSlop={8}
+            style={styles.viewAllBtn}
+          >
+            <Text style={styles.viewAll}>{t("view_all")}</Text>
+          </Pressable>
+        )}
+      </View>
+
+      {/* Empty or filled list */}
+      {reports.length === 0 ? (
+        <EmptyReports />
+      ) : (
+        <View style={styles.listContainer}>
+          {reports.slice(0, 3).map((r, index) => (
+            <View key={r.id}>
+              <Pressable
+                onPress={() =>
+                  router.push({ pathname: "/report-detail", params: { id: r.id } })
+                }
+                style={({ pressed }) => [styles.pressable, pressed && styles.pressed]}
+              >
+                <ReportRow report={r} />
+              </Pressable>
+              {index < Math.min(reports.length, 3) - 1 && (
+                <View style={styles.divider} />
+              )}
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { gap: 12, width: "100%" },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  title: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "700",
+    color: Colors.text,
+    marginRight: 8,
+  },
+  viewAllBtn: { flexShrink: 0 },
+  viewAll: { fontSize: 13, color: Colors.primary, fontWeight: "600" },
+  listContainer: {
+    backgroundColor: Colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: "hidden",
+    width: "100%",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginHorizontal: 16,
+  },
+  pressable: { width: "100%" },
+  pressed: { backgroundColor: "#F8FAFC" },
+});

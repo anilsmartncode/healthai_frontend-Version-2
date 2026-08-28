@@ -1,0 +1,38 @@
+{
+  "cli": {
+    "version": ">= 7.8.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY": "goog_fgVsddZvqblJSWqnVotwrliRtLs",
+        "EXPO_PUBLIC_REVENUECAT_APPLE_KEY": "appl_qRLjBLTESAXDKXHklbLFTAVzuwt",
+        "EXPO_PUBLIC_API_URL": "https://healthai.smartncode.com",
+        "EXPO_PUBLIC_ENCRYPTION_KEY_B64": "CDvQQZCeUytc+ST/2rQEJqgRUyfIi+ZmG06krZo9WRY=",
+        "EXPO_PUBLIC_GEOAPIFY_API_KEY": "fb2da740f64e4b3f8d341e4c7faa59b3"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascApiKeyPath": "./AuthKey_QKF4UXM4BD.p8",
+        "ascApiKeyIssuerId": "93600454-0be9-4ac5-b658-1949d8c3ff68",
+        "ascApiKeyId": "QKF4UXM4BD",
+        "ascAppId": "6794323149"
+      }
+    }
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "expo": {
+    "name": "HealthAI",
+    "slug": "healthai",
+    "version": "1.0.2",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "healthai",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.smartncode.healthai",
+      "associatedDomains": [
+        "applinks:healthai.smartncode.com"
+      ],
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleAllowMixedLocalizations": true
+      }
+    },
+    "android": {
+      "versionCode": 8,
+      "softwareKeyboardLayoutMode": "resize",
+      "newArchEnabled": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.smartncode.healthai",
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+      "blockedPermissions": [
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "healthai.smartncode.com",
+              "pathPrefix": "/family/join"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-secure-store",
+      "@react-native-community/datetimepicker",
+      "expo-web-browser",
+      "expo-apple-authentication",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#2D9C8E",
+          "sounds": [
+            "./assets/sounds/alarm.wav"
+          ]
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "HealthAI requires photo library access to let you upload saved images of your medical documents (e.g., blood test results, doctor prescriptions). These images are securely uploaded and analyzed by our AI to extract lab values and medication names to generate your personal health insights.",
+          "cameraPermission": "HealthAI requires camera access to let you capture live photos of your physical medical documents (e.g., blood test results, doctor prescriptions). These photos are securely uploaded and analyzed by our AI to extract lab values and medication names to generate your personal health insights."
+        }
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      "@react-native-firebase/messaging",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.933979596939-laqosq3i8u2n3gq9v1dqdb62akf4a52p"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ],
+      [
+        "react-native-document-scanner-plugin",
+        {
+          "cameraPermission": "We need camera access to scan your documents."
+        }
+      ],
+      [
+        "expo-share-intent",
+        {
+          "iosActivationRules": {
+            "NSExtensionActivationSupportsWebURLWithMaxCount": 1,
+            "NSExtensionActivationSupportsWebPageWithMaxCount": 1,
+            "NSExtensionActivationSupportsImageWithMaxCount": 5,
+            "NSExtensionActivationSupportsText": true,
+            "NSExtensionActivationSupportsFileWithMaxCount": 5
+          },
+          "androidIntentFilters": [
+            "text/*",
+            "image/*",
+            "*/*"
+          ]
+        }
+      ],
+      "./plugins/with-rnfb-fix.js"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "supportsRTL": true,
+      "router": {},
+      "eas": {
+        "projectId": "ab4b7606-c29c-43ce-b0f3-d3c03773c9c0"
+      }
+    }
+  }
+}

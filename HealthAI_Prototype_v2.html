@@ -1,0 +1,1892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HealthAI — Complete Clickable Prototype</title>
+<style>
+  :root{
+    --teal:#0F6E56; --teal-dark:#085041; --teal-light:#E1F5EE;
+    --ink:#1A2B2A; --gray:#6B756F; --line:#E4E8E6; --bg:#F4F6F5;
+    --amber:#BA7517; --red:#A32D2D; --white:#FFFFFF; --blue:#185FA5;
+    --card:#FFFFFF; --focus:#1D6FD1;
+  }
+  .device[data-theme="dark"]{
+    --teal:#3FC79A; --teal-dark:#8FE9C8; --teal-light:#0E2C25;
+    --ink:#EAF2EF; --gray:#9BA8A3; --line:#2A3A36; --bg:#0F1715;
+    --amber:#F5B84D; --red:#F08A8A; --white:#17211E; --card:#17211E; --focus:#6FB2FF;
+  }
+  .device[data-contrast="high"]{
+    --line:#000; --gray:#000; --teal:#00543F; --teal-dark:#003324; --red:#8A0000; --amber:#7A4B00;
+  }
+  .device[data-theme="dark"][data-contrast="high"]{
+    --line:#fff; --gray:#fff; --teal:#7CFFD1; --teal-dark:#B9FFE6; --red:#FFB3B3; --amber:#FFD98A;
+  }
+  .device[data-motion="reduced"] *{ animation-duration:.001s !important; transition-duration:.001s !important; }
+  .device[data-textsize="large"] .screens{ zoom:1.14; }
+  .device[data-textsize="xlarge"] .screens{ zoom:1.3; }
+  .device[dir="rtl"] .backrow{ flex-direction:row-reverse; }
+  .device[dir="rtl"] .topbar-row{ flex-direction:row-reverse; }
+  .device[dir="rtl"] .list-item{ flex-direction:row-reverse; text-align:right; }
+  .device[dir="rtl"] .row{ flex-direction:row-reverse; }
+  .device[dir="rtl"] .navbar{ flex-direction:row-reverse; }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:#dfe3e1; display:flex; justify-content:center; padding:24px 12px;
+  }
+  .device{
+    width:375px; height:780px; background:var(--white); border-radius:38px;
+    box-shadow:0 0 0 10px #111, 0 0 0 12px #333, 0 20px 40px rgba(0,0,0,.35);
+    overflow:hidden; position:relative; display:flex; flex-direction:column;
+    transition:background .2s;
+  }
+  [tabindex]:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible{
+    outline:3px solid var(--focus); outline-offset:2px;
+  }
+  .notch{ position:absolute; top:0; left:50%; transform:translateX(-50%); width:150px; height:26px; background:#111; border-radius:0 0 16px 16px; z-index:50; }
+  .statusbar{ height:44px; flex:0 0 44px; display:flex; align-items:flex-end; justify-content:space-between; padding:0 22px 6px; font-size:13px; font-weight:600; color:var(--ink); background:var(--white); z-index:10; }
+  .offline-bar{ flex:0 0 auto; background:var(--ink); color:#fff; text-align:center; font-size:11px; font-weight:600; padding:0; max-height:0; overflow:hidden; transition:max-height .2s; }
+  .offline-bar.show{ max-height:28px; padding:6px; }
+  .screens{ flex:1; position:relative; overflow:hidden; }
+  .screen{ position:absolute; inset:0; background:var(--bg); overflow-y:auto; display:none; flex-direction:column; padding-bottom:8px; animation:fadein .18s ease; }
+  .screen.active{ display:flex; }
+  @keyframes fadein{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+  @keyframes shimmer{ 0%{background-position:200% 0;} 100%{background-position:-200% 0;} }
+
+  .topbar{ background:var(--white); padding:14px 18px 12px; border-bottom:1px solid var(--line); flex:0 0 auto; }
+  .topbar-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .backrow{ display:flex; align-items:center; gap:10px; }
+  .iconbtn{ width:34px; height:34px; border-radius:50%; border:1px solid var(--line); background:var(--white); display:flex; align-items:center; justify-content:center; cursor:pointer; flex:0 0 auto; position:relative; font-size:15px; }
+  .iconbtn:active{ background:var(--teal-light); }
+  .dot{ position:absolute; top:5px; right:6px; width:7px; height:7px; background:var(--red); border-radius:50%; }
+  h1.title{ font-size:20px; margin:0; color:var(--ink); font-weight:700; }
+  p.sub{ font-size:12.5px; color:var(--gray); margin:2px 0 0; }
+
+  .content{ padding:16px 18px 90px; flex:1; }
+  .card{ background:var(--white); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; }
+  .btn{ display:flex; align-items:center; justify-content:center; gap:6px; background:var(--teal); color:var(--white); border:none; border-radius:12px; padding:14px; font-size:15px; font-weight:700; width:100%; cursor:pointer; }
+  .btn:active{ background:var(--teal-dark); }
+  .btn.outline{ background:var(--white); color:var(--teal); border:1.5px solid var(--teal); }
+  .btn.danger{ background:var(--red); }
+  .btn.ghost{ background:transparent; color:var(--gray); border:1.5px solid var(--line); }
+  .btn.small{ padding:9px 14px; font-size:13px; width:auto; border-radius:9px; }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; }
+  input, select, textarea{ width:100%; padding:12px 14px; border:1.5px solid var(--line); border-radius:10px; font-size:15px; margin-bottom:6px; background:var(--white); color:var(--ink); font-family:inherit; }
+  input:focus, select:focus, textarea:focus{ outline:none; border-color:var(--teal); box-shadow:0 0 0 3px rgba(15,110,86,.18); }
+  [role="button"]:focus-visible, button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible{
+    outline:2.5px solid var(--blue,#185FA5); outline-offset:2px;
+  }
+  @media (prefers-reduced-motion: reduce){ *{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; } }
+  .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  input.err{ border-color:var(--red); }
+  .errtext{ color:var(--red); font-size:11.5px; margin:0 0 12px; display:none; }
+  .errtext.show{ display:block; }
+  label.field-label{ font-size:12.5px; color:var(--gray); font-weight:600; margin-bottom:6px; display:block; }
+  .fieldgap{ margin-bottom:12px; }
+
+  .badge{ font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px; white-space:nowrap; }
+  .badge.good{ background:#EAF3DE; color:#3B6D11; }
+  .badge.warn{ background:#FAEEDA; color:var(--amber); }
+  .badge.bad{ background:#FCEBEB; color:var(--red); }
+  .badge.info{ background:var(--teal-light); color:var(--teal-dark); }
+  .badge.neutral{ background:var(--bg); color:var(--gray); }
+
+  .row{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .list-item{ display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); cursor:pointer; }
+  .list-item:last-child{ border-bottom:none; }
+  .list-item:active{ background:var(--teal-light); }
+  .avatar{ width:42px; height:42px; border-radius:50%; background:var(--teal-light); color:var(--teal-dark); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; flex:0 0 auto; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .grid3{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .grid5{ display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
+  .tile{ background:var(--white); border:1px solid var(--line); border-radius:12px; padding:12px 8px; text-align:center; cursor:pointer; font-size:11.5px; font-weight:600; color:var(--ink); }
+  .tile:active{ background:var(--teal-light); }
+  .tile .ic{ font-size:20px; display:block; margin-bottom:6px; }
+
+  .navbar{ flex:0 0 62px; background:var(--white); border-top:1px solid var(--line); display:flex; align-items:center; justify-content:space-around; z-index:20; }
+  .navitem{ display:flex; flex-direction:column; align-items:center; gap:2px; font-size:10.5px; color:var(--gray); cursor:pointer; font-weight:600; width:64px; padding:4px 0; }
+  .navitem.active{ color:var(--teal); }
+  .navitem .ic{ font-size:19px; }
+
+  .ring{ width:120px; height:120px; border-radius:50%; background:conic-gradient(var(--teal) 0deg, var(--teal) calc(var(--pct,78)*3.6deg), #E4E8E6 calc(var(--pct,78)*3.6deg)); display:flex; align-items:center; justify-content:center; margin:0 auto; }
+  .ring-inner{ width:94px; height:94px; border-radius:50%; background:var(--white); display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .ring-inner .num{ font-size:26px; font-weight:800; color:var(--ink); line-height:1; }
+  .ring-inner .lbl{ font-size:10px; color:var(--gray); }
+
+  .chat-bubble{ max-width:82%; padding:11px 13px; border-radius:14px; font-size:13.5px; line-height:1.5; margin-bottom:10px; }
+  .chat-bubble.user{ background:var(--teal-light); color:var(--teal-dark); margin-left:auto; border-bottom-right-radius:4px; }
+  .chat-bubble.ai{ background:var(--white); border:1px solid var(--line); color:var(--ink); border-bottom-left-radius:4px; }
+  .chip{ display:inline-block; background:var(--white); border:1.5px solid var(--teal); color:var(--teal); border-radius:20px; padding:6px 12px; font-size:12px; font-weight:600; margin:0 6px 8px 0; cursor:pointer; }
+  .chip.on{ background:var(--teal-light); }
+  .disclaimer{ display:flex; gap:8px; align-items:flex-start; background:#F4F6F5; border-radius:10px; padding:9px 11px; font-size:11px; color:var(--gray); margin-top:8px; }
+  .steps{ display:flex; align-items:center; gap:4px; margin-bottom:16px; }
+  .step-dot{ width:24px; height:24px; border-radius:50%; background:var(--line); color:var(--gray); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex:0 0 auto; }
+  .step-dot.on{ background:var(--teal); color:var(--white); }
+  .step-line{ flex:1; height:2px; background:var(--line); }
+  .step-line.on{ background:var(--teal); }
+  .check{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--ink); margin-bottom:8px; }
+  .check .dot-ok{ width:16px; height:16px; border-radius:50%; background:var(--teal); color:#fff; font-size:10px; display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
+  .link{ color:var(--teal); font-weight:700; font-size:13px; cursor:pointer; }
+  .toggle{ position:relative; width:42px; height:24px; border-radius:20px; background:var(--line); cursor:pointer; flex:0 0 auto; transition:.15s; }
+  .toggle.on{ background:var(--teal); }
+  .toggle .knob{ position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%; background:#fff; transition:.15s; box-shadow:0 1px 2px rgba(0,0,0,.3); }
+  .toggle.on .knob{ left:20px; }
+  .banner{ border-radius:12px; padding:14px; margin-bottom:14px; border:1px solid; }
+  .banner.red{ background:#FCEBEB; border-color:#F0999B; }
+  .banner.amber{ background:#FAEEDA; border-color:#FAC775; }
+  .banner.teal{ background:var(--teal-light); border-color:#9FE1CB; }
+  .toast{ position:absolute; bottom:80px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 18px; border-radius:20px; font-size:12.5px; font-weight:600; z-index:300; opacity:0; pointer-events:none; transition:opacity .2s; white-space:nowrap; }
+  .toast.show{ opacity:1; }
+  .hint{ text-align:center; font-size:11px; color:var(--gray); margin:10px 0 0; }
+  .skeleton{ height:14px; border-radius:6px; margin-bottom:8px; background:linear-gradient(90deg,#EDEFEE,#F7F8F7,#EDEFEE); background-size:200% 100%; animation:shimmer 1.3s infinite; }
+  .empty-state{ text-align:center; padding:40px 16px; }
+  .empty-state .ic{ font-size:34px; margin-bottom:10px; }
+  .empty-state h3{ font-size:15px; margin:0 0 4px; }
+  .empty-state p{ font-size:12.5px; color:var(--gray); margin:0 0 16px; }
+  .state-chip{ font-size:10.5px; font-weight:700; color:var(--teal); background:var(--teal-light); padding:4px 10px; border-radius:20px; cursor:pointer; flex:0 0 auto; }
+
+  .overlay{ position:absolute; inset:0; background:rgba(10,20,18,.45); display:none; align-items:flex-end; justify-content:center; z-index:200; }
+  .overlay.show{ display:flex; }
+  .sheet{ background:#fff; width:100%; border-radius:20px 20px 0 0; padding:20px 18px 26px; animation:fadein .18s ease; }
+  .sheet-handle{ width:36px; height:4px; background:var(--line); border-radius:4px; margin:0 auto 14px; }
+
+  .stars{ color:#FAC775; font-size:17px; letter-spacing:2px; }
+  .qa-row{ padding:11px 0; border-bottom:1px solid var(--line); font-size:13px; cursor:pointer; color:var(--teal); font-weight:600; display:flex; justify-content:space-between; align-items:center; }
+  .accordion-head{ display:flex; justify-content:space-between; align-items:center; padding:12px 0; cursor:pointer; font-weight:600; font-size:13.5px; border-bottom:1px solid var(--line); }
+  .accordion-body{ display:none; font-size:12.5px; color:var(--gray); padding:0 0 12px; line-height:1.6; }
+  .accordion-body.open{ display:block; }
+  .segment{ display:flex; background:var(--bg); border-radius:10px; padding:3px; margin-bottom:14px; }
+  .segment .seg-opt{ flex:1; text-align:center; padding:8px 0; font-size:12.5px; font-weight:600; border-radius:8px; cursor:pointer; color:var(--gray); }
+  .segment .seg-opt.on{ background:#fff; color:var(--teal-dark); box-shadow:0 1px 2px rgba(0,0,0,.08); }
+</style>
+</head>
+<body>
+
+<div class="device" id="device" lang="en">
+  <div class="notch"></div>
+  <div class="statusbar"><span>9:41</span><span style="display:flex; align-items:center; gap:8px;"><span onclick="toggleDark()" style="cursor:pointer;" title="Toggle dark mode" role="button" tabindex="0" aria-label="Toggle dark mode">◐</span>●●●● 5G 🔋</span></div>
+  <div class="offline-bar" id="offlinebar">⚠ No internet connection — showing cached data</div>
+
+  <div class="screens" id="screens"></div>
+  <div class="toast" id="toast"></div>
+
+  <div class="overlay" id="ov-logout"><div class="sheet"><div class="sheet-handle"></div>
+    <h3 style="margin:0 0 6px; font-size:15px;">Log out?</h3>
+    <p style="font-size:12.5px; color:var(--gray); margin:0 0 18px;">You'll need to verify your phone number again to log back in.</p>
+    <button class="btn danger" style="margin-bottom:10px;" onclick="closeSheet('ov-logout'); go('onboarding');">Log out</button>
+    <button class="btn ghost" onclick="closeSheet('ov-logout')">Cancel</button>
+  </div></div>
+
+  <div class="overlay" id="ov-cancelappt"><div class="sheet"><div class="sheet-handle"></div>
+    <h3 style="margin:0 0 6px; font-size:15px;">Cancel appointment?</h3>
+    <p style="font-size:12.5px; color:var(--gray); margin:0 0 18px;">Dr. Ananya Sharma · 22 May, 10:30 AM. Cancellation fees may apply per clinic policy.</p>
+    <button class="btn danger" style="margin-bottom:10px;" onclick="closeSheet('ov-cancelappt'); showToast('Appointment cancelled'); go('appointmentslist');">Yes, cancel</button>
+    <button class="btn ghost" onclick="closeSheet('ov-cancelappt')">Keep appointment</button>
+  </div></div>
+
+  <div class="overlay" id="ov-reportactions"><div class="sheet"><div class="sheet-handle"></div>
+    <div class="list-item" onclick="closeSheet('ov-reportactions'); showToast('Share link copied')"><div class="avatar">🔗</div><span style="font-weight:600; font-size:13.5px;">Share report with doctor</span></div>
+    <div class="list-item" onclick="closeSheet('ov-reportactions'); showToast('Downloaded as PDF')"><div class="avatar">⬇</div><span style="font-weight:600; font-size:13.5px;">Download as PDF</span></div>
+    <div class="list-item" onclick="document.getElementById('deleteconfirm-block').style.display='block'; document.getElementById('shareactions-block').style.display='none';"><div class="avatar" style="background:#FCEBEB; color:var(--red);">🗑</div><span style="font-weight:600; font-size:13.5px; color:var(--red);">Delete report</span></div>
+    <div id="deleteconfirm-block" style="display:none; padding-top:12px;">
+      <p style="font-size:12.5px; color:var(--gray); margin:0 0 14px;">This permanently deletes the report and its AI analysis. This cannot be undone.</p>
+      <button class="btn danger" style="margin-bottom:10px;" onclick="closeSheet('ov-reportactions'); showToast('Report deleted'); go('reports');">Delete permanently</button>
+      <button class="btn ghost" onclick="closeSheet('ov-reportactions')">Cancel</button>
+    </div>
+  </div></div>
+
+  <div class="overlay" id="ov-removemember"><div class="sheet"><div class="sheet-handle"></div>
+    <h3 style="margin:0 0 6px; font-size:15px;">Remove Nanna from family?</h3>
+    <p style="font-size:12.5px; color:var(--gray); margin:0 0 18px;">You'll lose access to their reports, medicines, and health timeline.</p>
+    <button class="btn danger" style="margin-bottom:10px;" onclick="closeSheet('ov-removemember'); showToast('Member removed'); go('family');">Remove member</button>
+    <button class="btn ghost" onclick="closeSheet('ov-removemember')">Cancel</button>
+  </div></div>
+
+  <div class="navbar" id="navbar">
+    <div class="navitem" data-nav="home" onclick="go('home')" role="button" tabindex="0" aria-label="Home tab"><span class="ic" aria-hidden="true">⌂</span><span data-i18n="navHome">Home</span></div>
+    <div class="navitem" data-nav="reports" onclick="go('reports')" role="button" tabindex="0" aria-label="Reports tab"><span class="ic" aria-hidden="true">▤</span><span data-i18n="navReports">Reports</span></div>
+    <div class="navitem" data-nav="ai" onclick="go('ai')" role="button" tabindex="0" aria-label="AI Assistant tab"><span class="ic" aria-hidden="true">◎</span><span data-i18n="navAI">AI Assist</span></div>
+    <div class="navitem" data-nav="meds" onclick="go('meds')" role="button" tabindex="0" aria-label="Medicines tab"><span class="ic" aria-hidden="true">✚</span><span data-i18n="navMedicines">Medicines</span></div>
+    <div class="navitem" data-nav="profile" onclick="go('profile')" role="button" tabindex="0" aria-label="Profile tab"><span class="ic" aria-hidden="true">⚉</span><span data-i18n="navProfile">Profile</span></div>
+  </div>
+</div>
+
+<script>
+const state = { history: [], current: null };
+const I18N_KEYS = ["appName","tagline","getStarted","alreadyHaveAccount","logIn","chooseLanguage","selectPreferredLanguage","continueBtn","mobileNumber","sendOtp","orContinueWith","continueWithGoogle","continueAsGuest","byContinuing","terms","and","privacyPolicy","verifyOtp","enterCode","resendOtp","navHome","navReports","navAI","navMedicines","navProfile","goodMorning","healthOverview","uploadReport","askAI","bookVisit","pharmacy","sos","recentReports","viewAll","todaysReminder","familyHealth","profile","personalInfo","healthPreferences","privacySecurity","languageRegion","accessibility","subscriptionPlan","helpSupport","logOut","save","cancel","search","notifications","fullyLocalized","machineAssisted"];
+const TRANSLATIONS = {"en":{"appName":"HealthAI","tagline":"Your AI-powered health companion for you and your family.","getStarted":"Get started","alreadyHaveAccount":"Already have an account?","logIn":"Log in","chooseLanguage":"Choose language","selectPreferredLanguage":"Select your preferred language","continueBtn":"Continue","mobileNumber":"Mobile number","sendOtp":"Send OTP","orContinueWith":"or continue with","continueWithGoogle":"Continue with Google","continueAsGuest":"Continue as guest","byContinuing":"By continuing you agree to our","terms":"Terms","and":"and","privacyPolicy":"Privacy Policy","verifyOtp":"Verify OTP","enterCode":"Enter the 6-digit code sent to your number","resendOtp":"Resend OTP","navHome":"Home","navReports":"Reports","navAI":"AI Assistant","navMedicines":"Medicines","navProfile":"Profile","goodMorning":"Good morning","healthOverview":"Here's your health overview","uploadReport":"Upload report","askAI":"Ask AI","bookVisit":"Book visit","pharmacy":"Pharmacy","sos":"SOS","recentReports":"Recent reports","viewAll":"View all","todaysReminder":"Today's reminder","familyHealth":"Family health","profile":"Profile","personalInfo":"Personal information","healthPreferences":"Health preferences","privacySecurity":"Privacy and security","languageRegion":"Language and region","accessibility":"Accessibility","subscriptionPlan":"Subscription and plan","helpSupport":"Help and support","logOut":"Log out","save":"Save","cancel":"Cancel","search":"Search","notifications":"Notifications","fullyLocalized":"Fully localized","machineAssisted":"Machine-assisted — under review"},"hi":{"appName":"हेल्थएआई","tagline":"आपके और आपके परिवार के लिए एआई-संचालित स्वास्थ्य साथी।","getStarted":"शुरू करें","alreadyHaveAccount":"पहले से खाता है?","logIn":"लॉग इन करें","chooseLanguage":"भाषा चुनें","selectPreferredLanguage":"अपनी पसंदीदा भाषा चुनें","continueBtn":"जारी रखें","mobileNumber":"मोबाइल नंबर","sendOtp":"ओटीपी भेजें","orContinueWith":"या इसके साथ जारी रखें","continueWithGoogle":"गूगल से जारी रखें","continueAsGuest":"अतिथि के रूप में जारी रखें","byContinuing":"जारी रखकर, आप हमारी शर्तों से सहमत हैं","terms":"नियम","and":"और","privacyPolicy":"गोपनीयता नीति","verifyOtp":"ओटीपी सत्यापित करें","enterCode":"अपने नंबर पर भेजा गया 6-अंकीय कोड दर्ज करें","resendOtp":"ओटीपी पुनः भेजें","navHome":"होम","navReports":"रिपोर्ट","navAI":"एआई सहायक","navMedicines":"दवाइयाँ","navProfile":"प्रोफ़ाइल","goodMorning":"सुप्रभात","healthOverview":"यह रहा आपका स्वास्थ्य विवरण","uploadReport":"रिपोर्ट अपलोड करें","askAI":"एआई से पूछें","bookVisit":"मुलाकात बुक करें","pharmacy":"फार्मेसी","sos":"एसओएस","recentReports":"हाल की रिपोर्ट","viewAll":"सभी देखें","todaysReminder":"आज का रिमाइंडर","familyHealth":"पारिवारिक स्वास्थ्य","profile":"प्रोफ़ाइल","personalInfo":"व्यक्तिगत जानकारी","healthPreferences":"स्वास्थ्य प्राथमिकताएं","privacySecurity":"गोपनीयता और सुरक्षा","languageRegion":"भाषा और क्षेत्र","accessibility":"सुगम्यता","subscriptionPlan":"सदस्यता और योजना","helpSupport":"सहायता केंद्र","logOut":"लॉग आउट","save":"सहेजें","cancel":"रद्द करें","search":"खोजें","notifications":"सूचनाएं","fullyLocalized":"पूर्ण रूप से स्थानीयकृत","machineAssisted":"मशीन-सहायता प्राप्त — समीक्षा में"},"te":{"appName":"హెల్త్ఏఐ","tagline":"మీ కోసం మరియు మీ కుటుంబం కోసం ఏఐ ఆధారిత ఆరోగ్య సహచరుడు.","getStarted":"ప్రారంభించండి","alreadyHaveAccount":"ఇప్పటికే ఖాతా ఉందా?","logIn":"లాగిన్ చేయండి","chooseLanguage":"భాషను ఎంచుకోండి","selectPreferredLanguage":"మీకు నచ్చిన భాషను ఎంచుకోండి","continueBtn":"కొనసాగించు","mobileNumber":"మొబైల్ నంబర్","sendOtp":"ఓటీపీ పంపండి","orContinueWith":"లేదా దీనితో కొనసాగించండి","continueWithGoogle":"గూగుల్‌తో కొనసాగించండి","continueAsGuest":"అతిథిగా కొనసాగించండి","byContinuing":"కొనసాగించడం ద్వారా, మీరు మా నిబంధనలను అంగీకరిస్తున్నారు","terms":"నిబంధనలు","and":"మరియు","privacyPolicy":"గోప్యతా విధానం","verifyOtp":"ఓటీపీని ధృవీకరించండి","enterCode":"మీ నంబర్‌కు పంపిన 6-అంకెల కోడ్‌ను నమోదు చేయండి","resendOtp":"ఓటీపీని మళ్లీ పంపండి","navHome":"హోమ్","navReports":"నివేదికలు","navAI":"ఏఐ సహాయకుడు","navMedicines":"మందులు","navProfile":"ప్రొఫైల్","goodMorning":"శుభోదయం","healthOverview":"మీ ఆరోగ్య వివరణ ఇదిగో","uploadReport":"నివేదికను అప్‌లోడ్ చేయండి","askAI":"ఏఐని అడగండి","bookVisit":"అపాయింట్‌మెంట్ బుక్ చేయండి","pharmacy":"ఫార్మసీ","sos":"ఎస్‌ఓఎస్","recentReports":"ఇటీవలి నివేదికలు","viewAll":"అన్నీ చూడండి","todaysReminder":"నేటి రిమైండర్","familyHealth":"కుటుంబ ఆరోగ్యం","profile":"ప్రొఫైల్","personalInfo":"వ్యక్తిగత సమాచారం","healthPreferences":"ఆరోగ్య ప్రాధాన్యతలు","privacySecurity":"గోప్యత మరియు భద్రత","languageRegion":"భాష మరియు ప్రాంతం","accessibility":"ప్రాప్యత","subscriptionPlan":"సభ్యత్వం మరియు ప్రణాళిక","helpSupport":"సహాయం మరియు మద్దతు","logOut":"లాగ్ అవుట్","save":"సేవ్ చేయండి","cancel":"రద్దు చేయండి","search":"శోధించండి","notifications":"నోటిఫికేషన్‌లు","fullyLocalized":"పూర్తిగా స్థానికీకరించబడింది","machineAssisted":"మెషిన్-సహాయక — సమీక్షలో ఉంది"},"ta":{"appName":"ஹெல்த்ஏஐ","tagline":"உங்களுக்கும் உங்கள் குடும்பத்திற்கும் ஏஐ-இயங்கும் சுகாதார துணை.","getStarted":"தொடங்குங்கள்","alreadyHaveAccount":"ஏற்கனவே கணக்கு உள்ளதா?","logIn":"உள்நுழையவும்","chooseLanguage":"மொழியைத் தேர்ந்தெடுக்கவும்","selectPreferredLanguage":"உங்களுக்கு விருப்பமான மொழியைத் தேர்ந்தெடுக்கவும்","continueBtn":"தொடரவும்","mobileNumber":"மொபைல் எண்","sendOtp":"ஓடிபி அனுப்பவும்","orContinueWith":"அல்லது இதனுடன் தொடரவும்","continueWithGoogle":"கூகுளுடன் தொடரவும்","continueAsGuest":"விருந்தினராகத் தொடரவும்","byContinuing":"தொடர்வதன் மூலம், எங்கள் விதிமுறைகளை ஏற்கிறீர்கள்","terms":"விதிமுறைகள்","and":"மற்றும்","privacyPolicy":"தனியுரிமைக் கொள்கை","verifyOtp":"ஓடிபியை சரிபார்க்கவும்","enterCode":"உங்கள் எண்ணுக்கு அனுப்பப்பட்ட 6-இலக்க குறியீட்டை உள்ளிடவும்","resendOtp":"ஓடிபியை மீண்டும் அனுப்பவும்","navHome":"முகப்பு","navReports":"அறிக்கைகள்","navAI":"ஏஐ உதவியாளர்","navMedicines":"மருந்துகள்","navProfile":"சுயவிவரம்","goodMorning":"காலை வணக்கம்","healthOverview":"உங்கள் சுகாதார கண்ணோட்டம் இதோ","uploadReport":"அறிக்கையைப் பதிவேற்றவும்","askAI":"ஏஐ-யிடம் கேளுங்கள்","bookVisit":"வருகையை பதிவு செய்யவும்","pharmacy":"மருந்தகம்","sos":"எஸ்ஓஎஸ்","recentReports":"சமீபத்திய அறிக்கைகள்","viewAll":"அனைத்தையும் காண்க","todaysReminder":"இன்றைய நினைவூட்டல்","familyHealth":"குடும்ப சுகாதாரம்","profile":"சுயவிவரம்","personalInfo":"தனிப்பட்ட தகவல்","healthPreferences":"சுகாதார விருப்பத்தேர்வுகள்","privacySecurity":"தனியுரிமை மற்றும் பாதுகாப்பு","languageRegion":"மொழி மற்றும் பகுதி","accessibility":"அணுகல்தன்மை","subscriptionPlan":"சந்தா மற்றும் திட்டம்","helpSupport":"உதவி மற்றும் ஆதரவு","logOut":"வெளியேறு","save":"சேமி","cancel":"ரத்துசெய்","search":"தேடு","notifications":"அறிவிப்புகள்","fullyLocalized":"முழுமையாக உள்ளூர்மயமாக்கப்பட்டது","machineAssisted":"இயந்திர-உதவி — மதிப்பாய்வில்"},"kn":{"appName":"ಹೆಲ್ತ್ಎಐ","tagline":"ನಿಮಗಾಗಿ ಮತ್ತು ನಿಮ್ಮ ಕುಟುಂಬಕ್ಕಾಗಿ ಎಐ-ಚಾಲಿತ ಆರೋಗ್ಯ ಸಂಗಾತಿ.","getStarted":"ಪ್ರಾರಂಭಿಸಿ","alreadyHaveAccount":"ಈಗಾಗಲೇ ಖಾತೆ ಇದೆಯೇ?","logIn":"ಲಾಗ್ ಇನ್ ಮಾಡಿ","chooseLanguage":"ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ","selectPreferredLanguage":"ನಿಮ್ಮ ಆದ್ಯತೆಯ ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ","continueBtn":"ಮುಂದುವರಿಸಿ","mobileNumber":"ಮೊಬೈಲ್ ಸಂಖ್ಯೆ","sendOtp":"ಒಟಿಪಿ ಕಳುಹಿಸಿ","orContinueWith":"ಅಥವಾ ಇದರೊಂದಿಗೆ ಮುಂದುವರಿಸಿ","continueWithGoogle":"ಗೂಗಲ್‌ನೊಂದಿಗೆ ಮುಂದುವರಿಸಿ","continueAsGuest":"ಅತಿಥಿಯಾಗಿ ಮುಂದುವರಿಸಿ","byContinuing":"ಮುಂದುವರಿಸುವ ಮೂಲಕ, ನೀವು ನಮ್ಮ ನಿಯಮಗಳನ್ನು ಒಪ್ಪುತ್ತೀರಿ","terms":"ನಿಯಮಗಳು","and":"ಮತ್ತು","privacyPolicy":"ಗೌಪ್ಯತಾ ನೀತಿ","verifyOtp":"ಒಟಿಪಿ ಪರಿಶೀಲಿಸಿ","enterCode":"ನಿಮ್ಮ ಸಂಖ್ಯೆಗೆ ಕಳುಹಿಸಲಾದ 6-ಅಂಕಿಯ ಕೋಡ್ ನಮೂದಿಸಿ","resendOtp":"ಒಟಿಪಿ ಮರುಕಳುಹಿಸಿ","navHome":"ಮುಖಪುಟ","navReports":"ವರದಿಗಳು","navAI":"ಎಐ ಸಹಾಯಕ","navMedicines":"ಔಷಧಿಗಳು","navProfile":"ಪ್ರೊಫೈಲ್","goodMorning":"ಶುಭೋದಯ","healthOverview":"ಇಲ್ಲಿದೆ ನಿಮ್ಮ ಆರೋಗ್ಯ ಅವಲೋಕನ","uploadReport":"ವರದಿಯನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ","askAI":"ಎಐ ಅನ್ನು ಕೇಳಿ","bookVisit":"ಭೇಟಿ ಬುಕ್ ಮಾಡಿ","pharmacy":"ಔಷಧಾಲಯ","sos":"ಎಸ್‌ಒಎಸ್","recentReports":"ಇತ್ತೀಚಿನ ವರದಿಗಳು","viewAll":"ಎಲ್ಲಾ ವೀಕ್ಷಿಸಿ","todaysReminder":"ಇಂದಿನ ಜ್ಞಾಪನೆ","familyHealth":"ಕುಟುಂಬ ಆರೋಗ್ಯ","profile":"ಪ್ರೊಫೈಲ್","personalInfo":"ವೈಯಕ್ತಿಕ ಮಾಹಿತಿ","healthPreferences":"ಆರೋಗ್ಯ ಆದ್ಯತೆಗಳು","privacySecurity":"ಗೌಪ್ಯತೆ ಮತ್ತು ಭದ್ರತೆ","languageRegion":"ಭಾಷೆ ಮತ್ತು ಪ್ರದೇಶ","accessibility":"ಪ್ರವೇಶಿಸುವಿಕೆ","subscriptionPlan":"ಚಂದಾದಾರಿಕೆ ಮತ್ತು ಯೋಜನೆ","helpSupport":"ಸಹಾಯ ಮತ್ತು ಬೆಂಬಲ","logOut":"ಲಾಗ್ ಔಟ್","save":"ಉಳಿಸಿ","cancel":"ರದ್ದುಮಾಡಿ","search":"ಹುಡುಕಿ","notifications":"ಅಧಿಸೂಚನೆಗಳು","fullyLocalized":"ಸಂಪೂರ್ಣವಾಗಿ ಸ್ಥಳೀಕರಿಸಲಾಗಿದೆ","machineAssisted":"ಯಂತ್ರ-ಸಹಾಯಕ — ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ"},"ml":{"appName":"ഹെൽത്ത്എഐ","tagline":"നിങ്ങൾക്കും നിങ്ങളുടെ കുടുംബത്തിനും വേണ്ടിയുള്ള എഐ-പവേർഡ് ആരോഗ്യ കൂട്ടാളി.","getStarted":"ആരംഭിക്കുക","alreadyHaveAccount":"നിലവിൽ അക്കൗണ്ട് ഉണ്ടോ?","logIn":"ലോഗിൻ ചെയ്യുക","chooseLanguage":"ഭാഷ തിരഞ്ഞെടുക്കുക","selectPreferredLanguage":"നിങ്ങളുടെ ഇഷ്ട ഭാഷ തിരഞ്ഞെടുക്കുക","continueBtn":"തുടരുക","mobileNumber":"മൊബൈൽ നമ്പർ","sendOtp":"ഒടിപി അയയ്ക്കുക","orContinueWith":"അല്ലെങ്കിൽ ഇതിനൊപ്പം തുടരുക","continueWithGoogle":"ഗൂഗിളുമായി തുടരുക","continueAsGuest":"അതിഥിയായി തുടരുക","byContinuing":"തുടരുന്നതിലൂടെ, ഞങ്ങളുടെ നിബന്ധനകൾ നിങ്ങൾ അംഗീകരിക്കുന്നു","terms":"നിബന്ധനകൾ","and":"ഒപ്പം","privacyPolicy":"സ്വകാര്യതാ നയം","verifyOtp":"ഒടിപി പരിശോധിക്കുക","enterCode":"നിങ്ങളുടെ നമ്പറിലേക്ക് അയച്ച 6 അക്ക കോഡ് നൽകുക","resendOtp":"ഒടിപി വീണ്ടും അയയ്ക്കുക","navHome":"ഹോം","navReports":"റിപ്പോർട്ടുകൾ","navAI":"എഐ അസിസ്റ്റന്റ്","navMedicines":"മരുന്നുകൾ","navProfile":"പ്രൊഫൈൽ","goodMorning":"സുപ്രഭാതം","healthOverview":"ഇതാ നിങ്ങളുടെ ആരോഗ്യ അവലോകനം","uploadReport":"റിപ്പോർട്ട് അപ്‌ലോഡ് ചെയ്യുക","askAI":"എഐയോട് ചോദിക്കുക","bookVisit":"സന്ദർശനം ബുക്ക് ചെയ്യുക","pharmacy":"ഫാർമസി","sos":"എസ്ഒഎസ്","recentReports":"സമീപകാല റിപ്പോർട്ടുകൾ","viewAll":"എല്ലാം കാണുക","todaysReminder":"ഇന്നത്തെ ഓർമ്മപ്പെടുത്തൽ","familyHealth":"കുടുംബ ആരോഗ്യം","profile":"പ്രൊഫൈൽ","personalInfo":"വ്യക്തിഗത വിവരങ്ങൾ","healthPreferences":"ആരോഗ്യ മുൻഗണനകൾ","privacySecurity":"സ്വകാര്യതയും സുരക്ഷയും","languageRegion":"ഭാഷയും പ്രദേശവും","accessibility":"പ്രാപ്യത","subscriptionPlan":"സബ്സ്ക്രിപ്ഷനും പ്ലാനും","helpSupport":"സഹായവും പിന്തുണയും","logOut":"ലോഗ് ഔട്ട്","save":"സേവ് ചെയ്യുക","cancel":"റദ്ദാക്കുക","search":"തിരയുക","notifications":"അറിയിപ്പുകൾ","fullyLocalized":"പൂർണ്ണമായി പ്രാദേശികവൽക്കരിച്ചു","machineAssisted":"മെഷീൻ-സഹായത്തോടെ — അവലോകനത്തിൽ"},"mr":{"appName":"हेल्थएआय","tagline":"तुमच्यासाठी आणि तुमच्या कुटुंबासाठी एआय-चालित आरोग्य सोबती.","getStarted":"सुरू करा","alreadyHaveAccount":"आधीच खाते आहे?","logIn":"लॉग इन करा","chooseLanguage":"भाषा निवडा","selectPreferredLanguage":"तुमची पसंतीची भाषा निवडा","continueBtn":"सुरू ठेवा","mobileNumber":"मोबाईल नंबर","sendOtp":"ओटीपी पाठवा","orContinueWith":"किंवा यासह सुरू ठेवा","continueWithGoogle":"गुगलसह सुरू ठेवा","continueAsGuest":"अतिथी म्हणून सुरू ठेवा","byContinuing":"सुरू ठेवून, तुम्ही आमच्या अटी मान्य करता","terms":"अटी","and":"आणि","privacyPolicy":"गोपनीयता धोरण","verifyOtp":"ओटीपी सत्यापित करा","enterCode":"तुमच्या नंबरवर पाठवलेला 6-अंकी कोड टाका","resendOtp":"ओटीपी पुन्हा पाठवा","navHome":"होम","navReports":"अहवाल","navAI":"एआय सहाय्यक","navMedicines":"औषधे","navProfile":"प्रोफाइल","goodMorning":"शुभ प्रभात","healthOverview":"हे आहे तुमचे आरोग्य विहंगावलोकन","uploadReport":"अहवाल अपलोड करा","askAI":"एआयला विचारा","bookVisit":"भेट बुक करा","pharmacy":"फार्मसी","sos":"एसओएस","recentReports":"अलीकडील अहवाल","viewAll":"सर्व पहा","todaysReminder":"आजची आठवण","familyHealth":"कौटुंबिक आरोग्य","profile":"प्रोफाइल","personalInfo":"वैयक्तिक माहिती","healthPreferences":"आरोग्य प्राधान्ये","privacySecurity":"गोपनीयता आणि सुरक्षा","languageRegion":"भाषा आणि प्रदेश","accessibility":"सुलभता","subscriptionPlan":"सदस्यता आणि योजना","helpSupport":"मदत आणि समर्थन","logOut":"लॉग आउट","save":"जतन करा","cancel":"रद्द करा","search":"शोधा","notifications":"सूचना","fullyLocalized":"पूर्णपणे स्थानिकीकृत","machineAssisted":"मशीन-सहाय्यित — पुनरावलोकनात"},"bn":{"appName":"হেলথএআই","tagline":"আপনার এবং আপনার পরিবারের জন্য এআই-চালিত স্বাস্থ্য সঙ্গী।","getStarted":"শুরু করুন","alreadyHaveAccount":"ইতিমধ্যে অ্যাকাউন্ট আছে?","logIn":"লগ ইন করুন","chooseLanguage":"ভাষা নির্বাচন করুন","selectPreferredLanguage":"আপনার পছন্দের ভাষা নির্বাচন করুন","continueBtn":"চালিয়ে যান","mobileNumber":"মোবাইল নম্বর","sendOtp":"ওটিপি পাঠান","orContinueWith":"অথবা এর সাথে চালিয়ে যান","continueWithGoogle":"গুগল দিয়ে চালিয়ে যান","continueAsGuest":"অতিথি হিসেবে চালিয়ে যান","byContinuing":"চালিয়ে যাওয়ার মাধ্যমে, আপনি আমাদের শর্তাবলীতে সম্মত হচ্ছেন","terms":"শর্তাবলী","and":"এবং","privacyPolicy":"গোপনীয়তা নীতি","verifyOtp":"ওটিপি যাচাই করুন","enterCode":"আপনার নম্বরে পাঠানো ৬-সংখ্যার কোড লিখুন","resendOtp":"ওটিপি পুনরায় পাঠান","navHome":"হোম","navReports":"রিপোর্ট","navAI":"এআই সহকারী","navMedicines":"ওষুধ","navProfile":"প্রোফাইল","goodMorning":"শুভ সকাল","healthOverview":"এই যে আপনার স্বাস্থ্য পর্যালোচনা","uploadReport":"রিপোর্ট আপলোড করুন","askAI":"এআইকে জিজ্ঞাসা করুন","bookVisit":"সাক্ষাৎ বুক করুন","pharmacy":"ফার্মেসি","sos":"এসওএস","recentReports":"সাম্প্রতিক রিপোর্ট","viewAll":"সব দেখুন","todaysReminder":"আজকের রিমাইন্ডার","familyHealth":"পারিবারিক স্বাস্থ্য","profile":"প্রোফাইল","personalInfo":"ব্যক্তিগত তথ্য","healthPreferences":"স্বাস্থ্য পছন্দসমূহ","privacySecurity":"গোপনীয়তা এবং নিরাপত্তা","languageRegion":"ভাষা এবং অঞ্চল","accessibility":"অ্যাক্সেসযোগ্যতা","subscriptionPlan":"সাবস্ক্রিপশন এবং পরিকল্পনা","helpSupport":"সহায়তা কেন্দ্র","logOut":"লগ আউট","save":"সংরক্ষণ করুন","cancel":"বাতিল করুন","search":"অনুসন্ধান করুন","notifications":"বিজ্ঞপ্তি","fullyLocalized":"সম্পূর্ণরূপে স্থানীয়করণ করা হয়েছে","machineAssisted":"মেশিন-সহায়তাপ্রাপ্ত — পর্যালোচনাধীন"},"gu":{"appName":"હેલ્થએઆઈ","tagline":"તમારા અને તમારા પરિવાર માટે એઆઈ-સંચાલિત આરોગ્ય સાથી.","getStarted":"શરૂ કરો","alreadyHaveAccount":"પહેલેથી ખાતું છે?","logIn":"લોગ ઇન કરો","chooseLanguage":"ભાષા પસંદ કરો","selectPreferredLanguage":"તમારી પસંદગીની ભાષા પસંદ કરો","continueBtn":"ચાલુ રાખો","mobileNumber":"મોબાઇલ નંબર","sendOtp":"ઓટીપી મોકલો","orContinueWith":"અથવા આની સાથે ચાલુ રાખો","continueWithGoogle":"ગૂગલ સાથે ચાલુ રાખો","continueAsGuest":"અતિથિ તરીકે ચાલુ રાખો","byContinuing":"ચાલુ રાખીને, તમે અમારી શરતો સાથે સંમત થાઓ છો","terms":"શરતો","and":"અને","privacyPolicy":"ગોપનીયતા નીતિ","verifyOtp":"ઓટીપી ચકાસો","enterCode":"તમારા નંબર પર મોકલેલ 6-અંકનો કોડ દાખલ કરો","resendOtp":"ઓટીપી ફરીથી મોકલો","navHome":"હોમ","navReports":"અહેવાલો","navAI":"એઆઈ સહાયક","navMedicines":"દવાઓ","navProfile":"પ્રોફાઇલ","goodMorning":"સુપ્રભાત","healthOverview":"આ રહ્યું તમારું આરોગ્ય વિહંગાવલોકન","uploadReport":"અહેવાલ અપલોડ કરો","askAI":"એઆઈને પૂછો","bookVisit":"મુલાકાત બુક કરો","pharmacy":"ફાર્મસી","sos":"એસઓએસ","recentReports":"તાજેતરના અહેવાલો","viewAll":"બધું જુઓ","todaysReminder":"આજની યાદ અપાવનાર","familyHealth":"કૌટુંબિક આરોગ્ય","profile":"પ્રોફાઇલ","personalInfo":"વ્યક્તિગત માહિતી","healthPreferences":"આરોગ્ય પસંદગીઓ","privacySecurity":"ગોપનીયતા અને સુરક્ષા","languageRegion":"ભાષા અને પ્રદેશ","accessibility":"સુલભતા","subscriptionPlan":"સબ્સ્ક્રિપ્શન અને યોજના","helpSupport":"સહાય અને સપોર્ટ","logOut":"લોગ આઉટ","save":"સાચવો","cancel":"રદ કરો","search":"શોધો","notifications":"સૂચનાઓ","fullyLocalized":"સંપૂર્ણપણે સ્થાનિકીકૃત","machineAssisted":"મશીન-સહાયિત — સમીક્ષા હેઠળ"},"pa":{"appName":"ਹੈਲਥਏਆਈ","tagline":"ਤੁਹਾਡੇ ਅਤੇ ਤੁਹਾਡੇ ਪਰਿਵਾਰ ਲਈ ਏਆਈ-ਸੰਚਾਲਿਤ ਸਿਹਤ ਸਾਥੀ।","getStarted":"ਸ਼ੁਰੂ ਕਰੋ","alreadyHaveAccount":"ਪਹਿਲਾਂ ਹੀ ਖਾਤਾ ਹੈ?","logIn":"ਲੌਗ ਇਨ ਕਰੋ","chooseLanguage":"ਭਾਸ਼ਾ ਚੁਣੋ","selectPreferredLanguage":"ਆਪਣੀ ਪਸੰਦੀਦਾ ਭਾਸ਼ਾ ਚੁਣੋ","continueBtn":"ਜਾਰੀ ਰੱਖੋ","mobileNumber":"ਮੋਬਾਈਲ ਨੰਬਰ","sendOtp":"ਓਟੀਪੀ ਭੇਜੋ","orContinueWith":"ਜਾਂ ਇਸ ਨਾਲ ਜਾਰੀ ਰੱਖੋ","continueWithGoogle":"ਗੂਗਲ ਨਾਲ ਜਾਰੀ ਰੱਖੋ","continueAsGuest":"ਮਹਿਮਾਨ ਵਜੋਂ ਜਾਰੀ ਰੱਖੋ","byContinuing":"ਜਾਰੀ ਰੱਖ ਕੇ, ਤੁਸੀਂ ਸਾਡੀਆਂ ਸ਼ਰਤਾਂ ਨਾਲ ਸਹਿਮਤ ਹੁੰਦੇ ਹੋ","terms":"ਸ਼ਰਤਾਂ","and":"ਅਤੇ","privacyPolicy":"ਗੋਪਨੀਯਤਾ ਨੀਤੀ","verifyOtp":"ਓਟੀਪੀ ਦੀ ਪੁਸ਼ਟੀ ਕਰੋ","enterCode":"ਆਪਣੇ ਨੰਬਰ 'ਤੇ ਭੇਜਿਆ 6-ਅੰਕਾਂ ਦਾ ਕੋਡ ਦਰਜ ਕਰੋ","resendOtp":"ਓਟੀਪੀ ਦੁਬਾਰਾ ਭੇਜੋ","navHome":"ਹੋਮ","navReports":"ਰਿਪੋਰਟਾਂ","navAI":"ਏਆਈ ਸਹਾਇਕ","navMedicines":"ਦਵਾਈਆਂ","navProfile":"ਪ੍ਰੋਫਾਈਲ","goodMorning":"ਸ਼ੁਭ ਸਵੇਰ","healthOverview":"ਇਹ ਹੈ ਤੁਹਾਡੀ ਸਿਹਤ ਦਾ ਸੰਖੇਪ","uploadReport":"ਰਿਪੋਰਟ ਅਪਲੋਡ ਕਰੋ","askAI":"ਏਆਈ ਨੂੰ ਪੁੱਛੋ","bookVisit":"ਮੁਲਾਕਾਤ ਬੁੱਕ ਕਰੋ","pharmacy":"ਫਾਰਮੇਸੀ","sos":"ਐਸਓਐਸ","recentReports":"ਹਾਲੀਆ ਰਿਪੋਰਟਾਂ","viewAll":"ਸਭ ਵੇਖੋ","todaysReminder":"ਅੱਜ ਦੀ ਯਾਦ-ਦਹਾਨੀ","familyHealth":"ਪਰਿਵਾਰਕ ਸਿਹਤ","profile":"ਪ੍ਰੋਫਾਈਲ","personalInfo":"ਨਿੱਜੀ ਜਾਣਕਾਰੀ","healthPreferences":"ਸਿਹਤ ਤਰਜੀਹਾਂ","privacySecurity":"ਗੋਪਨੀਯਤਾ ਅਤੇ ਸੁਰੱਖਿਆ","languageRegion":"ਭਾਸ਼ਾ ਅਤੇ ਖੇਤਰ","accessibility":"ਪਹੁੰਚਯੋਗਤਾ","subscriptionPlan":"ਸਬਸਕ੍ਰਿਪਸ਼ਨ ਅਤੇ ਯੋਜਨਾ","helpSupport":"ਮਦਦ ਅਤੇ ਸਹਾਇਤਾ","logOut":"ਲੌਗ ਆਉਟ","save":"ਸੰਭਾਲੋ","cancel":"ਰੱਦ ਕਰੋ","search":"ਖੋਜ","notifications":"ਸੂਚਨਾਵਾਂ","fullyLocalized":"ਪੂਰੀ ਤਰ੍ਹਾਂ ਸਥਾਨਿਕ","machineAssisted":"ਮਸ਼ੀਨ-ਸਹਾਇਤਾ ਪ੍ਰਾਪਤ — ਸਮੀਖਿਆ ਅਧੀਨ"},"ur":{"appName":"ہیلتھ اے آئی","tagline":"آپ اور آپ کے خاندان کے لیے AI سے چلنے والا صحت کا ساتھی۔","getStarted":"شروع کریں","alreadyHaveAccount":"پہلے سے اکاؤنٹ ہے؟","logIn":"لاگ ان کریں","chooseLanguage":"زبان منتخب کریں","selectPreferredLanguage":"اپنی پسندیدہ زبان منتخب کریں","continueBtn":"جاری رکھیں","mobileNumber":"موبائل نمبر","sendOtp":"او ٹی پی بھیجیں","orContinueWith":"یا اس کے ساتھ جاری رکھیں","continueWithGoogle":"گوگل کے ساتھ جاری رکھیں","continueAsGuest":"مہمان کے طور پر جاری رکھیں","byContinuing":"جاری رکھ کر، آپ ہماری شرائط سے اتفاق کرتے ہیں","terms":"شرائط","and":"اور","privacyPolicy":"رازداری کی پالیسی","verifyOtp":"او ٹی پی کی تصدیق کریں","enterCode":"اپنے نمبر پر بھیجا گیا 6 ہندسوں کا کوڈ درج کریں","resendOtp":"او ٹی پی دوبارہ بھیجیں","navHome":"ہوم","navReports":"رپورٹس","navAI":"AI معاون","navMedicines":"ادویات","navProfile":"پروفائل","goodMorning":"صبح بخیر","healthOverview":"یہ رہا آپ کی صحت کا خلاصہ","uploadReport":"رپورٹ اپ لوڈ کریں","askAI":"AI سے پوچھیں","bookVisit":"ملاقات بک کریں","pharmacy":"فارمیسی","sos":"ایس او ایس","recentReports":"حالیہ رپورٹس","viewAll":"سب دیکھیں","todaysReminder":"آج کی یاد دہانی","familyHealth":"خاندانی صحت","profile":"پروفائل","personalInfo":"ذاتی معلومات","healthPreferences":"صحت کی ترجیحات","privacySecurity":"رازداری اور سیکیورٹی","languageRegion":"زبان اور خطہ","accessibility":"رسائی پذیری","subscriptionPlan":"سبسکرپشن اور پلان","helpSupport":"مدد اور سپورٹ","logOut":"لاگ آؤٹ","save":"محفوظ کریں","cancel":"منسوخ کریں","search":"تلاش کریں","notifications":"اطلاعات","fullyLocalized":"مکمل طور پر مقامی","machineAssisted":"مشین کی مدد سے — زیرِ جائزہ"},"ar":{"appName":"هيلث إيه آي","tagline":"رفيقك الصحي المدعوم بالذكاء الاصطناعي لك ولعائلتك.","getStarted":"ابدأ الآن","alreadyHaveAccount":"لديك حساب بالفعل؟","logIn":"تسجيل الدخول","chooseLanguage":"اختر اللغة","selectPreferredLanguage":"اختر لغتك المفضلة","continueBtn":"متابعة","mobileNumber":"رقم الجوال","sendOtp":"إرسال رمز التحقق","orContinueWith":"أو تابع باستخدام","continueWithGoogle":"المتابعة باستخدام جوجل","continueAsGuest":"المتابعة كضيف","byContinuing":"بالمتابعة، فإنك توافق على شروطنا","terms":"الشروط","and":"و","privacyPolicy":"سياسة الخصوصية","verifyOtp":"التحقق من الرمز","enterCode":"أدخل الرمز المكون من 6 أرقام المرسل إلى رقمك","resendOtp":"إعادة إرسال الرمز","navHome":"الرئيسية","navReports":"التقارير","navAI":"المساعد الذكي","navMedicines":"الأدوية","navProfile":"الملف الشخصي","goodMorning":"صباح الخير","healthOverview":"إليك نظرة عامة على صحتك","uploadReport":"رفع تقرير","askAI":"اسأل الذكاء الاصطناعي","bookVisit":"حجز موعد","pharmacy":"الصيدلية","sos":"الطوارئ","recentReports":"التقارير الأخيرة","viewAll":"عرض الكل","todaysReminder":"تذكير اليوم","familyHealth":"صحة العائلة","profile":"الملف الشخصي","personalInfo":"المعلومات الشخصية","healthPreferences":"تفضيلات الصحة","privacySecurity":"الخصوصية والأمان","languageRegion":"اللغة والمنطقة","accessibility":"إمكانية الوصول","subscriptionPlan":"الاشتراك والخطة","helpSupport":"المساعدة والدعم","logOut":"تسجيل الخروج","save":"حفظ","cancel":"إلغاء","search":"بحث","notifications":"الإشعارات","fullyLocalized":"مترجم بالكامل","machineAssisted":"بمساعدة الآلة — قيد المراجعة"},"es":{"appName":"HealthAI","tagline":"Tu compañero de salud impulsado por IA para ti y tu familia.","getStarted":"Comenzar","alreadyHaveAccount":"¿Ya tienes una cuenta?","logIn":"Iniciar sesión","chooseLanguage":"Elegir idioma","selectPreferredLanguage":"Selecciona tu idioma preferido","continueBtn":"Continuar","mobileNumber":"Número de móvil","sendOtp":"Enviar OTP","orContinueWith":"o continuar con","continueWithGoogle":"Continuar con Google","continueAsGuest":"Continuar como invitado","byContinuing":"Al continuar, aceptas nuestros términos","terms":"Términos","and":"y","privacyPolicy":"Política de privacidad","verifyOtp":"Verificar OTP","enterCode":"Ingresa el código de 6 dígitos enviado a tu número","resendOtp":"Reenviar OTP","navHome":"Inicio","navReports":"Informes","navAI":"Asistente de IA","navMedicines":"Medicamentos","navProfile":"Perfil","goodMorning":"Buenos días","healthOverview":"Aquí tienes tu resumen de salud","uploadReport":"Subir informe","askAI":"Preguntar a la IA","bookVisit":"Reservar cita","pharmacy":"Farmacia","sos":"SOS","recentReports":"Informes recientes","viewAll":"Ver todo","todaysReminder":"Recordatorio de hoy","familyHealth":"Salud familiar","profile":"Perfil","personalInfo":"Información personal","healthPreferences":"Preferencias de salud","privacySecurity":"Privacidad y seguridad","languageRegion":"Idioma y región","accessibility":"Accesibilidad","subscriptionPlan":"Suscripción y plan","helpSupport":"Ayuda y soporte","logOut":"Cerrar sesión","save":"Guardar","cancel":"Cancelar","search":"Buscar","notifications":"Notificaciones","fullyLocalized":"Totalmente localizado","machineAssisted":"Asistido por máquina — en revisión"},"fr":{"appName":"HealthAI","tagline":"Votre compagnon santé propulsé par l'IA pour vous et votre famille.","getStarted":"Commencer","alreadyHaveAccount":"Vous avez déjà un compte ?","logIn":"Se connecter","chooseLanguage":"Choisir la langue","selectPreferredLanguage":"Sélectionnez votre langue préférée","continueBtn":"Continuer","mobileNumber":"Numéro de mobile","sendOtp":"Envoyer l'OTP","orContinueWith":"ou continuer avec","continueWithGoogle":"Continuer avec Google","continueAsGuest":"Continuer en tant qu'invité","byContinuing":"En continuant, vous acceptez nos conditions","terms":"Conditions","and":"et","privacyPolicy":"Politique de confidentialité","verifyOtp":"Vérifier l'OTP","enterCode":"Entrez le code à 6 chiffres envoyé à votre numéro","resendOtp":"Renvoyer l'OTP","navHome":"Accueil","navReports":"Rapports","navAI":"Assistant IA","navMedicines":"Médicaments","navProfile":"Profil","goodMorning":"Bonjour","healthOverview":"Voici votre aperçu de santé","uploadReport":"Téléverser un rapport","askAI":"Demander à l'IA","bookVisit":"Réserver une visite","pharmacy":"Pharmacie","sos":"SOS","recentReports":"Rapports récents","viewAll":"Tout voir","todaysReminder":"Rappel du jour","familyHealth":"Santé familiale","profile":"Profil","personalInfo":"Informations personnelles","healthPreferences":"Préférences de santé","privacySecurity":"Confidentialité et sécurité","languageRegion":"Langue et région","accessibility":"Accessibilité","subscriptionPlan":"Abonnement et forfait","helpSupport":"Aide et support","logOut":"Se déconnecter","save":"Enregistrer","cancel":"Annuler","search":"Rechercher","notifications":"Notifications","fullyLocalized":"Entièrement localisé","machineAssisted":"Assisté par machine — en révision"},"de":{"appName":"HealthAI","tagline":"Ihr KI-gestützter Gesundheitsbegleiter für Sie und Ihre Familie.","getStarted":"Loslegen","alreadyHaveAccount":"Bereits ein Konto?","logIn":"Anmelden","chooseLanguage":"Sprache wählen","selectPreferredLanguage":"Wählen Sie Ihre bevorzugte Sprache","continueBtn":"Weiter","mobileNumber":"Mobilnummer","sendOtp":"OTP senden","orContinueWith":"oder weiter mit","continueWithGoogle":"Weiter mit Google","continueAsGuest":"Als Gast fortfahren","byContinuing":"Durch Fortfahren stimmen Sie unseren Bedingungen zu","terms":"Bedingungen","and":"und","privacyPolicy":"Datenschutzrichtlinie","verifyOtp":"OTP bestätigen","enterCode":"Geben Sie den 6-stelligen Code ein, der an Ihre Nummer gesendet wurde","resendOtp":"OTP erneut senden","navHome":"Start","navReports":"Berichte","navAI":"KI-Assistent","navMedicines":"Medikamente","navProfile":"Profil","goodMorning":"Guten Morgen","healthOverview":"Hier ist Ihre Gesundheitsübersicht","uploadReport":"Bericht hochladen","askAI":"KI fragen","bookVisit":"Termin buchen","pharmacy":"Apotheke","sos":"Notruf","recentReports":"Neueste Berichte","viewAll":"Alle anzeigen","todaysReminder":"Heutige Erinnerung","familyHealth":"Familiengesundheit","profile":"Profil","personalInfo":"Persönliche Informationen","healthPreferences":"Gesundheitspräferenzen","privacySecurity":"Datenschutz und Sicherheit","languageRegion":"Sprache und Region","accessibility":"Barrierefreiheit","subscriptionPlan":"Abonnement und Plan","helpSupport":"Hilfe und Support","logOut":"Abmelden","save":"Speichern","cancel":"Abbrechen","search":"Suchen","notifications":"Benachrichtigungen","fullyLocalized":"Vollständig lokalisiert","machineAssisted":"Maschinell unterstützt — in Überprüfung"},"pt":{"appName":"HealthAI","tagline":"Seu companheiro de saúde com IA para você e sua família.","getStarted":"Começar","alreadyHaveAccount":"Já tem uma conta?","logIn":"Entrar","chooseLanguage":"Escolher idioma","selectPreferredLanguage":"Selecione seu idioma preferido","continueBtn":"Continuar","mobileNumber":"Número de celular","sendOtp":"Enviar OTP","orContinueWith":"ou continue com","continueWithGoogle":"Continuar com Google","continueAsGuest":"Continuar como convidado","byContinuing":"Ao continuar, você concorda com nossos termos","terms":"Termos","and":"e","privacyPolicy":"Política de privacidade","verifyOtp":"Verificar OTP","enterCode":"Digite o código de 6 dígitos enviado ao seu número","resendOtp":"Reenviar OTP","navHome":"Início","navReports":"Relatórios","navAI":"Assistente de IA","navMedicines":"Medicamentos","navProfile":"Perfil","goodMorning":"Bom dia","healthOverview":"Aqui está seu resumo de saúde","uploadReport":"Enviar relatório","askAI":"Perguntar à IA","bookVisit":"Agendar consulta","pharmacy":"Farmácia","sos":"SOS","recentReports":"Relatórios recentes","viewAll":"Ver tudo","todaysReminder":"Lembrete de hoje","familyHealth":"Saúde da família","profile":"Perfil","personalInfo":"Informações pessoais","healthPreferences":"Preferências de saúde","privacySecurity":"Privacidade e segurança","languageRegion":"Idioma e região","accessibility":"Acessibilidade","subscriptionPlan":"Assinatura e plano","helpSupport":"Ajuda e suporte","logOut":"Sair","save":"Salvar","cancel":"Cancelar","search":"Pesquisar","notifications":"Notificações","fullyLocalized":"Totalmente localizado","machineAssisted":"Assistido por máquina — em revisão"},"zh-CN":{"appName":"HealthAI 健康人工智能","tagline":"为您和您的家人打造的人工智能健康伙伴。","getStarted":"开始使用","alreadyHaveAccount":"已有账户？","logIn":"登录","chooseLanguage":"选择语言","selectPreferredLanguage":"选择您的首选语言","continueBtn":"继续","mobileNumber":"手机号码","sendOtp":"发送验证码","orContinueWith":"或继续使用","continueWithGoogle":"使用谷歌继续","continueAsGuest":"以访客身份继续","byContinuing":"继续即表示您同意我们的条款","terms":"条款","and":"和","privacyPolicy":"隐私政策","verifyOtp":"验证验证码","enterCode":"输入发送到您手机的6位验证码","resendOtp":"重新发送验证码","navHome":"首页","navReports":"报告","navAI":"AI助手","navMedicines":"药物","navProfile":"个人资料","goodMorning":"早上好","healthOverview":"这是您的健康概览","uploadReport":"上传报告","askAI":"咨询AI","bookVisit":"预约就诊","pharmacy":"药房","sos":"紧急求助","recentReports":"最近的报告","viewAll":"查看全部","todaysReminder":"今日提醒","familyHealth":"家庭健康","profile":"个人资料","personalInfo":"个人信息","healthPreferences":"健康偏好","privacySecurity":"隐私与安全","languageRegion":"语言与地区","accessibility":"无障碍功能","subscriptionPlan":"订阅与套餐","helpSupport":"帮助与支持","logOut":"退出登录","save":"保存","cancel":"取消","search":"搜索","notifications":"通知","fullyLocalized":"完全本地化","machineAssisted":"机器辅助 — 审核中"},"ja":{"appName":"ヘルスAI","tagline":"あなたとご家族のためのAI搭載ヘルスパートナー。","getStarted":"はじめる","alreadyHaveAccount":"すでにアカウントをお持ちですか？","logIn":"ログイン","chooseLanguage":"言語を選択","selectPreferredLanguage":"希望する言語を選択してください","continueBtn":"続ける","mobileNumber":"携帯電話番号","sendOtp":"OTPを送信","orContinueWith":"または次で続ける","continueWithGoogle":"Googleで続ける","continueAsGuest":"ゲストとして続ける","byContinuing":"続行することで、利用規約に同意したことになります","terms":"利用規約","and":"と","privacyPolicy":"プライバシーポリシー","verifyOtp":"OTPを確認","enterCode":"番号に送信された6桁のコードを入力してください","resendOtp":"OTPを再送信","navHome":"ホーム","navReports":"レポート","navAI":"AIアシスタント","navMedicines":"お薬","navProfile":"プロフィール","goodMorning":"おはようございます","healthOverview":"こちらが健康概要です","uploadReport":"レポートをアップロード","askAI":"AIに質問する","bookVisit":"診察を予約","pharmacy":"薬局","sos":"緊急通報","recentReports":"最近のレポート","viewAll":"すべて表示","todaysReminder":"今日のリマインダー","familyHealth":"家族の健康","profile":"プロフィール","personalInfo":"個人情報","healthPreferences":"健康の設定","privacySecurity":"プライバシーとセキュリティ","languageRegion":"言語と地域","accessibility":"アクセシビリティ","subscriptionPlan":"サブスクリプションとプラン","helpSupport":"ヘルプとサポート","logOut":"ログアウト","save":"保存","cancel":"キャンセル","search":"検索","notifications":"通知","fullyLocalized":"完全にローカライズ済み","machineAssisted":"機械支援 — レビュー中"},"ko":{"appName":"헬스AI","tagline":"당신과 가족을 위한 AI 기반 건강 동반자.","getStarted":"시작하기","alreadyHaveAccount":"이미 계정이 있으신가요?","logIn":"로그인","chooseLanguage":"언어 선택","selectPreferredLanguage":"선호하는 언어를 선택하세요","continueBtn":"계속","mobileNumber":"휴대폰 번호","sendOtp":"OTP 보내기","orContinueWith":"또는 다음으로 계속","continueWithGoogle":"Google로 계속하기","continueAsGuest":"게스트로 계속하기","byContinuing":"계속 진행하면 약관에 동의하는 것입니다","terms":"약관","and":"및","privacyPolicy":"개인정보처리방침","verifyOtp":"OTP 확인","enterCode":"번호로 전송된 6자리 코드를 입력하세요","resendOtp":"OTP 재전송","navHome":"홈","navReports":"리포트","navAI":"AI 어시스턴트","navMedicines":"약","navProfile":"프로필","goodMorning":"좋은 아침입니다","healthOverview":"건강 개요입니다","uploadReport":"리포트 업로드","askAI":"AI에게 질문하기","bookVisit":"진료 예약","pharmacy":"약국","sos":"긴급 SOS","recentReports":"최근 리포트","viewAll":"전체 보기","todaysReminder":"오늘의 알림","familyHealth":"가족 건강","profile":"프로필","personalInfo":"개인 정보","healthPreferences":"건강 환경설정","privacySecurity":"개인정보 및 보안","languageRegion":"언어 및 지역","accessibility":"접근성","subscriptionPlan":"구독 및 요금제","helpSupport":"도움말 및 지원","logOut":"로그아웃","save":"저장","cancel":"취소","search":"검색","notifications":"알림","fullyLocalized":"완전 현지화됨","machineAssisted":"기계 지원 — 검토 중"},"ru":{"appName":"HealthAI","tagline":"Ваш ИИ-помощник по здоровью для вас и вашей семьи.","getStarted":"Начать","alreadyHaveAccount":"Уже есть аккаунт?","logIn":"Войти","chooseLanguage":"Выберите язык","selectPreferredLanguage":"Выберите предпочитаемый язык","continueBtn":"Продолжить","mobileNumber":"Номер мобильного телефона","sendOtp":"Отправить код","orContinueWith":"или продолжить с","continueWithGoogle":"Продолжить с Google","continueAsGuest":"Продолжить как гость","byContinuing":"Продолжая, вы соглашаетесь с нашими условиями","terms":"Условия","and":"и","privacyPolicy":"Политика конфиденциальности","verifyOtp":"Подтвердить код","enterCode":"Введите 6-значный код, отправленный на ваш номер","resendOtp":"Отправить код повторно","navHome":"Главная","navReports":"Отчёты","navAI":"ИИ-ассистент","navMedicines":"Лекарства","navProfile":"Профиль","goodMorning":"Доброе утро","healthOverview":"Вот обзор вашего здоровья","uploadReport":"Загрузить отчёт","askAI":"Спросить ИИ","bookVisit":"Записаться на приём","pharmacy":"Аптека","sos":"SOS","recentReports":"Последние отчёты","viewAll":"Смотреть все","todaysReminder":"Напоминание на сегодня","familyHealth":"Здоровье семьи","profile":"Профиль","personalInfo":"Личная информация","healthPreferences":"Настройки здоровья","privacySecurity":"Конфиденциальность и безопасность","languageRegion":"Язык и регион","accessibility":"Доступность","subscriptionPlan":"Подписка и план","helpSupport":"Помощь и поддержка","logOut":"Выйти","save":"Сохранить","cancel":"Отмена","search":"Поиск","notifications":"Уведомления","fullyLocalized":"Полностью локализовано","machineAssisted":"С помощью машинного перевода — на проверке"},"id":{"appName":"HealthAI","tagline":"Pendamping kesehatan bertenaga AI untuk Anda dan keluarga.","getStarted":"Mulai","alreadyHaveAccount":"Sudah punya akun?","logIn":"Masuk","chooseLanguage":"Pilih bahasa","selectPreferredLanguage":"Pilih bahasa yang Anda sukai","continueBtn":"Lanjutkan","mobileNumber":"Nomor ponsel","sendOtp":"Kirim OTP","orContinueWith":"atau lanjutkan dengan","continueWithGoogle":"Lanjutkan dengan Google","continueAsGuest":"Lanjutkan sebagai tamu","byContinuing":"Dengan melanjutkan, Anda menyetujui ketentuan kami","terms":"Ketentuan","and":"dan","privacyPolicy":"Kebijakan Privasi","verifyOtp":"Verifikasi OTP","enterCode":"Masukkan kode 6 digit yang dikirim ke nomor Anda","resendOtp":"Kirim ulang OTP","navHome":"Beranda","navReports":"Laporan","navAI":"Asisten AI","navMedicines":"Obat","navProfile":"Profil","goodMorning":"Selamat pagi","healthOverview":"Ini ringkasan kesehatan Anda","uploadReport":"Unggah laporan","askAI":"Tanya AI","bookVisit":"Pesan kunjungan","pharmacy":"Apotek","sos":"SOS","recentReports":"Laporan terbaru","viewAll":"Lihat semua","todaysReminder":"Pengingat hari ini","familyHealth":"Kesehatan keluarga","profile":"Profil","personalInfo":"Informasi pribadi","healthPreferences":"Preferensi kesehatan","privacySecurity":"Privasi dan keamanan","languageRegion":"Bahasa dan wilayah","accessibility":"Aksesibilitas","subscriptionPlan":"Langganan dan paket","helpSupport":"Bantuan dan dukungan","logOut":"Keluar","save":"Simpan","cancel":"Batal","search":"Cari","notifications":"Notifikasi","fullyLocalized":"Sepenuhnya dilokalkan","machineAssisted":"Dibantu mesin — sedang ditinjau"},"sw":{"appName":"HealthAI","tagline":"Rafiki wako wa afya unaotumia AI kwa ajili yako na familia yako.","getStarted":"Anza","alreadyHaveAccount":"Tayari una akaunti?","logIn":"Ingia","chooseLanguage":"Chagua lugha","selectPreferredLanguage":"Chagua lugha unayopendelea","continueBtn":"Endelea","mobileNumber":"Nambari ya simu","sendOtp":"Tuma OTP","orContinueWith":"au endelea na","continueWithGoogle":"Endelea na Google","continueAsGuest":"Endelea kama mgeni","byContinuing":"Kwa kuendelea, unakubali masharti yetu","terms":"Masharti","and":"na","privacyPolicy":"Sera ya faragha","verifyOtp":"Thibitisha OTP","enterCode":"Weka msimbo wa tarakimu 6 uliotumwa kwa nambari yako","resendOtp":"Tuma tena OTP","navHome":"Nyumbani","navReports":"Ripoti","navAI":"Msaidizi wa AI","navMedicines":"Dawa","navProfile":"Wasifu","goodMorning":"Habari za asubuhi","healthOverview":"Huu ni muhtasari wako wa afya","uploadReport":"Pakia ripoti","askAI":"Uliza AI","bookVisit":"Weka miadi","pharmacy":"Duka la dawa","sos":"SOS","recentReports":"Ripoti za hivi karibuni","viewAll":"Tazama zote","todaysReminder":"Ukumbusho wa leo","familyHealth":"Afya ya familia","profile":"Wasifu","personalInfo":"Taarifa binafsi","healthPreferences":"Mapendeleo ya afya","privacySecurity":"Faragha na usalama","languageRegion":"Lugha na eneo","accessibility":"Ufikivu","subscriptionPlan":"Usajili na mpango","helpSupport":"Usaidizi na msaada","logOut":"Toka","save":"Hifadhi","cancel":"Ghairi","search":"Tafuta","notifications":"Arifa","fullyLocalized":"Imetafsiriwa kikamilifu","machineAssisted":"Imesaidiwa na mashine — inakaguliwa"},"vi":{"appName":"HealthAI","tagline":"Người bạn đồng hành sức khỏe AI cho bạn và gia đình.","getStarted":"Bắt đầu","alreadyHaveAccount":"Đã có tài khoản?","logIn":"Đăng nhập","chooseLanguage":"Chọn ngôn ngữ","selectPreferredLanguage":"Chọn ngôn ngữ ưa thích của bạn","continueBtn":"Tiếp tục","mobileNumber":"Số điện thoại di động","sendOtp":"Gửi OTP","orContinueWith":"hoặc tiếp tục với","continueWithGoogle":"Tiếp tục với Google","continueAsGuest":"Tiếp tục với tư cách khách","byContinuing":"Bằng cách tiếp tục, bạn đồng ý với các điều khoản của chúng tôi","terms":"Điều khoản","and":"và","privacyPolicy":"Chính sách quyền riêng tư","verifyOtp":"Xác minh OTP","enterCode":"Nhập mã 6 chữ số đã gửi đến số của bạn","resendOtp":"Gửi lại OTP","navHome":"Trang chủ","navReports":"Báo cáo","navAI":"Trợ lý AI","navMedicines":"Thuốc","navProfile":"Hồ sơ","goodMorning":"Chào buổi sáng","healthOverview":"Đây là tổng quan sức khỏe của bạn","uploadReport":"Tải lên báo cáo","askAI":"Hỏi AI","bookVisit":"Đặt lịch khám","pharmacy":"Nhà thuốc","sos":"SOS","recentReports":"Báo cáo gần đây","viewAll":"Xem tất cả","todaysReminder":"Nhắc nhở hôm nay","familyHealth":"Sức khỏe gia đình","profile":"Hồ sơ","personalInfo":"Thông tin cá nhân","healthPreferences":"Tùy chọn sức khỏe","privacySecurity":"Quyền riêng tư và bảo mật","languageRegion":"Ngôn ngữ và khu vực","accessibility":"Trợ năng","subscriptionPlan":"Đăng ký và gói","helpSupport":"Trợ giúp và hỗ trợ","logOut":"Đăng xuất","save":"Lưu","cancel":"Hủy","search":"Tìm kiếm","notifications":"Thông báo","fullyLocalized":"Được bản địa hóa hoàn toàn","machineAssisted":"Hỗ trợ bằng máy — đang xem xét"},"he":{"appName":"הלת'AI","tagline":"בן הלוויה הבריאותי המופעל בבינה מלאכותית שלך ושל משפחתך.","getStarted":"בואו נתחיל","alreadyHaveAccount":"כבר יש לך חשבון?","logIn":"התחברות","chooseLanguage":"בחר שפה","selectPreferredLanguage":"בחר את השפה המועדפת עליך","continueBtn":"המשך","mobileNumber":"מספר נייד","sendOtp":"שלח קוד אימות","orContinueWith":"או המשך עם","continueWithGoogle":"המשך עם Google","continueAsGuest":"המשך כאורח","byContinuing":"בהמשך, אתה מסכים לתנאים שלנו","terms":"תנאים","and":"ו","privacyPolicy":"מדיניות פרטיות","verifyOtp":"אימות קוד","enterCode":"הזן את קוד 6 הספרות שנשלח למספרך","resendOtp":"שלח קוד מחדש","navHome":"בית","navReports":"דוחות","navAI":"עוזר AI","navMedicines":"תרופות","navProfile":"פרופיל","goodMorning":"בוקר טוב","healthOverview":"הנה סקירת הבריאות שלך","uploadReport":"העלה דוח","askAI":"שאל את ה-AI","bookVisit":"קבע תור","pharmacy":"בית מרקחת","sos":"חירום","recentReports":"דוחות אחרונים","viewAll":"הצג הכל","todaysReminder":"תזכורת היום","familyHealth":"בריאות המשפחה","profile":"פרופיל","personalInfo":"מידע אישי","healthPreferences":"העדפות בריאות","privacySecurity":"פרטיות ואבטחה","languageRegion":"שפה ואזור","accessibility":"נגישות","subscriptionPlan":"מנוי ותוכנית","helpSupport":"עזרה ותמיכה","logOut":"התנתק","save":"שמור","cancel":"ביטול","search":"חיפוש","notifications":"התראות","fullyLocalized":"מתורגם באופן מלא","machineAssisted":"בעזרת מכונה — בבדיקה"}};
+const LANGUAGES = [{"code":"en","name":"English","native":"English","rtl":false,"tier":"full"},{"code":"hi","name":"Hindi","native":"हिन्दी","rtl":false,"tier":"full"},{"code":"te","name":"Telugu","native":"తెలుగు","rtl":false,"tier":"full"},{"code":"ta","name":"Tamil","native":"தமிழ்","rtl":false,"tier":"full"},{"code":"kn","name":"Kannada","native":"ಕನ್ನಡ","rtl":false,"tier":"full"},{"code":"ml","name":"Malayalam","native":"മലയാളം","rtl":false,"tier":"full"},{"code":"mr","name":"Marathi","native":"मराठी","rtl":false,"tier":"full"},{"code":"bn","name":"Bengali","native":"বাংলা","rtl":false,"tier":"full"},{"code":"gu","name":"Gujarati","native":"ગુજરાતી","rtl":false,"tier":"full"},{"code":"pa","name":"Punjabi","native":"ਪੰਜਾਬੀ","rtl":false,"tier":"full"},{"code":"ur","name":"Urdu","native":"اردو","rtl":true,"tier":"full"},{"code":"or","name":"Odia","native":"ଓଡ଼ିଆ","rtl":false,"tier":"beta"},{"code":"as","name":"Assamese","native":"অসমীয়া","rtl":false,"tier":"beta"},{"code":"sa","name":"Sanskrit","native":"संस्कृतम्","rtl":false,"tier":"beta"},{"code":"sd","name":"Sindhi","native":"سنڌي","rtl":true,"tier":"beta"},{"code":"ks","name":"Kashmiri","native":"کٲشُر","rtl":true,"tier":"beta"},{"code":"kok","name":"Konkani","native":"कोंकणी","rtl":false,"tier":"beta"},{"code":"mni","name":"Manipuri","native":"মৈতৈলোন্","rtl":false,"tier":"beta"},{"code":"brx","name":"Bodo","native":"बड़ो","rtl":false,"tier":"beta"},{"code":"doi","name":"Dogri","native":"डोगरी","rtl":false,"tier":"beta"},{"code":"mai","name":"Maithili","native":"मैथिली","rtl":false,"tier":"beta"},{"code":"ne","name":"Nepali","native":"नेपाली","rtl":false,"tier":"beta"},{"code":"sat","name":"Santali","native":"ᱥᱟᱱᱛᱟᱲᱤ","rtl":false,"tier":"beta"},{"code":"bho","name":"Bhojpuri","native":"भोजपुरी","rtl":false,"tier":"beta"},{"code":"raj","name":"Rajasthani","native":"राजस्थानी","rtl":false,"tier":"beta"},{"code":"mag","name":"Magahi","native":"मगही","rtl":false,"tier":"beta"},{"code":"tcy","name":"Tulu","native":"ತುಳು","rtl":false,"tier":"beta"},{"code":"chg","name":"Chhattisgarhi","native":"छत्तीसगढ़ी","rtl":false,"tier":"beta"},{"code":"si","name":"Sinhala","native":"සිංහල","rtl":false,"tier":"beta"},{"code":"dv","name":"Dhivehi","native":"ދިވެހި","rtl":true,"tier":"beta"},{"code":"bo","name":"Tibetan","native":"བོད་སྐད་","rtl":false,"tier":"beta"},{"code":"ug","name":"Uyghur","native":"ئۇيغۇرچە","rtl":true,"tier":"beta"},{"code":"es","name":"Spanish","native":"Español","rtl":false,"tier":"full"},{"code":"fr","name":"French","native":"Français","rtl":false,"tier":"full"},{"code":"de","name":"German","native":"Deutsch","rtl":false,"tier":"full"},{"code":"it","name":"Italian","native":"Italiano","rtl":false,"tier":"beta"},{"code":"pt","name":"Portuguese","native":"Português","rtl":false,"tier":"full"},{"code":"nl","name":"Dutch","native":"Nederlands","rtl":false,"tier":"beta"},{"code":"sv","name":"Swedish","native":"Svenska","rtl":false,"tier":"beta"},{"code":"no","name":"Norwegian","native":"Norsk","rtl":false,"tier":"beta"},{"code":"da","name":"Danish","native":"Dansk","rtl":false,"tier":"beta"},{"code":"fi","name":"Finnish","native":"Suomi","rtl":false,"tier":"beta"},{"code":"is","name":"Icelandic","native":"Íslenska","rtl":false,"tier":"beta"},{"code":"pl","name":"Polish","native":"Polski","rtl":false,"tier":"beta"},{"code":"cs","name":"Czech","native":"Čeština","rtl":false,"tier":"beta"},{"code":"sk","name":"Slovak","native":"Slovenčina","rtl":false,"tier":"beta"},{"code":"hu","name":"Hungarian","native":"Magyar","rtl":false,"tier":"beta"},{"code":"ro","name":"Romanian","native":"Română","rtl":false,"tier":"beta"},{"code":"bg","name":"Bulgarian","native":"Български","rtl":false,"tier":"beta"},{"code":"el","name":"Greek","native":"Ελληνικά","rtl":false,"tier":"beta"},{"code":"ru","name":"Russian","native":"Русский","rtl":false,"tier":"full"},{"code":"uk","name":"Ukrainian","native":"Українська","rtl":false,"tier":"beta"},{"code":"be","name":"Belarusian","native":"Беларуская","rtl":false,"tier":"beta"},{"code":"sr","name":"Serbian","native":"Српски","rtl":false,"tier":"beta"},{"code":"hr","name":"Croatian","native":"Hrvatski","rtl":false,"tier":"beta"},{"code":"bs","name":"Bosnian","native":"Bosanski","rtl":false,"tier":"beta"},{"code":"sl","name":"Slovenian","native":"Slovenščina","rtl":false,"tier":"beta"},{"code":"mk","name":"Macedonian","native":"Македонски","rtl":false,"tier":"beta"},{"code":"sq","name":"Albanian","native":"Shqip","rtl":false,"tier":"beta"},{"code":"lt","name":"Lithuanian","native":"Lietuvių","rtl":false,"tier":"beta"},{"code":"lv","name":"Latvian","native":"Latviešu","rtl":false,"tier":"beta"},{"code":"et","name":"Estonian","native":"Eesti","rtl":false,"tier":"beta"},{"code":"tr","name":"Turkish","native":"Türkçe","rtl":false,"tier":"beta"},{"code":"az","name":"Azerbaijani","native":"Azərbaycan","rtl":false,"tier":"beta"},{"code":"ka","name":"Georgian","native":"ქართული","rtl":false,"tier":"beta"},{"code":"hy","name":"Armenian","native":"Հայերեն","rtl":false,"tier":"beta"},{"code":"kk","name":"Kazakh","native":"Қазақ","rtl":false,"tier":"beta"},{"code":"uz","name":"Uzbek","native":"Oʻzbek","rtl":false,"tier":"beta"},{"code":"tk","name":"Turkmen","native":"Türkmen","rtl":false,"tier":"beta"},{"code":"ky","name":"Kyrgyz","native":"Кыргызча","rtl":false,"tier":"beta"},{"code":"tg","name":"Tajik","native":"Тоҷикӣ","rtl":false,"tier":"beta"},{"code":"mn","name":"Mongolian","native":"Монгол","rtl":false,"tier":"beta"},{"code":"ar","name":"Arabic","native":"العربية","rtl":true,"tier":"full"},{"code":"he","name":"Hebrew","native":"עברית","rtl":true,"tier":"full"},{"code":"fa","name":"Persian","native":"فارسی","rtl":true,"tier":"beta"},{"code":"ps","name":"Pashto","native":"پښتو","rtl":true,"tier":"beta"},{"code":"prs","name":"Dari","native":"دری","rtl":true,"tier":"beta"},{"code":"ku","name":"Kurdish","native":"Kurdî","rtl":true,"tier":"beta"},{"code":"am","name":"Amharic","native":"አማርኛ","rtl":false,"tier":"beta"},{"code":"ti","name":"Tigrinya","native":"ትግርኛ","rtl":false,"tier":"beta"},{"code":"so","name":"Somali","native":"Soomaali","rtl":false,"tier":"beta"},{"code":"sw","name":"Swahili","native":"Kiswahili","rtl":false,"tier":"full"},{"code":"ha","name":"Hausa","native":"Hausa","rtl":false,"tier":"beta"},{"code":"yo","name":"Yoruba","native":"Yorùbá","rtl":false,"tier":"beta"},{"code":"ig","name":"Igbo","native":"Igbo","rtl":false,"tier":"beta"},{"code":"zu","name":"Zulu","native":"isiZulu","rtl":false,"tier":"beta"},{"code":"xh","name":"Xhosa","native":"isiXhosa","rtl":false,"tier":"beta"},{"code":"af","name":"Afrikaans","native":"Afrikaans","rtl":false,"tier":"beta"},{"code":"st","name":"Sesotho","native":"Sesotho","rtl":false,"tier":"beta"},{"code":"tn","name":"Setswana","native":"Setswana","rtl":false,"tier":"beta"},{"code":"sn","name":"Shona","native":"chiShona","rtl":false,"tier":"beta"},{"code":"ny","name":"Chichewa","native":"Chichewa","rtl":false,"tier":"beta"},{"code":"rw","name":"Kinyarwanda","native":"Ikinyarwanda","rtl":false,"tier":"beta"},{"code":"rn","name":"Kirundi","native":"Ikirundi","rtl":false,"tier":"beta"},{"code":"lg","name":"Luganda","native":"Luganda","rtl":false,"tier":"beta"},{"code":"ln","name":"Lingala","native":"Lingála","rtl":false,"tier":"beta"},{"code":"wo","name":"Wolof","native":"Wolof","rtl":false,"tier":"beta"},{"code":"tw","name":"Twi","native":"Twi","rtl":false,"tier":"beta"},{"code":"ee","name":"Ewe","native":"Eʋegbe","rtl":false,"tier":"beta"},{"code":"ff","name":"Fulani","native":"Fulfulde","rtl":false,"tier":"beta"},{"code":"om","name":"Oromo","native":"Afaan Oromoo","rtl":false,"tier":"beta"},{"code":"mg","name":"Malagasy","native":"Malagasy","rtl":false,"tier":"beta"},{"code":"nso","name":"Sepedi","native":"Sepedi","rtl":false,"tier":"beta"},{"code":"ss","name":"Siswati","native":"siSwati","rtl":false,"tier":"beta"},{"code":"ve","name":"Tshivenda","native":"Tshivenda","rtl":false,"tier":"beta"},{"code":"ts","name":"Xitsonga","native":"Xitsonga","rtl":false,"tier":"beta"},{"code":"zh-CN","name":"Chinese (Simplified)","native":"简体中文","rtl":false,"tier":"full"},{"code":"zh-TW","name":"Chinese (Traditional)","native":"繁體中文","rtl":false,"tier":"beta"},{"code":"ja","name":"Japanese","native":"日本語","rtl":false,"tier":"full"},{"code":"ko","name":"Korean","native":"한국어","rtl":false,"tier":"full"},{"code":"vi","name":"Vietnamese","native":"Tiếng Việt","rtl":false,"tier":"full"},{"code":"th","name":"Thai","native":"ไทย","rtl":false,"tier":"beta"},{"code":"lo","name":"Lao","native":"ລາວ","rtl":false,"tier":"beta"},{"code":"km","name":"Khmer","native":"ខ្មែរ","rtl":false,"tier":"beta"},{"code":"my","name":"Burmese","native":"မြန်မာ","rtl":false,"tier":"beta"},{"code":"ms","name":"Malay","native":"Bahasa Melayu","rtl":false,"tier":"beta"},{"code":"id","name":"Indonesian","native":"Bahasa Indonesia","rtl":false,"tier":"full"},{"code":"tl","name":"Filipino","native":"Filipino","rtl":false,"tier":"beta"},{"code":"ceb","name":"Cebuano","native":"Cebuano","rtl":false,"tier":"beta"},{"code":"jv","name":"Javanese","native":"Basa Jawa","rtl":false,"tier":"beta"},{"code":"su","name":"Sundanese","native":"Basa Sunda","rtl":false,"tier":"beta"},{"code":"hmn","name":"Hmong","native":"Hmoob","rtl":false,"tier":"beta"},{"code":"ilo","name":"Ilocano","native":"Ilokano","rtl":false,"tier":"beta"},{"code":"war","name":"Waray","native":"Winaray","rtl":false,"tier":"beta"},{"code":"mi","name":"Māori","native":"Te Reo Māori","rtl":false,"tier":"beta"},{"code":"sm","name":"Samoan","native":"Gagana Sāmoa","rtl":false,"tier":"beta"},{"code":"to","name":"Tongan","native":"Lea Fakatonga","rtl":false,"tier":"beta"},{"code":"fj","name":"Fijian","native":"Vosa Vakaviti","rtl":false,"tier":"beta"},{"code":"haw","name":"Hawaiian","native":"ʻŌlelo Hawaiʻi","rtl":false,"tier":"beta"},{"code":"ty","name":"Tahitian","native":"Reo Tahiti","rtl":false,"tier":"beta"},{"code":"ca","name":"Catalan","native":"Català","rtl":false,"tier":"beta"},{"code":"eu","name":"Basque","native":"Euskara","rtl":false,"tier":"beta"},{"code":"gl","name":"Galician","native":"Galego","rtl":false,"tier":"beta"},{"code":"cy","name":"Welsh","native":"Cymraeg","rtl":false,"tier":"beta"},{"code":"ga","name":"Irish","native":"Gaeilge","rtl":false,"tier":"beta"},{"code":"gd","name":"Scottish Gaelic","native":"Gàidhlig","rtl":false,"tier":"beta"},{"code":"br","name":"Breton","native":"Brezhoneg","rtl":false,"tier":"beta"},{"code":"co","name":"Corsican","native":"Corsu","rtl":false,"tier":"beta"},{"code":"lb","name":"Luxembourgish","native":"Lëtzebuergesch","rtl":false,"tier":"beta"},{"code":"mt","name":"Maltese","native":"Malti","rtl":false,"tier":"beta"},{"code":"fy","name":"Frisian","native":"Frysk","rtl":false,"tier":"beta"},{"code":"gn","name":"Guarani","native":"Avañeʼẽ","rtl":false,"tier":"beta"},{"code":"qu","name":"Quechua","native":"Runasimi","rtl":false,"tier":"beta"},{"code":"ay","name":"Aymara","native":"Aymar aru","rtl":false,"tier":"beta"},{"code":"ht","name":"Haitian Creole","native":"Kreyòl Ayisyen","rtl":false,"tier":"beta"},{"code":"pap","name":"Papiamento","native":"Papiamentu","rtl":false,"tier":"beta"},{"code":"yi","name":"Yiddish","native":"ייִדיש","rtl":true,"tier":"beta"},{"code":"eo","name":"Esperanto","native":"Esperanto","rtl":false,"tier":"beta"},{"code":"la","name":"Latin","native":"Latina","rtl":false,"tier":"beta"},{"code":"chr","name":"Cherokee","native":"ᏣᎳᎩ","rtl":false,"tier":"beta"},{"code":"iu","name":"Inuktitut","native":"ᐃᓄᒃᑎᑐᑦ","rtl":false,"tier":"beta"},{"code":"ban","name":"Balinese","native":"Basa Bali","rtl":false,"tier":"beta"},{"code":"min","name":"Minangkabau","native":"Baso Minangkabau","rtl":false,"tier":"beta"},{"code":"bug","name":"Buginese","native":"Basa Ugi","rtl":false,"tier":"beta"},{"code":"ace","name":"Acehnese","native":"Bahasa Aceh","rtl":false,"tier":"beta"},{"code":"bjn","name":"Banjarese","native":"Bahasa Banjar","rtl":false,"tier":"beta"},{"code":"gor","name":"Gorontalo","native":"Bahasa Hulontalo","rtl":false,"tier":"beta"},{"code":"mad","name":"Madurese","native":"Basa Madhura","rtl":false,"tier":"beta"},{"code":"aa","name":"Afar","native":"Qafar af","rtl":false,"tier":"beta"},{"code":"bm","name":"Bambara","native":"Bamanankan","rtl":false,"tier":"beta"},{"code":"dz","name":"Dzongkha","native":"རྫོང་ཁ","rtl":false,"tier":"beta"},{"code":"kg","name":"Kikongo","native":"Kikongo","rtl":false,"tier":"beta"},{"code":"kj","name":"Kwanyama","native":"Kuanyama","rtl":false,"tier":"beta"},{"code":"kr","name":"Kanuri","native":"Kanuri","rtl":false,"tier":"beta"},{"code":"ki","name":"Kikuyu","native":"Gĩkũyũ","rtl":false,"tier":"beta"},{"code":"lu","name":"Luba-Katanga","native":"Kiluba","rtl":false,"tier":"beta"},{"code":"na","name":"Nauruan","native":"Dorerin Naoero","rtl":false,"tier":"beta"},{"code":"nd","name":"Northern Ndebele","native":"isiNdebele","rtl":false,"tier":"beta"},{"code":"ng","name":"Ndonga","native":"Owambo","rtl":false,"tier":"beta"},{"code":"nr","name":"Southern Ndebele","native":"isiNdebele seSewula","rtl":false,"tier":"beta"},{"code":"nv","name":"Navajo","native":"Diné bizaad","rtl":false,"tier":"beta"},{"code":"oc","name":"Occitan","native":"Occitan","rtl":false,"tier":"beta"},{"code":"os","name":"Ossetian","native":"Ирон æвзаг","rtl":false,"tier":"beta"},{"code":"pi","name":"Pali","native":"पाऴि","rtl":false,"tier":"beta"},{"code":"sg","name":"Sango","native":"Yângâ tî Sängö","rtl":false,"tier":"beta"},{"code":"sc","name":"Sardinian","native":"Sardu","rtl":false,"tier":"beta"},{"code":"kl","name":"Greenlandic","native":"Kalaallisut","rtl":false,"tier":"beta"}];
+
+const RTL_LANGS = new Set(LANGUAGES.filter(l=>l.rtl).map(l=>l.code));
+let currentLang = 'en';
+
+function applyTranslations(){
+  const dict = TRANSLATIONS[currentLang] || TRANSLATIONS['en'];
+  const fallback = TRANSLATIONS['en'];
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const k = el.getAttribute('data-i18n');
+    el.textContent = dict[k] || fallback[k] || el.textContent;
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{
+    const k = el.getAttribute('data-i18n-ph');
+    el.setAttribute('placeholder', dict[k] || fallback[k] || el.getAttribute('placeholder'));
+  });
+}
+function setLanguage(code){
+  currentLang = code;
+  const meta = LANGUAGES.find(l=>l.code===code) || {code:'en',name:'English',rtl:false,tier:'full'};
+  const device = document.getElementById('device');
+  device.setAttribute('lang', code);
+  device.setAttribute('dir', meta.rtl ? 'rtl' : 'ltr');
+  applyTranslations();
+  renderLangList();
+  const tierNote = meta.tier === 'full'
+    ? ''
+    : ' — some screens will display in English pending full linguistic review (machine-assisted).';
+  showToast('Language set to ' + meta.name + tierNote);
+}
+function renderLangList(filter){
+  const boxes = document.querySelectorAll('.langlist');
+  if(!boxes.length) return;
+  const q = (filter||'').toLowerCase();
+  const list = LANGUAGES.filter(l => !q || l.name.toLowerCase().includes(q) || l.native.toLowerCase().includes(q));
+  const fullList = list.filter(l=>l.tier==='full');
+  const betaList = list.filter(l=>l.tier==='beta');
+  const row = (l) => `
+    <div class="list-item" onclick="setLanguage('${l.code}'); document.querySelectorAll('#langlist .list-item').forEach(x=>x.classList.remove('lang-sel')); this.classList.add('lang-sel');" tabindex="0" role="button">
+      <div class="avatar" style="background:${l.code===currentLang?'var(--teal)':'var(--teal-light)'}; color:${l.code===currentLang?'#fff':'var(--teal-dark)'};">${l.native.slice(0,1)}</div>
+      <div style="flex:1;"><span style="font-size:14px; font-weight:600;">${l.native}</span><span style="font-size:11.5px; color:var(--gray); margin-left:6px;">${l.name}</span></div>
+      ${l.tier==='full' ? '<span class="badge good" style="margin-right:4px;">✓</span>' : '<span class="badge neutral" style="margin-right:4px;">beta</span>'}
+      ${l.code===currentLang?'<span style="color:var(--teal); font-weight:700;">●</span>':''}
+    </div>`;
+  const htmlOut =
+    '<p class="section-label" style="margin-top:4px;">Fully localized (' + fullList.length + ')</p>' +
+    fullList.map(row).join('') +
+    '<p class="section-label" style="margin-top:14px;">Available — machine-assisted, pending linguistic review (' + betaList.length + ')</p>' +
+    betaList.map(row).join('');
+  boxes.forEach(box => box.innerHTML = htmlOut);
+  const badge = document.getElementById('profileLangBadge');
+  if(badge){ const cur = LANGUAGES.find(l=>l.code===currentLang); if(cur) badge.textContent = cur.native; }
+}
+function filterLangList(v){ renderLangList(v); }
+
+function toggleDark(){
+  const device = document.getElementById('device');
+  const on = device.getAttribute('data-theme') === 'dark';
+  device.setAttribute('data-theme', on ? 'light' : 'dark');
+  showToast('Dark mode ' + (on ? 'off' : 'on'));
+}
+function setContrast(on){ document.getElementById('device').setAttribute('data-contrast', on ? 'high' : 'normal'); showToast('High contrast ' + (on?'on':'off')); }
+function setMotion(reduced){ document.getElementById('device').setAttribute('data-motion', reduced ? 'reduced' : 'normal'); showToast('Reduced motion ' + (reduced?'on':'off')); }
+function setTextSize(size){
+  document.getElementById('device').setAttribute('data-textsize', size);
+  document.querySelectorAll('.textsize-opt').forEach(b=>b.classList.remove('on'));
+  const btn = document.getElementById('ts-'+size); if(btn) btn.classList.add('on');
+  showToast('Text size: ' + size);
+}
+function enhanceAccessibility(){
+  document.querySelectorAll('.iconbtn,.tile,.chip,.list-item,.qa-row,.avatar[onclick]').forEach(el=>{
+    if(el.hasAttribute('tabindex')) return;
+    if(el.closest('button')) return;
+    el.setAttribute('tabindex','0');
+    if(!el.hasAttribute('role')) el.setAttribute('role','button');
+    el.addEventListener('keydown', function(e){
+      if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); el.click(); }
+    });
+  });
+}
+
+const STATE_ORDER = ['normal','loading','empty','error'];
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1500);
+}
+function go(id, push=true){
+  if(push && state.current) state.history.push(state.current);
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const el = document.getElementById('scr-'+id);
+  if(el) el.classList.add('active'); else console.warn('missing screen', id);
+  state.current = id;
+  const tabs = ['home','reports','ai','meds','profile'];
+  document.getElementById('navbar').style.display = tabs.includes(id) ? 'flex' : 'none';
+  document.querySelectorAll('.navitem').forEach(n=> n.classList.toggle('active', n.dataset.nav === id));
+  if(el) el.scrollTop = 0;
+}
+function back(){ const prev = state.history.pop(); go(prev || 'home', false); }
+function toggle(el){ el.classList.toggle('on'); }
+function selectChip(el, group){
+  document.querySelectorAll('.chip[data-g="'+group+'"]').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+}
+function openSheet(id){ document.getElementById(id).classList.add('show'); }
+function closeSheet(id){
+  document.getElementById(id).classList.remove('show');
+  const dc = document.getElementById('deleteconfirm-block'); if(dc) dc.style.display='none';
+}
+function cycleState(chip){
+  const wrap = document.getElementById(chip.dataset.target);
+  const cur = wrap.dataset.cur || 'normal';
+  const next = STATE_ORDER[(STATE_ORDER.indexOf(cur)+1) % STATE_ORDER.length];
+  wrap.dataset.cur = next;
+  wrap.querySelectorAll('[data-st]').forEach(el=> el.style.display = el.dataset.st===next ? '' : 'none');
+  chip.textContent = next.charAt(0).toUpperCase()+next.slice(1)+' ▾';
+}
+function toggleOffline(){ document.getElementById('offlinebar').classList.toggle('show'); showToast('Offline mode ' + (document.getElementById('offlinebar').classList.contains('show') ? 'on (demo)' : 'off')); }
+function segSwitch(el, group){
+  el.parentElement.querySelectorAll('.seg-opt').forEach(s=>s.classList.remove('on'));
+  el.classList.add('on');
+}
+function accordion(el){
+  const body = el.nextElementSibling;
+  const open = body.classList.contains('open');
+  el.parentElement.parentElement.querySelectorAll('.accordion-body').forEach(b=>b.classList.remove('open'));
+  if(!open) body.classList.add('open');
+}
+function validateAndGo(inputId, errId, nextScreen){
+  const input = document.getElementById(inputId);
+  const err = document.getElementById(errId);
+  if(!input.value || input.value.trim().length < 3){
+    input.classList.add('err'); err.classList.add('show'); return;
+  }
+  input.classList.remove('err'); err.classList.remove('show');
+  go(nextScreen);
+}
+
+document.getElementById('screens').innerHTML = `
+
+<!-- ===================== ONBOARDING & AUTH ===================== -->
+
+<div class="screen" id="scr-onboarding">
+  <div class="content" style="padding-top:60px; text-align:center; display:flex; flex-direction:column; height:100%;">
+    <div style="flex:1;">
+      <div style="width:64px;height:64px;background:var(--teal);border-radius:18px;margin:0 auto 18px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:30px;">♥</div>
+      <h1 class="title" style="font-size:26px;" data-i18n="appName">Welcome to HealthAI</h1>
+      <p class="sub" style="font-size:14px; margin-top:8px;" data-i18n="tagline">Your AI-powered health companion for you and your family.</p>
+      <div class="card" style="margin-top:34px; text-align:left;">
+        <p style="font-weight:700; text-align:center; margin:0 0 14px; font-size:14px;">With HealthAI, you can</p>
+        <div class="check">✓ Understand reports in plain language</div>
+        <div class="check">✓ Track medicines and never miss a dose</div>
+        <div class="check">✓ Get AI health recommendations</div>
+        <div class="check">✓ Manage your whole family's health</div>
+      </div>
+    </div>
+    <div>
+      <button class="btn" data-i18n="getStarted" onclick="go('language')">Get started</button>
+      <p class="hint"><span data-i18n="alreadyHaveAccount">Already have an account?</span> <span class="link" data-i18n="logIn" onclick="go('login')">Log in</span></p>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="scr-language">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title" data-i18n="chooseLanguage">Choose language</h1></div></div>
+  <div class="content">
+    <p class="sub" style="margin-bottom:10px;" data-i18n="selectPreferredLanguage">Select your preferred language</p>
+    <input placeholder="Search 177 languages..." oninput="filterLangList(this.value)" style="margin-bottom:10px;">
+    <div class="langlist" style="max-height:520px; overflow-y:auto;"></div>
+    <button class="btn" style="margin-top:16px;" data-i18n="continueBtn" onclick="go('firstrunconsent')">Continue</button>
+    <p class="hint" style="margin-top:8px;">24 languages are fully localized and linguistically reviewed. The remaining 153 use machine-assisted translation for core screens and are flagged for review — you can switch anytime in Settings → Language &amp; region.</p>
+  </div>
+</div>
+
+<div class="screen" id="scr-firstrunconsent">
+  <div class="topbar"><h1 class="title">Before you continue</h1><p class="sub">Your privacy choices — required for account creation under applicable data-protection law</p></div>
+  <div class="content">
+    <div class="card row" style="margin-bottom:10px;">
+      <div><p style="margin:0; font-weight:700; font-size:13.5px;">Process my health data to provide the service</p><p style="margin:2px 0 0; font-size:11.5px; color:var(--gray);">Required — powers report analysis, reminders, and your dashboard</p></div>
+      <span class="badge neutral">Required</span>
+    </div>
+    <div class="card row" style="margin-bottom:10px;">
+      <div><p style="margin:0; font-weight:700; font-size:13.5px;">AI analysis of uploaded reports</p><p style="margin:2px 0 0; font-size:11.5px; color:var(--gray);">Required to generate plain-language explanations</p></div>
+      <span class="badge neutral">Required</span>
+    </div>
+    <div class="card row" style="margin-bottom:10px;">
+      <div><p style="margin:0; font-weight:700; font-size:13.5px;">Anonymized research and product improvement</p><p style="margin:2px 0 0; font-size:11.5px; color:var(--gray);">Optional, de-identified, can be withdrawn anytime</p></div>
+      <div class="toggle" onclick="toggle(this)"><div class="knob"></div></div>
+    </div>
+    <div class="card row" style="margin-bottom:14px;">
+      <div><p style="margin:0; font-weight:700; font-size:13.5px;">Marketing and product tips</p><p style="margin:2px 0 0; font-size:11.5px; color:var(--gray);">Optional — you can opt out anytime in Settings</p></div>
+      <div class="toggle" onclick="toggle(this)"><div class="knob"></div></div>
+    </div>
+    <div class="disclaimer">You can review or change every choice above anytime in Profile → Privacy and security → Consent center, and request a full data export or deletion at any time.</div>
+    <button class="btn" style="margin-top:14px;" onclick="go('login')">Agree and continue</button>
+    <p class="hint">By continuing you agree to our <span class="link" onclick="go('terms')">Terms</span> and <span class="link" onclick="go('terms')">Privacy Policy</span></p>
+  </div>
+</div>
+
+<div class="screen" id="scr-login">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title" data-i18n="logIn">Login / Sign up</h1></div></div>
+  <div class="content">
+    <div class="segment">
+      <div class="seg-opt on" onclick="segSwitch(this); document.getElementById('login-phone').style.display='block'; document.getElementById('login-email').style.display='none';">Phone</div>
+      <div class="seg-opt" onclick="segSwitch(this); document.getElementById('login-phone').style.display='none'; document.getElementById('login-email').style.display='block';">Email</div>
+    </div>
+    <div id="login-phone">
+      <label class="field-label" data-i18n="mobileNumber">Mobile number</label>
+      <input id="phonein" type="tel" placeholder="+91 98765 43210" value="+91 98765 43210">
+      <p class="errtext" id="phoneerr">Enter a valid 10-digit mobile number</p>
+      <button class="btn" data-i18n="sendOtp" onclick="validateAndGo('phonein','phoneerr','otp')">Send OTP</button>
+    </div>
+    <div id="login-email" style="display:none;">
+      <label class="field-label">Email address</label>
+      <input id="emailin" type="email" placeholder="you@example.com">
+      <p class="errtext" id="emailerr">Enter a valid email address</p>
+      <label class="field-label">Password</label>
+      <input type="password" placeholder="Enter password">
+      <button class="btn" onclick="validateAndGo('emailin','emailerr','home')">Log in</button>
+    </div>
+    <p class="hint" style="margin:10px 0;"><span class="link" onclick="go('forgotpw')">Forgot password?</span></p>
+    <p class="hint" data-i18n="orContinueWith">or continue with</p>
+    <button class="btn outline" style="margin:10px 0;" data-i18n="continueWithGoogle" onclick="go('home')">Continue with Google</button>
+    <button class="btn outline" data-i18n="continueAsGuest" onclick="go('home')">Continue as guest</button>
+    <p class="hint"><span data-i18n="byContinuing">By continuing you agree to our</span> <span class="link" onclick="go('terms')" style="font-size:11px;" data-i18n="terms">Terms</span> <span data-i18n="and">and</span> <span class="link" onclick="go('terms')" style="font-size:11px;" data-i18n="privacyPolicy">Privacy Policy</span></p>
+  </div>
+</div>
+
+<div class="screen" id="scr-forgotpw">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Forgot password</h1></div></div>
+  <div class="content">
+    <p class="sub" style="margin-bottom:16px;">Enter your registered email or phone. We'll send a reset code.</p>
+    <label class="field-label">Email or phone</label>
+    <input id="fpin" placeholder="you@example.com">
+    <p class="errtext" id="fperr">Enter a registered email or phone number</p>
+    <button class="btn" onclick="validateAndGo('fpin','fperr','resetpw')">Send reset code</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-resetpw">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Reset password</h1></div></div>
+  <div class="content">
+    <p class="sub" style="margin-bottom:16px;">Enter the 6-digit code sent to your email and choose a new password.</p>
+    <div style="display:flex; gap:8px; margin-bottom:16px;">
+      ${[4,2,9,1,7,3].map(d=>`<input maxlength="1" value="${d}" style="text-align:center; font-size:18px; font-weight:700; padding:12px 0; margin-bottom:0;">`).join('')}
+    </div>
+    <label class="field-label">New password</label>
+    <input type="password" placeholder="Minimum 8 characters">
+    <label class="field-label">Confirm new password</label>
+    <input type="password" placeholder="Re-enter password">
+    <button class="btn" style="margin-top:6px;" onclick="showToast('Password updated'); go('login');">Reset password</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-otp">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title" data-i18n="verifyOtp">Verify OTP</h1></div></div>
+  <div class="content">
+    <p class="sub" style="margin-bottom:18px;" data-i18n="enterCode">Enter the 6-digit code sent to +91 98765 43210</p>
+    <div style="display:flex; gap:8px; margin-bottom:10px;">
+      ${[4,2,9,1,7,3].map(d=>`<input maxlength="1" value="${d}" style="text-align:center; font-size:18px; font-weight:700; padding:12px 0; margin-bottom:0;">`).join('')}
+    </div>
+    <p class="errtext" id="otperr" style="margin-bottom:10px;">Incorrect code. 2 attempts remaining.</p>
+    <p class="hint" style="margin-bottom:16px;">Resend OTP in 00:28 · <span class="link" onclick="showToast('New OTP sent')" style="font-size:11px;">Resend now</span></p>
+    <button class="btn" style="margin-bottom:10px;" onclick="go('permissions')">Verify</button>
+    <button class="btn ghost" onclick="document.getElementById('otperr').classList.add('show'); showToast('Simulated: invalid code')">Simulate invalid code</button>
+    <div class="disclaimer">🔒 We keep your data secure. Encrypted and 100% private.</div>
+  </div>
+</div>
+
+<div class="screen" id="scr-permissions">
+  <div class="topbar"><h1 class="title">Enable permissions</h1><p class="sub">HealthAI works best with these on — you can change them anytime in Settings</p></div>
+  <div class="content">
+    <div class="card row">
+      <div><p style="margin:0; font-weight:700; font-size:13.5px;">📍 Location</p><p style="margin:2px 0 0; font-size:11.5px; color:var(--gray);">Find nearby doctors, pharmacies and hospitals</p></div>
+      <div class="toggle on" onclick="toggle(this)"><div class="knob"></div></div>
+    </div>
+    <div class="card row">
+      <div><p style="margin:0; font-weight:700; font-size:13.5px;">🔔 Notifications</p><p style="margin:2px 0 0; font-size:11.5px; color:var(--gray);">Medicine reminders and appointment alerts</p></div>
+      <div class="toggle on" onclick="toggle(this)"><div class="knob"></div></div>
+    </div>
+    <div class="card row">
+      <div><p style="margin:0; font-weight:700; font-size:13.5px;">📷 Camera</p><p style="margin:2px 0 0; font-size:11.5px; color:var(--gray);">Scan reports and prescriptions</p></div>
+      <div class="toggle on" onclick="toggle(this)"><div class="knob"></div></div>
+    </div>
+    <button class="btn" style="margin-top:6px;" onclick="go('profilesetup')">Continue</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-profilesetup">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Profile setup</h1></div></div>
+  <div class="content">
+    <label class="field-label">Full name</label>
+    <input value="Arjun Kumar">
+    <label class="field-label">Date of birth</label>
+    <input value="28 May 1990">
+    <div class="grid2">
+      <div><label class="field-label">Gender</label><select><option>Male</option><option>Female</option><option>Other</option></select></div>
+      <div><label class="field-label">Blood group</label><select><option>O+</option><option>A+</option><option>B+</option></select></div>
+    </div>
+    <label class="field-label">Location</label>
+    <input value="Hyderabad, Telangana">
+    <button class="btn" style="margin-top:6px;" onclick="go('home')">Continue to HealthAI</button>
+  </div>
+</div>
+
+<!-- ===================== HOME ===================== -->
+
+<div class="screen" id="scr-home">
+  <div class="topbar">
+    <div class="topbar-row">
+      <div><h1 class="title"><span data-i18n="goodMorning">Good morning</span>, Arjun 👋</h1><p class="sub" data-i18n="healthOverview">Here's your health overview</p></div>
+      <div style="display:flex; gap:8px;">
+        <div class="iconbtn" onclick="go('globalsearch')" aria-label="Search" role="button" tabindex="0">🔍</div>
+        <div class="iconbtn" onclick="go('notifications')" aria-label="Notifications" role="button" tabindex="0">🔔<span class="dot"></span></div>
+      </div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="card" style="background:var(--teal-light); border:none;">
+      <div class="row" style="align-items:flex-start;">
+        <div class="ring" style="--pct:78;"><div class="ring-inner"><div class="num">78</div><div class="lbl">Good</div></div></div>
+        <div style="flex:1; margin-left:14px;">
+          <p style="font-weight:700; color:var(--teal-dark); margin:0 0 4px; font-size:14.5px;">You're doing great!</p>
+          <p style="font-size:12px; color:var(--ink); margin:0 0 10px; line-height:1.5;">Mostly normal values. Keep up your healthy habits.</p>
+          <span class="link" onclick="go('reportanalysis')">View details →</span>
+        </div>
+      </div>
+    </div>
+
+    <p style="font-weight:700; font-size:14px; margin:4px 0 10px;">Quick actions</p>
+    <div class="grid5" style="margin-bottom:8px;">
+      <div class="tile" onclick="go('upload')"><span class="ic">⬆</span><span data-i18n="uploadReport">Upload</span></div>
+      <div class="tile" onclick="go('ai')"><span class="ic">◎</span><span data-i18n="askAI">Ask AI</span></div>
+      <div class="tile" onclick="go('meds')"><span class="ic">💊</span>Meds</div>
+      <div class="tile" onclick="go('appointmentslist')"><span class="ic">📅</span><span data-i18n="bookVisit">Book</span></div>
+      <div class="tile" onclick="go('sos')"><span class="ic">🆘</span>SOS</div>
+    </div>
+    <div class="grid5" style="margin-bottom:16px;">
+      <div class="tile" onclick="go('vitals')"><span class="ic">❤</span>Vitals</div>
+      <div class="tile" onclick="go('healthtimeline')"><span class="ic">🕓</span>Timeline</div>
+      <div class="tile" onclick="go('vaccination')"><span class="ic">🩹</span>Vaccines</div>
+      <div class="tile" onclick="go('vault')"><span class="ic">🗂</span>Vault</div>
+      <div class="tile" onclick="go('family')"><span class="ic">👪</span>Family</div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom:8px;"><p style="font-weight:700; font-size:14px; margin:0;" data-i18n="recentReports">Recent reports</p><span class="link" onclick="go('reports')" data-i18n="viewAll">View all</span></div>
+      <div class="list-item" onclick="go('reportanalysis')">
+        <div class="avatar">🩸</div>
+        <div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13.5px;">Blood test report</p><p style="margin:0; font-size:11.5px; color:var(--gray);">20 May 2025</p></div>
+        <span class="badge good">78</span>
+      </div>
+    </div>
+
+    <div class="card" style="background:var(--teal-dark); border:none; color:#fff;">
+      <div class="row">
+        <div><p style="margin:0; font-weight:700; font-size:13.5px;">🔔 <span data-i18n="todaysReminder">Today's reminder</span></p><p style="margin:2px 0 0; font-size:12px; opacity:.9;">No medicines due today</p></div>
+        <button class="btn small" onclick="go('reminderslist')" style="background:#fff; color:var(--teal-dark);">View</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="scr-globalsearch">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><input placeholder="Search doctors, medicines, tests..." style="margin:0;" autofocus></div></div>
+  <div class="content">
+    <p style="font-weight:700; font-size:13px; margin:4px 0 8px;">Quick categories</p>
+    <div class="grid3" style="margin-bottom:16px;">
+      <div class="tile" onclick="go('doctors')"><span class="ic">🩺</span>Doctors</div>
+      <div class="tile" onclick="go('medbrowse')"><span class="ic">💊</span>Medicines</div>
+      <div class="tile" onclick="go('pharmacylist')"><span class="ic">🏬</span>Pharmacies</div>
+    </div>
+    <p style="font-weight:700; font-size:13px; margin:4px 0 8px;">Recent searches</p>
+    <div class="card">
+      <div class="list-item" onclick="go('doctors')"><span style="font-size:13.5px;">🕓 General physician near me</span></div>
+      <div class="list-item" onclick="go('medbrowse')"><span style="font-size:13.5px;">🕓 Paracetamol</span></div>
+      <div class="list-item" onclick="go('pharmacylist')"><span style="font-size:13.5px;">🕓 24x7 pharmacy</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="scr-notifications">
+  <div class="topbar"><div class="topbar-row"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Notifications</h1></div><span class="link" onclick="showToast('All marked as read')">Mark all read</span></div></div>
+  <div class="content">
+    <div class="card"><p style="margin:0; font-weight:700; font-size:13px;">💊 Medicine reminder</p><p style="margin:4px 0 0; font-size:12.5px; color:var(--gray);">Metformin 500mg — take after breakfast</p></div>
+    <div class="card"><p style="margin:0; font-weight:700; font-size:13px;">📄 Report ready</p><p style="margin:4px 0 0; font-size:12.5px; color:var(--gray);">Your blood test analysis is ready to view</p></div>
+    <div class="card"><p style="margin:0; font-weight:700; font-size:13px;">📅 Appointment reminder</p><p style="margin:4px 0 0; font-size:12.5px; color:var(--gray);">Dr. Ananya Sharma in 1 hour</p></div>
+    <div class="card" style="border-color:#FAC775; background:#FAEEDA;"><p style="margin:0; font-weight:700; font-size:13px; color:var(--amber);">⚠ Interaction alert</p><p style="margin:4px 0 0; font-size:12.5px; color:var(--ink);">Moderate interaction found between Aspirin and Metformin</p></div>
+    <p style="text-align:center; margin-top:16px;"><span class="link" onclick="go('healthpreferences')">Manage notification preferences →</span></p>
+  </div>
+</div>
+
+<!-- ===================== REPORTS & VAULT ===================== -->
+
+<div class="screen" id="scr-reports">
+  <div class="topbar"><div class="topbar-row"><div><h1 class="title">Reports</h1><p class="sub">All your health records</p></div><span class="state-chip" data-target="wrap-reports" onclick="cycleState(this)">Normal ▾</span></div></div>
+  <div class="content">
+    <button class="btn" style="margin-bottom:14px;" onclick="go('upload')">＋ Upload new report</button>
+    <p style="text-align:right; margin:-8px 0 10px;"><span class="link" onclick="go('vault')">Open medical vault →</span></p>
+    <div id="wrap-reports" data-cur="normal">
+      <div data-st="normal">
+        <div class="card">
+          <div class="list-item" onclick="go('reportanalysis')"><div class="avatar">🩸</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13.5px;">Thyroid profile</p><p style="margin:0; font-size:11.5px; color:var(--gray);">05 May 2024</p></div><span class="badge warn">Attention</span></div>
+          <div class="list-item" onclick="go('reportanalysis')"><div class="avatar">🧪</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13.5px;">Complete blood count</p><p style="margin:0; font-size:11.5px; color:var(--gray);">12 Apr 2024</p></div><span class="badge good">Good</span></div>
+          <div class="list-item" onclick="go('reportanalysis')"><div class="avatar">💉</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13.5px;">Lipid profile</p><p style="margin:0; font-size:11.5px; color:var(--gray);">28 Mar 2024</p></div><span class="badge good">Good</span></div>
+        </div>
+      </div>
+      <div data-st="loading" style="display:none;">
+        <div class="card"><div class="skeleton" style="width:60%"></div><div class="skeleton" style="width:40%"></div></div>
+        <div class="card"><div class="skeleton" style="width:55%"></div><div class="skeleton" style="width:35%"></div></div>
+      </div>
+      <div data-st="empty" style="display:none;">
+        <div class="empty-state"><div class="ic">📄</div><h3>No reports yet</h3><p>Upload your first lab report and get an AI-powered explanation in seconds.</p><button class="btn" onclick="go('upload')">Upload a report</button></div>
+      </div>
+      <div data-st="error" style="display:none;">
+        <div class="empty-state"><div class="ic">⚠</div><h3>Couldn't load your reports</h3><p>Check your connection and try again.</p><button class="btn outline" onclick="cycleState(document.querySelector('[data-target=wrap-reports]'))">Retry</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="scr-upload">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Upload report</h1></div></div>
+  <div class="content">
+    <div class="card" style="border:2px dashed var(--teal); text-align:center; padding:34px 16px; background:var(--teal-light);" onclick="go('analyzing')">
+      <div style="font-size:30px;">⬆</div>
+      <p style="font-weight:700; margin:8px 0 2px; font-size:14px;">Drag and drop your file here</p>
+      <p class="sub">JPG, PNG, PDF — max 10MB</p>
+    </div>
+    <p class="hint" style="margin:6px 0 14px;">or</p>
+    <div class="grid3">
+      <div class="tile" onclick="go('analyzing')"><span class="ic">📷</span>Camera</div>
+      <div class="tile" onclick="go('analyzing')"><span class="ic">🖼</span>Gallery</div>
+      <div class="tile" onclick="go('analyzing')"><span class="ic">📄</span>PDF</div>
+    </div>
+    <div class="banner red" style="margin-top:16px; display:none;" id="upload-error-demo">
+      <p style="margin:0; font-weight:700; font-size:13px; color:var(--red);">⚠ Upload failed</p>
+      <p style="margin:4px 0 10px; font-size:12px; color:var(--ink);">File exceeds 10MB or format isn't supported. Try a JPG, PNG, or PDF under 10MB.</p>
+      <button class="btn small outline" onclick="document.getElementById('upload-error-demo').style.display='none'">Try again</button>
+    </div>
+    <p class="hint" style="margin-top:10px;"><span class="link" style="font-size:11px;" onclick="document.getElementById('upload-error-demo').style.display='block'">Simulate upload error</span></p>
+    <div class="disclaimer">🔒 Your reports are 100% secure. We never share your data.</div>
+  </div>
+</div>
+
+<div class="screen" id="scr-analyzing">
+  <div class="topbar"><h1 class="title">Analyzing report</h1></div>
+  <div class="content" style="text-align:center; padding-top:40px;">
+    <div style="width:78px;height:78px;background:var(--teal-light);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 20px;">◎</div>
+    <div style="text-align:left; max-width:220px; margin:0 auto;">
+      <div class="check"><span class="dot-ok">✓</span>Reading report...</div>
+      <div class="check"><span class="dot-ok">✓</span>Extracting data...</div>
+      <div class="check"><span class="dot-ok">✓</span>Analyzing results...</div>
+      <div class="check"><span class="dot-ok">✓</span>Generating summary...</div>
+    </div>
+    <p class="hint" style="margin-top:18px;">This may take a few seconds. Thank you!</p>
+    <button class="btn" style="margin-top:24px;" onclick="go('reportanalysis')">View analysis →</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-reportanalysis">
+  <div class="topbar"><div class="topbar-row"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Report analysis</h1></div><div class="iconbtn" onclick="openSheet('ov-reportactions')">⋮</div></div></div>
+  <div class="content">
+    <div class="card" style="border-color:#C0DD97; background:#EAF3DE;">
+      <p style="margin:0; font-weight:700; color:#3B6D11; font-size:14.5px;">✓ Overall health: Good</p>
+      <p style="margin:4px 0 0; font-size:12.5px; color:var(--ink);">Your report looks good overall. 2 values need attention.</p>
+    </div>
+    <div style="display:flex; gap:8px; margin:14px 0;">
+      <span class="chip on" data-g="tab" onclick="selectChip(this,'tab')">Summary</span>
+      <span class="chip" data-g="tab" onclick="selectChip(this,'tab')">Abnormal (2)</span>
+      <span class="chip" data-g="tab" onclick="selectChip(this,'tab'); go('reportallvalues')">All values</span>
+    </div>
+    <div class="card">
+      <p style="font-weight:700; font-size:13.5px; margin:0 0 10px;">Key findings</p>
+      <div class="row" style="margin-bottom:10px; cursor:pointer;" onclick="go('reporttrend')"><span style="font-size:13px;">TSH</span><span class="badge bad">8.20 uIU/mL — High</span></div>
+      <div class="row" style="margin-bottom:10px; cursor:pointer;" onclick="go('reporttrend')"><span style="font-size:13px;">Vitamin D</span><span class="badge warn">19.4 ng/mL — Low</span></div>
+      <div class="row" style="margin-bottom:10px;"><span style="font-size:13px;">Hemoglobin</span><span class="badge good">13.4 g/dL — Normal</span></div>
+      <div class="row"><span style="font-size:13px;">Blood sugar (fasting)</span><span class="badge good">98 mg/dL — Normal</span></div>
+    </div>
+    <div class="card">
+      <p style="font-weight:700; font-size:13.5px; margin:0 0 6px;">AI explanation</p>
+      <p style="font-size:12.5px; line-height:1.6; color:var(--ink); margin:0;">Your TSH is higher than normal, which may indicate an underactive thyroid. This can cause tiredness, weight gain, and low energy. Consult your doctor for proper evaluation.</p>
+      <div class="disclaimer">ℹ General information only — not a substitute for professional medical advice.</div>
+    </div>
+    <button class="btn outline" style="margin-bottom:10px;" onclick="go('chat')">Discuss with AI Assistant</button>
+    <button class="btn" onclick="go('doctors')">Book a doctor</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-reportallvalues">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">All values</h1></div></div>
+  <div class="content">
+    <p class="sub" style="margin-bottom:10px;">Thyroid profile · 05 May 2024</p>
+    <div class="card">
+      ${[["TSH","8.20 uIU/mL","0.40–4.00","High","bad"],["T3","1.12","0.80–2.00","Normal","good"],["T4","7.80","5.10–14.10","Normal","good"],["FT3","2.90","2.00–4.30","Normal","good"],["FT4","1.20","0.80–1.80","Normal","good"],["Anti TPO","35","< 60","Normal","good"]].map(r=>`
+      <div class="list-item" onclick="go('reporttrend')"><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13px;">${r[0]}</p><p style="margin:0; font-size:11px; color:var(--gray);">Range ${r[2]}</p></div><span style="font-size:12.5px; font-weight:600; margin-right:4px;">${r[1]}</span><span class="badge ${r[4]}">${r[3]}</span></div>
+      `).join('')}
+    </div>
+    <div class="disclaimer">High values should be discussed with your physician.</div>
+  </div>
+</div>
+
+<div class="screen" id="scr-reporttrend">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">TSH trend</h1></div></div>
+  <div class="content">
+    <div class="card">
+      <div class="row" style="margin-bottom:14px;"><span style="font-size:12.5px; color:var(--gray);">Last 6 months</span><span class="badge bad">Latest: 8.20</span></div>
+      <div style="display:flex; align-items:flex-end; gap:10px; height:100px;">
+        ${[40,45,55,60,72,90].map((h,i)=>`<div style="flex:1; background:${i===5?'var(--red)':'var(--teal)'}; opacity:${i===5?1:0.35}; height:${h}%; border-radius:4px 4px 0 0;"></div>`).join('')}
+      </div>
+      <div class="row" style="margin-top:8px;">${["Jan","Feb","Mar","Apr","May","Jun"].map(m=>`<span style="font-size:10px; color:var(--gray); flex:1; text-align:center;">${m}</span>`).join('')}</div>
+    </div>
+    <div class="disclaimer">ℹ Your TSH has been trending upward over 6 months. Share this trend with your doctor at your next visit.</div>
+    <button class="btn" style="margin-top:6px;" onclick="go('doctors')">Book a doctor</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-vault">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Medical vault</h1></div></div>
+  <div class="content">
+    <p class="sub" style="margin-bottom:12px;">Every report, prescription and scan in one secure place</p>
+    <div style="display:flex; gap:8px; margin-bottom:14px; overflow-x:auto;">
+      <span class="chip on" data-g="vault" onclick="selectChip(this,'vault')">All</span>
+      <span class="chip" data-g="vault" onclick="selectChip(this,'vault')">Reports</span>
+      <span class="chip" data-g="vault" onclick="selectChip(this,'vault')">Prescriptions</span>
+      <span class="chip" data-g="vault" onclick="selectChip(this,'vault')">Scans</span>
+    </div>
+    <div class="card">
+      <div class="list-item" onclick="go('reportanalysis')"><div class="avatar">🩸</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13px;">Thyroid profile.pdf</p><p style="margin:0; font-size:11px; color:var(--gray);">1.2 MB · 05 May 2024</p></div></div>
+      <div class="list-item" onclick="go('meddetail')"><div class="avatar">📝</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13px;">Dr. Sharma prescription.jpg</p><p style="margin:0; font-size:11px; color:var(--gray);">0.8 MB · 22 May 2025</p></div></div>
+      <div class="list-item"><div class="avatar">🖼</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13px;">X-ray chest.jpg</p><p style="margin:0; font-size:11px; color:var(--gray);">2.4 MB · 18 Jul 2024</p></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== AI ASSISTANT ===================== -->
+
+<div class="screen" id="scr-ai">
+  <div class="topbar"><div class="topbar-row"><div><h1 class="title">AI Assistant ✨</h1><p class="sub">Your intelligent health companion</p></div><span class="state-chip" data-target="wrap-ai" onclick="cycleState(this)">Normal ▾</span></div></div>
+  <div class="content">
+    <div id="wrap-ai" data-cur="normal">
+      <div data-st="normal">
+        <div class="card" style="background:var(--teal-light); border:none;">
+          <p style="margin:0; font-weight:700; font-size:14px;">Hello, Arjun 👋</p>
+          <p style="margin:2px 0 0; font-size:12.5px; color:var(--ink);">How can I help with your health today?</p>
+        </div>
+        <div class="grid2" style="margin:14px 0;">
+          <div class="tile" style="text-align:left; padding:12px;" onclick="go('chat')"><span class="ic">📄</span>Understand reports</div>
+          <div class="tile" style="text-align:left; padding:12px;" onclick="go('chat')"><span class="ic">💊</span>Medicines info</div>
+          <div class="tile" style="text-align:left; padding:12px;" onclick="go('symptom1')"><span class="ic">❤</span>Symptom checker</div>
+          <div class="tile" style="text-align:left; padding:12px;" onclick="go('healthtools')"><span class="ic">🧮</span>Health tools</div>
+        </div>
+        <div class="row" style="margin-bottom:8px;"><p style="font-weight:700; font-size:13.5px; margin:0;">Recent conversations</p><span class="link" onclick="go('chathistory')">View all</span></div>
+        <div class="card">
+          <div class="list-item" onclick="go('chat')"><div class="avatar">💬</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13px;">Explain my blood test report</p><p style="margin:0; font-size:11px; color:var(--gray);">20 May · 10:30 AM</p></div></div>
+          <div class="list-item" onclick="go('chat')"><div class="avatar">💬</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13px;">Best exercises for back pain</p><p style="margin:0; font-size:11px; color:var(--gray);">15 May · 11:20 AM</p></div></div>
+        </div>
+        <div style="position:relative; margin-top:6px;">
+          <input placeholder="Ask anything about your health..." onclick="go('chat')" style="padding-right:44px;">
+          <span style="position:absolute; right:12px; top:9px; color:var(--teal); font-size:18px;">➤</span>
+        </div>
+      </div>
+      <div data-st="loading" style="display:none;">
+        <div class="card"><div class="skeleton" style="width:70%"></div><div class="skeleton" style="width:50%"></div><div class="skeleton" style="width:60%"></div></div>
+      </div>
+      <div data-st="empty" style="display:none;">
+        <div class="empty-state"><div class="ic">💬</div><h3>No conversations yet</h3><p>Ask about a symptom, medicine, or report to get started.</p><button class="btn" onclick="go('chat')">Start a conversation</button></div>
+      </div>
+      <div data-st="error" style="display:none;">
+        <div class="empty-state"><div class="ic">📡</div><h3>AI Assistant is offline</h3><p>You're not connected to the internet. Reconnect to chat with the assistant.</p><button class="btn outline" onclick="cycleState(document.querySelector('[data-target=wrap-ai]'))">Retry</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="scr-chathistory">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Conversation history</h1></div></div>
+  <div class="content">
+    <input placeholder="Search conversations...">
+    <div class="card">
+      <div class="list-item" onclick="go('chat')"><div class="avatar">💬</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13px;">Explain my blood test report</p><p style="margin:0; font-size:11px; color:var(--gray);">20 May 2025</p></div></div>
+      <div class="list-item" onclick="go('chat')"><div class="avatar">💬</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13px;">Is it okay to skip medicine if I feel better?</p><p style="margin:0; font-size:11px; color:var(--gray);">18 May 2025</p></div></div>
+      <div class="list-item" onclick="go('chat')"><div class="avatar">💬</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13px;">Best exercises for lower back pain</p><p style="margin:0; font-size:11px; color:var(--gray);">15 May 2025</p></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="scr-chat">
+  <div class="topbar"><div class="topbar-row"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">AI Assistant</h1></div><div class="iconbtn" onclick="go('chathistory')">🕓</div></div></div>
+  <div class="content" style="padding-bottom:110px;">
+    <p class="hint" style="margin-bottom:10px;">Today, 9:30 AM</p>
+    <div class="chat-bubble user">I have a headache and feeling tired since yesterday. What could be the reason?</div>
+    <div class="chat-bubble ai">
+      I'm sorry to hear that. Headache and fatigue can be caused by several things, such as:
+      <br>• Stress or lack of sleep
+      <br>• Dehydration
+      <br>• Poor diet or skipped meals
+      <br>• Viral infection (cold or flu)
+      <br><br>If symptoms persist more than 2–3 days or worsen, please consult a doctor.
+      <div class="disclaimer">✓ General information, not a substitute for professional medical advice.</div>
+      <div class="row" style="margin-top:8px;"><span style="font-size:11px; color:var(--gray);">Was this helpful?</span><span><span onclick="showToast('Thanks for the feedback')" style="cursor:pointer; margin-right:10px;">👍</span><span onclick="showToast('Thanks — we\\'ll improve this')" style="cursor:pointer;">👎</span></span></div>
+    </div>
+    <div>
+      <span class="chip" onclick="go('chat')">How to relieve headache?</span>
+      <span class="chip" onclick="go('doctors')">When to see a doctor?</span>
+    </div>
+  </div>
+  <div style="position:absolute; bottom:0; left:0; right:0; background:#fff; border-top:1px solid var(--line); padding:10px 16px;">
+    <div style="position:relative;">
+      <input placeholder="Ask anything about your health..." style="padding-right:44px; margin:0;">
+      <span onclick="showToast('Message sent')" style="position:absolute; right:12px; top:11px; color:var(--teal); font-size:18px; cursor:pointer;">➤</span>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="scr-healthtools">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Health tools</h1></div></div>
+  <div class="content">
+    <div class="grid2">
+      <div class="tile" style="padding:18px 8px;" onclick="go('bmicalc')"><span class="ic">⚖</span>BMI calculator</div>
+      <div class="tile" style="padding:18px 8px;" onclick="go('caloriecalc')"><span class="ic">🍽</span>Calorie tracker</div>
+      <div class="tile" style="padding:18px 8px;" onclick="go('interactions')"><span class="ic">💊</span>Drug checker</div>
+      <div class="tile" style="padding:18px 8px;" onclick="go('chat')"><span class="ic">💡</span>Health tips</div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="scr-bmicalc">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">BMI calculator</h1></div></div>
+  <div class="content">
+    <label class="field-label">Height (cm)</label>
+    <input value="172">
+    <label class="field-label">Weight (kg)</label>
+    <input value="78">
+    <button class="btn" style="margin-top:4px;" onclick="document.getElementById('bmiresult').style.display='block'">Calculate</button>
+    <div class="card" id="bmiresult" style="display:none; margin-top:16px; text-align:center;">
+      <p style="font-size:12px; color:var(--gray); margin:0 0 4px;">Your BMI</p>
+      <p style="font-size:30px; font-weight:800; margin:0; color:var(--ink);">26.4</p>
+      <span class="badge warn" style="margin-top:8px; display:inline-block;">Overweight</span>
+      <p style="font-size:12px; color:var(--gray); margin:10px 0 0;">A BMI of 25–29.9 is considered overweight. Consider discussing a nutrition plan with a professional.</p>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="scr-caloriecalc">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Calorie tracker</h1></div></div>
+  <div class="content">
+    <div class="card">
+      <div class="row"><span style="font-size:13px; font-weight:600;">Today's intake</span><span style="font-size:13px; font-weight:700;">1,420 / 2,000 kcal</span></div>
+      <div style="height:8px; background:var(--line); border-radius:6px; margin-top:8px; overflow:hidden;"><div style="height:100%; width:71%; background:var(--teal);"></div></div>
+    </div>
+    <label class="field-label">Add a meal</label>
+    <input placeholder="e.g. Grilled chicken salad">
+    <div class="grid2" style="margin-bottom:10px;">
+      <input placeholder="Calories (kcal)">
+      <select><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option></select>
+    </div>
+    <button class="btn" onclick="showToast('Meal logged')">Log meal</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-symptom1">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Symptom checker</h1></div></div>
+  <div class="content">
+    <div class="steps">
+      <div class="step-dot on">1</div><div class="step-line on"></div>
+      <div class="step-dot">2</div><div class="step-line"></div>
+      <div class="step-dot">3</div><div class="step-line"></div>
+      <div class="step-dot">4</div>
+    </div>
+    <p style="font-weight:700; font-size:14px; margin:0 0 4px;">Select your symptoms</p>
+    <p class="sub" style="margin-bottom:14px;">Choose all that apply</p>
+    <input placeholder="Search symptoms...">
+    <div class="grid2">
+      <div class="tile" style="background:var(--teal-light); border-color:var(--teal);">Headache ✓</div>
+      <div class="tile">Fever</div>
+      <div class="tile" style="background:var(--teal-light); border-color:var(--teal);">Fatigue ✓</div>
+      <div class="tile">Cough</div>
+      <div class="tile">Sore throat</div>
+      <div class="tile">Body pain</div>
+      <div class="tile">Nausea</div>
+      <div class="tile">Dizziness</div>
+    </div>
+    <button class="btn" style="margin-top:18px;" onclick="go('symptom2')">Next</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-symptom2">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Symptom checker</h1></div></div>
+  <div class="content">
+    <div class="steps">
+      <div class="step-dot on">1</div><div class="step-line on"></div>
+      <div class="step-dot on">2</div><div class="step-line"></div>
+      <div class="step-dot">3</div><div class="step-line"></div>
+      <div class="step-dot">4</div>
+    </div>
+    <p style="font-weight:700; font-size:14px; margin:0 0 12px;">Tell us more</p>
+    <label class="field-label">How long have you had these symptoms?</label>
+    <select><option>Since yesterday</option><option>2–3 days</option><option>Over a week</option></select>
+    <label class="field-label">Severity</label>
+    <select><option>Mild</option><option>Moderate</option><option>Severe</option></select>
+    <label class="field-label">Any relevant medical history?</label>
+    <input placeholder="e.g. thyroid, diabetes, none">
+    <button class="btn" style="margin-top:8px;" onclick="go('symptom3')">Analyze</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-symptom3">
+  <div class="topbar"><h1 class="title">Analyzing symptoms</h1></div>
+  <div class="content" style="text-align:center; padding-top:50px;">
+    <div style="width:78px;height:78px;background:var(--teal-light);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 20px;">◎</div>
+    <p style="font-weight:700; font-size:14px;">Reviewing your symptoms against clinical patterns...</p>
+    <button class="btn" style="margin-top:26px;" onclick="go('symptom4')">View results →</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-symptom4">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Results</h1></div></div>
+  <div class="content">
+    <div class="banner amber">
+      <p style="margin:0; font-weight:700; font-size:13.5px; color:var(--amber);">Recommended: see a doctor within 2–3 days if symptoms persist</p>
+    </div>
+    <p style="font-weight:700; font-size:13.5px; margin:14px 0 8px;">Possible causes</p>
+    <div class="card">
+      <div class="row" style="margin-bottom:8px;"><span style="font-size:13px;">Tension headache / stress</span><span class="badge good">Likely</span></div>
+      <div class="row" style="margin-bottom:8px;"><span style="font-size:13px;">Dehydration</span><span class="badge good">Likely</span></div>
+      <div class="row"><span style="font-size:13px;">Viral infection</span><span class="badge warn">Possible</span></div>
+    </div>
+    <div class="disclaimer">ℹ This is general guidance, not a diagnosis. Always consult a licensed physician.</div>
+    <button class="btn" style="margin-top:14px;" onclick="go('doctors')">Book a doctor</button>
+  </div>
+</div>
+
+<!-- ===================== MEDICINES ===================== -->
+
+<div class="screen" id="scr-meds">
+  <div class="topbar"><div class="topbar-row"><div><h1 class="title">Medicines</h1><p class="sub">Manage your medicines</p></div><span class="state-chip" data-target="wrap-meds" onclick="cycleState(this)">Normal ▾</span></div></div>
+  <div class="content">
+    <input placeholder="Search medicine..." onfocus="go('meddetail')">
+    <div class="grid2" style="margin-bottom:10px;">
+      <div class="tile" style="text-align:left; padding:12px;" onclick="go('interactions')"><span class="ic">⚠</span>Check interactions</div>
+      <div class="tile" style="text-align:left; padding:12px;" onclick="go('medscan')"><span class="ic">📷</span>Scan prescription</div>
+    </div>
+    <div class="grid2" style="margin-bottom:14px;">
+      <div class="tile" style="text-align:left; padding:12px;" onclick="go('reminderslist')"><span class="ic">⏰</span>Reminders</div>
+      <div class="tile" style="text-align:left; padding:12px;" onclick="go('medbrowse')"><span class="ic">📚</span>Browse database</div>
+    </div>
+    <p style="text-align:right; margin:-6px 0 10px;"><span class="link" onclick="go('pharmacylist')">Order from nearby pharmacy →</span></p>
+    <div id="wrap-meds" data-cur="normal">
+      <div data-st="normal">
+        <p style="font-weight:700; font-size:13.5px; margin:0 0 8px;">Your medicines</p>
+        <div class="card">
+          <div class="list-item" onclick="go('meddetail')"><div class="avatar">💊</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13.5px;">Metformin 500mg</p><p style="margin:0; font-size:11.5px; color:var(--gray);">Twice daily · after food</p></div><span class="badge info">Active</span></div>
+          <div class="list-item" onclick="go('meddetail')"><div class="avatar">💊</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13.5px;">Atorvastatin 10mg</p><p style="margin:0; font-size:11.5px; color:var(--gray);">Once daily · at night</p></div><span class="badge info">Active</span></div>
+        </div>
+      </div>
+      <div data-st="loading" style="display:none;"><div class="card"><div class="skeleton" style="width:65%"></div><div class="skeleton" style="width:40%"></div></div></div>
+      <div data-st="empty" style="display:none;"><div class="empty-state"><div class="ic">💊</div><h3>No medicines added</h3><p>Scan a prescription or search to add your first medicine.</p><button class="btn" onclick="go('medscan')">Scan prescription</button></div></div>
+      <div data-st="error" style="display:none;"><div class="empty-state"><div class="ic">⚠</div><h3>Couldn't load medicines</h3><p>Something went wrong on our end.</p><button class="btn outline" onclick="cycleState(document.querySelector('[data-target=wrap-meds]'))">Retry</button></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="scr-medbrowse">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Browse medicines</h1></div></div>
+  <div class="content">
+    <input placeholder="Search A–Z...">
+    <div style="display:flex; gap:8px; margin-bottom:14px; overflow-x:auto;">
+      <span class="chip on" data-g="med" onclick="selectChip(this,'med')">Popular</span>
+      <span class="chip" data-g="med" onclick="selectChip(this,'med')">Diabetes</span>
+      <span class="chip" data-g="med" onclick="selectChip(this,'med')">Heart</span>
+      <span class="chip" data-g="med" onclick="selectChip(this,'med')">Pain relief</span>
+    </div>
+    <div class="card">
+      <div class="list-item" onclick="go('meddetail')"><div class="avatar">💊</div><span style="font-size:13.5px; font-weight:600;">Paracetamol 500mg</span></div>
+      <div class="list-item" onclick="go('meddetail')"><div class="avatar">💊</div><span style="font-size:13.5px; font-weight:600;">Metformin 500mg</span></div>
+      <div class="list-item" onclick="go('meddetail')"><div class="avatar">💊</div><span style="font-size:13.5px; font-weight:600;">Amlodipine 5mg</span></div>
+      <div class="list-item" onclick="go('meddetail')"><div class="avatar">💊</div><span style="font-size:13.5px; font-weight:600;">Azithromycin 250mg</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="scr-medscan">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Scan prescription</h1></div></div>
+  <div class="content" style="text-align:center; padding-top:30px;">
+    <div style="width:220px; height:280px; margin:0 auto 18px; border:2px dashed var(--teal); border-radius:14px; background:var(--teal-light); display:flex; align-items:center; justify-content:center; font-size:40px;">📷</div>
+    <p class="sub" style="margin-bottom:20px;">Align the prescription within the frame</p>
+    <button class="btn" onclick="go('medscanresult')">Capture</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-medscanresult">
+  <div class="topbar"><h1 class="title">Prescription scanned</h1></div>
+  <div class="content">
+    <div class="card" style="border-color:#C0DD97; background:#EAF3DE;"><p style="margin:0; font-weight:700; color:#3B6D11; font-size:13.5px;">✓ 2 medicines recognized</p></div>
+    <div class="card">
+      <div class="list-item"><div class="avatar">💊</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13.5px;">Metformin 500mg</p><p style="margin:0; font-size:11.5px; color:var(--gray);">Twice daily, after food</p></div></div>
+      <div class="list-item"><div class="avatar">💊</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13.5px;">Aspirin 75mg</p><p style="margin:0; font-size:11.5px; color:var(--gray);">Once daily, morning</p></div></div>
+    </div>
+    <button class="btn" onclick="showToast('Added to your medicines'); go('meds');">Add to my medicines</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-meddetail">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Metformin 500mg</h1></div></div>
+  <div class="content">
+    <div class="card">
+      <span class="badge info">Prescription</span>
+      <p style="font-weight:700; font-size:13.5px; margin:12px 0 4px;">Uses</p>
+      <p style="font-size:12.5px; color:var(--ink); margin:0;">Helps control blood sugar levels in type 2 diabetes.</p>
+    </div>
+    <div class="card">
+      <p style="font-weight:700; font-size:13.5px; margin:0 0 4px;">Common side effects</p>
+      <p style="font-size:12.5px; color:var(--ink); margin:0;">Nausea, stomach upset, diarrhea, loss of appetite, metallic taste.</p>
+    </div>
+    <div class="card">
+      <p style="font-weight:700; font-size:13.5px; margin:0 0 4px;">How to take</p>
+      <p style="font-size:12.5px; color:var(--ink); margin:0;">Take with food to reduce stomach upset. Usually taken 1–2 times daily.</p>
+    </div>
+    <div class="banner red">
+      <p style="font-weight:700; font-size:13.5px; margin:0 0 4px; color:var(--red);">Warnings</p>
+      <p style="font-size:12.5px; color:var(--ink); margin:0;">May interact with insulin, alcohol, diuretics, and some heart medicines.</p>
+    </div>
+    <div class="row" style="margin:10px 0;">
+      <span style="font-size:13px; font-weight:600;">Reminder enabled</span>
+      <div class="toggle on" onclick="toggle(this)"><div class="knob"></div></div>
+    </div>
+    <button class="btn outline" style="margin-bottom:10px;" onclick="go('reminderslist')">Manage reminders</button>
+    <button class="btn" onclick="go('interactions')">Check interactions</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-reminderslist">
+  <div class="topbar"><div class="topbar-row"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Reminders</h1></div><div class="iconbtn" onclick="go('addreminder')">＋</div></div></div>
+  <div class="content">
+    <p style="font-weight:700; font-size:13px; margin:4px 0 8px;">Today</p>
+    <div class="card">
+      <div class="list-item"><div class="avatar">💊</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13.5px;">Metformin 500mg</p><p style="margin:0; font-size:11.5px; color:var(--gray);">8:00 AM · after breakfast</p></div><div class="toggle on" onclick="toggle(this)"><div class="knob"></div></div></div>
+      <div class="list-item"><div class="avatar">💊</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13.5px;">Metformin 500mg</p><p style="margin:0; font-size:11.5px; color:var(--gray);">8:00 PM · after dinner</p></div><div class="toggle on" onclick="toggle(this)"><div class="knob"></div></div></div>
+      <div class="list-item"><div class="avatar">💊</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13.5px;">Atorvastatin 10mg</p><p style="margin:0; font-size:11.5px; color:var(--gray);">9:00 PM · at night</p></div><div class="toggle on" onclick="toggle(this)"><div class="knob"></div></div></div>
+    </div>
+    <p style="text-align:center; margin-top:6px;"><span class="link" onclick="go('addreminder')">＋ Add another reminder</span></p>
+  </div>
+</div>
+
+<div class="screen" id="scr-addreminder">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Add reminder</h1></div></div>
+  <div class="content">
+    <label class="field-label">Medicine</label>
+    <input placeholder="Search medicine...">
+    <label class="field-label">Time</label>
+    <input value="08:00 AM">
+    <label class="field-label">Relation to food</label>
+    <select><option>After food</option><option>Before food</option><option>With food</option></select>
+    <label class="field-label">Repeat</label>
+    <select><option>Daily</option><option>Every alternate day</option><option>Weekly</option><option>Custom</option></select>
+    <button class="btn" style="margin-top:6px;" onclick="showToast('Reminder added'); go('reminderslist');">Save reminder</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-interactions">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Interactions checker</h1></div></div>
+  <div class="content">
+    <p style="font-weight:700; font-size:13.5px; margin:0 0 8px;">Selected medicines</p>
+    <div class="card">
+      <div class="row" style="margin-bottom:8px;"><span style="font-size:13px;">✓ Metformin 500mg</span><span style="color:var(--red); cursor:pointer;" onclick="this.closest('.row').style.opacity=.3">✕</span></div>
+      <div class="row"><span style="font-size:13px;">✓ Aspirin 75mg</span><span style="color:var(--red); cursor:pointer;" onclick="this.closest('.row').style.opacity=.3">✕</span></div>
+    </div>
+    <input placeholder="Add another medicine...">
+    <div class="banner amber">
+      <p style="margin:0; font-weight:700; font-size:13.5px; color:var(--amber);">⚠ Moderate interaction found</p>
+      <p style="margin:6px 0 0; font-size:12.5px; color:var(--ink);">Aspirin may increase the risk of stomach irritation or bleeding when taken with Metformin. Always consult your doctor before combining medicines.</p>
+    </div>
+    <button class="btn" onclick="showToast('Saved to Medical Vault')">Save this check</button>
+  </div>
+</div>
+
+<!-- ===================== APPOINTMENTS ===================== -->
+
+<div class="screen" id="scr-appointmentslist">
+  <div class="topbar"><div class="topbar-row"><div><h1 class="title">Appointments</h1><p class="sub">Manage your bookings</p></div><span class="state-chip" data-target="wrap-appts" onclick="cycleState(this)">Normal ▾</span></div></div>
+  <div class="content">
+    <button class="btn" style="margin-bottom:14px;" onclick="go('doctors')">＋ Book new appointment</button>
+    <div style="display:flex; gap:8px; margin-bottom:14px;">
+      <span class="chip on" data-g="appt" onclick="selectChip(this,'appt')">Upcoming</span>
+      <span class="chip" data-g="appt" onclick="selectChip(this,'appt')">Completed</span>
+      <span class="chip" data-g="appt" onclick="selectChip(this,'appt')">Cancelled</span>
+    </div>
+    <div id="wrap-appts" data-cur="normal">
+      <div data-st="normal">
+        <div class="card">
+          <div class="list-item" onclick="go('appointmentdetail')"><div class="avatar">👩‍⚕️</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13.5px;">Dr. Ananya Sharma</p><p style="margin:0; font-size:11.5px; color:var(--gray);">22 May, 10:30 AM · OPD</p></div><span class="badge good">Confirmed</span></div>
+          <div class="list-item" onclick="go('appointmentdetail')"><div class="avatar">👨‍⚕️</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13.5px;">Dr. Rakesh Verma</p><p style="margin:0; font-size:11.5px; color:var(--gray);">28 May, 4:00 PM · Follow-up</p></div><span class="badge warn">Pending</span></div>
+        </div>
+      </div>
+      <div data-st="loading" style="display:none;"><div class="card"><div class="skeleton" style="width:60%"></div><div class="skeleton" style="width:40%"></div></div></div>
+      <div data-st="empty" style="display:none;"><div class="empty-state"><div class="ic">📅</div><h3>No appointments yet</h3><p>Book a consultation with a doctor near you.</p><button class="btn" onclick="go('doctors')">Find a doctor</button></div></div>
+      <div data-st="error" style="display:none;"><div class="empty-state"><div class="ic">⚠</div><h3>Couldn't load appointments</h3><p>Please try again.</p><button class="btn outline" onclick="cycleState(document.querySelector('[data-target=wrap-appts]'))">Retry</button></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="scr-appointmentdetail">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Appointment</h1></div></div>
+  <div class="content">
+    <div class="card">
+      <div class="row"><div class="avatar" style="width:50px; height:50px; font-size:20px;">👩‍⚕️</div>
+        <div style="flex:1; margin-left:12px;"><p style="margin:0; font-weight:700; font-size:14px;">Dr. Ananya Sharma</p><p style="margin:2px 0 0; font-size:12px; color:var(--gray);">General physician · Apollo Hospitals</p></div>
+        <span class="badge good">Confirmed</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row" style="margin-bottom:8px;"><span style="font-size:12.5px; color:var(--gray);">Date</span><span style="font-size:12.5px; font-weight:600;">22 May 2025, Thursday</span></div>
+      <div class="row" style="margin-bottom:8px;"><span style="font-size:12.5px; color:var(--gray);">Time</span><span style="font-size:12.5px; font-weight:600;">10:30 – 11:00 AM</span></div>
+      <div class="row" style="margin-bottom:8px;"><span style="font-size:12.5px; color:var(--gray);">Type</span><span style="font-size:12.5px; font-weight:600;">OPD consultation</span></div>
+      <div class="row"><span style="font-size:12.5px; color:var(--gray);">Fee</span><span style="font-size:12.5px; font-weight:600;">₹500 · Paid</span></div>
+    </div>
+    <button class="btn outline" style="margin-bottom:10px;" onclick="go('reschedule')">Reschedule</button>
+    <button class="btn ghost" onclick="openSheet('ov-cancelappt')">Cancel appointment</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-reschedule">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Reschedule</h1></div></div>
+  <div class="content">
+    <p class="sub" style="margin-bottom:12px;">Dr. Ananya Sharma · General physician</p>
+    <label class="field-label">Select a new date</label>
+    <div class="grid3" style="margin-bottom:14px;">
+      <div class="tile" style="background:var(--teal-light); border-color:var(--teal);">23 May<br>Fri</div>
+      <div class="tile">24 May<br>Sat</div>
+      <div class="tile">26 May<br>Mon</div>
+    </div>
+    <label class="field-label">Available times</label>
+    <div class="grid3" style="margin-bottom:16px;">
+      <div class="tile" style="background:var(--teal-light); border-color:var(--teal);">11:00 AM</div>
+      <div class="tile">2:00 PM</div>
+      <div class="tile">5:00 PM</div>
+    </div>
+    <button class="btn" onclick="showToast('Appointment rescheduled'); go('appointmentslist');">Confirm new time</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-doctors">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Nearby doctors</h1></div></div>
+  <div class="content">
+    <input placeholder="Search doctors, specialties...">
+    <div style="display:flex; gap:8px; margin-bottom:14px; overflow-x:auto;">
+      <span class="chip on" data-g="doc">All</span>
+      <span class="chip" data-g="doc">General physician</span>
+      <span class="chip" data-g="doc">Cardiologist</span>
+    </div>
+    <p style="font-weight:700; font-size:13.5px; margin:0 0 8px;">Recommended near you</p>
+    <div class="card">
+      <div class="list-item" onclick="go('doctorprofile')"><div class="avatar">👩‍⚕️</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13.5px;">Dr. Ananya Sharma</p><p style="margin:0; font-size:11.5px; color:var(--gray);">General physician · 0.7 km · ★4.8</p></div><span class="badge good">Today</span></div>
+      <div class="list-item" onclick="go('doctorprofile')"><div class="avatar">👨‍⚕️</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13.5px;">Dr. Rakesh Verma</p><p style="margin:0; font-size:11.5px; color:var(--gray);">Cardiologist · 1.2 km · ★4.7</p></div><span class="badge info">Tomorrow</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="scr-doctorprofile">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Doctor profile</h1></div></div>
+  <div class="content">
+    <div class="card">
+      <div class="row"><div class="avatar" style="width:56px; height:56px; font-size:22px;">👩‍⚕️</div>
+        <div style="flex:1; margin-left:12px;">
+          <p style="margin:0; font-weight:700; font-size:14.5px;">Dr. Ananya Sharma ✓</p>
+          <p style="margin:2px 0 0; font-size:12px; color:var(--gray);">General physician · 8 yrs exp</p>
+          <p style="margin:2px 0 0; font-size:12px;"><span class="stars">★★★★★</span> <span style="color:var(--gray);">4.8 (124 reviews)</span></p>
+        </div>
+      </div>
+    </div>
+    <p style="font-weight:700; font-size:13.5px; margin:14px 0 8px;">Available today</p>
+    <div class="grid3" style="margin-bottom:14px;">
+      <div class="tile" onclick="go('bookconfirm')">10:30 AM</div>
+      <div class="tile" onclick="go('bookconfirm')">12:00 PM</div>
+      <div class="tile" onclick="go('bookconfirm')">4:30 PM</div>
+    </div>
+    <div class="card"><div class="row"><span style="font-size:13px; color:var(--gray);">Consultation fee</span><span style="font-weight:700; font-size:14px;">₹500</span></div></div>
+    <button class="btn" onclick="go('bookconfirm')">Book appointment</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-bookconfirm">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Confirm appointment</h1></div></div>
+  <div class="content">
+    <div class="card">
+      <p style="margin:0; font-weight:700; font-size:13.5px;">Dr. Ananya Sharma</p>
+      <p style="margin:2px 0 10px; font-size:12px; color:var(--gray);">General physician · Apollo Hospitals</p>
+      <div class="row" style="margin-bottom:6px;"><span style="font-size:12.5px; color:var(--gray);">Date</span><span style="font-size:12.5px; font-weight:600;">22 May 2025, Thursday</span></div>
+      <div class="row" style="margin-bottom:6px;"><span style="font-size:12.5px; color:var(--gray);">Time</span><span style="font-size:12.5px; font-weight:600;">10:30 – 11:00 AM</span></div>
+      <div class="row"><span style="font-size:12.5px; color:var(--gray);">Fee</span><span style="font-size:12.5px; font-weight:600;">₹500</span></div>
+    </div>
+    <label class="field-label">Patient</label>
+    <select><option>Arjun Kumar (You)</option><option>Amma</option><option>Nanna</option></select>
+    <label class="field-label">Payment method</label>
+    <select><option>UPI — arjun@upi</option><option>Credit / debit card</option><option>Pay at clinic</option></select>
+    <div class="row" style="margin:12px 0;"><span style="font-size:13px; font-weight:600;">Send reminder 1 hour before</span><div class="toggle on" onclick="toggle(this)"><div class="knob"></div></div></div>
+    <div class="row" style="margin-bottom:16px;"><span style="font-size:13px; font-weight:600;">Add to Google Calendar</span><div class="toggle on" onclick="toggle(this)"><div class="knob"></div></div></div>
+    <button class="btn" onclick="go('bookdone')">Pay ₹500 and confirm</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-bookdone">
+  <div class="content" style="text-align:center; padding-top:70px;">
+    <div style="width:70px;height:70px;background:var(--teal-light);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 18px; color:var(--teal-dark);">✓</div>
+    <h1 class="title">Appointment confirmed</h1>
+    <p class="sub" style="margin-top:6px;">Dr. Ananya Sharma · 22 May, 10:30 AM</p>
+    <p class="sub">Booking ID: HA-8834920</p>
+    <button class="btn" style="margin-top:26px;" onclick="go('appointmentslist')">View my appointments</button>
+    <button class="btn ghost" style="margin-top:10px;" onclick="go('home')">Back to home</button>
+  </div>
+</div>
+
+<!-- ===================== PHARMACY ===================== -->
+
+<div class="screen" id="scr-pharmacylist">
+  <div class="topbar"><div class="topbar-row"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Nearby pharmacies</h1></div><span class="state-chip" data-target="wrap-pharm" onclick="cycleState(this)">Normal ▾</span></div></div>
+  <div class="content">
+    <input placeholder="Search medicines, stores...">
+    <div style="display:flex; gap:8px; margin-bottom:14px; overflow-x:auto;">
+      <span class="chip on" data-g="ph">All</span>
+      <span class="chip" data-g="ph">24x7</span>
+      <span class="chip" data-g="ph">Home delivery</span>
+      <span class="chip" data-g="ph">Offers</span>
+    </div>
+    <div id="wrap-pharm" data-cur="normal">
+      <div data-st="normal">
+        <div class="card">
+          <div class="list-item" onclick="go('pharmacydetail')"><div class="avatar">🏬</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13.5px;">MedPlus Pharmacy</p><p style="margin:0; font-size:11.5px; color:var(--gray);">0.4 km · Free delivery</p></div><span class="badge good">24x7</span></div>
+          <div class="list-item" onclick="go('pharmacydetail')"><div class="avatar">🏬</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13.5px;">Apollo Pharmacy</p><p style="margin:0; font-size:11.5px; color:var(--gray);">0.7 km · Free delivery</p></div><span class="badge good">24x7</span></div>
+        </div>
+      </div>
+      <div data-st="loading" style="display:none;"><div class="card"><div class="skeleton" style="width:60%"></div><div class="skeleton" style="width:40%"></div></div></div>
+      <div data-st="empty" style="display:none;"><div class="empty-state"><div class="ic">🏬</div><h3>No pharmacies found nearby</h3><p>Try expanding your search radius or check a different area.</p></div></div>
+      <div data-st="error" style="display:none;"><div class="empty-state"><div class="ic">📍</div><h3>Location unavailable</h3><p>Turn on location access to find pharmacies near you.</p><button class="btn outline" onclick="go('permissions')">Enable location</button></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="scr-pharmacydetail">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">MedPlus Pharmacy</h1></div></div>
+  <div class="content">
+    <div class="card">
+      <div class="row"><span class="badge good">24x7 Open</span><span class="stars">★★★★★</span></div>
+      <p style="font-size:12px; color:var(--gray); margin:8px 0 0;">0.4 km · Road No. 12, Banjara Hills</p>
+      <p style="font-size:12px; color:var(--gray); margin:2px 0 0;">Free delivery on orders above ₹199</p>
+    </div>
+    <p style="font-weight:700; font-size:13.5px; margin:14px 0 8px;">Add medicines to cart</p>
+    <div class="card">
+      <div class="row" style="margin-bottom:10px;"><span style="font-size:13px;">Metformin 500mg (15 tabs)</span><button class="btn small outline" onclick="showToast('Added to cart')">Add · ₹85</button></div>
+      <div class="row"><span style="font-size:13px;">Atorvastatin 10mg (10 tabs)</span><button class="btn small outline" onclick="showToast('Added to cart')">Add · ₹120</button></div>
+    </div>
+    <button class="btn" onclick="go('pharmacycart')">View cart (2 items)</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-pharmacycart">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Your cart</h1></div></div>
+  <div class="content">
+    <div class="card">
+      <div class="row" style="margin-bottom:10px;"><span style="font-size:13px;">Metformin 500mg (15 tabs)</span><span style="font-size:13px; font-weight:600;">₹85</span></div>
+      <div class="row"><span style="font-size:13px;">Atorvastatin 10mg (10 tabs)</span><span style="font-size:13px; font-weight:600;">₹120</span></div>
+    </div>
+    <div class="card">
+      <div class="row" style="margin-bottom:6px;"><span style="font-size:12.5px; color:var(--gray);">Subtotal</span><span style="font-size:12.5px;">₹205</span></div>
+      <div class="row" style="margin-bottom:6px;"><span style="font-size:12.5px; color:var(--gray);">Delivery</span><span style="font-size:12.5px; color:#3B6D11;">Free</span></div>
+      <div class="row" style="border-top:1px solid var(--line); padding-top:8px;"><span style="font-size:13.5px; font-weight:700;">Total</span><span style="font-size:14px; font-weight:800;">₹205</span></div>
+    </div>
+    <button class="btn" onclick="go('pharmacycheckout')">Proceed to checkout</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-pharmacycheckout">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Checkout</h1></div></div>
+  <div class="content">
+    <label class="field-label">Deliver to</label>
+    <div class="card"><p style="margin:0; font-weight:600; font-size:13px;">Arjun Kumar</p><p style="margin:2px 0 0; font-size:12px; color:var(--gray);">Flat 302, Jubilee Enclave, Banjara Hills, Hyderabad 500034</p></div>
+    <label class="field-label">Upload prescription (required for this order)</label>
+    <div class="tile" style="text-align:left; padding:12px; margin-bottom:12px;" onclick="showToast('Prescription attached')"><span class="ic" style="display:inline; margin-right:6px;">📎</span>Attach prescription</div>
+    <label class="field-label">Payment method</label>
+    <select><option>UPI — arjun@upi</option><option>Credit / debit card</option><option>Cash on delivery</option></select>
+    <div class="card" style="margin-top:6px;"><div class="row"><span style="font-size:13.5px; font-weight:700;">Total</span><span style="font-size:14px; font-weight:800;">₹205</span></div></div>
+    <button class="btn" onclick="go('pharmacyorderconfirm')">Place order</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-pharmacyorderconfirm">
+  <div class="content" style="text-align:center; padding-top:70px;">
+    <div style="width:70px;height:70px;background:var(--teal-light);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 18px; color:var(--teal-dark);">✓</div>
+    <h1 class="title">Order placed</h1>
+    <p class="sub" style="margin-top:6px;">Order #MP-55210 · Arriving in 45 mins</p>
+    <button class="btn" style="margin-top:26px;" onclick="go('pharmacytracking')">Track order</button>
+    <button class="btn ghost" style="margin-top:10px;" onclick="go('home')">Back to home</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-pharmacytracking">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Track order</h1></div></div>
+  <div class="content">
+    <div class="card">
+      <div class="check"><span class="dot-ok">✓</span>Order placed — 6:02 PM</div>
+      <div class="check"><span class="dot-ok">✓</span>Pharmacy confirmed — 6:05 PM</div>
+      <div class="check"><span class="dot-ok">✓</span>Out for delivery — 6:20 PM</div>
+      <div class="check" style="opacity:.4;"><span class="dot-ok" style="background:var(--line); color:var(--gray);">○</span>Delivered</div>
+    </div>
+    <div class="card row">
+      <div><p style="margin:0; font-weight:700; font-size:13px;">Delivery partner</p><p style="margin:2px 0 0; font-size:12px; color:var(--gray);">Ravi K. · Arriving in 12 mins</p></div>
+      <button class="btn small outline" onclick="showToast('Calling delivery partner...')">Call</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== EMERGENCY ===================== -->
+
+<div class="screen" id="scr-sos">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Emergency / SOS</h1></div></div>
+  <div class="content">
+    <div class="banner red">
+      <p style="margin:0; font-weight:700; font-size:13.5px; color:var(--red);">Emergency help is one tap away</p>
+      <button class="btn" style="background:var(--red); margin-top:10px;" onclick="showToast('Calling 108...')">📞 Call emergency — 108</button>
+    </div>
+    <div class="card row">
+      <span style="font-size:13px; font-weight:600;">📍 Share your live location</span>
+      <span class="link" onclick="showToast('Location shared with contacts')">Share now</span>
+    </div>
+    <p style="font-weight:700; font-size:13.5px; margin:14px 0 8px;">Nearby emergency hospitals</p>
+    <div class="card">
+      <div class="list-item"><div class="avatar">🏥</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13px;">Apollo Hospitals</p><p style="margin:0; font-size:11px; color:var(--gray);">1.2 km · 24/7 emergency</p></div><span class="badge good">Open</span></div>
+      <div class="list-item"><div class="avatar">🏥</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13px;">CARE Hospitals</p><p style="margin:0; font-size:11px; color:var(--gray);">2.1 km · 24/7 emergency</p></div><span class="badge good">Open</span></div>
+    </div>
+    <p style="text-align:right; margin:-4px 0 10px;"><span class="link" onclick="go('ambulancelist')">View ambulance services →</span></p>
+    <button class="btn outline" onclick="go('emergencycard')">View my emergency card</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-ambulancelist">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Ambulance services</h1></div></div>
+  <div class="content">
+    <div class="card row"><div><p style="margin:0; font-weight:700; font-size:13.5px;">108 Emergency Ambulance</p><p style="margin:2px 0 0; font-size:11.5px; color:var(--gray);">Government service · Free</p></div><button class="btn small" onclick="showToast('Calling 108...')">Call</button></div>
+    <div class="card row"><div><p style="margin:0; font-weight:700; font-size:13.5px;">Red Health Ambulance</p><p style="margin:2px 0 0; font-size:11.5px; color:var(--gray);">24/7 · ICU support</p></div><button class="btn small" onclick="showToast('Calling Red Health...')">Call</button></div>
+  </div>
+</div>
+
+<div class="screen" id="scr-emergencycard">
+  <div class="topbar"><div class="topbar-row"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Emergency card</h1></div><span class="link" onclick="go('emergencycardedit')">Edit</span></div></div>
+  <div class="content">
+    <div class="card" style="background:var(--teal-dark); color:#fff; border:none;">
+      <p style="margin:0; font-weight:700; font-size:15px;">Arjun Kumar</p>
+      <p style="margin:2px 0 0; font-size:12px; opacity:.85;">34 years · Male · Blood group O+</p>
+    </div>
+    <div class="card">
+      <p style="font-weight:700; font-size:13px; margin:0 0 6px;">Allergies</p>
+      <p style="font-size:12.5px; color:var(--ink); margin:0 0 12px;">Penicillin, peanuts</p>
+      <p style="font-weight:700; font-size:13px; margin:0 0 6px;">Chronic conditions</p>
+      <p style="font-size:12.5px; color:var(--ink); margin:0 0 12px;">Type 2 diabetes, hypothyroidism</p>
+      <p style="font-weight:700; font-size:13px; margin:0 0 6px;">Current medicines</p>
+      <p style="font-size:12.5px; color:var(--ink); margin:0;">Metformin 500mg, Atorvastatin 10mg</p>
+    </div>
+    <div class="card">
+      <p style="font-weight:700; font-size:13px; margin:0 0 6px;">Emergency contacts</p>
+      <div class="row" style="margin-bottom:6px;"><span style="font-size:12.5px;">Lakshmi (spouse)</span><span class="link" onclick="showToast('Calling Lakshmi...')">Call</span></div>
+      <div class="row"><span style="font-size:12.5px;">Ravi (brother)</span><span class="link" onclick="showToast('Calling Ravi...')">Call</span></div>
+    </div>
+    <p class="hint">Available offline for first responders</p>
+  </div>
+</div>
+
+<div class="screen" id="scr-emergencycardedit">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Edit emergency card</h1></div></div>
+  <div class="content">
+    <label class="field-label">Blood group</label>
+    <select><option>O+</option><option>A+</option><option>B+</option><option>AB+</option></select>
+    <label class="field-label">Allergies</label>
+    <input value="Penicillin, peanuts">
+    <label class="field-label">Chronic conditions</label>
+    <input value="Type 2 diabetes, hypothyroidism">
+    <label class="field-label">Emergency contact name</label>
+    <input value="Lakshmi (spouse)">
+    <label class="field-label">Emergency contact number</label>
+    <input value="+91 98765 11111">
+    <button class="btn" style="margin-top:6px;" onclick="showToast('Emergency card updated'); go('emergencycard');">Save changes</button>
+  </div>
+</div>
+
+<!-- ===================== FAMILY ===================== -->
+
+<div class="screen" id="scr-family">
+  <div class="topbar"><div class="topbar-row"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Family health</h1></div><div class="iconbtn" onclick="go('familyinvite')">＋</div></div></div>
+  <div class="content">
+    <div class="card">
+      <div class="list-item" onclick="go('familymemberdetail')"><div class="avatar">AK</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13.5px;">Arjun (You)</p></div><span class="badge good">82</span></div>
+      <div class="list-item" onclick="go('familymemberdetail')"><div class="avatar">AM</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13.5px;">Amma</p></div><span class="badge good">78</span></div>
+      <div class="list-item" onclick="go('familymemberdetail')"><div class="avatar">NA</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13.5px;">Nanna</p></div><span class="badge warn">68</span></div>
+      <div class="list-item" onclick="go('familymemberdetail')"><div class="avatar">SI</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13.5px;">Sister</p></div><span class="badge good">90</span></div>
+    </div>
+    <div class="card row">
+      <div><p style="margin:0; font-weight:700; font-size:13px;">Pending invite</p><p style="margin:2px 0 0; font-size:11.5px; color:var(--gray);">Priya (cousin) — sent 2 days ago</p></div>
+      <button class="btn small outline" onclick="go('familyinviteaccept')">View</button>
+    </div>
+    <button class="btn outline" onclick="go('familyinvite')">＋ Add family member</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-familyinvite">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Add family member</h1></div></div>
+  <div class="content">
+    <div class="segment">
+      <div class="seg-opt on" onclick="segSwitch(this)">Invite (has phone)</div>
+      <div class="seg-opt" onclick="segSwitch(this)">Add dependent</div>
+    </div>
+    <label class="field-label">Relationship</label>
+    <select><option>Parent</option><option>Spouse</option><option>Child</option><option>Sibling</option><option>Other</option></select>
+    <label class="field-label">Mobile number</label>
+    <input placeholder="+91 98765 43210">
+    <label class="field-label">Permissions to request</label>
+    <div class="row" style="margin-bottom:8px;"><span style="font-size:13px;">View reports</span><div class="toggle on" onclick="toggle(this)"><div class="knob"></div></div></div>
+    <div class="row" style="margin-bottom:8px;"><span style="font-size:13px;">Manage medicines</span><div class="toggle" onclick="toggle(this)"><div class="knob"></div></div></div>
+    <div class="row" style="margin-bottom:16px;"><span style="font-size:13px;">Manage appointments</span><div class="toggle" onclick="toggle(this)"><div class="knob"></div></div></div>
+    <button class="btn" onclick="showToast('Invite sent'); go('family');">Send invite</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-familyinviteaccept">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Family invite</h1></div></div>
+  <div class="content" style="text-align:center; padding-top:20px;">
+    <div class="avatar" style="width:64px; height:64px; font-size:24px; margin:0 auto 14px;">PR</div>
+    <h1 class="title" style="font-size:16px;">Arjun Kumar invited you</h1>
+    <p class="sub" style="margin:6px 0 20px;">as a family member with view access to your shared health information</p>
+    <div class="card" style="text-align:left;">
+      <p style="font-weight:700; font-size:13px; margin:0 0 8px;">Requested access</p>
+      <p style="font-size:12.5px; color:var(--ink); margin:0;">✓ View your reports<br>✓ View your medicines</p>
+    </div>
+    <button class="btn" style="margin-bottom:10px;" onclick="showToast('Invite accepted'); go('family');">Accept invite</button>
+    <button class="btn ghost" onclick="showToast('Invite declined'); go('family');">Decline</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-familymemberdetail">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Nanna</h1></div></div>
+  <div class="content">
+    <div class="card">
+      <div class="row"><div class="avatar" style="width:50px; height:50px;">NA</div><div style="flex:1; margin-left:12px;"><p style="margin:0; font-weight:700; font-size:14px;">Nanna</p><p style="margin:2px 0 0; font-size:12px; color:var(--gray);">Father · 68 years</p></div><span class="badge warn">68</span></div>
+    </div>
+    <div class="grid2" style="margin-bottom:14px;">
+      <div class="tile" onclick="go('reports')"><span class="ic">📄</span>Reports</div>
+      <div class="tile" onclick="go('meds')"><span class="ic">💊</span>Medicines</div>
+      <div class="tile" onclick="go('appointmentslist')"><span class="ic">📅</span>Appointments</div>
+      <div class="tile" onclick="go('healthtimeline')"><span class="ic">🕓</span>Timeline</div>
+    </div>
+    <button class="btn outline" style="margin-bottom:10px;" onclick="go('familypermissions')">Manage permissions</button>
+    <button class="btn ghost" onclick="openSheet('ov-removemember')">Remove from family</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-familypermissions">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Permissions — Nanna</h1></div></div>
+  <div class="content">
+    <div class="card row" style="margin-bottom:10px;"><span style="font-size:13px; font-weight:600;">View reports</span><div class="toggle on" onclick="toggle(this)"><div class="knob"></div></div></div>
+    <div class="card row" style="margin-bottom:10px;"><span style="font-size:13px; font-weight:600;">Manage medicines</span><div class="toggle on" onclick="toggle(this)"><div class="knob"></div></div></div>
+    <div class="card row" style="margin-bottom:10px;"><span style="font-size:13px; font-weight:600;">Manage appointments</span><div class="toggle on" onclick="toggle(this)"><div class="knob"></div></div></div>
+    <div class="card row"><span style="font-size:13px; font-weight:600;">Receive alerts about Nanna</span><div class="toggle on" onclick="toggle(this)"><div class="knob"></div></div></div>
+    <button class="btn" style="margin-top:14px;" onclick="showToast('Permissions updated')">Save changes</button>
+  </div>
+</div>
+
+<!-- ===================== VITALS / TIMELINE / VACCINATION ===================== -->
+
+<div class="screen" id="scr-vitals">
+  <div class="topbar"><div class="topbar-row"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Vitals and tracking</h1></div><div class="iconbtn" onclick="go('addvital')">＋</div></div></div>
+  <div class="content">
+    <div class="grid2" style="margin-bottom:14px;">
+      <div class="card" style="margin-bottom:0;"><p style="font-size:11.5px; color:var(--gray); margin:0;">Blood pressure</p><p style="font-size:18px; font-weight:800; margin:4px 0 0;">124/82</p><p style="font-size:11px; color:#3B6D11; margin:2px 0 0;">Normal</p></div>
+      <div class="card" style="margin-bottom:0;"><p style="font-size:11.5px; color:var(--gray); margin:0;">Blood glucose</p><p style="font-size:18px; font-weight:800; margin:4px 0 0;">98 mg/dL</p><p style="font-size:11px; color:#3B6D11; margin:2px 0 0;">Normal</p></div>
+      <div class="card" style="margin-bottom:0;"><p style="font-size:11.5px; color:var(--gray); margin:0;">SpO2</p><p style="font-size:18px; font-weight:800; margin:4px 0 0;">98%</p><p style="font-size:11px; color:#3B6D11; margin:2px 0 0;">Normal</p></div>
+      <div class="card" style="margin-bottom:0;"><p style="font-size:11.5px; color:var(--gray); margin:0;">Weight</p><p style="font-size:18px; font-weight:800; margin:4px 0 0;">78 kg</p><p style="font-size:11px; color:var(--amber); margin:2px 0 0;">Watch</p></div>
+    </div>
+    <p style="font-weight:700; font-size:13.5px; margin:14px 0 8px;">HbA1c — last 6 months</p>
+    <div class="card">
+      <div style="display:flex; align-items:flex-end; gap:10px; height:80px;">
+        ${[70,65,60,55,48,42].map((h,i)=>`<div style="flex:1; background:var(--teal); opacity:${i===5?1:0.35}; height:${h}%; border-radius:4px 4px 0 0;"></div>`).join('')}
+      </div>
+      <p style="font-size:11px; color:var(--gray); text-align:center; margin:8px 0 0;">Latest: 5.9% — Good, trending down</p>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="scr-addvital">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Log a vital</h1></div></div>
+  <div class="content">
+    <label class="field-label">Vital type</label>
+    <select><option>Blood pressure</option><option>Blood glucose</option><option>SpO2</option><option>Weight</option><option>Heart rate</option></select>
+    <label class="field-label">Value</label>
+    <input placeholder="e.g. 120/80">
+    <label class="field-label">Date and time</label>
+    <input value="24 Aug 2026, 9:15 AM">
+    <button class="btn" style="margin-top:6px;" onclick="showToast('Vital logged'); go('vitals');">Save entry</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-healthtimeline">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Health timeline</h1></div></div>
+  <div class="content">
+    <div style="display:flex; gap:8px; margin-bottom:14px; overflow-x:auto;">
+      <span class="chip on" data-g="tl">All</span>
+      <span class="chip" data-g="tl">Consultations</span>
+      <span class="chip" data-g="tl">Tests</span>
+      <span class="chip" data-g="tl">Medicines</span>
+    </div>
+    <div class="card">
+      <div class="list-item" onclick="go('appointmentdetail')"><div class="avatar">🩺</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13px;">Consultation — Dr. Ananya Sharma</p><p style="margin:0; font-size:11px; color:var(--gray);">25 Jul 2026, 10:30 AM</p></div></div>
+      <div class="list-item" onclick="go('reportanalysis')"><div class="avatar">🩸</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13px;">Blood test — CBC, Lipid, HbA1c</p><p style="margin:0; font-size:11px; color:var(--gray);">25 Jul 2026, 11:15 AM</p></div></div>
+      <div class="list-item" onclick="go('meddetail')"><div class="avatar">💊</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13px;">Medicine added — Atorvastatin 10mg</p><p style="margin:0; font-size:11px; color:var(--gray);">21 Jul 2026, 6:00 PM</p></div></div>
+      <div class="list-item"><div class="avatar">🩻</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13px;">X-ray chest</p><p style="margin:0; font-size:11px; color:var(--gray);">18 Jul 2026, 4:30 PM</p></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="scr-vaccination">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Vaccination and preventive care</h1></div></div>
+  <div class="content">
+    <div class="card">
+      <div class="row" style="margin-bottom:10px;"><span style="font-size:13px;">Influenza (annual)</span><span class="badge good">Up to date</span></div>
+      <div class="row" style="margin-bottom:10px;"><span style="font-size:13px;">Tetanus booster</span><span class="badge warn">Due in 3 months</span></div>
+      <div class="row"><span style="font-size:13px;">Annual health check-up</span><span class="badge bad">Overdue</span></div>
+    </div>
+    <button class="btn outline" onclick="go('doctors')">Book a check-up</button>
+  </div>
+</div>
+
+<!-- ===================== PROFILE & SETTINGS ===================== -->
+
+<div class="screen" id="scr-profile">
+  <div class="topbar"><h1 class="title" data-i18n="profile">Profile</h1><p class="sub">Manage your account and preferences</p></div>
+  <div class="content">
+    <div class="card" onclick="go('personalinfo')" style="cursor:pointer;">
+      <div class="row">
+        <div class="avatar" style="width:50px; height:50px; font-size:18px;">AK</div>
+        <div style="flex:1; margin-left:12px;"><p style="margin:0; font-weight:700; font-size:14.5px;">Arjun Kumar</p><p style="margin:2px 0 0; font-size:12px; color:var(--gray);">Premium member</p></div>
+        <span style="color:var(--gray);">›</span>
+      </div>
+    </div>
+    <div class="grid2" style="margin-bottom:14px;">
+      <div class="tile" onclick="go('family')"><span class="ic">👪</span>Family (4)</div>
+      <div class="tile" onclick="go('reportanalysis')"><span class="ic">🛡</span>Health score 78</div>
+    </div>
+    <div class="card">
+      <div class="list-item" onclick="go('personalinfo')"><span style="font-size:13.5px; flex:1;">👤 <span data-i18n="personalInfo">Personal information</span></span><span style="color:var(--gray);">›</span></div>
+      <div class="list-item" onclick="go('healthpreferences')"><span style="font-size:13.5px; flex:1;">🔔 <span data-i18n="healthPreferences">Health preferences</span></span><span style="color:var(--gray);">›</span></div>
+      <div class="list-item" onclick="go('languageregion')"><span style="font-size:13.5px; flex:1;">🌐 <span data-i18n="languageRegion">Language and region</span></span><span style="font-size:11px; color:var(--gray); margin-right:4px;" id="profileLangBadge">English</span><span style="color:var(--gray);">›</span></div>
+      <div class="list-item" onclick="go('accessibility')"><span style="font-size:13.5px; flex:1;">♿ <span data-i18n="accessibility">Accessibility</span></span><span style="color:var(--gray);">›</span></div>
+      <div class="list-item" onclick="go('privacysecurity')"><span style="font-size:13.5px; flex:1;">🔒 <span data-i18n="privacySecurity">Privacy and security</span></span><span style="color:var(--gray);">›</span></div>
+      <div class="list-item" onclick="go('applock')"><span style="font-size:13.5px; flex:1;">🔐 App lock</span><span style="color:var(--gray);">›</span></div>
+      <div class="list-item" onclick="go('linkedaccounts')"><span style="font-size:13.5px; flex:1;">🔗 Linked accounts and devices</span><span style="color:var(--gray);">›</span></div>
+      <div class="list-item" onclick="go('subscriptionplans')"><span style="font-size:13.5px; flex:1;">💳 <span data-i18n="subscriptionPlan">Subscription and plan</span></span><span class="badge info" style="margin-right:6px;">Premium</span><span style="color:var(--gray);">›</span></div>
+      <div class="list-item" onclick="go('helpsupport')"><span style="font-size:13.5px; flex:1;">❓ <span data-i18n="helpSupport">Help and support</span></span><span style="color:var(--gray);">›</span></div>
+      <div class="list-item" onclick="go('aboutapp')"><span style="font-size:13.5px; flex:1;">ℹ About HealthAI</span><span style="font-size:11px; color:var(--gray); margin-right:4px;">v1.2.0</span><span style="color:var(--gray);">›</span></div>
+      <div class="list-item" onclick="openSheet('ov-logout')"><span style="font-size:13.5px; color:var(--red);" data-i18n="logOut">↩ Log out</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="scr-languageregion">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title" data-i18n="languageRegion">Language and region</h1></div></div>
+  <div class="content">
+    <p class="sub" style="margin-bottom:10px;">HealthAI supports 177 languages. 24 are fully localized and linguistically reviewed for medical terminology; the rest use machine-assisted translation and are marked accordingly.</p>
+    <input placeholder="Search 177 languages..." oninput="filterLangList(this.value)" style="margin-bottom:10px;">
+    <div class="langlist" style="max-height:560px; overflow-y:auto;"></div>
+    <div class="card" style="margin-top:14px;">
+      <p class="section-label">Region and formats</p>
+      <label class="field-label">Units</label>
+      <select><option>Metric (kg, cm)</option><option>Imperial (lb, ft/in)</option></select>
+      <label class="field-label">Date format</label>
+      <select><option>DD/MM/YYYY</option><option>MM/DD/YYYY</option><option>YYYY-MM-DD</option></select>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="scr-accessibility">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title" data-i18n="accessibility">Accessibility</h1></div></div>
+  <div class="content">
+    <p class="section-label">Text size</p>
+    <div class="grid3" style="margin-bottom:16px;">
+      <div class="tile textsize-opt on" id="ts-default" onclick="setTextSize('default')">Default</div>
+      <div class="tile textsize-opt" id="ts-large" onclick="setTextSize('large')">Large</div>
+      <div class="tile textsize-opt" id="ts-xlarge" onclick="setTextSize('xlarge')">Extra large</div>
+    </div>
+    <div class="card">
+      <div class="row" style="margin-bottom:10px;"><div><p style="margin:0; font-weight:600; font-size:13px;">High contrast mode</p><p style="margin:2px 0 0; font-size:11px; color:var(--gray);">Stronger color contrast for low-vision users</p></div><div class="toggle" onclick="toggle(this); setContrast(this.classList.contains('on'))"><div class="knob"></div></div></div>
+      <div class="row" style="margin-bottom:10px;"><div><p style="margin:0; font-weight:600; font-size:13px;">Reduce motion</p><p style="margin:2px 0 0; font-size:11px; color:var(--gray);">Minimizes animations and transitions</p></div><div class="toggle" onclick="toggle(this); setMotion(this.classList.contains('on'))"><div class="knob"></div></div></div>
+      <div class="row" style="margin-bottom:10px;"><div><p style="margin:0; font-weight:600; font-size:13px;">Bold text</p></div><div class="toggle" onclick="toggle(this); document.getElementById('device').style.fontWeight = this.classList.contains('on') ? '600' : 'normal'"><div class="knob"></div></div></div>
+      <div class="row"><div><p style="margin:0; font-weight:600; font-size:13px;">Screen reader optimizations</p><p style="margin:2px 0 0; font-size:11px; color:var(--gray);">All icons, tabs, and controls are labeled for VoiceOver / TalkBack</p></div><span class="badge good">On</span></div>
+    </div>
+    <div class="disclaimer">HealthAI targets WCAG 2.1 AA: minimum 4.5:1 text contrast, 44×44pt touch targets, full keyboard/switch-control navigation, and semantic labeling for all interactive elements.</div>
+  </div>
+</div>
+
+<div class="screen" id="scr-personalinfo">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Personal information</h1></div></div>
+  <div class="content">
+    <label class="field-label">Full name</label><input value="Arjun Kumar">
+    <label class="field-label">Mobile number</label><input value="+91 98765 43210">
+    <label class="field-label">Email</label><input value="arjunkumar@gmail.com">
+    <div class="grid2">
+      <div><label class="field-label">Date of birth</label><input value="28 May 1990"></div>
+      <div><label class="field-label">Gender</label><select><option>Male</option><option>Female</option></select></div>
+    </div>
+    <label class="field-label">Location</label><input value="Hyderabad, Telangana, India">
+    <button class="btn" style="margin-top:6px;" onclick="showToast('Profile updated')">Save changes</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-healthpreferences">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Health preferences</h1></div></div>
+  <div class="content">
+    <label class="field-label">Units</label>
+    <select><option>Metric (kg, cm)</option><option>Imperial (lb, ft/in)</option></select>
+    <label class="field-label">Language</label>
+    <select><option>English</option><option>Hindi</option><option>Telugu</option></select>
+    <p style="font-weight:700; font-size:13.5px; margin:16px 0 8px;">Notifications</p>
+    <div class="card">
+      <div class="row" style="margin-bottom:10px;"><span style="font-size:13px;">Medicine reminders</span><div class="toggle on" onclick="toggle(this)"><div class="knob"></div></div></div>
+      <div class="row" style="margin-bottom:10px;"><span style="font-size:13px;">Appointment reminders</span><div class="toggle on" onclick="toggle(this)"><div class="knob"></div></div></div>
+      <div class="row" style="margin-bottom:10px;"><span style="font-size:13px;">Health tips and insights</span><div class="toggle on" onclick="toggle(this)"><div class="knob"></div></div></div>
+      <div class="row"><span style="font-size:13px;">Family activity alerts</span><div class="toggle" onclick="toggle(this)"><div class="knob"></div></div></div>
+    </div>
+    <label class="field-label">Quiet hours</label>
+    <div class="grid2"><input value="10:00 PM"><input value="7:00 AM"></div>
+  </div>
+</div>
+
+<div class="screen" id="scr-privacysecurity">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Privacy and security</h1></div></div>
+  <div class="content">
+    <div class="card">
+      <div class="list-item" onclick="go('consentcenter')"><span style="font-size:13.5px; flex:1;">Consent center</span><span style="color:var(--gray);">›</span></div>
+      <div class="list-item" onclick="go('dataexport')"><span style="font-size:13.5px; flex:1;">Download my data</span><span style="color:var(--gray);">›</span></div>
+      <div class="list-item" onclick="go('applock')"><span style="font-size:13.5px; flex:1;">App lock and biometrics</span><span style="color:var(--gray);">›</span></div>
+      <div class="list-item" onclick="go('terms')"><span style="font-size:13.5px; flex:1;">Privacy policy</span><span style="color:var(--gray);">›</span></div>
+      <div class="list-item" onclick="go('deleteaccount')"><span style="font-size:13.5px; flex:1; color:var(--red);">Delete my account</span><span style="color:var(--gray);">›</span></div>
+    </div>
+    <div class="disclaimer">🔒 Your health data is encrypted at rest and in transit, and is never sold or used for advertising.</div>
+  </div>
+</div>
+
+<div class="screen" id="scr-consentcenter">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Consent center</h1></div></div>
+  <div class="content">
+    <p class="sub" style="margin-bottom:14px;">Control how your health data is used. Changes apply immediately.</p>
+    <div class="card row" style="margin-bottom:10px;"><div><p style="margin:0; font-weight:600; font-size:13px;">AI analysis of uploaded reports</p><p style="margin:2px 0 0; font-size:11px; color:var(--gray);">Required for report insights</p></div><div class="toggle on" onclick="toggle(this)"><div class="knob"></div></div></div>
+    <div class="card row" style="margin-bottom:10px;"><div><p style="margin:0; font-weight:600; font-size:13px;">Share data with family members</p><p style="margin:2px 0 0; font-size:11px; color:var(--gray);">Permission-based, per member</p></div><div class="toggle on" onclick="toggle(this)"><div class="knob"></div></div></div>
+    <div class="card row" style="margin-bottom:10px;"><div><p style="margin:0; font-weight:600; font-size:13px;">Share summary with booked doctors</p><p style="margin:2px 0 0; font-size:11px; color:var(--gray);">Only for confirmed appointments</p></div><div class="toggle on" onclick="toggle(this)"><div class="knob"></div></div></div>
+    <div class="card row"><div><p style="margin:0; font-weight:600; font-size:13px;">Anonymized research and product improvement</p><p style="margin:2px 0 0; font-size:11px; color:var(--gray);">De-identified, optional</p></div><div class="toggle" onclick="toggle(this)"><div class="knob"></div></div></div>
+  </div>
+</div>
+
+<div class="screen" id="scr-dataexport">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Download my data</h1></div></div>
+  <div class="content">
+    <p class="sub" style="margin-bottom:14px;">Export a copy of your reports, medicines, appointments, and timeline as a structured file.</p>
+    <label class="field-label">Format</label>
+    <select><option>PDF summary</option><option>JSON (structured data)</option></select>
+    <button class="btn" onclick="showToast('Export requested — we\\'ll email you a secure link within 24 hours')">Request export</button>
+    <div class="disclaimer">Per data protection regulations, exports are typically delivered within 24 hours and expire after 7 days for security.</div>
+  </div>
+</div>
+
+<div class="screen" id="scr-deleteaccount">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Delete my account</h1></div></div>
+  <div class="content">
+    <div class="banner red">
+      <p style="margin:0; font-weight:700; font-size:13.5px; color:var(--red);">This action is permanent</p>
+      <p style="margin:6px 0 0; font-size:12.5px; color:var(--ink);">All reports, medicines, appointments, and family links will be permanently deleted after a 30-day cooling-off period, except where retention is legally required.</p>
+    </div>
+    <label class="field-label">Tell us why you're leaving (optional)</label>
+    <textarea rows="3" placeholder="Help us improve..."></textarea>
+    <label class="field-label">Type DELETE to confirm</label>
+    <input placeholder="DELETE">
+    <button class="btn danger" onclick="showToast('Account deletion scheduled'); go('onboarding');">Delete my account</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-applock">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">App lock</h1></div></div>
+  <div class="content">
+    <div class="card row" style="margin-bottom:10px;"><span style="font-size:13px; font-weight:600;">Require PIN to open app</span><div class="toggle on" onclick="toggle(this)"><div class="knob"></div></div></div>
+    <div class="card row" style="margin-bottom:14px;"><span style="font-size:13px; font-weight:600;">Use Face ID / fingerprint</span><div class="toggle on" onclick="toggle(this)"><div class="knob"></div></div></div>
+    <label class="field-label">Change PIN</label>
+    <input placeholder="Enter new 4-digit PIN" maxlength="4">
+    <button class="btn" onclick="showToast('PIN updated')">Save PIN</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-linkedaccounts">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Linked accounts and devices</h1></div></div>
+  <div class="content">
+    <div class="card">
+      <div class="list-item"><div class="avatar">G</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13px;">Google</p><p style="margin:0; font-size:11px; color:var(--gray);">Connected · arjunkumar@gmail.com</p></div><span class="link" style="color:var(--red);" onclick="showToast('Google disconnected')">Unlink</span></div>
+      <div class="list-item"><div class="avatar">📅</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13px;">Google Calendar</p><p style="margin:0; font-size:11px; color:var(--gray);">Connected for appointment sync</p></div><span class="link" style="color:var(--red);" onclick="showToast('Calendar disconnected')">Unlink</span></div>
+      <div class="list-item"><div class="avatar">⌚</div><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13px;">Google Fit</p><p style="margin:0; font-size:11px; color:var(--gray);">Not connected</p></div><span class="link" onclick="showToast('Google Fit connected')">Connect</span></div>
+    </div>
+    <p style="font-weight:700; font-size:13.5px; margin:14px 0 8px;">Active sessions</p>
+    <div class="card">
+      <div class="row" style="margin-bottom:8px;"><span style="font-size:12.5px;">iPhone 15 · Hyderabad</span><span class="badge good">This device</span></div>
+      <div class="row"><span style="font-size:12.5px;">Chrome · Windows · Hyderabad</span><span class="link" style="color:var(--red);" onclick="showToast('Session signed out')">Sign out</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="scr-subscriptionplans">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Subscription and plan</h1></div></div>
+  <div class="content">
+    <div class="card" style="border:2px solid var(--teal);">
+      <div class="row"><p style="margin:0; font-weight:700; font-size:14px;">Premium — active</p><span class="badge info">Current</span></div>
+      <p style="font-size:12px; color:var(--gray); margin:4px 0 0;">Renews 12 Sep 2026 · ₹499/month</p>
+    </div>
+    <p style="font-weight:700; font-size:13.5px; margin:16px 0 8px;">Plans</p>
+    <div class="card">
+      <p style="margin:0; font-weight:700; font-size:13.5px;">Free</p>
+      <p style="font-size:11.5px; color:var(--gray); margin:4px 0 10px;">Basic report uploads, 1 family member</p>
+      <button class="btn ghost" disabled>Current plan below Premium</button>
+    </div>
+    <div class="card" style="border:2px solid var(--teal);">
+      <div class="row"><p style="margin:0; font-weight:700; font-size:13.5px;">Premium</p><span class="badge info">Most popular</span></div>
+      <p style="font-size:11.5px; color:var(--gray); margin:4px 0 10px;">Unlimited AI analysis, 5 family members, priority support</p>
+      <button class="btn" onclick="go('checkoutsubscription')">Manage plan</button>
+    </div>
+    <p style="text-align:center; margin-top:10px;"><span class="link" onclick="go('billinghistory')">View billing history →</span></p>
+  </div>
+</div>
+
+<div class="screen" id="scr-checkoutsubscription">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Premium plan</h1></div></div>
+  <div class="content">
+    <div class="card"><div class="row"><span style="font-size:13.5px; font-weight:700;">Premium · Monthly</span><span style="font-size:14px; font-weight:800;">₹499/mo</span></div></div>
+    <label class="field-label">Payment method</label>
+    <select><option>UPI — arjun@upi</option><option>Credit / debit card</option></select>
+    <label class="field-label">Card number</label>
+    <input placeholder="4242 4242 4242 4242">
+    <div class="grid2"><input placeholder="MM/YY"><input placeholder="CVV"></div>
+    <button class="btn" style="margin-top:6px;" onclick="go('subscriptionsuccess')">Confirm and pay ₹499</button>
+    <p class="hint">Cancel anytime from Subscription and plan</p>
+  </div>
+</div>
+
+<div class="screen" id="scr-subscriptionsuccess">
+  <div class="content" style="text-align:center; padding-top:70px;">
+    <div style="width:70px;height:70px;background:var(--teal-light);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 18px; color:var(--teal-dark);">✓</div>
+    <h1 class="title">You're on Premium</h1>
+    <p class="sub" style="margin-top:6px;">Receipt sent to arjunkumar@gmail.com</p>
+    <button class="btn" style="margin-top:26px;" onclick="go('profile')">Back to profile</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-billinghistory">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Billing history</h1></div></div>
+  <div class="content">
+    <div class="card">
+      <div class="list-item"><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13px;">Premium — Aug 2026</p><p style="margin:0; font-size:11px; color:var(--gray);">12 Aug 2026 · UPI</p></div><span style="font-size:13px; font-weight:700;">₹499</span></div>
+      <div class="list-item"><div style="flex:1;"><p style="margin:0; font-weight:600; font-size:13px;">Premium — Jul 2026</p><p style="margin:0; font-size:11px; color:var(--gray);">12 Jul 2026 · UPI</p></div><span style="font-size:13px; font-weight:700;">₹499</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="scr-helpsupport">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Help and support</h1></div></div>
+  <div class="content">
+    <button class="btn" style="margin-bottom:14px;" onclick="go('contactsupport')">💬 Contact support</button>
+    <p style="font-weight:700; font-size:13.5px; margin:0 0 8px;">Frequently asked questions</p>
+    <div class="card">
+      <div class="accordion-head" onclick="accordion(this)">Is my health data secure?<span>▾</span></div>
+      <div class="accordion-body">Yes. All data is encrypted in transit and at rest, and we never sell your health data or use it for advertising.</div>
+      <div class="accordion-head" onclick="accordion(this)">How accurate is the AI analysis?<span>▾</span></div>
+      <div class="accordion-body">Our AI is designed to explain your reports in plain language, but it does not diagnose. Always confirm findings with a licensed physician.</div>
+      <div class="accordion-head" onclick="accordion(this)">Can I use HealthAI for my parents?<span>▾</span></div>
+      <div class="accordion-body">Yes — add them as family members from Profile to manage their reports, medicines, and appointments with permission-based access.</div>
+      <div class="accordion-head" onclick="accordion(this)">How do I cancel my subscription?<span>▾</span></div>
+      <div class="accordion-body">Go to Profile → Subscription and plan → Manage plan, and choose Cancel subscription. You'll keep Premium until the billing period ends.</div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="scr-contactsupport">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Contact support</h1></div></div>
+  <div class="content">
+    <div class="grid2" style="margin-bottom:14px;">
+      <div class="tile" style="padding:16px 8px;" onclick="showToast('Opening chat...')"><span class="ic">💬</span>Live chat</div>
+      <div class="tile" style="padding:16px 8px;" onclick="showToast('Opening email draft...')"><span class="ic">✉</span>Email us</div>
+    </div>
+    <label class="field-label">Describe your issue</label>
+    <textarea rows="4" placeholder="Tell us what's going on..."></textarea>
+    <label class="field-label">Attach a screenshot (optional)</label>
+    <div class="tile" style="text-align:left; padding:12px; margin-bottom:12px;" onclick="showToast('Screenshot attached')"><span class="ic" style="display:inline; margin-right:6px;">📎</span>Add attachment</div>
+    <button class="btn" onclick="showToast('Ticket #SP-2291 created — we\\'ll reply within 24 hours')">Submit ticket</button>
+    <p style="font-weight:700; font-size:13px; margin:18px 0 8px;">Recent tickets</p>
+    <div class="card"><div class="row"><span style="font-size:12.5px;">Payment not reflecting</span><span class="badge good">Resolved</span></div></div>
+  </div>
+</div>
+
+<div class="screen" id="scr-aboutapp">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">About HealthAI</h1></div></div>
+  <div class="content">
+    <div class="card">
+      <div class="list-item"><span style="font-size:13.5px; flex:1;">App version</span><span style="font-size:12.5px; color:var(--gray);">1.2.0</span></div>
+      <div class="list-item" onclick="go('terms')"><span style="font-size:13.5px; flex:1;">Terms of service</span><span style="color:var(--gray);">›</span></div>
+      <div class="list-item" onclick="go('terms')"><span style="font-size:13.5px; flex:1;">Privacy policy</span><span style="color:var(--gray);">›</span></div>
+      <div class="list-item" onclick="showToast('Thanks for rating us!')"><span style="font-size:13.5px; flex:1;">Rate the app</span><span class="stars" style="font-size:13px;">★★★★★</span></div>
+    </div>
+    <p style="text-align:center; margin-top:14px;"><span class="link" onclick="go('qamenu')" style="font-size:11px; color:var(--gray); font-weight:400;">Prototype: design states (QA)</span></p>
+  </div>
+</div>
+
+<div class="screen" id="scr-terms">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Privacy policy</h1></div></div>
+  <div class="content">
+    <p style="font-size:12.5px; color:var(--ink); line-height:1.7;">HealthAI collects the health information you provide to deliver report analysis, medicine management, and appointment booking. Data is encrypted in transit and at rest, stored within your regional data center, and never sold to third parties or used for advertising. You can access, export, or delete your data at any time from Privacy and security. For questions, contact our Data Protection Officer via Help and support.</p>
+    <div class="disclaimer">Full terms, GDPR/DPDP/HIPAA disclosures, and regional addenda are available at the web version of this policy.</div>
+  </div>
+</div>
+
+<!-- ===================== SYSTEM / EDGE STATES (QA) ===================== -->
+
+<div class="screen" id="scr-qamenu">
+  <div class="topbar"><div class="backrow"><div class="iconbtn" onclick="back()">←</div><h1 class="title">Design states (QA)</h1></div></div>
+  <div class="content">
+    <p class="sub" style="margin-bottom:10px;">Edge cases and system states for review — not part of normal navigation.</p>
+    <div class="card">
+      <div class="qa-row" onclick="go('stateerror')">Network / generic error screen ›</div>
+      <div class="qa-row" onclick="go('statemaintenance')">Maintenance mode ›</div>
+      <div class="qa-row" onclick="go('sessionexpired')">Session expired ›</div>
+      <div class="qa-row" onclick="toggleOffline()">Toggle offline banner ›</div>
+      <div class="qa-row" onclick="go('permissions')">Permission request screen ›</div>
+    </div>
+    <p class="hint">List screens (Reports, Medicines, Appointments, Pharmacy, AI Assistant) each have a state chip top-right to preview loading, empty, and error states inline.</p>
+  </div>
+</div>
+
+<div class="screen" id="scr-stateerror">
+  <div class="content" style="text-align:center; padding-top:80px;">
+    <div style="font-size:40px; margin-bottom:14px;">⚠</div>
+    <h1 class="title">Something went wrong</h1>
+    <p class="sub" style="margin-top:6px; max-width:240px; margin-left:auto; margin-right:auto;">We couldn't complete that request. Check your connection and try again.</p>
+    <button class="btn" style="margin-top:24px;" onclick="go('home')">Try again</button>
+    <button class="btn ghost" style="margin-top:10px;" onclick="go('contactsupport')">Contact support</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-statemaintenance">
+  <div class="content" style="text-align:center; padding-top:80px;">
+    <div style="font-size:40px; margin-bottom:14px;">🛠</div>
+    <h1 class="title">HealthAI is under maintenance</h1>
+    <p class="sub" style="margin-top:6px; max-width:240px; margin-left:auto; margin-right:auto;">We're improving things behind the scenes. Back in about 20 minutes. Your emergency card remains available offline.</p>
+    <button class="btn outline" style="margin-top:24px;" onclick="go('emergencycard')">View emergency card</button>
+  </div>
+</div>
+
+<div class="screen" id="scr-sessionexpired">
+  <div class="content" style="text-align:center; padding-top:80px;">
+    <div style="font-size:40px; margin-bottom:14px;">🔒</div>
+    <h1 class="title">Your session expired</h1>
+    <p class="sub" style="margin-top:6px; max-width:240px; margin-left:auto; margin-right:auto;">For your security, please log in again to continue.</p>
+    <button class="btn" style="margin-top:24px;" onclick="go('login')">Log in again</button>
+  </div>
+</div>
+
+`;
+
+renderLangList();
+applyTranslations();
+enhanceAccessibility();
+go('onboarding', false);
+</script>
+</body>
+</html>

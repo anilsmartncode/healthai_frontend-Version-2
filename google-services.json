@@ -1,0 +1,62 @@
+{
+  "project_info": {
+    "project_number": "933979596939",
+    "project_id": "healthaifb",
+    "storage_bucket": "healthaifb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:933979596939:android:8030276a0362720722cc8e",
+        "android_client_info": {
+          "package_name": "com.smartncode.healthai"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "933979596939-ki8s84abkfb46ttu2128e3ivn7j2a1h7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.smartncode.healthai",
+            "certificate_hash": "3cff6aa647db8512ebc7008bb8c12b1ad13d51f0"
+          }
+        },
+        {
+          "client_id": "933979596939-p44omvqbjdbt96dn059rbrrdm4fqnvne.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.smartncode.healthai",
+            "certificate_hash": "e687664f668e029326f4a010273022b5c15beb59"
+          }
+        },
+        {
+          "client_id": "933979596939-kbakttimkce7033728vfank66tgimu7f.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAMQKP4x1q1RRCF8QIYFjWuIAEtQyPAPPo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "933979596939-kbakttimkce7033728vfank66tgimu7f.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "933979596939-68suovtthpu7b3sitqlc2p692hgfe14a.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.healthai.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
