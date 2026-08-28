@@ -34,6 +34,7 @@ import {
 import type { ApiSummary, LabValue } from '@/types/Report/reportype';
 import { AnalysisSummaryCard } from '@/components/reports/AnalysisSummaryCard';
 import { AskAIButton } from '@/components/ai/AskAIButton';
+import { useLang } from '@/context/Languagecontext';
 
 type TabKey = 'Summary' | 'Results';
 
@@ -66,13 +67,14 @@ async function openReportFile(
   }
 }
 
-function statusLabel(status: LabValue['status']) {
-  if (status === 'high') return { label: 'High', bg: '#FEE2E2', color: '#DC2626' };
-  if (status === 'low') return { label: 'Low', bg: '#FEF3C7', color: '#D97706' };
-  return { label: 'Normal', bg: '#DCFCE7', color: '#15803D' };
+function statusLabel(status: LabValue['status'], t: (k: any) => string) {
+  if (status === 'high') return { label: t('abnormal'), bg: '#FEE2E2', color: '#DC2626' };
+  if (status === 'low') return { label: t('borderline'), bg: '#FEF3C7', color: '#D97706' };
+  return { label: t('normal'), bg: '#DCFCE7', color: '#15803D' };
 }
 
 export default function ReportDetailScreen() {
+  const { t, rowDirection, textAlign, isRTL } = useLang();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { phone } = useAuth();
   const [report, setReport] = useState<(ReportListItem & Partial<AnalyzeResult>) | null>(null);
@@ -114,19 +116,19 @@ export default function ReportDetailScreen() {
   };
 
   const handleMore = () => {
-    Alert.alert(report?.title ?? 'Report', undefined, [
+    Alert.alert(report?.title ?? t('reports_title'), undefined, [
       {
-        text: 'Rename',
+        text: t('rename'),
         onPress: () => {
           setNewName(report?.title ?? '');
           setShowRename(true);
         },
       },
       {
-        text: opening ? 'Opening…' : 'View original file',
+        text: opening ? 'Opening…' : t('view_original_file'),
         onPress: handleViewReport,
       },
-      { text: 'Cancel', style: 'cancel' },
+      { text: t('cancel'), style: 'cancel' },
     ]);
   };
 
@@ -225,11 +227,11 @@ export default function ReportDetailScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { flexDirection: rowDirection }]}>
         <Pressable onPress={() => router.back()} style={styles.iconBtn} hitSlop={8}>
-          <Ionicons name="arrow-back" size={22} color={Colors.text} />
+          <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={22} color={Colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>Report Details</Text>
+        <Text style={styles.headerTitle}>{t('report_details')}</Text>
         <Pressable onPress={handleShare} style={styles.iconBtn} hitSlop={8}>
           <Ionicons name="share-outline" size={20} color={Colors.text} />
         </Pressable>
@@ -240,16 +242,16 @@ export default function ReportDetailScreen() {
 
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         {/* Overview card */}
-        <View style={styles.overviewCard}>
+        <View style={[styles.overviewCard, { flexDirection: rowDirection }]}>
           <View style={styles.flaskIcon}>
             <Ionicons name="flask-outline" size={22} color="#E11D48" />
           </View>
           <View style={styles.overviewInfo}>
-            <Text style={styles.overviewTitle}>
+            <Text style={[styles.overviewTitle, { textAlign }]}>
               {report.reportTypeFull || report.title}
             </Text>
-            <Text style={styles.overviewMeta}>{report.date}</Text>
-            <Text style={styles.overviewLab}>{report.labName || 'Lab report'}</Text>
+            <Text style={[styles.overviewMeta, { textAlign }]}>{report.date}</Text>
+            <Text style={[styles.overviewLab, { textAlign }]}>{report.labName || 'Lab report'}</Text>
             <View
               style={[
                 styles.statusBadge,
@@ -264,7 +266,7 @@ export default function ReportDetailScreen() {
                   { color: overallNormal ? '#15803D' : '#DC2626' },
                 ]}
               >
-                {overallNormal ? 'Normal' : 'Attention'}
+                {overallNormal ? t('normal') : t('attention')}
               </Text>
             </View>
           </View>
@@ -277,11 +279,12 @@ export default function ReportDetailScreen() {
           contentContainerStyle={styles.tabsRow}
           style={styles.tabsScroll}
         >
-          {TABS.map((t) => {
-            const active = tab === t;
+          {TABS.map((tKey) => {
+            const active = tab === tKey;
+            const tabLabel = tKey === 'Summary' ? t('summary') : t('results');
             return (
-              <Pressable key={t} style={styles.tab} onPress={() => setTab(t)}>
-                <Text style={[styles.tabText, active && styles.tabTextActive]}>{t}</Text>
+              <Pressable key={tKey} style={styles.tab} onPress={() => setTab(tKey)}>
+                <Text style={[styles.tabText, active && styles.tabTextActive]}>{tabLabel}</Text>
                 {active && <View style={styles.tabUnderline} />}
               </Pressable>
             );
@@ -292,42 +295,42 @@ export default function ReportDetailScreen() {
           <>
             {/* AI Summary */}
             <View style={styles.card}>
-              <View style={styles.aiHeader}>
-                <Text style={styles.cardTitle}>AI Summary</Text>
+              <View style={[styles.aiHeader, { flexDirection: rowDirection }]}>
+                <Text style={[styles.cardTitle, { textAlign }]}>{t('ai_summary')}</Text>
                 <View style={styles.aiBadge}>
                   <Ionicons name="sparkles" size={12} color="#fff" />
                   <Text style={styles.aiBadgeText}>HealthAI</Text>
                 </View>
               </View>
-              <Text style={styles.aiBody}>{aiText}</Text>
+              <Text style={[styles.aiBody, { textAlign }]}>{aiText}</Text>
               <View style={styles.checkList}>
                 {checklist.slice(0, 4).map((line, i) => {
                   const isAlert = /high|low|abnormal|outside/i.test(line);
                   return (
-                    <View key={`${i}-${line}`} style={styles.checkRow}>
+                    <View key={`${i}-${line}`} style={[styles.checkRow, { flexDirection: rowDirection }]}>
                       <Ionicons
                         name={isAlert ? 'alert-circle' : 'checkmark-circle'}
                         size={18}
                         color={isAlert ? Colors.warning : Colors.success}
                       />
-                      <Text style={styles.checkText}>{line}</Text>
+                      <Text style={[styles.checkText, { textAlign }]}>{line}</Text>
                     </View>
                   );
                 })}
               </View>
               <View style={styles.consultNote}>
-                <Text style={styles.consultNoteText}>
-                  Always consult your doctor for personalized advice.
+                <Text style={[styles.consultNoteText, { textAlign }]}>
+                  {t('consult_doctor_note')}
                 </Text>
               </View>
             </View>
 
             {/* Key Highlights */}
             <View style={styles.card}>
-              <View style={styles.hlHeader}>
-                <Text style={styles.cardTitle}>Key Highlights</Text>
+              <View style={[styles.hlHeader, { flexDirection: rowDirection }]}>
+                <Text style={[styles.cardTitle, { textAlign }]}>{t('key_highlights')}</Text>
                 <Text style={styles.hlMeta}>
-                  {normalCount} of {totalCount || '—'} parameters normal
+                  {normalCount} / {totalCount || '—'} {t('parameters_normal')}
                 </Text>
               </View>
 
@@ -342,13 +345,13 @@ export default function ReportDetailScreen() {
                   contentContainerStyle={styles.hlRow}
                 >
                   {highlights.map((v) => {
-                    const st = statusLabel(v.status);
+                    const st = statusLabel(v.status, t);
                     return (
                       <View key={v.name} style={styles.hlCard}>
-                        <Text style={styles.hlName} numberOfLines={1}>
+                        <Text style={[styles.hlName, { textAlign }]} numberOfLines={1}>
                           {v.name}
                         </Text>
-                        <Text style={styles.hlValue}>
+                        <Text style={[styles.hlValue, { textAlign }]}>
                           {v.value}
                           {v.range ? '' : ''}
                         </Text>
@@ -362,7 +365,7 @@ export default function ReportDetailScreen() {
               )}
 
               <Pressable style={styles.primaryBtn} onPress={goFullResults}>
-                <Text style={styles.primaryBtnText}>View Full Results</Text>
+                <Text style={styles.primaryBtnText}>{t('view_full_results')}</Text>
               </Pressable>
             </View>
 
@@ -372,7 +375,7 @@ export default function ReportDetailScreen() {
                 onPress={handleViewReport}
               >
                 <Text style={styles.secondaryBtnText}>
-                  {opening ? 'Opening…' : 'View original report file'}
+                  {opening ? 'Opening…' : t('view_original_file')}
                 </Text>
               </Pressable>
             </View>
@@ -381,20 +384,20 @@ export default function ReportDetailScreen() {
 
         {tab === 'Results' && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>All Results</Text>
+            <Text style={[styles.cardTitle, { textAlign }]}>{t('all_results')}</Text>
             {values.length === 0 ? (
               <Text style={styles.emptyHint}>No lab values available for this report.</Text>
             ) : (
               values.map((v, i) => {
-                const st = statusLabel(v.status);
+                const st = statusLabel(v.status, t);
                 return (
                   <View
                     key={`${v.name}-${i}`}
-                    style={[styles.resultRow, i > 0 && styles.resultDivider]}
+                    style={[styles.resultRow, { flexDirection: rowDirection }, i > 0 && styles.resultDivider]}
                   >
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.resultName}>{v.name}</Text>
-                      <Text style={styles.resultRange}>Range: {v.range || '—'}</Text>
+                      <Text style={[styles.resultName, { textAlign }]}>{v.name}</Text>
+                      <Text style={[styles.resultRange, { textAlign }]}>{t('range_label')} {v.range || '—'}</Text>
                     </View>
                     <Text style={styles.resultValue}>{v.value}</Text>
                     <View style={[styles.hlBadge, { backgroundColor: st.bg }]}>
@@ -405,14 +408,14 @@ export default function ReportDetailScreen() {
               })
             )}
             <Pressable style={[styles.primaryBtn, { marginTop: 16 }]} onPress={goFullResults}>
-              <Text style={styles.primaryBtnText}>View Full Results</Text>
+              <Text style={styles.primaryBtnText}>{t('view_full_results')}</Text>
             </Pressable>
           </View>
         )}
 
         {/* Health Score */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Health Score</Text>
+          <Text style={[styles.sectionTitle, { textAlign }]}>{t('health_score_title')}</Text>
           <AnalysisSummaryCard
             abnormalCount={report.abnormalCount ?? abnormalValues.length}
             totalCount={totalCount}
@@ -425,25 +428,25 @@ export default function ReportDetailScreen() {
 
         {/* Key Findings */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Key Findings</Text>
-          <View style={styles.findingsRow}>
-            <View style={styles.findingPill}>
+          <Text style={[styles.sectionTitle, { textAlign }]}>{t('key_findings')}</Text>
+          <View style={[styles.findingsRow, { flexDirection: rowDirection }]}>
+            <View style={[styles.findingPill, { flexDirection: rowDirection }]}>
               <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
-              <Text style={styles.findingText}>{report.totalValues - report.abnormalCount} Normal</Text>
+              <Text style={styles.findingText}>{report.totalValues - report.abnormalCount} {t('normal')}</Text>
             </View>
             {report.abnormalCount > 0 && (
-              <View style={[styles.findingPill, { backgroundColor: '#FEE2E2' }]}>
+              <View style={[styles.findingPill, { backgroundColor: '#FEE2E2', flexDirection: rowDirection }]}>
                 <Ionicons name="alert-circle" size={16} color={Colors.danger} />
                 <Text style={[styles.findingText, { color: Colors.danger }]}>
-                  {report.abnormalCount} Abnormal
+                  {report.abnormalCount} {t('abnormal')}
                 </Text>
               </View>
             )}
             {(report.borderlineCount ?? 0) > 0 && (
-              <View style={[styles.findingPill, { backgroundColor: '#FEF3C7' }]}>
+              <View style={[styles.findingPill, { backgroundColor: '#FEF3C7', flexDirection: rowDirection }]}>
                 <Ionicons name="warning" size={16} color={Colors.warning} />
                 <Text style={[styles.findingText, { color: Colors.warning }]}>
-                  {report.borderlineCount} Borderline
+                  {report.borderlineCount} {t('borderline')}
                 </Text>
               </View>
             )}
@@ -452,7 +455,7 @@ export default function ReportDetailScreen() {
 
         {/* View Full Analysis CTA */}
         <Pressable
-          style={styles.primaryBtn}
+          style={[styles.primaryBtn, { flexDirection: rowDirection }]}
           onPress={() =>
             report.values
               ? router.push({
@@ -469,14 +472,14 @@ export default function ReportDetailScreen() {
               : router.push({ pathname: '/scorecard', params: { id: report.id } })
           }
         >
-          <Text style={styles.primaryBtnText}>View Full Analysis</Text>
-          <Ionicons name="arrow-forward" size={18} color="#fff" />
+          <Text style={styles.primaryBtnText}>{t('view_full_analysis')}</Text>
+          <Ionicons name={isRTL ? "arrow-back" : "arrow-forward"} size={18} color="#fff" />
         </Pressable>
 
         {/* Ask AI */}
         <AskAIButton
           variant="banner"
-          label="Ask AI about this report"
+          label={t('ask_ai_about_report')}
           prefill={`My ${report.title} report (score: ${report.healthScore ?? '?'}/100) has ${report.abnormalCount ?? 0} abnormal values. What should I know about this?`}
           reportId={report.id}
         />
@@ -494,22 +497,22 @@ export default function ReportDetailScreen() {
           style={styles.modalOverlay}
         >
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Rename Report</Text>
+            <Text style={[styles.modalTitle, { textAlign }]}>{t('rename_report')}</Text>
             <TextInput
-              style={styles.modalInput}
+              style={[styles.modalInput, { textAlign }]}
               value={newName}
               onChangeText={setNewName}
-              placeholder="Enter custom report name..."
+              placeholder={t('enter_custom_name')}
               autoFocus
               selectTextOnFocus
             />
-            <View style={styles.modalActions}>
+            <View style={[styles.modalActions, { flexDirection: rowDirection }]}>
               <Pressable
                 style={styles.modalBtnCancel}
                 onPress={() => setShowRename(false)}
                 disabled={savingRename}
               >
-                <Text style={styles.modalBtnCancelText}>Cancel</Text>
+                <Text style={styles.modalBtnCancelText}>{t('cancel')}</Text>
               </Pressable>
               <Pressable
                 style={styles.modalBtnSave}
@@ -519,7 +522,7 @@ export default function ReportDetailScreen() {
                 {savingRename ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.modalBtnSaveText}>Save Name</Text>
+                  <Text style={styles.modalBtnSaveText}>{t('save_name')}</Text>
                 )}
               </Pressable>
             </View>

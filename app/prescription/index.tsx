@@ -62,7 +62,24 @@ export default function MyPrescriptionsScreen() {
   );
 
   const prescriptions = useMemo(() => {
-    return allReports.filter((r) => r.reportType?.toUpperCase() === 'PRESCRIPTION');
+    return allReports.filter((r) => {
+      const rt = (r.reportType ?? '').toUpperCase();
+      const rtf = (r.reportTypeFull ?? '').toUpperCase();
+      const title = (r.title ?? '').toUpperCase();
+      const cat = (r.category ?? '').toUpperCase();
+      const docType = ((r as any).document_type ?? (r as any).documentType ?? '').toUpperCase();
+      return (
+        rt === 'PRESCRIPTION' ||
+        rt.includes('PRESCRIPTION') ||
+        rtf.includes('PRESCRIPTION') ||
+        cat.includes('PRESCRIPTION') ||
+        docType.includes('PRESCRIPTION') ||
+        /prescrip|rx/i.test(r.reportType ?? '') ||
+        /prescrip|rx/i.test(r.reportTypeFull ?? '') ||
+        /prescrip|rx/i.test(r.title ?? '') ||
+        /prescrip|rx/i.test(r.category ?? '')
+      );
+    });
   }, [allReports]);
 
   const filteredPrescriptions = useMemo(() => {

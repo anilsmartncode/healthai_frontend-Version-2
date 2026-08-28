@@ -1,6 +1,8 @@
 import { encryptRequest, decryptResponse } from "@/utils/encryption";
 import { ENDPOINTS } from "@/constants/api";
 import { fetchWithTimeout } from "@/utils/fetchWithTimeout";
+import { currentAppLangCode } from "@/context/Languagecontext";
+import { currentAppCountryCode } from "@/context/CountryContext";
 
 // =========================
 // BASE API CALL
@@ -14,7 +16,11 @@ const apiCall = async (url: string, payload: unknown) => {
 
   const response = await fetchWithTimeout(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "Accept-Language": currentAppLangCode,
+      "X-User-Country": currentAppCountryCode,
+    },
     body: JSON.stringify(payload),
   });
 

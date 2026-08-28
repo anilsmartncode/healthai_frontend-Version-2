@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { Colors, Radius } from "@/constants/Colors";
 import { Svg, Circle } from "react-native-svg";
 import type { LabValue } from "@/types";
+import { useLang } from "@/context/Languagecontext";
 
 interface Props {
   abnormalCount: number;
@@ -20,14 +21,14 @@ interface Props {
   conditionColor?: string;
 }
 
-function healthStatus(abnormalCount: number): { label: string; color: string } {
+function healthStatus(abnormalCount: number, t: (k: any) => string): { label: string; color: string } {
   if (abnormalCount === 0)
-    return { label: "All Normal", color: "#16a34a" };
+    return { label: t("all_normal"), color: "#16a34a" };
   if (abnormalCount <= 2)
-    return { label: "Mild Risk", color: "#16a34a" };
+    return { label: t("mild_risk"), color: "#16a34a" };
   if (abnormalCount <= 5)
-    return { label: "Moderate Risk", color: Colors.warning };
-  return { label: "High Risk", color: Colors.danger };
+    return { label: t("moderate_risk"), color: Colors.warning };
+  return { label: t("high_risk"), color: Colors.danger };
 }
 
 export function AnalysisSummaryCard({
@@ -39,8 +40,9 @@ export function AnalysisSummaryCard({
   conditionColor,
 }: Props) {
   const { width } = useWindowDimensions();
+  const { t, rowDirection, textAlign } = useLang();
   const allNormal = abnormalCount === 0;
-  const { label: statusLabel, color: statusColor } = healthStatus(abnormalCount);
+  const { label: statusLabel, color: statusColor } = healthStatus(abnormalCount, t);
 
   // Gauge — same sizing logic as HealthScoreCard
   const SIZE = Math.min(width * 0.38, 160);
@@ -73,7 +75,7 @@ export function AnalysisSummaryCard({
         : Colors.danger;
 
   const scoreLabel = allNormal
-    ? "All Normal"
+    ? t("all_normal")
     : statusLabel;
 
   const normalCount = totalCount - abnormalCount;
@@ -82,7 +84,7 @@ export function AnalysisSummaryCard({
   return (
     <Card style={styles.card}>
       {/* ── Top row ── */}
-      <View style={styles.topRow}>
+      <View style={[styles.topRow, { flexDirection: rowDirection }]}>
         {/* Gauge */}
         <View
           style={{
@@ -151,16 +153,16 @@ export function AnalysisSummaryCard({
 
         {/* Right text */}
         <View style={styles.rightCol}>
-          <View style={styles.titleRow}>
-            <Text style={styles.overallTitle}>Report Health Score</Text>
+          <View style={[styles.titleRow, { flexDirection: rowDirection }]}>
+            <Text style={[styles.overallTitle, { textAlign }]}>{t("report_health_score")}</Text>
             <Ionicons
               name={allNormal ? "checkmark-circle" : "alert-circle"}
               size={14}
               color={gaugeColor}
             />
           </View>
-          <Text style={styles.overallSub}>
-            Based on {totalCount} values in this report
+          <Text style={[styles.overallSub, { textAlign }]}>
+            {t("based_on_values").replace("%s", String(totalCount))}
           </Text>
 
           {/* Condition severity pill */}
@@ -168,6 +170,7 @@ export function AnalysisSummaryCard({
             <View
               style={[
                 styles.stablePill,
+                { flexDirection: rowDirection },
                 {
                   backgroundColor: allNormal ? "#EFF6FF" : "#FFF7ED",
                 },
@@ -194,10 +197,10 @@ export function AnalysisSummaryCard({
               </Text>
             </View>
           ) : (
-            <View style={styles.stablePill}>
+            <View style={[styles.stablePill, { flexDirection: rowDirection }]}>
               <Ionicons name="pulse" size={13} color={Colors.primary} />
               <Text style={styles.stableText}>
-                {allNormal ? "All values in range" : `${abnormalCount} out of range`}
+                {allNormal ? t("all_values_in_range") : `${abnormalCount} ${t("out_of_range")}`}
               </Text>
             </View>
           )}
@@ -209,32 +212,32 @@ export function AnalysisSummaryCard({
 
       {/* ── Stats List ── */}
       <View style={styles.statsList}>
-        <View style={styles.statItemRow}>
-          <View style={styles.statLeft}>
+        <View style={[styles.statItemRow, { flexDirection: rowDirection }]}>
+          <View style={[styles.statLeft, { flexDirection: rowDirection }]}>
             <View style={[styles.statIcon, { backgroundColor: "#DCFCE7" }]}>
               <Ionicons name="checkmark" size={14} color="#16a34a" />
             </View>
-            <Text style={styles.statLabel}>Normal Values</Text>
+            <Text style={[styles.statLabel, { textAlign }]}>{t("normal_values")}</Text>
           </View>
           <Text style={[styles.statNum, { color: "#16a34a" }]}>{String(normalCount).padStart(2, "0")}</Text>
         </View>
 
-        <View style={styles.statItemRow}>
-          <View style={styles.statLeft}>
+        <View style={[styles.statItemRow, { flexDirection: rowDirection }]}>
+          <View style={[styles.statLeft, { flexDirection: rowDirection }]}>
             <View style={[styles.statIcon, { backgroundColor: "#FEE2E2" }]}>
               <Ionicons name="alert-circle-outline" size={14} color={Colors.danger} />
             </View>
-            <Text style={styles.statLabel}>Needs Attention</Text>
+            <Text style={[styles.statLabel, { textAlign }]}>{t("needs_attention")}</Text>
           </View>
           <Text style={[styles.statNum, { color: Colors.danger }]}>{String(abnormalCount).padStart(2, "0")}</Text>
         </View>
 
-        <View style={styles.statItemRow}>
-          <View style={styles.statLeft}>
+        <View style={[styles.statItemRow, { flexDirection: rowDirection }]}>
+          <View style={[styles.statLeft, { flexDirection: rowDirection }]}>
             <View style={[styles.statIcon, { backgroundColor: "#EDE9FE" }]}>
               <Ionicons name="document-text-outline" size={14} color="#7C3AED" />
             </View>
-            <Text style={styles.statLabel}>Total Values</Text>
+            <Text style={[styles.statLabel, { textAlign }]}>{t("total_values")}</Text>
           </View>
           <Text style={[styles.statNum, { color: "#7C3AED" }]}>{String(totalCount).padStart(2, "0")}</Text>
         </View>
@@ -251,24 +254,25 @@ export function AbnormalChipsCard({
   abnormalValues?: LabValue[];
   abnormalCount: number;
 }) {
+  const { t, rowDirection, textAlign } = useLang();
   const isMultiRow = abnormalValues.length > 2;
   if (abnormalValues.length === 0) return null;
 
   return (
     <Card style={styles.card}>
       <View style={styles.chipsSection}>
-        <View style={styles.chipsSectionHeader}>
+        <View style={[styles.chipsSectionHeader, { flexDirection: rowDirection }]}>
           <View style={styles.clipboardCircle}>
             <Ionicons name="clipboard-outline" size={14} color={Colors.danger} />
           </View>
-          <Text style={styles.chipsSectionTitle}>Abnormal Values</Text>
+          <Text style={styles.chipsSectionTitle}>{t("abnormal_values")}</Text>
           <View style={styles.countBadge}>
             <Text style={styles.countText}>{abnormalCount}</Text>
           </View>
         </View>
 
-        <Text style={styles.chipsSectionSubtitle}>
-          These values fall outside the reference range. Minor fluctuations are common, but consult your doctor for an accurate diagnosis.
+        <Text style={[styles.chipsSectionSubtitle, { textAlign }]}>
+          {t("abnormal_values_sub")}
         </Text>
 
         {isMultiRow ? (

@@ -27,14 +27,15 @@ import { MyDoctorsWidget } from "@/components/home/MyDoctorsWidget";
 
 
 function EmptyState() {
+  const { t } = useLang();
   return (
     <View style={emptyStyles.wrap}>
       <View style={emptyStyles.iconWrap}>
         <Ionicons name="document-text-outline" size={44} color={Colors.primary} />
       </View>
-      <Text style={emptyStyles.title}>Welcome to HealthAI</Text>
+      <Text style={emptyStyles.title}>{t("welcome_healthai")}</Text>
       <Text style={emptyStyles.sub}>
-        Upload your first health report to get your personalized health score, AI insights, and medicine analysis.
+        {t("home_empty_sub")}
       </Text>
     </View>
   );
@@ -64,7 +65,7 @@ export default function Home() {
   const { phone } = useAuth();
   const [navigating, setNavigating] = useState(false);
   const { todayBanner } = useMedicines();
-  const { t } = useLang();
+  const { t, textAlign } = useLang();
 
   useEffect(() => {
     reportsApi.getScorecard().then(s => {
@@ -195,7 +196,7 @@ export default function Home() {
 
         {todayBanner && todayBanner.count > 0 && (
           <View style={styles.sectionGroup}>
-            <Text style={styles.sectionHeading}>{t("medicines_title")}</Text>
+            <Text style={[styles.sectionHeading, { textAlign }]}>{t("medicines_title")}</Text>
             <MedicineReminderCard todayBanner={todayBanner} />
           </View>
         )}

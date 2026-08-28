@@ -16,6 +16,7 @@ import { router, useGlobalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Colors, Radius } from '@/constants/Colors';
+import { useLang } from '@/context/Languagecontext';
 
 const ALLOWED_EXTENSIONS = ['doc', 'docx', 'jpeg', 'jpg', 'pdf', 'png'];
 
@@ -42,6 +43,7 @@ interface ChatInputBarProps {
 }
 
 export function ChatInputBar({ context }: ChatInputBarProps = {}) {
+  const { t, isRTL, textAlign, rowDirection } = useLang();
   const [input, setInput] = useState('');
   const [inputHeight, setInputHeight] = useState(36);
   const [attachedFile, setAttachedFile] = useState<any>(null);
@@ -263,7 +265,7 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
           </View>
         )}
 
-        <View style={styles.inputRow}>
+        <View style={[styles.inputRow, { flexDirection: rowDirection }]}>
           <Pressable style={styles.innerPlusBtn} onPress={handlePlusPress} hitSlop={8}>
             <Ionicons name="add" size={24} color={showMenu ? Colors.primary : Colors.textMuted} />
           </Pressable>
@@ -271,7 +273,7 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
           <TextInput
             style={[
               styles.input,
-              { height: Math.min(Math.max(36, inputHeight), 76) }
+              { height: Math.min(Math.max(36, inputHeight), 76), textAlign }
             ]}
             value={input}
             onChangeText={setInput}
@@ -279,7 +281,7 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
               const h = e.nativeEvent.contentSize.height;
               if (h > 0) setInputHeight(h);
             }}
-            placeholder={context === 'prescription' ? "Upload prescription..." : "Upload & Ask about reports..."}
+            placeholder={context === 'prescription' ? t("upload_prescription_placeholder") : t("upload_ask_placeholder")}
             placeholderTextColor={Colors.textMuted}
             multiline
             scrollEnabled={inputHeight >= 76}
@@ -296,7 +298,7 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
         </View>
 
       </View>
-      <Text style={styles.disclaimerText}>HealthAI acts as an assistant, not a doctor.</Text>
+      <Text style={styles.disclaimerText}>{t("ai_disclaimer")}</Text>
 
     </View>
   );

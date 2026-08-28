@@ -29,19 +29,20 @@ import { reportsApi } from '@/services/reportsApi';
 import * as Sharing from 'expo-sharing';
 import { generatePrescriptionPdf } from '@/utils/pdfGenerator';
 import type { Category, Medicine, Reminder } from '@/services/Medicinesapi';
+import { useLang } from '@/context/Languagecontext';
 
 const H_PAD = 16;
 
-function whenLabel(when: Reminder['whenToTake']): string {
+function whenLabel(when: Reminder['whenToTake'], t: (k: any) => string): string {
   switch (when) {
     case 'before_food':
-      return 'before food';
+      return t('before_food');
     case 'with_food':
-      return 'with food';
+      return t('with_food');
     case 'bedtime':
-      return 'at bedtime';
+      return t('at_bedtime');
     default:
-      return 'after food';
+      return t('after_food');
   }
 }
 
@@ -123,21 +124,23 @@ function MedicineRow({
   onPress: () => void;
   onDelete?: () => void;
 }) {
+  const { rowDirection, textAlign, isRTL } = useLang();
+
   return (
     <Pressable
-      style={({ pressed }) => [styles.medRow, pressed && { opacity: 0.75 }]}
+      style={({ pressed }) => [styles.medRow, { flexDirection: rowDirection }, pressed && { opacity: 0.75 }]}
       onPress={onPress}
     >
       <View style={[styles.medIcon, { backgroundColor: getFormColor(med.name) + '15' }]}>
         <Text style={{ fontSize: 18 }}>{getFormEmoji(med.name)}</Text>
       </View>
       <View style={styles.medInfo}>
-        <Text style={styles.medName}>{med.name}</Text>
-        <Text style={styles.medSub}>
+        <Text style={[styles.medName, { textAlign }]}>{med.name}</Text>
+        <Text style={[styles.medSub, { textAlign }]}>
           {med.form} · {med.category}
         </Text>
       </View>
-      <View style={styles.medRight}>
+      <View style={[styles.medRight, { flexDirection: rowDirection }]}>
         {med.rx && (
           <View style={styles.rxPill}>
             <Text style={styles.rxText}>Rx</Text>
@@ -148,7 +151,7 @@ function MedicineRow({
             <Ionicons name="trash-outline" size={18} color="#EF4444" />
           </Pressable>
         ) : (
-          <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+          <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={16} color="#CBD5E1" />
         )}
       </View>
     </Pressable>
@@ -163,21 +166,23 @@ function SavedMedicineRow({
   med: Medicine;
   onPress: () => void;
 }) {
+  const { rowDirection, textAlign } = useLang();
+
   return (
     <Pressable
-      style={({ pressed }) => [styles.medRow, pressed && { opacity: 0.75 }]}
+      style={({ pressed }) => [styles.medRow, { flexDirection: rowDirection }, pressed && { opacity: 0.75 }]}
       onPress={onPress}
     >
       <View style={[styles.medIcon, { backgroundColor: getFormColor(med.name) + '15' }]}>
         <MaterialCommunityIcons name={getFormIcon(med.name) as any} size={22} color={getFormColor(med.name)} />
       </View>
       <View style={styles.medInfo}>
-        <Text style={styles.medName}>{med.name}</Text>
-        <Text style={styles.medSub}>
+        <Text style={[styles.medName, { textAlign }]}>{med.name}</Text>
+        <Text style={[styles.medSub, { textAlign }]}>
           {med.form || (med as any).type || 'Medicine'} · {med.category || 'General'}
         </Text>
       </View>
-      <View style={styles.medRight}>
+      <View style={[styles.medRight, { flexDirection: rowDirection }]}>
         {med.rx || (med as any).prescriptionType === 'Prescription' ? (
           <View style={styles.rxPill}>
             <Text style={styles.rxText}>Rx</Text>
@@ -219,14 +224,15 @@ function PrescriptionRow({
   onPress: () => void;
   onDelete: (id: string) => void;
 }) {
+  const { t, rowDirection, textAlign } = useLang();
   const isJunkTitle = /^\d+$/.test(item.title.replace(/\.\w+$/, '')) || /img_|screenshot|whatsapp/i.test(item.title);
   const subText = isJunkTitle ? (item.reportTypeFull || item.category || 'Prescription') : item.title;
 
   const handleDelete = () => {
-    Alert.alert('Delete Prescription', `Remove "${item.title}" from your prescriptions?`, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('delete_prescription'), `${t('remove_prescription_confirm')} "${item.title}"?`, [
+      { text: t('cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('delete_btn'),
         style: 'destructive',
         onPress: () => onDelete(item.id),
       },
@@ -235,27 +241,27 @@ function PrescriptionRow({
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.reportRow, pressed && { opacity: 0.85 }]}
+      style={({ pressed }) => [styles.reportRow, { flexDirection: rowDirection }, pressed && { opacity: 0.85 }]}
       onPress={onPress}
     >
       <View style={[styles.reportIcon, { backgroundColor: '#F0FDF4' }]}>
         <Ionicons name="document-text-outline" size={16} color="#16A34A" />
       </View>
       <View style={styles.reportInfo}>
-        <Text style={styles.reportTitle} numberOfLines={1}>
+        <Text style={[styles.reportTitle, { textAlign }]} numberOfLines={1}>
           {item.labName || 'Prescription'}
         </Text>
-        <Text style={styles.reportMeta} numberOfLines={1}>
+        <Text style={[styles.reportMeta, { textAlign }]} numberOfLines={1}>
           {formatIndianDateTime(item.analyzedAt, item.date)} • {subText}
         </Text>
       </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 8 }}>
         <Pressable
           onPress={async () => {
             try {
               const fullReport = await reportsApi.getById(item.id);
               if (!fullReport) {
-                Alert.alert('Error', 'Could not load prescription details to generate PDF.');
+                Alert.alert(t('err_network'), 'Could not load prescription details to generate PDF.');
                 return;
               }
               const pdfUri = await generatePrescriptionPdf(fullReport as any);
@@ -263,14 +269,14 @@ function PrescriptionRow({
               if (canShare) {
                 await Sharing.shareAsync(pdfUri, {
                   mimeType: 'application/pdf',
-                  dialogTitle: 'Share Prescription PDF',
+                  dialogTitle: t('share_prescription'),
                   UTI: 'com.adobe.pdf',
                 });
               } else {
-                Alert.alert('Sharing Unavailable', 'Sharing is not available on this device.');
+                Alert.alert(t('err_network'), 'Sharing is not available on this device.');
               }
             } catch (e: any) {
-              Alert.alert('Cannot share file', e?.message ?? 'Unknown error');
+              Alert.alert(t('err_network'), e?.message ?? 'Unknown error');
             }
           }}
           style={({ pressed }) => [
@@ -300,6 +306,7 @@ function PrescriptionRow({
 }
 
 export default function Medicines() {
+  const { t, rowDirection, textAlign, isRTL } = useLang();
   const [searchQ, setSearchQ] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -318,7 +325,24 @@ export default function Medicines() {
 
   const { allReports: rawReports, deleteReport, refresh: refreshReports } = useReports();
   const prescriptions = useMemo(() => {
-    return rawReports.filter(r => r.reportType?.toUpperCase() === 'PRESCRIPTION');
+    return rawReports.filter(r => {
+      const rt = (r.reportType ?? '').toUpperCase();
+      const rtf = (r.reportTypeFull ?? '').toUpperCase();
+      const title = (r.title ?? '').toUpperCase();
+      const cat = (r.category ?? '').toUpperCase();
+      const docType = ((r as any).document_type ?? (r as any).documentType ?? '').toUpperCase();
+      return (
+        rt === 'PRESCRIPTION' ||
+        rt.includes('PRESCRIPTION') ||
+        rtf.includes('PRESCRIPTION') ||
+        cat.includes('PRESCRIPTION') ||
+        docType.includes('PRESCRIPTION') ||
+        /prescrip|rx/i.test(r.reportType ?? '') ||
+        /prescrip|rx/i.test(r.reportTypeFull ?? '') ||
+        /prescrip|rx/i.test(r.title ?? '') ||
+        /prescrip|rx/i.test(r.category ?? '')
+      );
+    });
   }, [rawReports]);
 
   useFocusEffect(
@@ -414,10 +438,10 @@ export default function Medicines() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Header */}
-      <View style={[styles.header, { zIndex: 100 }]}>
+      <View style={[styles.header, { flexDirection: rowDirection, zIndex: 100 }]}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Medicines</Text>
-          <Text style={styles.subtitle}>Manage your medicines and reminders</Text>
+          <Text style={[styles.title, { textAlign }]}>{t('medicines_title')}</Text>
+          <Text style={[styles.subtitle, { textAlign }]}>{t('medicines_sub')}</Text>
         </View>
 
         <Pressable
@@ -436,9 +460,9 @@ export default function Medicines() {
               style={styles.menuBackdrop}
               onPress={() => setShowMenu(false)}
             />
-            <View style={styles.dropdownMenu}>
+            <View style={[styles.dropdownMenu, isRTL ? { left: H_PAD } : { right: H_PAD }]}>
               <Pressable
-                style={styles.dropdownItem}
+                style={[styles.dropdownItem, { flexDirection: rowDirection }]}
                 onPress={() => {
                   setShowMenu(false);
                   router.push('/prescription' as any);
@@ -447,11 +471,11 @@ export default function Medicines() {
                 <View style={[styles.dropdownIconWrap, { backgroundColor: '#EFF6FF' }]}>
                   <Ionicons name="document-text-outline" size={16} color="#2563EB" />
                 </View>
-                <Text style={styles.dropdownItemText}>My Prescriptions</Text>
+                <Text style={styles.dropdownItemText}>{t('my_prescriptions')}</Text>
               </Pressable>
 
               <Pressable
-                style={styles.dropdownItem}
+                style={[styles.dropdownItem, { flexDirection: rowDirection }]}
                 onPress={() => {
                   setShowMenu(false);
                   router.push('/medicines/my-medicines' as any);
@@ -460,11 +484,11 @@ export default function Medicines() {
                 <View style={[styles.dropdownIconWrap, { backgroundColor: '#ECFDF5' }]}>
                   <Ionicons name="bookmark-outline" size={16} color="#059669" />
                 </View>
-                <Text style={styles.dropdownItemText}>Saved Medicines</Text>
+                <Text style={styles.dropdownItemText}>{t('saved_medicines')}</Text>
               </Pressable>
 
               <Pressable
-                style={styles.dropdownItem}
+                style={[styles.dropdownItem, { flexDirection: rowDirection }]}
                 onPress={() => {
                   setShowMenu(false);
                   handleBrowseAll();
@@ -473,11 +497,11 @@ export default function Medicines() {
                 <View style={[styles.dropdownIconWrap, { backgroundColor: '#F5F3FF' }]}>
                   <Ionicons name="time-outline" size={16} color="#7C3AED" />
                 </View>
-                <Text style={styles.dropdownItemText}>Recent Searches</Text>
+                <Text style={styles.dropdownItemText}>{t('recent_searches')}</Text>
               </Pressable>
 
               <Pressable
-                style={styles.dropdownItem}
+                style={[styles.dropdownItem, { flexDirection: rowDirection }]}
                 onPress={() => {
                   setShowMenu(false);
                   router.push('/(tabs)/nearby' as any);
@@ -486,11 +510,11 @@ export default function Medicines() {
                 <View style={[styles.dropdownIconWrap, { backgroundColor: '#FFF7ED' }]}>
                   <Ionicons name="storefront-outline" size={16} color="#EA580C" />
                 </View>
-                <Text style={styles.dropdownItemText}>Nearby Pharmacies</Text>
+                <Text style={styles.dropdownItemText}>{t('nearby_pharmacies')}</Text>
               </Pressable>
 
               <Pressable
-                style={[styles.dropdownItem, { borderBottomWidth: 0 }]}
+                style={[styles.dropdownItem, { flexDirection: rowDirection, borderBottomWidth: 0 }]}
                 onPress={() => {
                   setShowMenu(false);
                   router.push('/notifications');
@@ -499,8 +523,8 @@ export default function Medicines() {
                 <View style={[styles.dropdownIconWrap, { backgroundColor: '#FEF2F2' }]}>
                   <Ionicons name="notifications-outline" size={16} color="#DC2626" />
                 </View>
-                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Text style={styles.dropdownItemText}>Notifications</Text>
+                <View style={{ flex: 1, flexDirection: rowDirection, alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={styles.dropdownItemText}>{t('notif_title')}</Text>
                   {unreadCount > 0 && (
                     <View style={styles.notifPill}>
                       <Text style={styles.notifPillText}>{unreadCount}</Text>
@@ -535,11 +559,11 @@ export default function Medicines() {
           }
         >
           {/* Search */}
-          <View style={styles.searchBar}>
+          <View style={[styles.searchBar, { flexDirection: rowDirection }]}>
             <Ionicons name="search-outline" size={18} color={Colors.textMuted} />
             <TextInput
-              style={styles.searchInput}
-              placeholder="Search medicines..."
+              style={[styles.searchInput, { textAlign }]}
+              placeholder={t('search_medicines_placeholder')}
               placeholderTextColor={Colors.textMuted}
               value={searchQ}
               onChangeText={setSearchQ}
@@ -551,59 +575,59 @@ export default function Medicines() {
           {/* ── 2x2 Quick Action Grid ── */}
           <View style={styles.grid2Container}>
             {/* Row 1 */}
-            <View style={styles.gridRow}>
+            <View style={[styles.gridRow, { flexDirection: rowDirection }]}>
               <Pressable
-                style={({ pressed }) => [styles.gridTile, pressed && styles.gridTilePressed]}
+                style={({ pressed }) => [styles.gridTile, { flexDirection: rowDirection }, pressed && styles.gridTilePressed]}
                 onPress={handleCheckInteractions}
               >
                 <View style={[styles.gridTileIcon, { backgroundColor: '#FFF7ED' }]}>
                   <Ionicons name="git-compare-outline" size={20} color="#EA580C" />
                 </View>
-                <View style={styles.gridTileTextWrap}>
-                  <Text style={styles.gridTileTitle} numberOfLines={1}>Interactions</Text>
-                  <Text style={styles.gridTileSubtitle} numberOfLines={1}>Compare 2+ drugs</Text>
+                <View style={[styles.gridTileTextWrap, { alignItems: textAlign === 'right' ? 'flex-end' : 'flex-start' }]}>
+                  <Text style={styles.gridTileTitle} numberOfLines={1}>{t('interactions')}</Text>
+                  <Text style={styles.gridTileSubtitle} numberOfLines={1}>{t('compare_drugs_sub')}</Text>
                 </View>
               </Pressable>
 
               <Pressable
-                style={({ pressed }) => [styles.gridTile, pressed && styles.gridTilePressed]}
+                style={({ pressed }) => [styles.gridTile, { flexDirection: rowDirection }, pressed && styles.gridTilePressed]}
                 onPress={handleScanMedicine}
               >
                 <View style={[styles.gridTileIcon, { backgroundColor: '#F0FDF4' }]}>
                   <Ionicons name="camera-outline" size={20} color="#16A34A" />
                 </View>
-                <View style={styles.gridTileTextWrap}>
-                  <Text style={styles.gridTileTitle} numberOfLines={1}>Scan Medicine</Text>
-                  <Text style={styles.gridTileSubtitle} numberOfLines={1}>Point camera to identify</Text>
+                <View style={[styles.gridTileTextWrap, { alignItems: textAlign === 'right' ? 'flex-end' : 'flex-start' }]}>
+                  <Text style={styles.gridTileTitle} numberOfLines={1}>{t('scan_medicine')}</Text>
+                  <Text style={styles.gridTileSubtitle} numberOfLines={1}>{t('scan_medicine_sub')}</Text>
                 </View>
               </Pressable>
             </View>
 
             {/* Row 2 */}
-            <View style={styles.gridRow}>
+            <View style={[styles.gridRow, { flexDirection: rowDirection }]}>
               <Pressable
-                style={({ pressed }) => [styles.gridTile, pressed && styles.gridTilePressed]}
+                style={({ pressed }) => [styles.gridTile, { flexDirection: rowDirection }, pressed && styles.gridTilePressed]}
                 onPress={handleViewReminder}
               >
                 <View style={[styles.gridTileIcon, { backgroundColor: '#EFF6FF' }]}>
                   <Ionicons name="alarm-outline" size={20} color="#2563EB" />
                 </View>
-                <View style={styles.gridTileTextWrap}>
-                  <Text style={styles.gridTileTitle} numberOfLines={1}>Reminders</Text>
-                  <Text style={styles.gridTileSubtitle} numberOfLines={1}>Daily dosage</Text>
+                <View style={[styles.gridTileTextWrap, { alignItems: textAlign === 'right' ? 'flex-end' : 'flex-start' }]}>
+                  <Text style={styles.gridTileTitle} numberOfLines={1}>{t('medicine_reminder')}</Text>
+                  <Text style={styles.gridTileSubtitle} numberOfLines={1}>{t('daily_dosage_sub')}</Text>
                 </View>
               </Pressable>
 
               <Pressable
-                style={({ pressed }) => [styles.gridTile, pressed && styles.gridTilePressed]}
+                style={({ pressed }) => [styles.gridTile, { flexDirection: rowDirection }, pressed && styles.gridTilePressed]}
                 onPress={handleBrowseAll}
               >
                 <View style={[styles.gridTileIcon, { backgroundColor: '#F5F3FF' }]}>
                   <Ionicons name="library-outline" size={20} color="#7C3AED" />
                 </View>
-                <View style={styles.gridTileTextWrap}>
-                  <Text style={styles.gridTileTitle} numberOfLines={1}>Browse</Text>
-                  <Text style={styles.gridTileSubtitle} numberOfLines={1}>A–Z directory</Text>
+                <View style={[styles.gridTileTextWrap, { alignItems: textAlign === 'right' ? 'flex-end' : 'flex-start' }]}>
+                  <Text style={styles.gridTileTitle} numberOfLines={1}>{t('browse')}</Text>
+                  <Text style={styles.gridTileSubtitle} numberOfLines={1}>{t('az_directory_sub')}</Text>
                 </View>
               </Pressable>
             </View>
@@ -615,13 +639,13 @@ export default function Medicines() {
 
           {/* My Prescriptions */}
           <View style={[styles.section, { marginTop: 20 }]}>
-            <View style={styles.secHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View style={[styles.secHeader, { flexDirection: rowDirection }]}>
+              <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 6 }}>
                 <Ionicons name="document-text-outline" size={18} color={Colors.textMuted} />
-                <Text style={styles.secTitle}>My Prescriptions</Text>
+                <Text style={styles.secTitle}>{t('my_prescriptions')}</Text>
               </View>
               <Pressable onPress={() => router.push('/prescription' as any)} hitSlop={8}>
-                <Text style={styles.linkTxt}>View all ›</Text>
+                <Text style={styles.linkTxt}>{t('view_all')} {isRTL ? '‹' : '›'}</Text>
               </Pressable>
             </View>
             <View style={styles.medList}>
@@ -637,8 +661,8 @@ export default function Medicines() {
               ) : (
                 <View style={{ padding: 24, alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: Colors.border, borderStyle: 'dashed' }}>
                   <Ionicons name="document-text-outline" size={32} color={Colors.textMuted} style={{ opacity: 0.5, marginBottom: 8 }} />
-                  <Text style={{ color: Colors.textMuted, textAlign: 'center', fontSize: 13, fontWeight: '500' }}>No prescriptions uploaded yet</Text>
-                  <Text style={{ color: Colors.textMuted, textAlign: 'center', fontSize: 12, marginTop: 4 }}>Upload one to see the list here!</Text>
+                  <Text style={{ color: Colors.textMuted, textAlign, fontSize: 13, fontWeight: '500' }}>{t('no_prescriptions_yet')}</Text>
+                  <Text style={{ color: Colors.textMuted, textAlign, fontSize: 12, marginTop: 4 }}>{t('upload_prescription_hint')}</Text>
                 </View>
               )}
             </View>
@@ -648,28 +672,28 @@ export default function Medicines() {
           {/* @ts-ignore - recentlyViewed might be defined in the original branch */}
           {typeof recentlyViewed !== 'undefined' && recentlyViewed.length > 0 && (
             <View style={[styles.section, { marginTop: 20 }]}>
-              <View style={styles.secHeader}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View style={[styles.secHeader, { flexDirection: rowDirection }]}>
+                <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 6 }}>
                   <Ionicons name="time-outline" size={18} color={Colors.textMuted} />
-                  <Text style={styles.secTitle}>Recent Searches</Text>
+                  <Text style={styles.secTitle}>{t('recent_searches')}</Text>
                 </View>
                 <Pressable onPress={handleBrowseAll} hitSlop={8}>
-                  <Text style={styles.linkTxt}>View all ›</Text>
+                  <Text style={styles.linkTxt}>{t('view_all')} {isRTL ? '‹' : '›'}</Text>
                 </Pressable>
               </View>
               <View style={styles.medList}>
-                {recentlyViewed.slice(0, 5).map((med: any, idx: number) => (
+                {recentlyViewed.slice(0, 4).map((med: any, idx: number) => (
                   <MedicineRow
                     key={`recent_${med.id}_${idx}`}
                     med={med}
                     onPress={() => handleMedicinePress(med)}
                     onDelete={() => {
                       Alert.alert(
-                        'Remove from history',
-                        'Remove this medicine from your recently viewed list?',
+                        t('remove_from_history'),
+                        t('remove_recent_confirm'),
                         [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Remove', style: 'destructive', onPress: () => removeRecentlyViewed(med.id) }
+                          { text: t('cancel'), style: 'cancel' },
+                          { text: t('remove_btn'), style: 'destructive', onPress: () => removeRecentlyViewed(med.id) }
                         ]
                       );
                     }}
@@ -853,16 +877,17 @@ const styles = StyleSheet.create({
   },
   secTitle: { fontSize: 16, fontWeight: '700', color: Colors.text },
   viewAll: { fontSize: 13, fontWeight: '600', color: Colors.primary },
-  medList: { gap: 12 },
+  medList: { gap: 5 },
   medRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     backgroundColor: '#fff',
     borderRadius: 12,
     borderWidth: 0.5,
     borderColor: '#E2E8F0',
-    padding: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
   medIcon: {
     width: 40,

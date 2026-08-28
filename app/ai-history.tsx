@@ -17,6 +17,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius } from '@/constants/Colors';
 import { useAuth } from '@/context/AuthContext';
+import { useLang } from '@/context/Languagecontext';
 import { formatDate, formatTime } from '@/utils/format';
 import {
   listChatSessions,
@@ -28,6 +29,7 @@ import {
 
 export default function AIHistoryScreen() {
   const { phone } = useAuth();
+  const { t, isRTL, rowDirection, textAlign } = useLang();
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -141,7 +143,7 @@ export default function AIHistoryScreen() {
               <Ionicons name="chevron-back" size={24} color={Colors.text} />
             </Pressable>
             <View style={{ alignItems: 'center' }}>
-              <Text style={styles.title}>Chat History</Text>
+              <Text style={styles.title}>{t("history")}</Text>
               {sessions.length > 0 && (
                 <Text style={{ fontSize: 10, color: Colors.textMuted, marginTop: 2 }}>
                   Long press to select

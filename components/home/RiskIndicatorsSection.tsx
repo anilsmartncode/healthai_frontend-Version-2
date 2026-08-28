@@ -26,9 +26,9 @@ export function RiskIndicatorsSection({ riskIndicators, hasReports }: Props) {
 
   // Primary list to display when no reports/data are available
   const defaultRisks = [
-    { label: "Diabetes", level: null, icon: "analytics-outline" },
-    { label: "Heart Disease", level: null, icon: "heart-outline" },
-    { label: "Vitamin D Deficiency", level: null, icon: "sunny-outline" },
+    { label: t("blood_sugar"), level: null, icon: "analytics-outline" },
+    { label: t("cholesterol"), level: null, icon: "heart-outline" },
+    { label: t("vitamin_d"), level: null, icon: "sunny-outline" },
   ];
 
   const getLevelDetails = (level: "low" | "moderate" | "high" | null) => {
@@ -63,14 +63,22 @@ export function RiskIndicatorsSection({ riskIndicators, hasReports }: Props) {
 
   const getRiskIcon = (label: string) => {
     const l = label.toLowerCase();
-    if (l.includes("diabet")) return "analytics-outline";
-    if (l.includes("heart") || l.includes("cardio")) return "heart-outline";
+    if (l.includes("diabet") || l.includes("sugar")) return "analytics-outline";
+    if (l.includes("heart") || l.includes("cardio") || l.includes("cholesterol")) return "heart-outline";
     return "sunny-outline";
+  };
+
+  const getDisplayRiskLabel = (rawLabel: string) => {
+    const l = rawLabel.toLowerCase();
+    if (l.includes("diabet") || l.includes("sugar")) return t("blood_sugar");
+    if (l.includes("heart") || l.includes("cardio") || l.includes("cholesterol")) return t("cholesterol");
+    if (l.includes("vitamin")) return t("vitamin_d");
+    return rawLabel;
   };
 
   const itemsToRender = hasReports && riskIndicators.length > 0
     ? riskIndicators.map((r) => ({
-        label: r.label,
+        label: getDisplayRiskLabel(r.label),
         level: r.level,
         icon: getRiskIcon(r.label),
       }))

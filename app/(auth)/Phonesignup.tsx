@@ -31,6 +31,7 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { COUNTRIES, CountryConfig } from "@/constants/countries";
 import { useCountry } from "@/context/CountryContext";
 import { useLang } from "@/context/Languagecontext";
+import { getLocalizedAuthError } from "@/utils/errorLocalization";
 
 // ── Scalers ───────────────────────────────────────────
 function useScalers() {
@@ -382,7 +383,7 @@ function CountryPicker({
 export default function PhoneSignup() {
   const { signIn } = useAuth();
   const { country: globalCountry, setCountryCode } = useCountry();
-  const { isRTL, rowDirection, textAlign } = useLang();
+  const { t, isRTL, rowDirection, textAlign } = useLang();
   const { rs, vs, ms } = useScalers();
 
   const [step, setStep]                   = useState<Step>("phone");
@@ -423,7 +424,7 @@ export default function PhoneSignup() {
   const handleSendOtp = async () => {
     const next: typeof errors = {};
     if (!phone.trim() || phone.replace(/\D/g, "").length < 7)
-      next.phone = "Enter a valid phone number";
+      next.phone = t("err_invalid_phone");
     if (Object.keys(next).length) { setErrors(next); return; }
     try {
       setLoading(true);
@@ -432,7 +433,7 @@ export default function PhoneSignup() {
       setResendTimer(60);
       setStep("otp");
     } catch (e: any) {
-      setErrors({ phone: e.message || "Failed to send OTP" });
+      setErrors({ phone: getLocalizedAuthError(e, "err_failed_send_otp", t) });
     } finally {
       setLoading(false);
     }
@@ -442,7 +443,7 @@ export default function PhoneSignup() {
   const handleVerifyOtp = async (otpValue?: string) => {
     const code = otpValue ?? otp;
     if (code.replace(/\s/g, "").length < 6) {
-      setErrors({ otp: "Enter the code" });
+      setErrors({ otp: t("err_enter_code") });
       return;
     }
     try {
@@ -455,14 +456,10 @@ export default function PhoneSignup() {
         await signIn(verifyData.token, fullNumber, verifyData.member_id ?? verifyData.user_id ?? null, verifyData.refresh_token ?? null);
         router.replace("/(auth)/PersonOnboardingScreen");
       } else {
-        setErrors({ otp: verifyData?.message || "Verification failed on backend" });
+        setErrors({ otp: getLocalizedAuthError(verifyData?.message, "err_network", t) });
       }
     } catch (e: any) {
-      if (e.code === 'auth/invalid-verification-code') {
-        setErrors({ otp: "Invalid or expired code" });
-      } else {
-        setErrors({ otp: e.message || "Invalid code" });
-      }
+      setErrors({ otp: getLocalizedAuthError(e, "err_invalid_or_expired_code", t) });
     } finally {
       setLoading(false);
     }
@@ -517,11 +514,11 @@ export default function PhoneSignup() {
         await signIn(data.token, data.email || result.user.email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
         router.replace("/(auth)/PersonOnboardingScreen");
       } else {
-        setErrors({ phone: data?.message || "Failed to sign in via backend" });
+        setErrors({ phone: getLocalizedAuthError(data?.message, "err_network", t) });
       }
     } catch (error: any) {
       console.error("Apple sign-in error:", error);
-      setErrors({ phone: "Apple sign-in failed. Please try again." });
+      setErrors({ phone: getLocalizedAuthError(error, "err_generic", t) });
     } finally {
       setLoading(false);
     }
@@ -545,7 +542,7 @@ export default function PhoneSignup() {
       setConfirm(confirmation);
       setResendTimer(60);
     } catch (e: any) {
-      setErrors({ otp: e.message || "Failed to resend OTP" });
+      setErrors({ otp: getLocalizedAuthError(e, "err_failed_send_otp", t) });
     } finally {
       setLoading(false);
     }
@@ -602,13 +599,13 @@ export default function PhoneSignup() {
 
           <View style={styles.heroBody}>
             <View style={styles.welcomeWrap}>
-              <Text style={styles.welcomeTitle}>
-                {step === "otp" ? "Verify Number 📲" : "Sign Up 👋"}
+              <Text style={[styles.welcomeTitle, { textAlign }]}>
+                {step === "otp" ? t("verify_number") : `${t("sign_up")} 👋`}
               </Text>
-              <Text style={styles.welcomeSub}>
+              <Text style={[styles.welcomeSub, { textAlign }]}>
                 {step === "otp"
-                  ? `We sent a 6-digit code to\n${country.flag} ${fullNumber}`
-                  : "Enter your phone number to get started."}
+                  ? `${t("otp_sub")}\n${country.flag} ${fullNumber}`
+                  : t("enter_phone_get_started")}
               </Text>
             </View>
 
@@ -643,8 +640,8 @@ export default function PhoneSignup() {
             <>
               {/* Phone Number */}
               <View style={styles.fieldWrap}>
-                <Text style={styles.fieldLabel}>Phone Number</Text>
-                <View style={[styles.phoneRow, !!errors.phone && styles.inputError]}>
+                <Text style={[styles.fieldLabel, { textAlign }]}>{t("mobile_number")}</Text>
+                <View style={[styles.phoneRow, { flexDirection: rowDirection }, !!errors.phone && styles.inputError]}>
                   <Pressable
                     style={styles.dialPicker}
                     onPress={() => setPickerVisible(true)}
@@ -656,8 +653,8 @@ export default function PhoneSignup() {
                   <View style={styles.phoneDivider} />
                   <TextInput
                     ref={phoneInputRef}
-                    style={styles.phoneInput}
-                    placeholder="Enter phone number"
+                    style={[styles.phoneInput, { textAlign }]}
+                    placeholder={t("mobile_number")}
                     placeholderTextColor="#b0bec5"
                     value={phone}
                     onChangeText={(v) => { setPhone(v.replace(/[^0-9]/g, "")); clearError("phone"); }}
@@ -673,19 +670,19 @@ export default function PhoneSignup() {
                 )}
 
                 <Pressable
-                  style={styles.switchRow}
+                  style={[styles.switchRow, { flexDirection: rowDirection }]}
                   onPress={() => router.replace("/(auth)/signup")}
                 >
-                  <Text style={styles.switchText}>Use email instead</Text>
-                  <Ionicons name="chevron-forward" size={ms(13)} color="#2D9C8E" />
+                  <Text style={styles.switchText}>{t("use_email_instead")}</Text>
+                  <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={ms(13)} color="#2D9C8E" />
                 </Pressable>
               </View>
 
               {/* Info box */}
-              <View style={styles.infoBox}>
+              <View style={[styles.infoBox, { flexDirection: rowDirection }]}>
                 <Ionicons name="information-circle-outline" size={ms(16)} color="#2D9C8E" />
-                <Text style={styles.infoText}>
-                  We'll send a one-time verification code to confirm your number.
+                <Text style={[styles.infoText, { textAlign }]}>
+                  {t("send_code_info")}
                 </Text>
               </View>
 
@@ -693,6 +690,7 @@ export default function PhoneSignup() {
               <Pressable
                 style={({ pressed }) => [
                   styles.primaryBtn,
+                  { flexDirection: rowDirection },
                   pressed && !loading && { opacity: 0.9 },
                   loading && { opacity: 0.75 },
                 ]}
@@ -703,9 +701,9 @@ export default function PhoneSignup() {
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <>
-                    <Text style={styles.primaryBtnText}>Send OTP</Text>
+                    <Text style={styles.primaryBtnText}>{t("send_otp")}</Text>
                     <View style={styles.btnArrow}>
-                      <Ionicons name="arrow-forward" size={ms(15)} color="#2D9C8E" />
+                      <Ionicons name={isRTL ? "arrow-back" : "arrow-forward"} size={ms(15)} color="#2D9C8E" />
                     </View>
                   </>
                 )}
@@ -714,7 +712,7 @@ export default function PhoneSignup() {
               {/* Divider */}
               <View style={styles.orRow}>
                 <View style={styles.orLine} />
-                <Text style={styles.orText}>or sign up with</Text>
+                <Text style={styles.orText}>{t("or_continue")}</Text>
                 <View style={styles.orLine} />
               </View>
 
@@ -725,7 +723,7 @@ export default function PhoneSignup() {
                 disabled={loading}
               >
                 <GoogleIcon />
-                <Text style={styles.socialText}>Continue with Google</Text>
+                <Text style={styles.socialText}>{t("google_signin")}</Text>
               </Pressable>
               {Platform.OS === 'ios' ? (
                 <AppleAuthentication.AppleAuthenticationButton
@@ -742,18 +740,18 @@ export default function PhoneSignup() {
                   disabled={loading}
                 >
                   <Ionicons name="logo-apple" size={22} color="#1a2e35" />
-                  <Text style={styles.socialText}>Continue with Apple</Text>
+                  <Text style={styles.socialText}>{t("apple_signin")}</Text>
                 </Pressable>
               )}
 
               {/* Login link */}
-              <View style={styles.loginRow}>
-                <Text style={styles.loginText}>Already have an account? </Text>
+              <View style={[styles.loginRow, { flexDirection: rowDirection }]}>
+                <Text style={styles.loginText}>{t("have_account")} </Text>
                 <Pressable
                   onPress={() => router.push("/(auth)/login")}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text style={styles.loginLink}>Login</Text>
+                  <Text style={styles.loginLink}>{t("login")}</Text>
                 </Pressable>
               </View>
             </>
@@ -763,24 +761,24 @@ export default function PhoneSignup() {
           {step === "otp" && (
             <>
               {/* Phone info strip */}
-              <View style={styles.phoneInfoRow}>
+              <View style={[styles.phoneInfoRow, { flexDirection: rowDirection }]}>
                 <Text style={styles.phoneInfoFlag}>{country.flag}</Text>
                 <Text style={styles.phoneInfoNumber}>{fullNumber}</Text>
                 <Pressable
                   onPress={() => { setStep("phone"); setOtp(""); }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text style={styles.changeText}>Change</Text>
+                  <Text style={styles.changeText}>{t("change")}</Text>
                 </Pressable>
               </View>
 
               {/* OTP boxes */}
               <View style={[styles.fieldWrap, { overflow: "visible" }]}>
-                <Text style={styles.fieldLabel}>Verification Code</Text>
-                <Text style={styles.fieldHint}>
+                <Text style={[styles.fieldLabel, { textAlign }]}>{t("verification_code")}</Text>
+                <Text style={[styles.fieldHint, { textAlign }]}>
                   {loading
-                    ? "Verifying code automatically…"
-                    : "Enter the 6-digit code sent via SMS"}
+                    ? t("auto_verifying")
+                    : t("enter_6_digit_sms")}
                 </Text>
                 <View style={{ marginTop: vs(14), paddingVertical: vs(4), overflow: "visible" }}>
                   <OtpInput
@@ -806,6 +804,7 @@ export default function PhoneSignup() {
               <Pressable
                 style={({ pressed }) => [
                   styles.primaryBtn,
+                  { flexDirection: rowDirection },
                   pressed && !loading && { opacity: 0.9 },
                   loading && { opacity: 0.75 },
                 ]}
@@ -816,34 +815,34 @@ export default function PhoneSignup() {
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <>
-                    <Text style={styles.primaryBtnText}>Verify & Continue</Text>
+                    <Text style={styles.primaryBtnText}>{t("verify_btn")}</Text>
                     <View style={styles.btnArrow}>
-                      <Ionicons name="arrow-forward" size={ms(15)} color="#2D9C8E" />
+                      <Ionicons name={isRTL ? "arrow-back" : "arrow-forward"} size={ms(15)} color="#2D9C8E" />
                     </View>
                   </>
                 )}
               </Pressable>
 
               {/* Resend */}
-              <View style={styles.resendRow}>
-                <Text style={styles.resendText}>Didn't receive the code? </Text>
+              <View style={[styles.resendRow, { flexDirection: rowDirection }]}>
+                <Text style={styles.resendText}>{t("didnt_get_code")} </Text>
                 {resendTimer > 0 ? (
-                  <Text style={styles.resendTimer}>Resend in {resendTimer}s</Text>
+                  <Text style={styles.resendTimer}>{t("resend_in")} {resendTimer}s</Text>
                 ) : (
                   <Pressable onPress={handleResend} disabled={loading}>
-                    <Text style={styles.resendLink}>Resend OTP</Text>
+                    <Text style={styles.resendLink}>{t("resend_otp")}</Text>
                   </Pressable>
                 )}
               </View>
 
               {/* Security note */}
-              <View style={styles.securityRow}>
+              <View style={[styles.securityRow, { flexDirection: rowDirection }]}>
                 <View style={styles.securityIcon}>
                   <Ionicons name="shield-checkmark-outline" size={ms(18)} color="#2D9C8E" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.securityTitle}>Your data is encrypted and secure</Text>
-                  <Text style={styles.securitySub}>We follow industry-leading security standards</Text>
+                  <Text style={[styles.securityTitle, { textAlign }]}>{t("security_title")}</Text>
+                  <Text style={[styles.securitySub, { textAlign }]}>{t("security_sub")}</Text>
                 </View>
               </View>
 
@@ -853,7 +852,7 @@ export default function PhoneSignup() {
                 onPress={() => { setStep("phone"); setOtp(""); }}
               >
                 <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={ms(14)} color="#2D9C8E" />
-                <Text style={styles.backText}>Back to phone number</Text>
+                <Text style={styles.backText}>{t("back_to_phone")}</Text>
               </Pressable>
             </>
           )}

@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Colors } from "@/constants/Colors";
+import { useLang } from "@/context/Languagecontext";
 
 interface RadiusFilterProps {
   radius: number;
@@ -8,10 +9,12 @@ interface RadiusFilterProps {
 }
 
 export default function RadiusFilter({ radius, onRadiusChange }: RadiusFilterProps) {
+  const { t, rowDirection } = useLang();
+
   return (
-    <View style={styles.radiusContainer}>
-      <Text style={styles.radiusLabel}>Search Range:</Text>
-      <View style={styles.radiusPills}>
+    <View style={[styles.radiusContainer, { flexDirection: rowDirection }]}>
+      <Text style={styles.radiusLabel}>{t("search_range")}</Text>
+      <View style={[styles.radiusPills, { flexDirection: rowDirection }]}>
         {[1000, 5000, 10000].map((r) => (
           <Pressable
             key={r}

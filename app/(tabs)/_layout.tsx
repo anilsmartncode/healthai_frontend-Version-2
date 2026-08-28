@@ -33,7 +33,7 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="ai"
-        options={{ title: 'Ask AI', tabBarIcon: ({ color, size }) => <Ionicons name="chatbubbles-outline" size={size} color={color} /> }}
+        options={{ title: t('ask_ai'), tabBarIcon: ({ color, size }) => <Ionicons name="chatbubbles-outline" size={size} color={color} /> }}
       />
       <Tabs.Screen
         name="profile"

@@ -24,7 +24,7 @@ export default function MapBottomSheet({
   onCall,
   onDirections,
 }: MapBottomSheetProps) {
-  const { t } = useLang();
+  const { t, rowDirection, textAlign } = useLang();
   const router = useRouter();
 
   const snapPoints = useMemo(() => ["35%", "50%"], []);
@@ -49,7 +49,7 @@ export default function MapBottomSheet({
       <BottomSheetView style={styles.contentContainer}>
         {selectedPlace ? (
           <View style={styles.cardContent}>
-            <View style={styles.placeTop}>
+            <View style={[styles.placeTop, { flexDirection: rowDirection }]}>
               <View
                 style={[
                   styles.placeIconWrap,
@@ -71,15 +71,15 @@ export default function MapBottomSheet({
               </View>
 
               <View style={styles.placeInfo}>
-                <Text style={styles.placeName} numberOfLines={1}>
+                <Text style={[styles.placeName, { textAlign }]} numberOfLines={1}>
                   {selectedPlace.name}
                 </Text>
-                <Text style={styles.placeAddress} numberOfLines={2}>
+                <Text style={[styles.placeAddress, { textAlign }]} numberOfLines={2}>
                   {selectedPlace.address}
                 </Text>
 
-                <View style={styles.metaRow}>
-                  <View style={styles.ratingRow}>
+                <View style={[styles.metaRow, { flexDirection: rowDirection }]}>
+                  <View style={[styles.ratingRow, { flexDirection: rowDirection }]}>
                     <Ionicons name="star" size={13} color="#F59E0B" />
                     <Text style={styles.ratingText}>
                       {selectedPlace.rating} ({selectedPlace.reviews})
@@ -93,20 +93,20 @@ export default function MapBottomSheet({
               </View>
             </View>
 
-            <View style={styles.placeActions}>
+            <View style={[styles.placeActions, { flexDirection: rowDirection }]}>
               <Pressable
                 onPress={() => onCall(selectedPlace.phone)}
                 style={[styles.actionBtn, styles.actionBtnOutline, { flex: 0.8 }]}
               >
                 <Ionicons name="call" size={18} color={Colors.primary} />
-                <Text style={styles.actionOutlineText}>Call</Text>
+                <Text style={styles.actionOutlineText}>{t("call")}</Text>
               </Pressable>
 
               <Pressable
                 onPress={handleViewDetails}
                 style={[styles.actionBtn, styles.actionBtnOutline]}
               >
-                <Text style={styles.actionOutlineText}>Details</Text>
+                <Text style={styles.actionOutlineText}>{t("details")}</Text>
               </Pressable>
 
               <Pressable
@@ -114,13 +114,13 @@ export default function MapBottomSheet({
                 style={[styles.actionBtn, styles.actionBtnSolid]}
               >
                 <Ionicons name="navigate" size={18} color="#FFFFFF" />
-                <Text style={styles.actionSolidText}>Directions</Text>
+                <Text style={styles.actionSolidText}>{t("get_directions")}</Text>
               </Pressable>
             </View>
           </View>
         ) : (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Select a location on the map.</Text>
+            <Text style={[styles.emptyText, { textAlign }]}>{t("select_location_map")}</Text>
           </View>
         )}
       </BottomSheetView>

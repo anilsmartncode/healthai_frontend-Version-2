@@ -13,6 +13,7 @@ import { Colors, Radius, Spacing } from '@/constants/Colors';
 import Constants from 'expo-constants';
 import { Alert } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
+import { useLang } from '@/context/Languagecontext';
 
 const SECTIONS = [
   {
@@ -36,21 +37,23 @@ const LINKS = [
 ];
 
 export default function LegalPrivacy() {
+  const { t, isRTL, rowDirection, textAlign } = useLang();
+
   return (
     <SafeAreaView style={styles.safe}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { flexDirection: rowDirection }]}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={20} color={Colors.text} />
+          <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={20} color={Colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>Legal &amp; Privacy</Text>
+        <Text style={[styles.headerTitle, { textAlign }]}>{t('legal_privacy')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         {/* Encryption badge */}
-        <View style={styles.encBadge}>
+        <View style={[styles.encBadge, { flexDirection: rowDirection }]}>
           <Ionicons name="lock-closed" size={18} color={Colors.primary} />
-          <Text style={styles.encText}>
+          <Text style={[styles.encText, { textAlign }]}>
             All data is AES-256 encrypted at rest and in transit.
           </Text>
         </View>
@@ -58,8 +61,8 @@ export default function LegalPrivacy() {
         {/* Info sections */}
         {SECTIONS.map((s) => (
           <View key={s.heading} style={styles.card}>
-            <Text style={styles.cardHeading}>{s.heading}</Text>
-            <Text style={styles.cardBody}>{s.body}</Text>
+            <Text style={[styles.cardHeading, { textAlign }]}>{s.heading}</Text>
+            <Text style={[styles.cardBody, { textAlign }]}>{s.body}</Text>
           </View>
         ))}
 
@@ -68,10 +71,10 @@ export default function LegalPrivacy() {
           {LINKS.map((l, i) => (
             <Pressable
               key={l.label}
-              style={[styles.linkRow, i < LINKS.length - 1 && styles.linkBorder]}
+              style={[styles.linkRow, { flexDirection: rowDirection }, i < LINKS.length - 1 && styles.linkBorder]}
               onPress={() => router.push(l.route as any)}
             >
-              <Text style={styles.linkLabel}>{l.label}</Text>
+              <Text style={[styles.linkLabel, { textAlign }]}>{l.label}</Text>
               <Ionicons name="open-outline" size={16} color={Colors.textMuted} />
             </Pressable>
           ))}

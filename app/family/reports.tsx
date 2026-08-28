@@ -16,6 +16,7 @@ import {
   type ReportItem,
   type ReportStatus,
 } from '@/services/profileSubScreenApi';
+import { useLang } from '@/context/Languagecontext';
 
 // ── Helpers ───────────────────────────────────────────────────────────
 
@@ -61,6 +62,7 @@ function groupByMonth(reports: ReportItem[]) {
 // ── Screen ────────────────────────────────────────────────────────────
 
 export default function MemberReportsScreen() {
+  const { t, rowDirection, textAlign } = useLang();
   const insets = useSafeAreaInsets();
   const { id = 'mem2', name = 'Member' } = useLocalSearchParams<{ id: string; name: string }>();
 
@@ -94,7 +96,7 @@ export default function MemberReportsScreen() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <FamilyTopBar
-        title="Reports"
+        title={t('nav_reports')}
         onBack={() => router.back()}
         rightIcon="cloud-upload-outline"
         onRight={() => router.push({ pathname: '/upload', params: { context: 'family', memberId: id, memberName: name } } as any)}
@@ -112,7 +114,9 @@ export default function MemberReportsScreen() {
             style={[styles.filterChip, filter === f && styles.filterChipOn]}
             onPress={() => setFilter(f)}
           >
-            <Text style={[styles.filterTxt, filter === f && styles.filterTxtOn]}>{f}</Text>
+            <Text style={[styles.filterTxt, filter === f && styles.filterTxtOn]}>
+              {f === 'All' ? t('all_reports') : f}
+            </Text>
           </Pressable>
         ))}
       </ScrollView>
@@ -121,28 +125,28 @@ export default function MemberReportsScreen() {
         {Object.keys(grouped).length === 0 && (
           <View style={styles.centered}>
             <Ionicons name="document-outline" size={38} color={Colors.textMuted} style={{ opacity: 0.4 }} />
-            <Text style={styles.emptyTxt}>No reports found</Text>
+            <Text style={styles.emptyTxt}>{t('no_reports_found')}</Text>
           </View>
         )}
 
         {Object.entries(grouped).map(([month, items]) => (
           <View key={month}>
-            <Text style={styles.section}>{month}</Text>
+            <Text style={[styles.section, { textAlign }]}>{month}</Text>
             {items.map((r) => {
               const sc = statusColor(r.status);
               const ic = typeIconBg(r.type);
               return (
                 <Pressable
                   key={r.report_id}
-                  style={({ pressed }) => [styles.row, pressed && { backgroundColor: '#F5FDF9' }]}
+                  style={({ pressed }) => [styles.row, { flexDirection: rowDirection }, pressed && { backgroundColor: '#F5FDF9' }]}
                   onPress={() => setSelected(r)}
                 >
                   <View style={[styles.rowIcon, { backgroundColor: ic.bg }]}>
                     <Ionicons name={typeIcon(r.type)} size={18} color={ic.color} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.rowTitle}>{r.title}</Text>
-                    <Text style={styles.rowSub}>{r.date} · {r.type}</Text>
+                    <Text style={[styles.rowTitle, { textAlign }]}>{r.title}</Text>
+                    <Text style={[styles.rowSub, { textAlign }]}>{r.date} · {r.type}</Text>
                   </View>
                   <View style={[styles.badge, { backgroundColor: sc.bg }]}>
                     <Text style={[styles.badgeTxt, { color: sc.text }]}>{r.status}</Text>
@@ -163,7 +167,7 @@ export default function MemberReportsScreen() {
       >
         {selected && (
           <View style={styles.modal}>
-            <View style={styles.modalBar}>
+            <View style={[styles.modalBar, { flexDirection: rowDirection }]}>
               <Pressable onPress={() => setSelected(null)} style={styles.modalClose}>
                 <Ionicons name="close" size={20} color={Colors.text} />
               </Pressable>
@@ -179,12 +183,12 @@ export default function MemberReportsScreen() {
                 <View style={styles.fileIcon}>
                   <Ionicons name="document-text-outline" size={30} color={Colors.textMuted} />
                 </View>
-                <Text style={styles.fileName}>{selected.file_name}</Text>
-                <Text style={styles.fileSub}>{selected.doctor} · {selected.hospital}</Text>
+                <Text style={[styles.fileName, { textAlign }]}>{selected.file_name}</Text>
+                <Text style={[styles.fileSub, { textAlign }]}>{selected.doctor} · {selected.hospital}</Text>
               </View>
 
               {/* Key values */}
-              <Text style={styles.section}>Key Values</Text>
+              <Text style={[styles.section, { textAlign }]}>{t('key_highlights')}</Text>
               <View style={styles.card}>
                 <View style={styles.kvGrid}>
                   {selected.key_values.map((kv) => {
@@ -193,8 +197,8 @@ export default function MemberReportsScreen() {
                         : Colors.danger;
                     return (
                       <View key={kv.label || Math.random().toString()} style={styles.kvItem}>
-                        <Text style={styles.kvLabel}>{kv.label}</Text>
-                        <Text style={[styles.kvVal, { color: vc }]}>
+                        <Text style={[styles.kvLabel, { textAlign }]}>{kv.label}</Text>
+                        <Text style={[styles.kvVal, { color: vc, textAlign }]}>
                           {kv.value} <Text style={styles.kvUnit}>{kv.unit}</Text>
                         </Text>
                       </View>
@@ -204,11 +208,11 @@ export default function MemberReportsScreen() {
               </View>
 
               <Pressable
-                style={styles.downloadBtn}
-                onPress={() => { /* ← plug in your API: GET /api/reports/:id/download */ Alert.alert('Download', `Downloading ${selected?.title ?? 'report'}…`); }}
+                style={[styles.downloadBtn, { flexDirection: rowDirection }]}
+                onPress={() => { Alert.alert(t('download_report'), `Downloading ${selected?.title ?? 'report'}…`); }}
               >
                 <Ionicons name="download-outline" size={18} color="#fff" />
-                <Text style={styles.downloadTxt}>Download Report</Text>
+                <Text style={styles.downloadTxt}>{t('download_report')}</Text>
               </Pressable>
             </ScrollView>
           </View>

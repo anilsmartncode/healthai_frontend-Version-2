@@ -51,6 +51,7 @@ function timeAgo(iso: string): string {
 }
 
 function NotifRow({ item, onPress }: { item: UnifiedNotification; onPress: () => void }) {
+  const { rowDirection, textAlign } = useLang();
   // If it's from the API, we can use the original type for a better icon match
   const originalApiItem = item.payload?.originalApiItem as FamilyNotification | undefined;
   const cfgKey = originalApiItem?.type || item.category;
@@ -60,7 +61,7 @@ function NotifRow({ item, onPress }: { item: UnifiedNotification; onPress: () =>
   const isArchived = item.status === 'archived';
   return (
     <Pressable
-      style={[styles.row, isUnread && styles.rowUnread, isArchived && { opacity: 0.5 }]}
+      style={[styles.row, { flexDirection: rowDirection }, isUnread && styles.rowUnread, isArchived && { opacity: 0.5 }]}
       onPress={onPress}
     >
       {isUnread && <View style={styles.unreadDot} />}
@@ -68,10 +69,10 @@ function NotifRow({ item, onPress }: { item: UnifiedNotification; onPress: () =>
         <Ionicons name={cfg.icon} size={20} color={cfg.color} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={[styles.rowTitle, isUnread && { fontWeight: '700' }]}>
+        <Text style={[styles.rowTitle, { textAlign }, isUnread && { fontWeight: '700' }]}>
           {item.title}
         </Text>
-        {item.message ? <Text style={styles.rowBody}>{item.message}</Text> : null}
+        {item.message ? <Text style={[styles.rowBody, { textAlign }]}>{item.message}</Text> : null}
       </View>
       <Text style={styles.rowTime}>{timeAgo(item.timestamp)}</Text>
     </Pressable>
@@ -79,7 +80,7 @@ function NotifRow({ item, onPress }: { item: UnifiedNotification; onPress: () =>
 }
 
 export default function Notifications() {
-  const { t } = useLang();
+  const { t, isRTL, rowDirection, textAlign } = useLang();
   
   // 1. Hook Notifications
   const { notifications: hookNotifications, loading: hookLoading, refresh, unreadCount, markAllRead, markAsRead } = useNotifications();
@@ -113,10 +114,11 @@ export default function Notifications() {
       let cat: NotificationCategory = 'system';
       if (type === 'report_ready' || type === 'report') cat = 'report';
       else if (type === 'medicine_alert' || type === 'medicine') cat = 'medicine';
-      else if (type === 'invite_pending' || type === 'invite_accepted' || type === 'family' || type === 'health_alert' || type === 'health_tip') cat = 'family';
-      
-      let route = '/(tabs)/reports';
-      if (type === 'invite_pending' || type === 'family') route = '/family/invitations';
+      else if (type === 'invite_pending' || type === 'invite_accepted' || type === 'health_alert' || type === 'family') cat = 'family';
+
+      let route: any = undefined;
+      if (type === 'report_ready' || type === 'report') route = '/reports';
+      else if (type === 'invite_pending') route = '/family/join';
       else if (type === 'invite_accepted' || type === 'health_alert' || type === 'health_tip') route = '/family';
       else if (type === 'medicine_alert' || type === 'medicine') route = '/medicines';
 
@@ -187,11 +189,11 @@ export default function Notifications() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
+      <View style={[styles.header, { flexDirection: rowDirection }]}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={20} color={Colors.text} />
+          <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={20} color={Colors.text} />
         </Pressable>
-        <Text style={styles.title}>{t('notif_title') || 'Notifications'}</Text>
+        <Text style={[styles.title, { textAlign }]}>{t('notifications')}</Text>
         {totalUnread > 0 && (
           <Pressable onPress={handleMarkAllRead}>
             <Text style={styles.markAll}>Mark all read</Text>
@@ -201,7 +203,7 @@ export default function Notifications() {
 
       {/* Category Filters */}
       <View style={styles.filterOuter}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.filterContainer, { flexDirection: rowDirection }]}>
           {CATEGORIES.map(c => (
              <Pressable 
                key={c.id} 
@@ -231,8 +233,8 @@ export default function Notifications() {
           {filteredItems.length === 0 ? (
             <View style={styles.empty}>
               <Ionicons name="notifications-off-outline" size={48} color={Colors.border} />
-              <Text style={styles.emptyTitle}>No notifications yet</Text>
-              <Text style={styles.emptySub}>We&apos;ll let you know when something important happens.</Text>
+              <Text style={[styles.emptyTitle, { textAlign }]}>No notifications yet</Text>
+              <Text style={[styles.emptySub, { textAlign }]}>We&apos;ll let you know when something important happens.</Text>
             </View>
           ) : (
             <View style={styles.list}>

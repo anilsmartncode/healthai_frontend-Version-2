@@ -35,7 +35,7 @@ import { useReports, type FilterType } from '@/hooks/useReports';
 import { reportsApi, type ReportListItem } from '@/services/reportsApi';
 import { ChatInputBar } from '@/components/ui/ChatInputBar';
 import { HealthScoreCard } from '@/components/home/Healthscorecard';
-
+import { useLang } from '@/context/Languagecontext';
 
 function formatIndianDateTime(isoString: string | undefined | null, fallback: string): string {
   if (!isoString) return fallback;
@@ -45,27 +45,20 @@ function formatIndianDateTime(isoString: string | undefined | null, fallback: st
     const day = String(d.getDate()).padStart(2, '0');
     const month = d.toLocaleString('en-US', { month: 'short' });
     const year = d.getFullYear();
-    // let hours = d.getHours();
-    // const minutes = String(d.getMinutes()).padStart(2, '0');
-    // const ampm = hours >= 12 ? 'PM' : 'AM';
-    // hours = hours % 12;
-    // hours = hours ? hours : 12; 
-    // const strTime = `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
-    // return `${day} ${month} ${year}, ${strTime}`;
     return `${day} ${month} ${year}`;
   } catch {
     return fallback;
   }
 }
 
-function statusTag(item: ReportListItem) {
+function statusTag(item: ReportListItem, t: (k: any) => string) {
   if (item.status === 'attention') {
-    return { label: 'Attention', bg: '#FFEDD5', color: '#C2410C' };
+    return { label: t('attention'), bg: '#FFEDD5', color: '#C2410C' };
   }
   if (item.healthScore >= 80) {
-    return { label: 'Good', bg: '#DCFCE7', color: '#15803D' };
+    return { label: t('good'), bg: '#DCFCE7', color: '#15803D' };
   }
-  return { label: 'Reviewed', bg: '#DBEAFE', color: '#1D4ED8' };
+  return { label: t('reviewed'), bg: '#DBEAFE', color: '#1D4ED8' };
 }
 
 function iconColorFor(item: ReportListItem) {
@@ -81,7 +74,8 @@ function ReportRow({
   item: ReportListItem;
   onDelete: (id: string) => void;
 }) {
-  const tag = statusTag(item);
+  const { t, rowDirection, textAlign } = useLang();
+  const tag = statusTag(item, t);
   const icon = iconColorFor(item);
   const scoreColor =
     item.healthScore >= 80
@@ -92,16 +86,16 @@ function ReportRow({
 
   const displayLabName = item.labName && !['Unknown', 'Lab', 'General'].includes(item.labName)
     ? item.labName
-    : (item.category && item.category !== 'Others' ? item.category : "Report");
+    : (item.category && item.category !== 'Others' ? item.category : t("reports_title"));
 
   const isJunkTitle = /^\d+$/.test(item.title.replace(/\.\w+$/, '')) || /img_|screenshot|whatsapp/i.test(item.title);
-  const subText = isJunkTitle ? (item.reportTypeFull || item.category || 'Report') : item.title;
+  const subText = isJunkTitle ? (item.reportTypeFull || item.category || t("reports_title")) : item.title;
 
   const handleDelete = () => {
-    Alert.alert('Delete Report', `Remove "${item.title}" from your reports?`, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('delete_report'), `${t('remove_report_confirm')} "${item.title}"?`, [
+      { text: t('cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('delete_btn'),
         style: 'destructive',
         onPress: () => onDelete(item.id),
       },
@@ -110,7 +104,7 @@ function ReportRow({
 
   return (
     <Pressable
-      style={({ pressed }: { pressed: boolean }) => [styles.reportRow, pressed && { opacity: 0.85 }]}
+      style={({ pressed }: { pressed: boolean }) => [styles.reportRow, { flexDirection: rowDirection }, pressed && { opacity: 0.85 }]}
       onPress={() => {
         if (item.reportType?.toUpperCase() === 'PRESCRIPTION') {
           router.push({ pathname: '/prescription/[id]', params: { id: item.id } });
@@ -123,24 +117,24 @@ function ReportRow({
         <Ionicons name="document-text-outline" size={16} color={icon.color} />
       </View>
       <View style={styles.reportInfo}>
-        <Text style={styles.reportTitle} numberOfLines={1}>
+        <Text style={[styles.reportTitle, { textAlign }]} numberOfLines={1}>
           {displayLabName}
         </Text>
-        <Text style={styles.reportMeta} numberOfLines={1}>
+        <Text style={[styles.reportMeta, { textAlign }]} numberOfLines={1}>
           {formatIndianDateTime(item.analyzedAt, item.date)}
         </Text>
       </View>
       <View style={[styles.statusPill, { backgroundColor: tag.bg }]}>
         <Text style={[styles.statusPillText, { color: tag.color }]}>{tag.label}</Text>
       </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 8 }}>
         <Pressable
           onPress={async () => {
             try {
               // Fetch full report details to construct PDF
               const fullReport = await reportsApi.getById(item.id);
               if (!fullReport) {
-                Alert.alert('Error', 'Could not load report details to generate PDF.');
+                Alert.alert(t('err_network'), 'Could not load report details to generate PDF.');
                 return;
               }
 
@@ -152,14 +146,14 @@ function ReportRow({
               if (canShare) {
                 await Sharing.shareAsync(pdfUri, {
                   mimeType: 'application/pdf',
-                  dialogTitle: 'Share Report PDF',
+                  dialogTitle: t('share_report_pdf'),
                   UTI: 'com.adobe.pdf',
                 });
               } else {
-                Alert.alert('Sharing Unavailable', 'Sharing is not available on this device.');
+                Alert.alert(t('err_network'), 'Sharing is not available on this device.');
               }
             } catch (e: any) {
-              Alert.alert('Cannot share file', e?.message ?? 'Unknown error');
+              Alert.alert(t('err_network'), e?.message ?? 'Unknown error');
             }
           }}
           style={({ pressed }: { pressed: boolean }) => [
@@ -188,17 +182,17 @@ function ReportRow({
   );
 }
 
-function getDescriptiveFilterLabel(label: string) {
+function getDescriptiveFilterLabel(label: string, t: (k: any) => string) {
   switch (label) {
-    case 'All': return 'All Reports';
-    case 'CBC': return 'CBC (Blood Count)';
-    case 'Lipid': return 'Lipid (Heart/Cholesterol)';
-    case 'Thyroid': return 'Thyroid (T3/T4/TSH)';
-    case 'Diabetes': return 'Diabetes (Sugar/HbA1c)';
-    case 'Liver': return 'Liver (SGPT/SGOT)';
-    case 'Kidney': return 'Kidney (Creatinine/Urea)';
-    case 'Vitamins': return 'Vitamins (D/B12)';
-    case 'Blood Test': return 'General Blood Tests';
+    case 'All': return t('all_reports');
+    case 'CBC': return t('filter_cbc');
+    case 'Lipid': return t('filter_lipid');
+    case 'Thyroid': return t('filter_thyroid');
+    case 'Diabetes': return t('filter_diabetes');
+    case 'Liver': return t('filter_liver');
+    case 'Kidney': return t('filter_kidney');
+    case 'Vitamins': return t('filter_vitamins');
+    case 'Blood Test': return t('filter_blood_test');
     default: return label;
   }
 }
@@ -212,19 +206,21 @@ function FilterTab({
   active: boolean;
   onPress: () => void;
 }) {
+  const { t } = useLang();
   return (
     <Pressable
       style={[styles.tab, active && styles.tabActive]}
       onPress={onPress}
     >
       <Text style={[styles.tabText, active && styles.tabTextActive]}>
-        {getDescriptiveFilterLabel(label)}
+        {getDescriptiveFilterLabel(label, t)}
       </Text>
     </Pressable>
   );
 }
 
 export default function ReportsScreen() {
+  const { t, rowDirection, textAlign, isRTL } = useLang();
   const {
     reports: _reports,
     allReports: _allReports,
@@ -356,19 +352,19 @@ export default function ReportsScreen() {
         <>
           {/* Recent header */}
           <View style={styles.recentHeader}>
-            <Text style={styles.sectionTitle}>Your Reports</Text>
+            <Text style={[styles.sectionTitle, { textAlign }]}>{t('your_reports')}</Text>
           </View>
 
           {/* Filter Label & Date Filter */}
-          <View style={styles.filterHeaderRow}>
-            <Text style={styles.filterLabel}>Filter by report category:</Text>
+          <View style={[styles.filterHeaderRow, { flexDirection: rowDirection }]}>
+            <Text style={[styles.filterLabel, { textAlign }]}>{t('filter_by_category')}</Text>
             <Pressable
-              style={styles.dateFilterBtn}
+              style={[styles.dateFilterBtn, { flexDirection: rowDirection }]}
               onPress={() => setShowDatePicker(true)}
             >
               <Ionicons name="calendar-outline" size={14} color={filterDate ? Colors.primary : Colors.textMuted} />
               <Text style={[styles.dateFilterText, filterDate && { color: Colors.primary, fontWeight: '700' }]}>
-                {filterDate ? filterDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Filter by Date'}
+                {filterDate ? filterDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : t('filter_by_date')}
               </Text>
               {filterDate && (
                 <Pressable onPress={clearDate} hitSlop={8} style={{ marginLeft: 4 }}>
@@ -425,7 +421,7 @@ export default function ReportsScreen() {
             }}
           >
             <Text style={[styles.viewMoreText, showAllRecent && styles.viewMoreTextActive]}>
-              {showAllRecent ? 'View less' : 'View More'}
+              {showAllRecent ? t('view_less') : t('view_more')}
             </Text>
             <View style={[styles.viewMoreIconBox, showAllRecent && styles.viewMoreIconBoxActive]}>
               <Ionicons
@@ -487,10 +483,10 @@ export default function ReportsScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { flexDirection: rowDirection }]}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Reports</Text>
-          <Text style={styles.headerSub}>Manage and analyze your health reports</Text>
+          <Text style={[styles.headerTitle, { textAlign }]}>{t('nav_reports')}</Text>
+          <Text style={[styles.headerSub, { textAlign }]}>{t('reports_sub')}</Text>
         </View>
       </View>
 
@@ -515,17 +511,17 @@ export default function ReportsScreen() {
               <View style={styles.emptyIconWrap}>
                 <Ionicons name="document-text-outline" size={44} color={Colors.primary} />
               </View>
-              <Text style={styles.emptyTitle}>
-                {allReports.length === 0 ? 'No reports yet' : 'No reports found'}
+              <Text style={[styles.emptyTitle, { textAlign }]}>
+                {allReports.length === 0 ? t('no_reports_yet') : t('no_reports_found')}
               </Text>
-              <Text style={styles.emptySub}>
+              <Text style={[styles.emptySub, { textAlign }]}>
                 {allReports.length === 0 
-                  ? 'Upload your first lab report and get an AI-powered explanation in seconds.'
+                  ? t('upload_first_report_sub')
                   : searchQuery
-                    ? 'Try a different search term'
+                    ? t('try_different_search')
                     : activeFilter !== 'All'
-                      ? `No ${activeFilter} reports yet`
-                      : 'Upload a report to get started'}
+                      ? `${t('no_reports_found')} (${getDescriptiveFilterLabel(activeFilter, t)})`
+                      : t('upload_report_start')}
               </Text>
             </View>
           ) : (

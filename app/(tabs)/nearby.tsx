@@ -30,7 +30,7 @@ import PlaceMarker from "@/components/nearby/PlaceMarker";
 import MapBottomSheet from "@/components/nearby/MapBottomSheet";
 
 export default function NearbyScreen() {
-  const { t } = useLang();
+  const { t, isRTL, textAlign, rowDirection } = useLang();
 
   // State
   const [activeTab, setActiveTab] = useState<"hospital" | "pharmacy" | "diagnostic">("hospital");
@@ -316,21 +316,21 @@ export default function NearbyScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       {/* ── Header ── */}
-      <View style={styles.header}>
+      <View style={[styles.header, { flexDirection: rowDirection }]}>
         <View>
-          <Text style={styles.title}>{t("nav_nearby")}</Text>
-          <Text style={styles.subtitle}>Find medical services around you</Text>
+          <Text style={[styles.title, { textAlign }]}>{t("nav_nearby")}</Text>
+          <Text style={[styles.subtitle, { textAlign }]}>{t("find_medical_sub")}</Text>
         </View>
         {(loading || gpsLoading) && <ActivityIndicator size="small" color={Colors.primary} />}
       </View>
 
-      <View style={styles.toggleContainer}>
+      <View style={[styles.toggleContainer, { flexDirection: rowDirection }]}>
         <Pressable
           onPress={() => setViewMode("list")}
           style={[styles.toggleBtn, viewMode === "list" && styles.toggleBtnActive]}
         >
           <Text style={[styles.toggleText, viewMode === "list" && styles.toggleTextActive]}>
-            List View
+            {t("list_view")}
           </Text>
         </Pressable>
         <Pressable
@@ -341,7 +341,7 @@ export default function NearbyScreen() {
           style={[styles.toggleBtn, viewMode === "map" && styles.toggleBtnActive]}
         >
           <Text style={[styles.toggleText, viewMode === "map" && styles.toggleTextActive]}>
-            Map View
+            {t("map_view")}
           </Text>
         </Pressable>
       </View>
@@ -353,10 +353,10 @@ export default function NearbyScreen() {
       />
 
       {gpsError && (
-        <View style={styles.warningBanner}>
+        <View style={[styles.warningBanner, { flexDirection: rowDirection }]}>
           <Ionicons name="warning" size={16} color="#B45309" />
-          <Text style={styles.warningText}>
-            GPS permission denied. Showing fallback results for Bangalore center.
+          <Text style={[styles.warningText, { textAlign }]}>
+            {t("gps_denied_warning")}
           </Text>
         </View>
       )}

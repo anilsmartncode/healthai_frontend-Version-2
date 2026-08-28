@@ -4,11 +4,34 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius } from '@/constants/Colors';
 import { useUsage } from '@/context/UsageContext';
+import { useCountry } from '@/context/CountryContext';
+import { useLang } from '@/context/Languagecontext';
 import { PLAN_LIMITS } from '@/constants/plans';
 import { router } from 'expo-router';
 
+const REGIONAL_PRICING: Record<string, {
+  currencySymbol: string;
+  freePrice: string;
+  premiumOriginal: string;
+  premiumPrice: string;
+  familyOriginal: string;
+  familyPrice: string;
+}> = {
+  US: { currencySymbol: '$', freePrice: '$0', premiumOriginal: '$5.99', premiumPrice: '$2.99', familyOriginal: '$15.99', familyPrice: '$7.99' },
+  GB: { currencySymbol: '£', freePrice: '£0', premiumOriginal: '£4.99', premiumPrice: '£2.49', familyOriginal: '£13.99', familyPrice: '£6.99' },
+  CA: { currencySymbol: 'CA$', freePrice: 'CA$0', premiumOriginal: 'CA$7.99', premiumPrice: 'CA$3.99', familyOriginal: 'CA$19.99', familyPrice: 'CA$9.99' },
+  AU: { currencySymbol: 'A$', freePrice: 'A$0', premiumOriginal: 'A$8.99', premiumPrice: 'A$4.49', familyOriginal: 'A$23.99', familyPrice: 'A$11.99' },
+  AE: { currencySymbol: 'AED ', freePrice: '0 AED', premiumOriginal: '19.99 AED', premiumPrice: '9.99 AED', familyOriginal: '59.99 AED', familyPrice: '29.99 AED' },
+  SA: { currencySymbol: 'SAR ', freePrice: '0 SAR', premiumOriginal: '19.99 SAR', premiumPrice: '9.99 SAR', familyOriginal: '59.99 SAR', familyPrice: '29.99 SAR' },
+  SG: { currencySymbol: 'S$', freePrice: 'S$0', premiumOriginal: 'S$7.99', premiumPrice: 'S$3.99', familyOriginal: 'S$19.99', familyPrice: 'S$9.99' },
+  IN: { currencySymbol: '₹', freePrice: '₹0', premiumOriginal: '₹199', premiumPrice: '₹99', familyOriginal: '₹599', familyPrice: '₹299' },
+};
+
 export default function PlansScreen() {
+  const { country } = useCountry();
+  const pricing = REGIONAL_PRICING[country?.code] || REGIONAL_PRICING.US;
   const { activePlan, upgradeToPremium, upgradeToFamily, restorePurchases } = useUsage();
+  const { t, isRTL, rowDirection, textAlign } = useLang();
   const [isProcessingPremium, setIsProcessingPremium] = useState(false);
   const [isProcessingFamily, setIsProcessingFamily] = useState(false);
 
@@ -33,15 +56,15 @@ export default function PlansScreen() {
       if (plan === 'PREMIUM') {
         setIsProcessingPremium(true);
         await upgradeToPremium(isOneTime);
-        alert('Payment Successful! Welcome to Premium! 🎉');
+        alert(`${t('payment_successful')} ${t('welcome_premium')}`);
       } else {
         setIsProcessingFamily(true);
         await upgradeToFamily(isOneTime);
-        alert('Payment Successful! Welcome to the Family Plan! 🎉');
+        alert(`${t('payment_successful')} ${t('welcome_family')}`);
       }
     } catch (error: any) {
       if (!error.userCancelled) {
-        alert('Payment failed. Please try again.');
+        alert(t('payment_failed'));
       }
     } finally {
       setIsProcessingPremium(false);
@@ -54,25 +77,25 @@ export default function PlansScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* ── Header ── */}
-        <View style={styles.header}>
+        <View style={[styles.header, { flexDirection: rowDirection }]}>
           <Pressable
             onPress={() => router.back()}
             style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.7, backgroundColor: '#F1F5F9' }]}
             hitSlop={12}
           >
-            <Ionicons name="arrow-back" size={20} color={Colors.text} />
+            <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={20} color={Colors.text} />
           </Pressable>
           <View style={styles.headerTextWrap}>
-            <Text style={styles.title}>Subscription & Plans</Text>
-            <Text style={styles.subtitle}>Unlock the full potential of HealthAI</Text>
+            <Text style={[styles.title, { textAlign }]}>{t('subscription_plans')}</Text>
+            <Text style={[styles.subtitle, { textAlign }]}>{t('plans_subtitle')}</Text>
           </View>
         </View>
 
         {/* ── Current Plan Banner ── */}
-        <View style={styles.currentBanner}>
-          <View style={styles.currentBannerLeft}>
+        <View style={[styles.currentBanner, { flexDirection: rowDirection }]}>
+          <View style={[styles.currentBannerLeft, { flexDirection: rowDirection }]}>
             <View style={styles.statusDot} />
-            <Text style={styles.currentText}>Your current plan is:</Text>
+            <Text style={styles.currentText}>{t('current_plan_is')}</Text>
           </View>
           <View style={[
             styles.badge,
@@ -89,7 +112,7 @@ export default function PlansScreen() {
               activePlan === 'PREMIUM' && styles.badgeTextPremium,
               activePlan === 'FAMILY' && styles.badgeTextFamily,
             ]}>
-              {activePlan}
+              {activePlan === 'FREE' ? t('free_plan') : (activePlan === 'PREMIUM' ? t('premium_plan') : t('family_plan'))}
             </Text>
           </View>
         </View>
@@ -99,25 +122,41 @@ export default function PlansScreen() {
           {activePlan === 'FREE' && (
             <View style={styles.activeFloatingPill}>
               <Ionicons name="checkmark-circle" size={12} color="#15803D" />
-              <Text style={styles.activeFloatingPillText}>ACTIVE PLAN</Text>
+              <Text style={styles.activeFloatingPillText}>{t('active_plan_badge')}</Text>
             </View>
           )}
 
           <View style={styles.cardHeader}>
-            <Text style={styles.planName}>Free Plan</Text>
-            <Text style={styles.planSubtitle}>Standard Access</Text>
+            <Text style={[styles.planName, { textAlign }]}>{t('free_plan')}</Text>
+            <Text style={[styles.planSubtitle, { textAlign }]}>{t('standard_access')}</Text>
             <View style={styles.priceContainer}>
-              <Text style={styles.price}>₹0 <Text style={styles.period}>/mo</Text></Text>
+              <Text style={styles.price}>{pricing.freePrice} <Text style={styles.period}>{t('per_month')}</Text></Text>
             </View>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.featureList}>
-            <Feature icon="chatbubbles-outline" text={`${PLAN_LIMITS.FREE.maxDailyAiChats} AI Chats per day`} variant="free" />
-            <Feature icon="document-text-outline" text={`${PLAN_LIMITS.FREE.maxMonthlyReports} Report analysis per month`} variant="free" />
-            <Feature icon="barcode-outline" text={`${PLAN_LIMITS.FREE.maxDailyMedicineScans} Medicine scan per day`} variant="free" />
-            <Feature icon="people-outline" text={`${PLAN_LIMITS.FREE.maxFamilyMembers} Family member included`} variant="free" />
+            <Feature
+              icon="chatbubbles-outline"
+              text={PLAN_LIMITS.FREE.maxDailyAiChats >= 999 ? t('unlimited_ai_chats') : t('ai_chats_per_day').replace('%s', String(PLAN_LIMITS.FREE.maxDailyAiChats))}
+              variant="free"
+            />
+            <Feature
+              icon="document-text-outline"
+              text={PLAN_LIMITS.FREE.maxMonthlyReports >= 999 ? t('unlimited_reports') : t('reports_per_month').replace('%s', String(PLAN_LIMITS.FREE.maxMonthlyReports))}
+              variant="free"
+            />
+            <Feature
+              icon="barcode-outline"
+              text={PLAN_LIMITS.FREE.maxDailyMedicineScans >= 999 ? t('unlimited_medicine_scans') : t('medicine_scans_per_day').replace('%s', String(PLAN_LIMITS.FREE.maxDailyMedicineScans))}
+              variant="free"
+            />
+            <Feature
+              icon="people-outline"
+              text={PLAN_LIMITS.FREE.maxFamilyMembers >= 999 ? t('unlimited_family_members') : t('family_members_included').replace('%s', String(PLAN_LIMITS.FREE.maxFamilyMembers))}
+              variant="free"
+            />
           </View>
         </View>
 
@@ -125,46 +164,50 @@ export default function PlansScreen() {
         <View style={[styles.card, styles.premiumCard, activePlan === 'PREMIUM' && styles.activeCard]}>
           <View style={styles.popularBadge}>
             <Ionicons name="sparkles" size={12} color="#0F766E" />
-            <Text style={styles.popularBadgeText}>POPULAR</Text>
+            <Text style={styles.popularBadgeText}>{t('plan_popular')}</Text>
           </View>
 
           {activePlan === 'PREMIUM' && (
             <View style={styles.activeFloatingPill}>
               <Ionicons name="checkmark-circle" size={12} color="#15803D" />
-              <Text style={styles.activeFloatingPillText}>ACTIVE PLAN</Text>
+              <Text style={styles.activeFloatingPillText}>{t('active_plan_badge')}</Text>
             </View>
           )}
 
-          <View style={styles.cardHeader}>
+          <View style={[styles.cardHeader, { flexDirection: rowDirection }]}>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.planName, { color: '#0F172A' }]}>Premium</Text>
-              <Text style={styles.planSubtitle}>Single User</Text>
-              <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2, fontWeight: '500' }}>Pay Once or Auto-Renew Monthly</Text>
-              <View style={styles.offerBadge}>
+              <Text style={[styles.planName, { color: '#0F172A', textAlign }]}>{t('premium_plan')}</Text>
+              <Text style={[styles.planSubtitle, { textAlign }]}>{t('single_user')}</Text>
+              <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2, fontWeight: '500', textAlign }}>{t('pay_once_or_monthly')}</Text>
+              <View style={[styles.offerBadge, { flexDirection: rowDirection }]}>
                 <Ionicons name="flame" size={11} color="#EA580C" />
-                <Text style={styles.offerBadgeText}>Limited Period Offer</Text>
+                <Text style={styles.offerBadgeText}>{t('limited_period_offer')}</Text>
               </View>
             </View>
 
             <View style={styles.priceContainer}>
               <View style={styles.discountRow}>
-                <Text style={styles.strikePrice}>₹199</Text>
+                <Text style={styles.strikePrice}>{pricing.premiumOriginal}</Text>
                 <View style={styles.saveTag}>
-                  <Text style={styles.saveTagText}>50% OFF</Text>
+                  <Text style={styles.saveTagText}>{t('discount_50_off')}</Text>
                 </View>
               </View>
-              <Text style={[styles.price, { color: '#0F766E' }]}>₹99 <Text style={styles.period}>/mo</Text></Text>
+              <Text style={[styles.price, { color: '#0F766E' }]}>{pricing.premiumPrice} <Text style={styles.period}>{t('per_month')}</Text></Text>
             </View>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.featureList}>
-            <Feature icon="chatbubbles" text="Unlimited AI Chats" variant="premium" />
-            <Feature icon="document-text" text={`${PLAN_LIMITS.PREMIUM.maxMonthlyReports} Report analyses per month`} variant="premium" />
-            <Feature icon="barcode" text="Unlimited Medicine scans" variant="premium" />
-            <Feature icon="person" text="Single User Account" variant="premium" />
-            <Feature icon="star" text="Priority AI Processing" variant="premium" />
+            <Feature icon="chatbubbles" text={t('unlimited_ai_chats')} variant="premium" />
+            <Feature
+              icon="document-text"
+              text={PLAN_LIMITS.PREMIUM.maxMonthlyReports >= 999 ? t('unlimited_reports') : t('reports_per_month').replace('%s', String(PLAN_LIMITS.PREMIUM.maxMonthlyReports))}
+              variant="premium"
+            />
+            <Feature icon="barcode" text={t('unlimited_medicine_scans')} variant="premium" />
+            <Feature icon="person" text={t('single_user_account')} variant="premium" />
+            <Feature icon="star" text={t('priority_ai_processing')} variant="premium" />
           </View>
 
           {activePlan !== 'PREMIUM' ? (
@@ -176,16 +219,16 @@ export default function PlansScreen() {
               {isProcessingPremium ? (
                 <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
-                <View style={styles.btnContentRow}>
-                  <Text style={styles.upgradeBtnText}>Upgrade to Premium</Text>
-                  <Ionicons name="arrow-forward" size={17} color="#FFFFFF" />
+                <View style={[styles.btnContentRow, { flexDirection: rowDirection }]}>
+                  <Text style={styles.upgradeBtnText}>{t('upgrade_to_premium')}</Text>
+                  <Ionicons name={isRTL ? "arrow-back" : "arrow-forward"} size={17} color="#FFFFFF" />
                 </View>
               )}
             </Pressable>
           ) : (
-            <View style={styles.activePlanBtn}>
+            <View style={[styles.activePlanBtn, { flexDirection: rowDirection }]}>
               <Ionicons name="checkmark-circle" size={18} color="#16A34A" />
-              <Text style={styles.activePlanBtnText}>Active Plan</Text>
+              <Text style={styles.activePlanBtnText}>{t('current_plan')}</Text>
             </View>
           )}
         </View>
@@ -194,47 +237,55 @@ export default function PlansScreen() {
         <View style={[styles.card, styles.familyCard, activePlan === 'FAMILY' && styles.activeCard]}>
           <View style={styles.familyBadge}>
             <Ionicons name="people" size={12} color="#7C3AED" />
-            <Text style={styles.familyBadgeText}>BEST VALUE</Text>
+            <Text style={styles.familyBadgeText}>{t('plan_best_value')}</Text>
           </View>
 
           {activePlan === 'FAMILY' && (
             <View style={styles.activeFloatingPill}>
               <Ionicons name="checkmark-circle" size={12} color="#15803D" />
-              <Text style={styles.activeFloatingPillText}>ACTIVE PLAN</Text>
+              <Text style={styles.activeFloatingPillText}>{t('active_plan_badge')}</Text>
             </View>
           )}
 
-          <View style={styles.cardHeader}>
+          <View style={[styles.cardHeader, { flexDirection: rowDirection }]}>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.planName, { color: '#0F172A' }]}>Family Plan</Text>
-              <Text style={styles.planSubtitle}>Up to {PLAN_LIMITS.FAMILY.maxFamilyMembers} Members</Text>
-              <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2, fontWeight: '500' }}>Pay Once or Auto-Renew Monthly</Text>
-              <View style={[styles.offerBadge, styles.offerBadgeFamily]}>
+              <Text style={[styles.planName, { color: '#0F172A', textAlign }]}>{t('family_plan')}</Text>
+              <Text style={[styles.planSubtitle, { textAlign }]}>{t('up_to_members').replace('%s', String(PLAN_LIMITS.FAMILY.maxFamilyMembers))}</Text>
+              <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2, fontWeight: '500', textAlign }}>{t('pay_once_or_monthly')}</Text>
+              <View style={[styles.offerBadge, styles.offerBadgeFamily, { flexDirection: rowDirection }]}>
                 <Ionicons name="flame" size={11} color="#7C3AED" />
-                <Text style={[styles.offerBadgeText, { color: '#7C3AED' }]}>Limited Period Offer</Text>
+                <Text style={[styles.offerBadgeText, { color: '#7C3AED' }]}>{t('limited_period_offer')}</Text>
               </View>
             </View>
 
             <View style={styles.priceContainer}>
               <View style={styles.discountRow}>
-                <Text style={styles.strikePrice}>₹599</Text>
+                <Text style={styles.strikePrice}>{pricing.familyOriginal}</Text>
                 <View style={[styles.saveTag, styles.saveTagFamily]}>
-                  <Text style={[styles.saveTagText, { color: '#7C3AED' }]}>50% OFF</Text>
+                  <Text style={[styles.saveTagText, { color: '#7C3AED' }]}>{t('discount_50_off')}</Text>
                 </View>
               </View>
-              <Text style={[styles.price, { color: '#7C3AED' }]}>₹299 <Text style={styles.period}>/mo</Text></Text>
+              <Text style={[styles.price, { color: '#7C3AED' }]}>{pricing.familyPrice} <Text style={styles.period}>{t('per_month')}</Text></Text>
             </View>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.featureList}>
-            <Feature icon="chatbubbles" text="Unlimited AI Chats" variant="family" />
-            <Feature icon="document-text" text={`${PLAN_LIMITS.FAMILY.maxMonthlyReports} Report analyses per month`} variant="family" />
-            <Feature icon="barcode" text="Unlimited Medicine scans" variant="family" />
-            <Feature icon="people" text={`Up to ${PLAN_LIMITS.FAMILY.maxFamilyMembers} Family members included`} variant="family" />
-            <Feature icon="share-social" text="Shared Family Dashboard" variant="family" />
-            <Feature icon="star" text="Priority AI Processing" variant="family" />
+            <Feature icon="chatbubbles" text={t('unlimited_ai_chats')} variant="family" />
+            <Feature
+              icon="document-text"
+              text={PLAN_LIMITS.FAMILY.maxMonthlyReports >= 999 ? t('unlimited_reports') : t('reports_per_month').replace('%s', String(PLAN_LIMITS.FAMILY.maxMonthlyReports))}
+              variant="family"
+            />
+            <Feature icon="barcode" text={t('unlimited_medicine_scans')} variant="family" />
+            <Feature
+              icon="people"
+              text={PLAN_LIMITS.FAMILY.maxFamilyMembers >= 999 ? t('unlimited_family_members') : t('family_members_included_plural').replace('%s', String(PLAN_LIMITS.FAMILY.maxFamilyMembers))}
+              variant="family"
+            />
+            <Feature icon="share-social" text={t('shared_family_dashboard')} variant="family" />
+            <Feature icon="star" text={t('priority_ai_processing')} variant="family" />
           </View>
 
           {activePlan !== 'FAMILY' ? (
@@ -246,23 +297,23 @@ export default function PlansScreen() {
               {isProcessingFamily ? (
                 <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
-                <View style={styles.btnContentRow}>
-                  <Text style={styles.upgradeBtnText}>Upgrade to Family</Text>
-                  <Ionicons name="arrow-forward" size={17} color="#FFFFFF" />
+                <View style={[styles.btnContentRow, { flexDirection: rowDirection }]}>
+                  <Text style={styles.upgradeBtnText}>{t('upgrade_to_family')}</Text>
+                  <Ionicons name={isRTL ? "arrow-back" : "arrow-forward"} size={17} color="#FFFFFF" />
                 </View>
               )}
             </Pressable>
           ) : (
-            <View style={styles.activePlanBtn}>
+            <View style={[styles.activePlanBtn, { flexDirection: rowDirection }]}>
               <Ionicons name="checkmark-circle" size={18} color="#16A34A" />
-              <Text style={styles.activePlanBtnText}>Active Plan</Text>
+              <Text style={styles.activePlanBtnText}>{t('current_plan')}</Text>
             </View>
           )}
         </View>
 
         {/* ── Restore Purchases Button ── */}
         <Pressable
-          style={({ pressed }) => [styles.restoreBtn, pressed && { opacity: 0.6 }]}
+          style={({ pressed }) => [styles.restoreBtn, { flexDirection: rowDirection }, pressed && { opacity: 0.6 }]}
           onPress={async () => {
             try {
               const restored = await restorePurchases();
@@ -277,18 +328,18 @@ export default function PlansScreen() {
           }}
         >
           <Ionicons name="refresh-outline" size={16} color={Colors.primary} />
-          <Text style={styles.restoreBtnText}>Restore Purchases</Text>
+          <Text style={styles.restoreBtnText}>{t('restore_purchases')}</Text>
         </Pressable>
 
         {/* Apple/Google-required subscription disclosure */}
         <View style={{ backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: 14, borderWidth: 1, borderColor: Colors.border, gap: 6, marginTop: 10 }}>
           <Text style={{ fontSize: 11, color: Colors.textMuted, lineHeight: 17, textAlign: 'center' }}>
-            A ₹99/month "Premium" or ₹299/month "Family Plan" auto-renewing subscription will be charged to your {Platform.OS === 'ios' ? 'Apple ID' : 'Google Play'} account at confirmation of purchase. Subscription automatically renews unless canceled at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period. You can manage and cancel your subscriptions by going to your account settings in the {Platform.OS === 'ios' ? 'App Store' : 'Google Play Store'} after purchase.
+            A {pricing.premiumPrice}/month "Premium" or {pricing.familyPrice}/month "Family Plan" auto-renewing subscription will be charged to your {Platform.OS === 'ios' ? 'Apple ID' : 'Google Play'} account at confirmation of purchase. Subscription automatically renews unless canceled at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period. You can manage and cancel your subscriptions by going to your account settings in the {Platform.OS === 'ios' ? 'App Store' : 'Google Play Store'} after purchase.
           </Text>
         </View>
 
         {/* Legal Links for App Store Compliance */}
-        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 20, paddingBottom: 20 }}>
+        <View style={{ flexDirection: rowDirection, justifyContent: 'center', gap: 20, paddingBottom: 20 }}>
           <Pressable onPress={() => Linking.openURL('https://healthai.smartncode.com/terms')}>
             <Text style={{ color: Colors.textMuted, fontSize: 13, textDecorationLine: 'underline' }}>Terms of Use (EULA)</Text>
           </Pressable>
@@ -310,7 +361,7 @@ export default function PlansScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Choose Payment Option</Text>
+              <Text style={styles.modalTitle}>{t('choose_billing')}</Text>
             </View>
 
             {/* Option A: Auto-Renew */}
@@ -321,17 +372,17 @@ export default function PlansScreen() {
               ]}
               onPress={() => setSelectedPaymentOption('AUTO_RENEW')}
             >
-              <View style={styles.optionHeader}>
-                <Text style={styles.optionTitle}>Auto-Renewing Subscription</Text>
+              <View style={[styles.optionHeader, { flexDirection: rowDirection }]}>
+                <Text style={styles.optionTitle}>{t('auto_renew')}</Text>
                 <View style={styles.modalPopularBadge}>
-                  <Text style={styles.modalPopularBadgeText}>Most Popular</Text>
+                  <Text style={styles.modalPopularBadgeText}>{t('plan_popular')}</Text>
                 </View>
               </View>
-              <Text style={styles.optionDesc}>Enjoy continuous access to all premium features without interruption.</Text>
-              <View style={styles.optionPriceRow}>
+              <Text style={[styles.optionDesc, { textAlign }]}>{t('auto_renew_desc')}</Text>
+              <View style={[styles.optionPriceRow, { flexDirection: rowDirection }]}>
                 <Text style={styles.optionPrice}>
-                  {selectedPlanType === 'FAMILY' ? '₹299' : '₹99'}
-                  <Text style={styles.optionPeriod}>/month</Text>
+                  {selectedPlanType === 'FAMILY' ? pricing.familyPrice : pricing.premiumPrice}
+                  <Text style={styles.optionPeriod}>{t('per_month_full')}</Text>
                 </Text>
                 {selectedPaymentOption === 'AUTO_RENEW' && (
                   <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
@@ -347,14 +398,14 @@ export default function PlansScreen() {
               ]}
               onPress={() => setSelectedPaymentOption('ONE_TIME')}
             >
-              <View style={styles.optionHeader}>
-                <Text style={styles.optionTitle}>One-Time Pass</Text>
+              <View style={[styles.optionHeader, { flexDirection: rowDirection }]}>
+                <Text style={styles.optionTitle}>{t('one_time_payment')}</Text>
               </View>
-              <Text style={styles.optionDesc}>Full access for 30 days. No automatic renewal, pay manually next time.</Text>
-              <View style={styles.optionPriceRow}>
+              <Text style={[styles.optionDesc, { textAlign }]}>{t('one_time_pass_desc')}</Text>
+              <View style={[styles.optionPriceRow, { flexDirection: rowDirection }]}>
                 <Text style={styles.optionPrice}>
-                  {selectedPlanType === 'FAMILY' ? '₹299' : '₹99'}
-                  <Text style={styles.optionPeriod}> for 30 days</Text>
+                  {selectedPlanType === 'FAMILY' ? pricing.familyPrice : pricing.premiumPrice}
+                  <Text style={styles.optionPeriod}> {t('for_30_days')}</Text>
                 </Text>
                 {selectedPaymentOption === 'ONE_TIME' && (
                   <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
@@ -363,15 +414,15 @@ export default function PlansScreen() {
             </Pressable>
 
             <Text style={styles.modalDisclaimer}>
-              By proceeding, you agree to our Terms of Use & Privacy Policy.
+              {t('terms_privacy_disclaimer')}
             </Text>
 
             <Pressable style={styles.modalSubmitBtn} onPress={handlePayment}>
-              <Text style={styles.modalSubmitText}>Subscribe & Pay</Text>
+              <Text style={styles.modalSubmitText}>{t('proceed_to_payment')}</Text>
             </Pressable>
 
             <Pressable style={styles.modalCancelBtn} onPress={() => setPaymentModalVisible(false)}>
-              <Text style={styles.modalCancelText}>I'll choose later</Text>
+              <Text style={styles.modalCancelText}>{t('ill_choose_later')}</Text>
             </Pressable>
           </View>
         </View>
@@ -382,6 +433,7 @@ export default function PlansScreen() {
 }
 
 function Feature({ icon, text, variant = 'free' }: { icon: any; text: string; variant?: 'free' | 'premium' | 'family' }) {
+  const { rowDirection, textAlign } = useLang();
   const getTheme = () => {
     switch (variant) {
       case 'premium':
@@ -408,11 +460,11 @@ function Feature({ icon, text, variant = 'free' }: { icon: any; text: string; va
   const theme = getTheme();
 
   return (
-    <View style={styles.featureRow}>
+    <View style={[styles.featureRow, { flexDirection: rowDirection }]}>
       <View style={[styles.featureIconWrap, { backgroundColor: theme.iconWrapBg }]}>
         <Ionicons name={icon} size={16} color={theme.iconColor} />
       </View>
-      <Text style={[styles.featureText, { color: theme.textColor }]}>{text}</Text>
+      <Text style={[styles.featureText, { color: theme.textColor, textAlign }]}>{text}</Text>
     </View>
   );
 }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { TextInput, StyleSheet, ActivityIndicator, Pressable, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius } from '@/constants/Colors';
+import { useLang } from '@/context/Languagecontext';
 
 interface Props {
   value: string;
@@ -18,6 +19,7 @@ const MIN_INPUT_HEIGHT = 36;
 const MAX_INPUT_HEIGHT = 76; // Holds 3 lines comfortably
 
 export function ChatInput({ value, onChangeText, onSend, loading, bottomInset = 0, inline = false }: Props) {
+  const { t, textAlign } = useLang();
   const [contentHeight, setContentHeight] = useState(MIN_INPUT_HEIGHT);
 
   useEffect(() => {
@@ -32,8 +34,8 @@ export function ChatInput({ value, onChangeText, onSend, loading, bottomInset = 
     // Slim, borderless — parent handles the outer pill/card
     return (
       <TextInput
-        style={[inlineStyles.input, { height: currentHeight }]}
-        placeholder="Ask anything about your health..."
+        style={[inlineStyles.input, { height: currentHeight, textAlign }]}
+        placeholder={t("ai_placeholder")}
         placeholderTextColor={Colors.textMuted}
         value={value}
         onChangeText={onChangeText}
@@ -54,8 +56,8 @@ export function ChatInput({ value, onChangeText, onSend, loading, bottomInset = 
   // ── Standalone (used on other screens) ──────────────────────────────────────
   return (
     <TextInput
-      style={[standaloneStyles.input, { height: Math.max(44, currentHeight), paddingBottom: 10 + bottomInset }]}
-      placeholder="Ask about your health…"
+      style={[standaloneStyles.input, { height: Math.max(44, currentHeight), paddingBottom: 10 + bottomInset, textAlign }]}
+      placeholder={t("ai_placeholder")}
       placeholderTextColor={Colors.textMuted}
       value={value}
       onChangeText={onChangeText}

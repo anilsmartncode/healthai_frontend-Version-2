@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Colors } from "@/constants/Colors";
+import { useLang } from "@/context/Languagecontext";
 
 export const ANALYSIS_TABS = ["Summary", "Abnormal", "All Values"] as const;
 export type AnalysisTab = (typeof ANALYSIS_TABS)[number];
@@ -11,24 +12,26 @@ interface Props {
 }
 
 export function AnalysisTabBar({ active, onChange, abnormalCount = 0 }: Props) {
+  const { t, rowDirection } = useLang();
+
   const labels: Record<AnalysisTab, string> = {
-    Summary: "Summary",
-    Abnormal: `Abnormal (${abnormalCount})`,
-    "All Values": "All Values",
+    Summary: t("summary"),
+    Abnormal: `${t("abnormal")} (${abnormalCount})`,
+    "All Values": t("all_values"),
   };
 
   return (
-    <View style={styles.tabs}>
-      {ANALYSIS_TABS.map((t) => (
+    <View style={[styles.tabs, { flexDirection: rowDirection }]}>
+      {ANALYSIS_TABS.map((tabKey) => (
         <Pressable
-          key={t}
-          onPress={() => onChange(t)}
-          style={[styles.tab, active === t && styles.tabActive]}
+          key={tabKey}
+          onPress={() => onChange(tabKey)}
+          style={[styles.tab, active === tabKey && styles.tabActive]}
         >
           <Text
-            style={[styles.tabText, active === t && { color: Colors.primary }]}
+            style={[styles.tabText, active === tabKey && { color: Colors.primary }]}
           >
-            {labels[t]}
+            {labels[tabKey]}
           </Text>
         </Pressable>
       ))}

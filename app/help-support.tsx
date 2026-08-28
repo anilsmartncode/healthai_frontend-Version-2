@@ -12,6 +12,8 @@ import { router } from 'expo-router';
 import { Colors, Radius, Spacing } from '@/constants/Colors';
 import Constants from 'expo-constants';
 
+import { useLang } from '@/context/Languagecontext';
+
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
 interface ContactOption {
@@ -41,6 +43,8 @@ const FAQS = [
 ];
 
 export default function HelpSupport() {
+  const { t, isRTL, rowDirection, textAlign } = useLang();
+
   const contactOptions: ContactOption[] = [
     {
       icon: 'mail-outline',
@@ -59,52 +63,52 @@ export default function HelpSupport() {
   return (
     <SafeAreaView style={styles.safe}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { flexDirection: rowDirection }]}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={20} color={Colors.text} />
+          <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={20} color={Colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>Help &amp; Support</Text>
+        <Text style={[styles.headerTitle, { textAlign }]}>{t('help_support')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
 
         {/* Contact options */}
-        <Text style={styles.sectionLabel}>Contact us</Text>
+        <Text style={[styles.sectionLabel, { textAlign }]}>Contact us</Text>
         <View style={styles.group}>
           {contactOptions.map((c, i) => (
             <Pressable
               key={c.label}
-              style={[styles.menuRow, i < contactOptions.length - 1 && styles.rowBorder]}
+              style={[styles.menuRow, { flexDirection: rowDirection }, i < contactOptions.length - 1 && styles.rowBorder]}
               onPress={c.action}
             >
               <View style={styles.iconWrap}>
                 <Ionicons name={c.icon} size={20} color={Colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.rowLabel}>{c.label}</Text>
-                <Text style={styles.rowSub}>{c.sub}</Text>
+                <Text style={[styles.rowLabel, { textAlign }]}>{c.label}</Text>
+                <Text style={[styles.rowSub, { textAlign }]}>{c.sub}</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+              <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={18} color={Colors.textMuted} />
             </Pressable>
           ))}
         </View>
 
         {/* FAQs */}
-        <Text style={styles.sectionLabel}>Frequently asked questions</Text>
+        <Text style={[styles.sectionLabel, { textAlign }]}>Frequently asked questions</Text>
         {FAQS.map((faq) => (
           <View key={faq.q} style={styles.faqCard}>
-            <View style={styles.faqQ}>
+            <View style={[styles.faqQ, { flexDirection: rowDirection }]}>
               <Ionicons name="help-circle" size={18} color={Colors.primary} style={{ marginTop: 1 }} />
-              <Text style={styles.faqQText}>{faq.q}</Text>
+              <Text style={[styles.faqQText, { textAlign }]}>{faq.q}</Text>
             </View>
-            <Text style={styles.faqA}>{faq.a}</Text>
+            <Text style={[styles.faqA, { textAlign }]}>{faq.a}</Text>
           </View>
         ))}
 
         {/* App version */}
         <View style={styles.versionBadge}>
-          <Text style={styles.versionTitle}>App version {Constants.expoConfig?.version ?? '1.0.0'}</Text>
-          <Text style={styles.versionSub}>You're on the latest version</Text>
+          <Text style={[styles.versionTitle, { textAlign }]}>App version {Constants.expoConfig?.version ?? '1.0.0'}</Text>
+          <Text style={[styles.versionSub, { textAlign }]}>You're on the latest version</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

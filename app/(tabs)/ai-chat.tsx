@@ -22,6 +22,7 @@ import { ENDPOINTS } from '@/constants/api';
 import { LanguageSelectModal } from '@/components/ui/LanguageSelectModal';
 import * as Clipboard from 'expo-clipboard';
 import AIDataConsentModal from '@/components/ai/AIDataConsentModal';
+import { useLang } from '@/context/Languagecontext';
 
 const C = {
   primary: '#2563EB',
@@ -64,6 +65,7 @@ const avatarStyles = StyleSheet.create({
 // ── Chat Bubble ───────────────────────────────────────────────────────────────
 
 function ChatBubble({ message }: { message: ChatMessage }) {
+  const { t } = useLang();
   const isUser = message.role === 'user';
   const time = new Date(message.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -154,7 +156,7 @@ function ChatBubble({ message }: { message: ChatMessage }) {
                   },
                 ]}
               >
-                {copied ? 'Copied' : 'Copy'}
+                {copied ? t('copied') : t('copy')}
               </Text>
             </Pressable>
 
@@ -180,7 +182,7 @@ function ChatBubble({ message }: { message: ChatMessage }) {
                     { color: C.primary, fontWeight: '600' },
                   ]}
                 >
-                  {translating ? 'Translating...' : 'Translate'}
+                  {translating ? t('translating') : t('translate')}
                 </Text>
               </Pressable>
             )}
@@ -539,6 +541,7 @@ const condStyles = StyleSheet.create({
 
 export default function AIChatScreen() {
   const insets = useSafeAreaInsets();
+  const { t, isRTL, textAlign, rowDirection } = useLang();
   const { prefill, context, sessionId: openSessionId, reportId } = useLocalSearchParams<{
     prefill?: string; context?: string; sessionId?: string; reportId?: string;
   }>();
@@ -612,7 +615,7 @@ export default function AIChatScreen() {
             <Text style={styles.headerTitle}>HealthAI</Text>
             <View style={styles.onlineRow}>
               <View style={styles.onlineDot} />
-              <Text style={styles.onlineText}>Online</Text>
+              <Text style={styles.onlineText}>{t('online')}</Text>
             </View>
           </View>
         </View>
@@ -631,7 +634,7 @@ export default function AIChatScreen() {
               onPress={() => { setMenuOpen(false); router.push('/ai-history'); }}
             >
               <Ionicons name="time-outline" size={18} color={C.text} />
-              <Text style={styles.menuText}>History</Text>
+              <Text style={styles.menuText}>{t('history')}</Text>
             </Pressable>
             <View style={styles.menuDivider} />
             <Pressable
@@ -643,7 +646,7 @@ export default function AIChatScreen() {
               }}
             >
               <Ionicons name="add-circle-outline" size={18} color={C.text} />
-              <Text style={styles.menuText}>New Chat</Text>
+              <Text style={styles.menuText}>{t('new_chat')}</Text>
             </Pressable>
           </View>
         </>
@@ -698,7 +701,7 @@ export default function AIChatScreen() {
 
         {/* Input bar */}
         <View style={[styles.inputBar, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 16 }]}>
-          <View style={styles.inputWrap}>
+          <View style={[styles.inputWrap, { flexDirection: rowDirection }]}>
             <Pressable style={styles.innerPlusBtn}>
               <Ionicons name="add" size={24} color={C.textMuted} />
             </Pressable>
@@ -706,7 +709,7 @@ export default function AIChatScreen() {
             <TextInput
               style={[
                 styles.input,
-                { height: Math.min(Math.max(36, inputHeight), 76) }
+                { height: Math.min(Math.max(36, inputHeight), 76), textAlign }
               ]}
               value={input}
               onChangeText={setInput}
@@ -714,7 +717,7 @@ export default function AIChatScreen() {
                 const h = e.nativeEvent.contentSize.height;
                 if (h > 0) setInputHeight(h);
               }}
-              placeholder="Ask anything about your health..."
+              placeholder={t('ai_placeholder')}
               placeholderTextColor={C.textMuted}
               multiline
               scrollEnabled={inputHeight >= 76}
@@ -731,7 +734,7 @@ export default function AIChatScreen() {
               }
             </Pressable>
           </View>
-          <Text style={styles.disclaimerText}>Your health matters. Use these insights as a guide and reach out to a healthcare professional when needed.</Text>
+          <Text style={[styles.disclaimerText, { textAlign }]}>{t('ai_medical_disclaimer')}</Text>
         </View>
       </KeyboardAvoidingView>
 

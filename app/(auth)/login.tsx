@@ -23,9 +23,10 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { firebaseLoginApi, loginApi } from "@/services/authapi/apiService";
 import { signInWithGoogle } from "@/utils/googleAuth";
 import { signInWithApple } from "@/utils/appleAuth";
+import { getLocalizedAuthError } from "@/utils/errorLocalization";
 
 // 🎛️ Toggle Switch for Authentication
-const USE_FIREBASE_AUTH = false;
+const USE_FIREBASE_AUTH = true;
 // Lazy-load Firebase Auth so the page still opens in Expo Go
 function getAuth() {
   const mod = require('@react-native-firebase/auth');
@@ -57,7 +58,7 @@ function GoogleIcon() {
 }
 
 export default function Login() {
-  const { t } = useLang();
+  const { t, isRTL, rowDirection, textAlign } = useLang();
   const { signIn } = useAuth();
 
   const [email, setEmail] = useState("");
@@ -73,9 +74,9 @@ export default function Login() {
   const handleLogin = async () => {
     const next: typeof errors = {};
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-      next.email = "Enter a valid email address";
+      next.email = t("err_invalid_email");
     if (!password || password.length < 6)
-      next.password = "Password must be at least 6 characters";
+      next.password = t("err_pw_min_length");
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
@@ -92,7 +93,7 @@ export default function Login() {
           await signIn(data.token, email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
           router.replace("/(tabs)/home");
         } else {
-          setErrors({ email: data?.message || "Login failed on backend" });
+          setErrors({ email: getLocalizedAuthError(data?.message, "err_network", t) });
         }
       } else {
         // 🔵 FLOW 2: CUSTOM OLD API AUTHENTICATION
@@ -102,16 +103,12 @@ export default function Login() {
           await signIn(data.token, email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
           router.replace("/(tabs)/home");
         } else {
-          setErrors({ email: data?.message || "Custom API Login failed" });
+          setErrors({ email: getLocalizedAuthError(data?.message, "err_network", t) });
         }
       }
 
     } catch (error: any) {
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-        setErrors({ email: "Invalid email or password" });
-      } else {
-        setErrors({ email: error.message || "Network error. Check connection." });
-      }
+      setErrors({ email: getLocalizedAuthError(error, "err_invalid_credentials", t) });
     } finally {
       setLoading(false);
     }
@@ -130,13 +127,13 @@ export default function Login() {
           await signIn(data.token, data.email || result.user?.email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
           router.replace("/(tabs)/home");
         } else {
-          setErrors({ email: data?.message || "Google Sign-In failed on backend" });
+          setErrors({ email: getLocalizedAuthError(data?.message, "err_network", t) });
         }
       } else if (!result.success && result.error !== 'Sign-in cancelled') {
-        setErrors({ email: result.error });
+        setErrors({ email: getLocalizedAuthError(result.error, "err_generic", t) });
       }
     } catch (error: any) {
-      setErrors({ email: error.message || "Google Sign-In failed" });
+      setErrors({ email: getLocalizedAuthError(error, "err_generic", t) });
     } finally {
       setLoading(false);
     }
@@ -159,11 +156,11 @@ export default function Login() {
         await signIn(data.token, data.email || result.user.email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
         router.replace("/(tabs)/home");
       } else {
-        setErrors({ email: data?.message || "Failed to sign in via backend" });
+        setErrors({ email: getLocalizedAuthError(data?.message, "err_network", t) });
       }
     } catch (error: any) {
       console.error("Apple sign-in error:", error);
-      setErrors({ email: "Apple sign-in failed. Please try again." });
+      setErrors({ email: getLocalizedAuthError(error, "err_generic", t) });
     } finally {
       setLoading(false);
     }
@@ -197,9 +194,9 @@ export default function Login() {
 
         <View style={styles.heroBody}>
           <View style={styles.welcomeWrap}>
-            <Text style={styles.welcomeTitle}>Welcome Back 👋</Text>
-            <Text style={styles.welcomeSub}>
-              Sign in to access your health insights, reports and personalized recommendations.
+            <Text style={[styles.welcomeTitle, { textAlign }]}>{t("welcome_back")}</Text>
+            <Text style={[styles.welcomeSub, { textAlign }]}>
+              {t("welcome_sub_login")}
             </Text>
           </View>
           <View style={styles.decorWrap}>
@@ -220,7 +217,7 @@ export default function Login() {
       <View style={styles.card}>
 
         {/* ── "Sign in with" label ── */}
-        <Text style={styles.sectionLabel}>Sign in with</Text>
+        <Text style={[styles.sectionLabel, { textAlign }]}>{t("sign_in_with")}</Text>
 
         {/* ── 3-column social row (same layout as signup) ── */}
         <View style={styles.socialRow}>
@@ -260,29 +257,30 @@ export default function Login() {
             onPress={() => router.replace("/(auth)/Phonelogin")}
           >
             <Ionicons name="phone-portrait-outline" size={ms(20)} color="#2D9C8E" />
-            <Text style={[styles.socialText, { color: "#2D9C8E" }]}>Phone OTP</Text>
+            <Text style={[styles.socialText, { color: "#2D9C8E" }]}>{t("phone_otp")}</Text>
           </Pressable>
         </View>
 
         {/* ── Divider ── */}
         <View style={styles.orRow}>
           <View style={styles.orLine} />
-          <Text style={styles.orText}>or sign in with</Text>
+          <Text style={styles.orText}>{t("or_continue")}</Text>
           <View style={styles.orLine} />
         </View>
 
         {/* ── Email Address ── */}
         <View style={styles.fieldWrap}>
-          <Text style={styles.fieldLabel}>Email Address</Text>
+          <Text style={[styles.fieldLabel, { textAlign }]}>{t("email_address")}</Text>
           <View style={[
             styles.inputRow,
+            { flexDirection: rowDirection },
             !!errors.email && styles.inputError,
             focusedField === "email" && styles.inputFocused,
           ]}>
             <Ionicons name="mail-outline" size={ms(18)} color={focusedField === "email" ? "#2D9C8E" : "#9BB5B5"} />
             <TextInput
-              style={styles.inputField}
-              placeholder="Enter your email address"
+              style={[styles.inputField, { textAlign }]}
+              placeholder={t("enter_email")}
               placeholderTextColor="#B0CCCC"
               value={email}
               onChangeText={(v) => { setEmail(v); clearError("email"); }}
@@ -300,26 +298,27 @@ export default function Login() {
             </View>
           )}
           <Pressable
-            style={styles.usePhoneRow}
+            style={[styles.usePhoneRow, { flexDirection: rowDirection }]}
             onPress={() => router.replace("/(auth)/Phonelogin")}
           >
-            <Text style={styles.usePhoneText}>Use phone number instead</Text>
-            <Ionicons name="chevron-forward" size={ms(13)} color="#2D9C8E" />
+            <Text style={styles.usePhoneText}>{t("use_phone_instead")}</Text>
+            <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={ms(13)} color="#2D9C8E" />
           </Pressable>
         </View>
 
         {/* ── Password ── */}
         <View style={styles.fieldWrap}>
-          <Text style={styles.fieldLabel}>Password</Text>
+          <Text style={[styles.fieldLabel, { textAlign }]}>{t("password")}</Text>
           <View style={[
             styles.inputRow,
+            { flexDirection: rowDirection },
             !!errors.password && styles.inputError,
             focusedField === "password" && styles.inputFocused,
           ]}>
             <Ionicons name="lock-closed-outline" size={ms(18)} color={focusedField === "password" ? "#2D9C8E" : "#9BB5B5"} />
             <TextInput
-              style={styles.inputField}
-              placeholder="Enter your password"
+              style={[styles.inputField, { textAlign }]}
+              placeholder={t("enter_password")}
               placeholderTextColor="#B0CCCC"
               value={password}
               onChangeText={(v) => { setPassword(v); clearError("password"); }}
@@ -343,7 +342,7 @@ export default function Login() {
             </View>
           )}
           <Pressable onPress={() => router.push("/(auth)/ForgotPassword")}>
-            <Text style={styles.forgotText}>Forgot Password?</Text>
+            <Text style={[styles.forgotText, { textAlign: isRTL ? "left" : "right" }]}>{t("forgot_password")}</Text>
           </Pressable>
         </View>
 
@@ -351,6 +350,7 @@ export default function Login() {
         <Pressable
           style={({ pressed }) => [
             styles.loginBtn,
+            { flexDirection: rowDirection },
             pressed && !loading && { opacity: 0.9 },
             loading && { opacity: 0.75 },
           ]}
@@ -361,30 +361,30 @@ export default function Login() {
             <ActivityIndicator color="#fff" />
           ) : (
             <>
-              <Text style={styles.loginBtnText}>Login</Text>
+              <Text style={styles.loginBtnText}>{t("login")}</Text>
               <View style={styles.loginArrow}>
-                <Ionicons name="arrow-forward" size={ms(16)} color="#2D9C8E" />
+                <Ionicons name={isRTL ? "arrow-back" : "arrow-forward"} size={ms(16)} color="#2D9C8E" />
               </View>
             </>
           )}
         </Pressable>
 
         {/* ── Security Note ── */}
-        <View style={styles.securityRow}>
+        <View style={[styles.securityRow, { flexDirection: rowDirection }]}>
           <View style={styles.securityIcon}>
             <Ionicons name="shield-checkmark-outline" size={ms(18)} color="#2D9C8E" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.securityTitle}>Your data is encrypted and secure</Text>
-            <Text style={styles.securitySub}>We follow industry-leading security standards</Text>
+            <Text style={[styles.securityTitle, { textAlign }]}>{t("security_title")}</Text>
+            <Text style={[styles.securitySub, { textAlign }]}>{t("security_sub")}</Text>
           </View>
         </View>
 
         {/* ── Sign Up ── */}
-        <View style={styles.signupRow}>
-          <Text style={styles.signupText}>Don't have an account? </Text>
+        <View style={[styles.signupRow, { flexDirection: rowDirection }]}>
+          <Text style={styles.signupText}>{t("dont_have_account")} </Text>
           <Pressable onPress={() => router.push("/(auth)/signup")} hitSlop={8}>
-            <Text style={styles.signupLink}>Sign Up</Text>
+            <Text style={styles.signupLink}>{t("sign_up")}</Text>
           </Pressable>
         </View>
       </View>

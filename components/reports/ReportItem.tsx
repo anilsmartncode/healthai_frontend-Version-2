@@ -5,14 +5,17 @@ import { Badge } from '@/components/ui/Badge';
 import { Colors } from '@/constants/Colors';
 import { formatDate } from '@/utils/format';
 import type { Report } from '@/types';
+import { useLang } from '@/context/Languagecontext';
 
 export function ReportItem({ report }: { report: Report }) {
+  const { rowDirection, textAlign } = useLang();
+
   return (
     <Pressable onPress={() => router.push('/analysis')}>
-      <Card style={styles.row}>
+      <Card style={[styles.row, { flexDirection: rowDirection }]}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>{report.title}</Text>
-          <Text style={styles.date}>{formatDate(report.date)}</Text>
+          <Text style={[styles.title, { textAlign }]}>{report.title}</Text>
+          <Text style={[styles.date, { textAlign }]}>{formatDate(report.date)}</Text>
         </View>
         <Badge label={report.status} status={report.status} />
       </Card>

@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/Colors';
 import { FamilyTopBar } from '@/components/family/FamilyTopBar';
+import { useCountry } from '@/context/CountryContext';
 import {
   getMemberEmergency,
   addEmergencyContact,
@@ -129,10 +130,13 @@ function MainView({
   setData: React.Dispatch<React.SetStateAction<EmergencyDetailsResponse | null>>;
   memberId: string;
   onAddContact: () => void;
+  onEditMedical: () => void;
   onBack: () => void;
   successMsg: string;
   showSuccess: (msg: string) => void;
 }) {
+  const { country } = useCountry();
+  const emergencyNum = country?.emergencyNumber || '112';
   const { medical_info: mi, emergency_contacts: contacts } = data;
 
   const handleDelete = (c: EmergencyContact) => {
@@ -177,13 +181,13 @@ function MainView({
           <Text style={styles.topSosTxt}>Emergency help is one tap away</Text>
           <Pressable
             style={styles.topSosBtn}
-            onPress={() => Alert.alert('SOS', 'Call emergency services?', [
+            onPress={() => Alert.alert('SOS', `Call emergency services (${emergencyNum})?`, [
               { text: 'Cancel', style: 'cancel' },
-              { text: 'Call 108', onPress: () => Linking.openURL('tel:108') },
+              { text: `Call ${emergencyNum}`, onPress: () => Linking.openURL(`tel:${emergencyNum}`) },
             ])}
           >
             <Ionicons name="call" size={16} color="#fff" />
-            <Text style={styles.topSosBtnTxt}>Call emergency — 108</Text>
+            <Text style={styles.topSosBtnTxt}>{`Call emergency — ${emergencyNum}`}</Text>
           </Pressable>
         </View>
 

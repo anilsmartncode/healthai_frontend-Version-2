@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Colors } from '@/constants/Colors';
 import type { LabValue } from '@/types';
+import { useLang } from '@/context/Languagecontext';
 
 interface Props {
   value: LabValue;
@@ -20,16 +21,18 @@ function goAskAI(name: string, value: string, status: string) {
 }
 
 export function LabValueRow({ value: v, variant = 'compact' }: Props) {
+  const { t, rowDirection, textAlign } = useLang();
+
   if (variant === 'full') {
     return (
       <Pressable
         onLongPress={() => goAskAI(v.name, v.value, v.status)}
         delayLongPress={400}
       >
-        <Card style={styles.tableRow}>
-          <Text style={styles.fullName} numberOfLines={1}>{v.name}</Text>
-          <Text style={styles.fullValue}>{v.value}</Text>
-          <Text style={styles.fullRange} numberOfLines={1}>{v.range}</Text>
+        <Card style={[styles.tableRow, { flexDirection: rowDirection }]}>
+          <Text style={[styles.fullName, { textAlign }]} numberOfLines={1}>{v.name}</Text>
+          <Text style={[styles.fullValue, { textAlign }]}>{v.value}</Text>
+          <Text style={[styles.fullRange, { textAlign }]} numberOfLines={1}>{v.range}</Text>
           <Badge label={v.status} status={v.status} />
         </Card>
       </Pressable>
@@ -41,12 +44,12 @@ export function LabValueRow({ value: v, variant = 'compact' }: Props) {
       onLongPress={() => goAskAI(v.name, v.value, v.status)}
       delayLongPress={400}
     >
-      <Card style={styles.compactRow}>
+      <Card style={[styles.compactRow, { flexDirection: rowDirection }]}>
         <View style={styles.nameCol}>
-          <Text style={styles.name} numberOfLines={1}>{v.name}</Text>
-          <Text style={styles.meta}>Range: {v.range}</Text>
+          <Text style={[styles.name, { textAlign }]} numberOfLines={1}>{v.name}</Text>
+          <Text style={[styles.meta, { textAlign }]}>{t('range_label')} {v.range}</Text>
         </View>
-        <Text style={styles.val}>{v.value}</Text>
+        <Text style={[styles.val, { textAlign }]}>{v.value}</Text>
         <Badge label={v.status} status={v.status} />
       </Card>
     </Pressable>

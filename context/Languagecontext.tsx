@@ -16,6 +16,9 @@ import { useCountry } from "@/context/CountryContext";
 
 const STORAGE_KEY = "@healthai_selected_language";
 
+// In-memory active language code for non-React callers (e.g. API clients)
+export let currentAppLangCode: LangCode = "en";
+
 export function isRTLLang(code: LangCode): boolean {
   return code === "ar";
 }
@@ -48,6 +51,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
           activeLang = country.defaultLanguage as LangCode;
         }
         setLangState(activeLang);
+        currentAppLangCode = activeLang;
 
         // Sync native I18nManager for Right-to-Left script
         const shouldRTL = isRTLLang(activeLang);
@@ -68,6 +72,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const setLang = async (l: LangCode) => {
     const shouldRTL = isRTLLang(l);
     setLangState(l);
+    currentAppLangCode = l;
 
     // Sync native I18nManager
     try {

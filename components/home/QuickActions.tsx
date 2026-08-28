@@ -2,66 +2,33 @@ import { View, Text, StyleSheet, Pressable, Dimensions } from "react-native";
 import React from "react";
 import { router } from "expo-router";
 import { Colors } from "@/constants/Colors";
+import { useLang } from "@/context/Languagecontext";
 
 const SCREEN_W = Dimensions.get("window").width;
 const CONTAINER_PADDING = 16;
 const GAP = 8;
 const ITEM_WIDTH = (SCREEN_W - (CONTAINER_PADDING * 2) - (GAP * 3)) / 4;
 
-const ACTIONS: {
-  emoji: string;
-  label: string;
-  route: string;
-}[] = [
-  {
-    emoji: "🤖",
-    label: "Ask AI",
-    route: "/ai",
-  },
-  {
-    emoji: "💊",
-    label: "Meds",
-    route: "/medicines",
-  },
-  {
-    emoji: "👨‍⚕️",
-    label: "Add Doctor",
-    route: "/doctors",
-  },
-  {
-    emoji: "🆘",
-    label: "SOS",
-    route: "/family/emergency",
-  },
-  {
-    emoji: "🖤",
-    label: "Vitals",
-    route: "/vitals",
-  },
-  {
-    emoji: "⏱️",
-    label: "Timeline",
-    route: "/timeline",
-  },
-  {
-    emoji: "🗃️",
-    label: "Vault",
-    route: "/vault",
-  },
-  {
-    emoji: "👨‍👩‍👧‍👦",
-    label: "Family",
-    route: "/family",
-  },
-];
-
 export function QuickActions() {
+  const { t } = useLang();
+
+  const actions = [
+    { emoji: "🤖", label: t("ask_ai"), route: "/ai" },
+    { emoji: "💊", label: t("action_meds"), route: "/medicines" },
+    { emoji: "👨‍⚕️", label: t("action_add_doctor"), route: "/doctors" },
+    { emoji: "🆘", label: t("action_sos"), route: "/family/emergency" },
+    { emoji: "🖤", label: t("action_vitals"), route: "/vitals" },
+    { emoji: "⏱️", label: t("action_timeline"), route: "/timeline" },
+    { emoji: "🗃️", label: t("action_vault"), route: "/vault" },
+    { emoji: "👨‍👩‍👧‍👦", label: t("action_family"), route: "/family" },
+  ];
+
   return (
     <View style={styles.wrapper}>
-      <Text style={styles.heading}>Quick actions</Text>
+      <Text style={styles.heading}>{t("quick_actions")}</Text>
 
       <View style={styles.gridContainer}>
-        {ACTIONS.map((a, i) => (
+        {actions.map((a, i) => (
           <Pressable
             key={i}
             style={({ pressed }) => [styles.listItem, pressed && styles.pressed, { width: ITEM_WIDTH }]}

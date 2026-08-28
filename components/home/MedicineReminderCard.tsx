@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Colors, Radius } from "@/constants/Colors";
 import { Card } from "@/components/ui/Card";
+import { useLang } from "@/context/Languagecontext";
 
 interface TodayBanner {
   count: number;
@@ -16,6 +17,8 @@ interface Props {
 }
 
 export function MedicineReminderCard({ todayBanner }: Props) {
+  const { t } = useLang();
+
   // If no medicines are scheduled today, hide the widget entirely to save space
   if (!todayBanner || todayBanner.count === 0) {
     return null;
@@ -32,9 +35,9 @@ export function MedicineReminderCard({ todayBanner }: Props) {
         </View>
 
         <View style={styles.info}>
-          <Text style={styles.title}>Today&apos;s Medications</Text>
+          <Text style={styles.title}>{t("todays_medications")}</Text>
           <Text style={styles.subtitle}>
-            {todayBanner.count} due today • Next: {todayBanner.nextName} at {todayBanner.nextTime}
+            {todayBanner.count} {t("due_today")} {todayBanner.nextName} at {todayBanner.nextTime}
           </Text>
         </View>
 

@@ -506,6 +506,28 @@ export const COUNTRIES: CountryConfig[] = [
       { code: "en", name: "English", native: "English", flag: "🇲🇽" },
     ],
   },
+  {
+    name: "Spain",
+    code: "ES",
+    dial: "+34",
+    flag: "🇪🇸",
+    isLaunchCountry: false,
+    emergencyNumber: "112",
+    glucoseUnit: "mg/dL",
+    tempUnit: "°C",
+    currency: {
+      code: "EUR",
+      symbol: "€",
+      premiumMonthly: "€4.99",
+      familyMonthly: "€9.99",
+    },
+    dateFormat: "DD/MM/YYYY",
+    defaultLanguage: "es",
+    supportedLanguages: [
+      { code: "es", name: "Spanish", native: "Español", flag: "🇪🇸" },
+      { code: "en", name: "English", native: "English", flag: "🇪🇸" },
+    ],
+  },
 ];
 
 /** Default fallback country is India (default baseline in current app) */

@@ -9,6 +9,8 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  TextInput,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,8 +18,7 @@ import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useState, useEffect } from 'react';
 import { SecureAsyncStorage as AsyncStorage } from '@/utils/storage';
-import { Colors, Radius, Spacing } from '@/constants/Colors';
-import { Input } from '@/components/ui/Input';
+import { Colors, Radius } from '@/constants/Colors';
 import { DatePickerField } from '@/components/ui/DatePickerField';
 import { useAuth } from '@/context/AuthContext';
 import { useLang } from '@/context/Languagecontext';
@@ -38,11 +39,12 @@ const MOCK_PROFILE = {
   gender: 'Male',
   height: '',
   weight: '',
+  location: '',
 };
 
 export default function Account() {
   const { phone } = useAuth();
-  const { t } = useLang();
+  const { t, isRTL, rowDirection, textAlign } = useLang();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -52,12 +54,15 @@ export default function Account() {
   const [gender, setGender] = useState('Male');
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
+  const [location, setLocation] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [localAvatarUri, setLocalAvatarUri] = useState<string | null>(null);
   const [imageLoadError, setImageLoadError] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showGenderModal, setShowGenderModal] = useState(false);
+  const [showBloodGroupModal, setShowBloodGroupModal] = useState(false);
 
   const isActualPhone = (val?: string | null) => !!val && !val.includes('@') && /\d/.test(val);
   const isActualEmail = (val?: string | null) => !!val && val.includes('@');
@@ -78,8 +83,6 @@ export default function Account() {
     }
 
     // CRITICAL BACKEND NGINX ROUTE FIX:
-    // Backend returns '/uploads/avatars/...' but Nginx routes backend static files under '/api/uploads/...'
-    // Without '/api', Nginx returns index.html (SPA frontend HTML) which causes 'unknown image format'
     if (clean.startsWith('https://healthai.smartncode.com/uploads/')) {
       clean = clean.replace('https://healthai.smartncode.com/uploads/', 'https://healthai.smartncode.com/api/uploads/');
     } else if (clean.startsWith('http://healthai.smartncode.com/uploads/')) {
@@ -113,8 +116,8 @@ export default function Account() {
           setGender(MOCK_PROFILE.gender);
           setHeight(MOCK_PROFILE.height);
           setWeight(MOCK_PROFILE.weight);
+          setLocation(MOCK_PROFILE.location);
         } else {
-          // Check cached local avatar first
           const authKey = email || (isActualPhone(phone) ? phone! : 'guest');
           let cachedAvatar: string | null = null;
           try {
@@ -135,6 +138,8 @@ export default function Account() {
           setPhoneNumber(data.phone ?? '');
           const dobValue = data.date_of_birth ?? data.dob;
           setDob(dobValue ? new Date(dobValue) : null);
+          setLocation(data.location ?? data.address ?? data.city ?? '');
+
           let avUrl = data.avatar_url ?? data.image_url ?? data.profile_image ?? data.profile_image_url ?? data.avatar ?? null;
           const userKey = data.email || data.phone || authKey;
           
@@ -146,7 +151,6 @@ export default function Account() {
             }
           }
 
-          // If API didn't return an avatar, look up local storage
           if (!avUrl) {
             try {
               const localAv = await AsyncStorage.getItem(`healthai_avatar_${userKey}`);
@@ -172,10 +176,12 @@ export default function Account() {
           const localPhone = await AsyncStorage.getItem(`healthai_phone_${userKey}`);
           const localHeight = await AsyncStorage.getItem(`healthai_height_${userKey}`);
           const localWeight = await AsyncStorage.getItem(`healthai_weight_${userKey}`);
+          const localLocation = await AsyncStorage.getItem(`healthai_location_${userKey}`);
 
           if (localPhone && !data.phone) setPhoneNumber(localPhone);
           if (localHeight && !data.height) setHeight(localHeight);
           if (localWeight && !data.weight) setWeight(localWeight);
+          if (localLocation && !data.location) setLocation(localLocation);
 
           if (data.height) setHeight(String(data.height));
           if (data.weight) setWeight(String(data.weight));
@@ -213,20 +219,23 @@ export default function Account() {
             email: email.trim(),
             phone: phoneNumber.trim(),
             date_of_birth: dob ? dob.toISOString().split('T')[0] : null,
-            blood_type: bloodGroup,
             gender: gender,
+            location: location.trim(),
+            address: location.trim(),
+            blood_type: bloodGroup,
             height: height ? Number(height) || height : null,
             weight: weight ? Number(weight) || weight : null,
           }),
         });
       }
-      Alert.alert('Saved', 'Your profile has been updated successfully.');
+      Alert.alert('Success', t('profile_updated') || 'Profile updated successfully.');
 
       // Cache locally for instant UI responsiveness
       try {
         const userKey = email.trim() || (isActualPhone(phoneNumber) ? phoneNumber.trim() : (isActualPhone(phone) ? phone! : 'guest'));
         await AsyncStorage.setItem(`healthai_profile_name_${userKey}`, name.trim());
         if (phoneNumber) await AsyncStorage.setItem(`healthai_phone_${userKey}`, phoneNumber.trim());
+        if (location) await AsyncStorage.setItem(`healthai_location_${userKey}`, location.trim());
         if (height) await AsyncStorage.setItem(`healthai_height_${userKey}`, height);
         if (weight) await AsyncStorage.setItem(`healthai_weight_${userKey}`, weight);
         if (avatarUrl) await AsyncStorage.setItem(`healthai_avatar_${userKey}`, avatarUrl);
@@ -242,6 +251,7 @@ export default function Account() {
     }
   };
 
+  // ── Avatar Picker & Upload (Preserved completely) ──────────────────────────
   const handlePickImage = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -264,7 +274,6 @@ export default function Account() {
         setUploadingAvatar(true);
         setImageLoadError(false);
         setLocalAvatarUri(asset.uri);
-        // Immediately preview selected image
         setAvatarUrl(asset.uri);
 
         const userKey = email.trim() || (isActualPhone(phoneNumber) ? phoneNumber.trim() : (isActualPhone(phone) ? phone! : 'guest'));
@@ -272,7 +281,6 @@ export default function Account() {
           await AsyncStorage.setItem(`healthai_avatar_${userKey}`, asset.uri);
         } catch { /* ignore */ }
 
-        // Construct FormData for multipart upload
         const formData = new FormData();
         const filename = asset.fileName || `avatar_${Date.now()}.jpg`;
         const mimeType = asset.mimeType || 'image/jpeg';
@@ -308,14 +316,11 @@ export default function Account() {
               newAvatarUrl = newAvatarUrl.startsWith('/') ? BASE_URL + newAvatarUrl : `${BASE_URL}/${newAvatarUrl}`;
             }
             
-            console.log('[Account] Parsed server avatar URL:', newAvatarUrl);
             setAvatarUrl(newAvatarUrl);
             setImageLoadError(false);
             await AsyncStorage.setItem(`healthai_avatar_${userKey}`, newAvatarUrl);
             Alert.alert('Success', 'Profile photo updated and saved on server!');
           } else {
-            console.log('[Account] Backend returned success status but no URL in response body. Querying fresh profile...');
-            // Check fresh profile from server
             try {
               const freshProfile = await api.request<any>(ENDPOINTS.profileMePath);
               const freshData = freshProfile?.user ?? freshProfile;
@@ -363,31 +368,18 @@ export default function Account() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.backBtn,
-            pressed && { opacity: 0.7, backgroundColor: '#E2E8F0' },
-          ]}
-          onPress={() => router.back()}
-          hitSlop={10}
-        >
-          <Ionicons name="arrow-back" size={20} color={Colors.text} />
-        </Pressable>
-
-        <View style={styles.headerTitleWrap}>
-          <Text
-            style={styles.headerTitle}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-            adjustsFontSizeToFit
-            minimumFontScale={0.85}
+      {/* ── Topbar matching Prototype v2 (scr-personalinfo) ── */}
+      <View style={styles.topbar}>
+        <View style={[styles.backrow, { flexDirection: rowDirection }]}>
+          <Pressable
+            style={styles.iconbtn}
+            onPress={() => router.back()}
+            hitSlop={10}
           >
-            {t('account_info')}
-          </Text>
+            <Ionicons name={isRTL ? 'arrow-forward' : 'arrow-back'} size={18} color={Colors.text} />
+          </Pressable>
+          <Text style={[styles.title, { textAlign }]}>{t('account_info')}</Text>
         </View>
-
       </View>
 
       <KeyboardAvoidingView
@@ -396,11 +388,11 @@ export default function Account() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 44 : 0}
       >
         <ScrollView
-          contentContainerStyle={styles.body}
+          contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* ── Interactive Avatar Section ── */}
+          {/* ── Profile Photo Field (DO NOT TOUCH - 100% Intact) ── */}
           <View style={styles.avatarSection}>
             <Pressable
               style={({ pressed }) => [
@@ -417,17 +409,8 @@ export default function Account() {
                     source={{ uri: avatarUrl }}
                     style={styles.avatarImg}
                     resizeMode="cover"
-                    onLoadStart={() => {
-                      console.log('[Account] Avatar Image loading started for:', avatarUrl);
-                    }}
-                    onLoad={() => {
-                      console.log('[Account] Avatar Image rendered successfully!');
-                      setImageLoadError(false);
-                    }}
-                    onError={(err) => {
-                      console.warn('[Account] Avatar Image FAILED to load from URL:', avatarUrl, err.nativeEvent);
+                    onError={() => {
                       if (localAvatarUri && avatarUrl !== localAvatarUri) {
-                        console.log('[Account] Falling back to local file URI:', localAvatarUri);
                         setAvatarUrl(localAvatarUri);
                       } else {
                         setImageLoadError(true);
@@ -457,242 +440,288 @@ export default function Account() {
             </Pressable>
 
             <Pressable
-              style={styles.changePhotoBtn}
+              style={[styles.changePhotoBtn, { flexDirection: rowDirection }]}
               onPress={handlePickImage}
               disabled={uploadingAvatar}
               hitSlop={8}
             >
               <Ionicons name="image-outline" size={15} color={Colors.primary} />
               <Text style={styles.changePhotoText}>
-                {uploadingAvatar ? 'Uploading photo...' : 'Change Photo'}
+                {uploadingAvatar ? t('uploading_photo') : t('change_photo')}
               </Text>
             </Pressable>
           </View>
 
-          {/* ── Basic Information Card ── */}
-          <View style={styles.sectionHeader}>
-            <View style={[styles.sectionIconWrap, { backgroundColor: '#EFF6FF' }]}>
-              <Ionicons name="person" size={16} color={Colors.primary} />
-            </View>
-            <Text style={styles.sectionTitle}>Personal Details</Text>
-          </View>
+          {/* ══════════════════════════════════════════════════════════
+              FROM FULL NAME DOWN — EXACT PROTOTYPE V2 LAYOUT (scr-personalinfo)
+             ══════════════════════════════════════════════════════════ */}
 
-          <View style={styles.card}>
-            <Input
-              label={t('full_name')}
+          {/* 1. Full name */}
+          <View style={styles.fieldBlock}>
+            <Text style={[styles.fieldLabel, { textAlign }]}>{t('full_name')}</Text>
+            <TextInput
+              style={[styles.input, { textAlign }]}
               value={name}
               onChangeText={setName}
-              placeholder="e.g. John Doe"
+              placeholder="e.g. Arjun Kumar"
+              placeholderTextColor="#9CA3AF"
               autoCapitalize="words"
             />
+          </View>
 
-            {/* Email Field */}
-            {isActualEmail(phone) ? (
-              <View>
-                <View style={styles.fieldHeaderRow}>
-                  <Text style={styles.fieldLabel}>{t('email')}</Text>
-                  <View style={styles.lockedBadge}>
-                    <Ionicons name="lock-closed" size={10} color={Colors.textMuted} />
-                    <Text style={styles.lockedText}>Primary login</Text>
-                  </View>
+          {/* 2. Mobile number */}
+          <View style={styles.fieldBlock}>
+            <View style={[styles.labelRow, { flexDirection: rowDirection }]}>
+              <Text style={[styles.fieldLabel, { textAlign, marginBottom: 0 }]}>{t('mobile_number')}</Text>
+              {isActualPhone(phone) && (
+                <View style={styles.lockedPill}>
+                  <Ionicons name="lock-closed" size={10} color="#6B756F" />
+                  <Text style={styles.lockedPillText}>{t('primary_login')}</Text>
                 </View>
-                <View style={styles.readOnlyRow}>
-                  <Ionicons name="mail-outline" size={16} color={Colors.textMuted} />
-                  <Text style={styles.readOnlyVal}>{phone}</Text>
-                </View>
-              </View>
-            ) : (
-              <Input
-                label={t('email')}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="name@example.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            )}
-
-            {/* Phone Field */}
-            {isActualPhone(phone) ? (
-              <View>
-                <View style={styles.fieldHeaderRow}>
-                  <Text style={styles.fieldLabel}>{t('phone')}</Text>
-                  <View style={styles.lockedBadge}>
-                    <Ionicons name="lock-closed" size={10} color={Colors.textMuted} />
-                    <Text style={styles.lockedText}>Primary login</Text>
-                  </View>
-                </View>
-                <View style={styles.readOnlyRow}>
-                  <Ionicons name="call-outline" size={16} color={Colors.textMuted} />
-                  <Text style={styles.readOnlyVal}>{phone}</Text>
-                </View>
-              </View>
-            ) : (
-              <Input
-                label={t('phone')}
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                placeholder="+1 234 567 8900"
-                keyboardType="phone-pad"
-              />
-            )}
-
-            <DatePickerField
-              label="Date of birth"
-              value={dob}
-              onChange={setDob}
-              maximumDate={new Date()}
+              )}
+            </View>
+            <TextInput
+              style={[styles.input, isActualPhone(phone) && styles.inputLocked, { textAlign }]}
+              value={isActualPhone(phone) ? (phone ?? '') : phoneNumber}
+              onChangeText={setPhoneNumber}
+              editable={!isActualPhone(phone)}
+              placeholder="+91 98765 43210"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="phone-pad"
             />
           </View>
 
-          {/* ── Health & Vitals Card ── */}
-          <View style={styles.sectionHeader}>
-            <View style={[styles.sectionIconWrap, { backgroundColor: '#EFF6FF' }]}>
-              <Ionicons name="medkit" size={16} color={Colors.primary} />
+          {/* 3. Email */}
+          <View style={styles.fieldBlock}>
+            <View style={[styles.labelRow, { flexDirection: rowDirection }]}>
+              <Text style={[styles.fieldLabel, { textAlign, marginBottom: 0 }]}>{t('email')}</Text>
+              {isActualEmail(phone) && (
+                <View style={styles.lockedPill}>
+                  <Ionicons name="lock-closed" size={10} color="#6B756F" />
+                  <Text style={styles.lockedPillText}>{t('primary_login')}</Text>
+                </View>
+              )}
             </View>
-            <Text style={styles.sectionTitle}>Health & Medical Info</Text>
+            <TextInput
+              style={[styles.input, isActualEmail(phone) && styles.inputLocked, { textAlign }]}
+              value={isActualEmail(phone) ? (phone ?? '') : email}
+              onChangeText={setEmail}
+              editable={!isActualEmail(phone)}
+              placeholder="arjunkumar@gmail.com"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
           </View>
 
-          <View style={styles.card}>
-            <View>
-              <Text style={styles.fieldLabel}>Blood Group</Text>
-              <View style={styles.chipRow}>
-                {BLOOD_GROUPS.map((bg) => {
-                  const isSelected = bloodGroup === bg;
-                  return (
-                    <Pressable
-                      key={bg}
-                      style={[styles.chip, isSelected && styles.chipSelected]}
-                      onPress={() => setBloodGroup(bg)}
-                    >
-                      <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                        {bg}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+          {/* 4. Grid 2: Date of birth & Gender */}
+          <View style={[styles.grid2, { flexDirection: rowDirection }]}>
+            <View style={{ flex: 1 }}>
+              <DatePickerField
+                label={t('date_of_birth')}
+                value={dob}
+                onChange={setDob}
+                maximumDate={new Date()}
+              />
             </View>
-
-            <View>
-              <Text style={styles.fieldLabel}>Gender</Text>
-              <View style={styles.chipRow}>
-                {GENDERS.map((g) => {
-                  const isSelected = gender === g;
-                  return (
-                    <Pressable
-                      key={g}
-                      style={[styles.chip, isSelected && styles.chipSelected]}
-                      onPress={() => setGender(g)}
-                    >
-                      <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                        {g}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-
-            <View style={styles.rowFields}>
-              <View style={{ flex: 1 }}>
-                <Input
-                  label="Height (cm)"
-                  value={height}
-                  onChangeText={setHeight}
-                  keyboardType="numeric"
-                  placeholder="e.g. 175"
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Input
-                  label="Weight (kg)"
-                  value={weight}
-                  onChangeText={setWeight}
-                  keyboardType="numeric"
-                  placeholder="e.g. 70"
-                />
-              </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.fieldLabel, { textAlign }]}>{t('gender')}</Text>
+              <Pressable
+                style={[styles.selectBox, { flexDirection: rowDirection }]}
+                onPress={() => setShowGenderModal(true)}
+              >
+                <Text style={[styles.selectText, { textAlign }]}>
+                  {gender === 'Male' ? t('gender_male') : gender === 'Female' ? t('gender_female') : gender}
+                </Text>
+                <Ionicons name="chevron-down" size={16} color="#6B756F" />
+              </Pressable>
             </View>
           </View>
 
-          {/* ── Save Action Button ── */}
+          {/* 5. Location */}
+          <View style={styles.fieldBlock}>
+            <Text style={[styles.fieldLabel, { textAlign }]}>{t('location')}</Text>
+            <TextInput
+              style={[styles.input, { textAlign }]}
+              value={location}
+              onChangeText={setLocation}
+              placeholder="Hyderabad, Telangana, India"
+              placeholderTextColor="#9CA3AF"
+            />
+          </View>
+
+          {/* 6. Blood group (Option selection like Gender) */}
+          <View style={styles.fieldBlock}>
+            <Text style={[styles.fieldLabel, { textAlign }]}>{t('blood_group')}</Text>
+            <Pressable
+              style={[styles.selectBox, { flexDirection: rowDirection }]}
+              onPress={() => setShowBloodGroupModal(true)}
+            >
+              <Text style={[styles.selectText, { textAlign }]}>
+                {bloodGroup || 'Select Blood Group'}
+              </Text>
+              <Ionicons name="chevron-down" size={16} color="#6B756F" />
+            </Pressable>
+          </View>
+
+          {/* 7. Grid 2: Height & Weight */}
+          <View style={[styles.grid2, { flexDirection: rowDirection }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.fieldLabel, { textAlign }]}>{t('height_cm')}</Text>
+              <TextInput
+                style={[styles.input, { textAlign }]}
+                value={height}
+                onChangeText={setHeight}
+                placeholder="e.g. 175"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="numeric"
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.fieldLabel, { textAlign }]}>{t('weight_kg')}</Text>
+              <TextInput
+                style={[styles.input, { textAlign }]}
+                value={weight}
+                onChangeText={setWeight}
+                placeholder="e.g. 70"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
+
+          {/* 6. Save changes Button (matching Prototype v2 .btn) */}
           <Pressable
-            style={[styles.saveBtn, saving && { opacity: 0.7 }]}
+            style={({ pressed }) => [
+              styles.btn,
+              pressed && { opacity: 0.85 },
+              saving && styles.btnDisabled,
+            ]}
             onPress={handleSave}
             disabled={saving}
           >
             {saving ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
-              <View style={styles.saveBtnContent}>
-                <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                <Text style={styles.saveBtnText}>{t('save_changes')}</Text>
-              </View>
+              <Text style={styles.btnText}>{t('save_changes')}</Text>
             )}
           </Pressable>
-
-          {/* ── Security Note (Matching Profile page) ── */}
-          <View style={styles.secureBanner}>
-            <View style={styles.secureIcon}>
-              <Ionicons name="shield-checkmark" size={18} color="#16A34A" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.secureTitle}>Encrypted & Private</Text>
-              <Text style={styles.secureSub}>
-                Your health data is protected with end-to-end encryption and is never shared without your consent.
-              </Text>
-            </View>
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* ── Gender Selection Modal ── */}
+      <Modal
+        visible={showGenderModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowGenderModal(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowGenderModal(false)}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{t('gender')}</Text>
+            {GENDERS.map((g) => {
+              const isSelected = gender === g;
+              const displayLabel = g === 'Male' ? t('gender_male') : g === 'Female' ? t('gender_female') : g;
+              return (
+                <Pressable
+                  key={g}
+                  style={[styles.modalOption, isSelected && styles.modalOptionSelected]}
+                  onPress={() => {
+                    setGender(g);
+                    setShowGenderModal(false);
+                  }}
+                >
+                  <Text style={[styles.modalOptionText, isSelected && styles.modalOptionTextSelected]}>
+                    {displayLabel}
+                  </Text>
+                  {isSelected && <Ionicons name="checkmark" size={18} color={Colors.primary} />}
+                </Pressable>
+              );
+            })}
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* ── Blood Group Selection Modal (similar to Gender) ── */}
+      <Modal
+        visible={showBloodGroupModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowBloodGroupModal(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowBloodGroupModal(false)}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{t('blood_group')}</Text>
+            <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+              {BLOOD_GROUPS.map((bg) => {
+                const isSelected = bloodGroup === bg;
+                return (
+                  <Pressable
+                    key={bg}
+                    style={[styles.modalOption, isSelected && styles.modalOptionSelected]}
+                    onPress={() => {
+                      setBloodGroup(bg);
+                      setShowBloodGroupModal(false);
+                    }}
+                  >
+                    <Text style={[styles.modalOptionText, isSelected && styles.modalOptionTextSelected]}>
+                      {bg}
+                    </Text>
+                    {isSelected && <Ionicons name="checkmark" size={18} color={Colors.primary} />}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F8FAFC' },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    minHeight: 62,
-  },
-  backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#F8FAFC',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  headerTitleWrap: {
+  safe: {
     flex: 1,
-    marginHorizontal: 10,
+    backgroundColor: '#F4F6F5',
+  },
+  topbar: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E4E8E6',
+  },
+  backrow: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  iconbtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: '#E4E8E6',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: {
-    fontSize: 17,
+  title: {
+    fontSize: 20,
     fontWeight: '700',
-    color: Colors.text,
-    letterSpacing: -0.2,
+    color: '#1A2B2A',
+  },
+  content: {
+    padding: 16,
+    gap: 12,
+    paddingBottom: 40,
   },
 
-  body: { padding: 16, gap: 16, paddingBottom: 40 },
-
+  // ── Avatar Styles (Preserved) ──
   avatarSection: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    gap: 10,
+    paddingVertical: 6,
+    gap: 8,
   },
   avatarTouch: {
     position: 'relative',
@@ -700,7 +729,6 @@ const styles = StyleSheet.create({
   },
   avatarPressed: {
     opacity: 0.8,
-    transform: [{ scale: 0.98 }],
   },
   avatarContainer: {
     width: 88,
@@ -712,11 +740,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
   },
   avatarImg: {
     width: 88,
@@ -762,7 +785,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: Radius.pill,
-    backgroundColor: Colors.primary + '10',
+    backgroundColor: Colors.primary + '12',
   },
   changePhotoText: {
     fontSize: 13,
@@ -770,83 +793,104 @@ const styles = StyleSheet.create({
     color: Colors.primary,
   },
 
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 4,
+  // ── Prototype v2 Form Fields ──
+  fieldBlock: {
+    gap: 4,
   },
-  sectionIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-
-  card: {
-    gap: 14,
-  },
-  fieldHeaderRow: {
-    flexDirection: 'row',
+  labelRow: {
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   fieldLabel: {
-    fontSize: 13,
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#6B756F',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  subFieldLabel: {
+    fontSize: 11.5,
     fontWeight: '600',
-    color: Colors.text,
+    color: '#6B756F',
     marginBottom: 6,
   },
-  lockedBadge: {
+  input: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E4E8E6',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: '#1A2B2A',
+  },
+  inputLocked: {
+    backgroundColor: '#F1F5F9',
+    color: '#64748B',
+  },
+  lockedPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 6,
+    backgroundColor: '#E2E8F0',
+    paddingHorizontal: 7,
     paddingVertical: 2,
-    borderRadius: Radius.sm,
+    borderRadius: 6,
   },
-  lockedText: {
-    fontSize: 11,
-    color: Colors.textMuted,
-    fontWeight: '500',
+  lockedPillText: {
+    fontSize: 10,
+    color: '#475569',
+    fontWeight: '600',
   },
-  readOnlyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+
+  // ── Grid 2 ──
+  grid2: {
+    gap: 12,
+  },
+  selectBox: {
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#F8FAFC',
+    borderColor: '#E4E8E6',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  readOnlyVal: {
-    flex: 1,
+  selectText: {
     fontSize: 14,
-    color: Colors.text,
+    color: '#1A2B2A',
     fontWeight: '500',
   },
 
+  // ── Health Metrics Card ──
+  healthMetricsCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E4E8E6',
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 4,
+  },
+  metricsTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1A2B2A',
+    marginBottom: 10,
+  },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   chip: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 11,
     paddingVertical: 6,
-    borderRadius: Radius.pill,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#E4E8E6',
     backgroundColor: '#F8FAFC',
   },
   chipSelected: {
@@ -854,64 +898,72 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
   },
   chipText: {
-    fontSize: 13,
-    color: Colors.text,
-    fontWeight: '500',
+    fontSize: 12.5,
+    color: '#1A2B2A',
+    fontWeight: '600',
   },
   chipTextSelected: {
-    color: '#fff',
+    color: '#FFFFFF',
+  },
+
+  // ── Save Button matching Prototype v2 .btn ──
+  btn: {
+    backgroundColor: '#0F766E',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  btnDisabled: {
+    opacity: 0.65,
+  },
+  btnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
     fontWeight: '700',
   },
 
-  rowFields: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-
-  saveBtn: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 15,
-    borderRadius: 16,
-    alignItems: 'center',
+  // ── Modal Styles ──
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
-    marginTop: 6,
-    shadowColor: Colors.primary,
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-  },
-  saveBtnContent: {
-    flexDirection: 'row',
     alignItems: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 320,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 18,
     gap: 8,
   },
-  saveBtnText: {
-    color: '#fff',
+  modalTitle: {
     fontSize: 16,
     fontWeight: '700',
-    letterSpacing: -0.2,
+    color: '#1A2B2A',
+    marginBottom: 8,
   },
-
-  secureBanner: {
+  modalOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#ECFDF5',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-    marginTop: 2,
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 10,
   },
-  secureIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#DCFCE7',
-    alignItems: 'center',
-    justifyContent: 'center',
+  modalOptionSelected: {
+    backgroundColor: '#F0FDF4',
   },
-  secureTitle: { fontSize: 13, fontWeight: '700', color: '#166534' },
-  secureSub: { marginTop: 2, fontSize: 11, color: '#15803D', lineHeight: 15 },
+  modalOptionText: {
+    fontSize: 14,
+    color: '#1A2B2A',
+    fontWeight: '500',
+  },
+  modalOptionTextSelected: {
+    color: Colors.primary,
+    fontWeight: '700',
+  },
 });

@@ -678,9 +678,9 @@ export const reportsApi = {
       const rawList = data?.data?.reports || data?.reports || data;
       const list = Array.isArray(rawList) ? rawList : [];
 
+      const stored = await loadStoredReports(phone);
       const blacklist = new Set(await loadDeletedBlacklist(phone));
-
-      return list.filter((r: any) => !blacklist.has(String(r.id ?? r.report_id))).map((r: any): ReportListItem => {
+      const backendItems = list.filter((r: any) => !blacklist.has(String(r.id ?? r.report_id))).map((r: any): ReportListItem => {
         const idStr = String(r.id ?? r.report_id);
         return {
           id: idStr,
@@ -701,13 +701,17 @@ export const reportsApi = {
           fileUri: r.file_uri ?? r.fileUri ?? null,
           analyzedAt: r.analyzed_at ?? r.analyzedAt ?? new Date().toISOString(),
         };
-      }).sort((a, b) => new Date(b.analyzedAt).getTime() - new Date(a.analyzedAt).getTime());
+      });
+
+      // Merge locally stored reports (so recent uploads never vanish)
+      const backendIds = new Set(backendItems.map(b => b.id));
+      const localOnly = stored.filter(s => !backendIds.has(s.id) && !blacklist.has(s.id));
+      return [...backendItems, ...localOnly].sort((a, b) => new Date(b.analyzedAt).getTime() - new Date(a.analyzedAt).getTime());
     } catch (e) {
-      console.log('[reportsApi.list] 🔴 REAL call failed:', e);
-      // Surface as an empty list rather than throwing — useReports() already
-      // renders a friendly EmptyState, and a thrown error here would leave
-      // the screen stuck on its loading spinner forever (catch in the hook
-      // logs but never sets state). Empty + logged error is the safer default.
+      console.log('[reportsApi.list] 🔴 REAL call failed, falling back to local storage:', e);
+      // Fallback to local storage so user data remains accessible
+      const stored = await loadStoredReports(phone);
+      if (stored.length > 0) return stored;
       return [];
     }
 
@@ -800,7 +804,41 @@ export const reportsApi = {
 
     // 🔴 REAL
     const apiResult = await apiFileCall(ENDPOINTS.analyzeReport, formData, signal);
-    return apiToAnalyzeResult(apiResult);
+    const parsed = apiToAnalyzeResult(apiResult);
+    try {
+      const stored = await loadStoredReports(phone);
+      const newId = String(parsed.reportId);
+      const existingIdx = stored.findIndex(s => s.id === newId);
+      const newItem: ReportListItem = {
+        id: newId,
+        title: (fileName?.replace(/\.[^.]+$/, '') ?? parsed.reportTypeFull) || 'Report',
+        reportType: parsed.reportType,
+        reportTypeFull: parsed.reportTypeFull,
+        category: parsed.category,
+        date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+        labName: parsed.hospitalName || 'Lab',
+        fileType: 'PDF',
+        healthScore: parsed.healthScore,
+        healthLabel: parsed.healthLabel,
+        totalValues: parsed.totalValues,
+        abnormalCount: parsed.abnormalCount,
+        borderlineCount: 0,
+        status: parsed.abnormalCount > 2 ? 'attention' : 'good',
+        thumbnailUri: null,
+        fileUri: fileMeta?.fileUri ?? null,
+        analyzedAt: new Date().toISOString(),
+      };
+      if (existingIdx >= 0) {
+        stored[existingIdx] = newItem;
+      } else {
+        stored.unshift(newItem);
+      }
+      await saveReports(stored, phone);
+      await saveDetail(newId, parsed, phone);
+    } catch (cacheErr) {
+      console.warn('[reportsApi.analyze] Local cache save failed', cacheErr);
+    }
+    return parsed;
   },
 
   /**

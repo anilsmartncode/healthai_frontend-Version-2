@@ -3,6 +3,8 @@ import { storage } from '@/utils/storage';
 import { fetchWithTimeout } from '@/utils/fetchWithTimeout';
 import { decryptResponse } from '@/utils/encryption';
 import { DeviceEventEmitter } from 'react-native';
+import { currentAppLangCode } from '@/context/Languagecontext';
+import { currentAppCountryCode } from '@/context/CountryContext';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await storage.get<string>('token');
@@ -12,6 +14,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const startMs = Date.now();
   
   const headers: Record<string, string> = {
+    'Accept-Language': currentAppLangCode,
+    'X-User-Country': currentAppCountryCode,
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...((init?.headers ?? {}) as Record<string, string>),
   };

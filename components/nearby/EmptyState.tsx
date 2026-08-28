@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, ActivityIndicator, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Radius } from "@/constants/Colors";
+import { useLang } from "@/context/Languagecontext";
 
 interface EmptyStateProps {
   type: "loading" | "error" | "search" | "empty";
@@ -20,11 +21,13 @@ export default function EmptyState({
   onRetry,
   onClearSearch,
 }: EmptyStateProps) {
+  const { t, textAlign } = useLang();
+
   if (type === "loading") {
     return (
       <View style={styles.loaderCenter}>
         <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loaderText}>Finding nearby healthcare facilities...</Text>
+        <Text style={[styles.loaderText, { textAlign }]}>{t("finding_nearby")}</Text>
       </View>
     );
   }
@@ -33,10 +36,10 @@ export default function EmptyState({
     return (
       <View style={styles.emptyCenter}>
         <Ionicons name="cloud-offline-outline" size={48} color="#CBD5E1" />
-        <Text style={styles.emptyText}>{message}</Text>
+        <Text style={[styles.emptyText, { textAlign }]}>{message}</Text>
         {onRetry && (
           <Pressable onPress={onRetry} style={styles.retryBtn}>
-            <Text style={styles.retryBtnText}>Retry Search</Text>
+            <Text style={styles.retryBtnText}>{t("retry_search")}</Text>
           </Pressable>
         )}
       </View>
@@ -47,12 +50,12 @@ export default function EmptyState({
     return (
       <View style={styles.emptyCenter}>
         <Ionicons name="search-outline" size={48} color="#CBD5E1" />
-        <Text style={styles.emptyText}>
+        <Text style={[styles.emptyText, { textAlign }]}>
           No matching results found for &quot;{searchQuery}&quot;.
         </Text>
         {onClearSearch && (
           <Pressable onPress={onClearSearch} style={styles.retryBtn}>
-            <Text style={styles.retryBtnText}>Clear Search</Text>
+            <Text style={styles.retryBtnText}>{t("clear_search")}</Text>
           </Pressable>
         )}
       </View>
@@ -62,12 +65,12 @@ export default function EmptyState({
   return (
     <View style={styles.emptyCenter}>
       <Ionicons name="location-outline" size={48} color="#CBD5E1" />
-      <Text style={styles.emptyText}>
-        No healthcare facilities found within {radius / 1000} km of your location.
+      <Text style={[styles.emptyText, { textAlign }]}>
+        {t("no_facilities_found")} {radius / 1000} {t("distance_km")}.
       </Text>
       {onRetry && (
         <Pressable onPress={onRetry} style={styles.retryBtn}>
-          <Text style={styles.retryBtnText}>Retry Location</Text>
+          <Text style={styles.retryBtnText}>{t("retry_search")}</Text>
         </Pressable>
       )}
     </View>

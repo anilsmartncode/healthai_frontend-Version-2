@@ -10,6 +10,7 @@ import { Pressable, Text, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors, Radius } from '@/constants/Colors';
+import { useLang } from '@/context/Languagecontext';
 
 interface Props {
   prefill: string;
@@ -19,7 +20,9 @@ interface Props {
   reportId?: string;
 }
 
-export function AskAIButton({ prefill, context, label = 'Ask AI', variant = 'button', reportId }: Props) {
+export function AskAIButton({ prefill, context, label, variant = 'button', reportId }: Props) {
+  const { t } = useLang();
+  const displayLabel = label || t('ask_ai');
   const handlePress = () => {
     router.push({
       pathname: '/ai-chat',
@@ -34,7 +37,7 @@ export function AskAIButton({ prefill, context, label = 'Ask AI', variant = 'but
         style={({ pressed }) => [styles.chip, pressed && { opacity: 0.75 }]}
       >
         <Ionicons name="sparkles" size={12} color={Colors.primary} />
-        <Text style={styles.chipText}>{label}</Text>
+        <Text style={styles.chipText}>{displayLabel}</Text>
       </Pressable>
     );
   }
@@ -62,7 +65,7 @@ export function AskAIButton({ prefill, context, label = 'Ask AI', variant = 'but
             <Ionicons name="sparkles" size={18} color="#fff" />
           </View>
           <View>
-            <Text style={styles.bannerTitle}>{label}</Text>
+            <Text style={styles.bannerTitle}>{displayLabel}</Text>
             <Text style={styles.bannerSub} numberOfLines={1}>{prefill}</Text>
           </View>
         </View>
@@ -78,7 +81,7 @@ export function AskAIButton({ prefill, context, label = 'Ask AI', variant = 'but
       style={({ pressed }) => [styles.button, pressed && { opacity: 0.8 }]}
     >
       <Ionicons name="sparkles" size={16} color={Colors.primary} />
-      <Text style={styles.buttonText}>{label}</Text>
+      <Text style={styles.buttonText}>{displayLabel}</Text>
     </Pressable>
   );
 }

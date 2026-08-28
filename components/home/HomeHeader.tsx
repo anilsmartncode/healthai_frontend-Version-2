@@ -11,11 +11,11 @@ import { useNotifications } from "@/hooks/useNotifications";
 
 interface Props { }
 
-function getGreeting(): string {
+function getGreeting(t: (k: any) => string): string {
   const hour = new Date().getHours();
-  if (hour < 12) return "Good Morning";
-  if (hour < 17) return "Good Afternoon";
-  return "Good Evening";
+  if (hour < 12) return t("good_morning");
+  if (hour < 17) return t("good_afternoon");
+  return t("good_evening");
 }
 
 function formatName(raw: string): string {
@@ -29,8 +29,8 @@ function formatName(raw: string): string {
 export function HomeHeader({ }: Props) {
   const { phone } = useAuth();
   const [userName, setUserName] = useState(formatName(phone ?? "User"));
-  const greetingText = getGreeting();
-  const { t } = useLang();
+  const { t, isRTL, rowDirection, textAlign } = useLang();
+  const greetingText = getGreeting(t);
   const { unreadCount } = useNotifications();
 
   useEffect(() => {
@@ -51,24 +51,24 @@ export function HomeHeader({ }: Props) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { flexDirection: rowDirection }]}>
       {/* ── Greeting + Name (left) ── */}
-      <View style={styles.textBlock}>
-        <Text style={styles.greeting}>{greetingText},</Text>
-        <Text style={styles.name} numberOfLines={1}>
+      <View style={[styles.textBlock, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+        <Text style={[styles.greeting, { textAlign }]}>{greetingText}</Text>
+        <Text style={[styles.name, { textAlign }]} numberOfLines={1}>
           {userName}
         </Text>
       </View>
 
       {/* ── Action Buttons (right) ── */}
-      <View style={styles.actionsRow}>
+      <View style={[styles.actionsRow, { flexDirection: rowDirection }]}>
         <Pressable
           onPress={handleShare}
           hitSlop={8}
           style={styles.inviteBtn}
         >
           <Ionicons name="gift" size={16} color="#4F46E5" />
-          <Text style={styles.inviteBtnText}>Refer Friends</Text>
+          <Text style={styles.inviteBtnText}>{t("refer_friends")}</Text>
         </Pressable>
 
         <Pressable

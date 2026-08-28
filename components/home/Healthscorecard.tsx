@@ -10,6 +10,7 @@ import { Colors, Radius } from "@/constants/Colors";
 import { Card } from "@/components/ui/Card";
 import { Svg, Circle } from "react-native-svg";
 import { router } from "expo-router";
+import { useLang } from "@/context/Languagecontext";
 
 interface Props {
   score?: number;
@@ -44,6 +45,7 @@ function formatDate(dateString?: string): string {
 // ── Empty state (no reports uploaded yet) ── Image 1
 function EmptyHealthScore({ onUpload, summaryTitle }: { onUpload: () => void, summaryTitle?: string }) {
   const { width } = useWindowDimensions();
+  const { t, rowDirection, textAlign } = useLang();
   const SIZE = Math.min(width * 0.38, 152);
   const STROKE = SIZE * 0.07;
   const RADIUS = (SIZE - STROKE) / 2;
@@ -52,7 +54,7 @@ function EmptyHealthScore({ onUpload, summaryTitle }: { onUpload: () => void, su
   return (
     <Card style={styles.card}>
       {/* ── Top row ── */}
-      <View style={styles.topRow}>
+      <View style={[styles.topRow, { flexDirection: rowDirection }]}>
         {/* Empty gauge — no fill, dash in center */}
         <View style={{ width: SIZE, height: SIZE, alignItems: "center", justifyContent: "center" }}>
           <Svg width={SIZE} height={SIZE}>
@@ -76,7 +78,7 @@ function EmptyHealthScore({ onUpload, summaryTitle }: { onUpload: () => void, su
             <View style={styles.gaugeCenterInner}>
               <Text style={[styles.scoreNum, { fontSize: SIZE * 0.18, color: "#9CA3AF" }]}>—</Text>
               <Text style={[styles.scoreLabel, { color: "#9CA3AF", fontSize: SIZE * 0.09 }]}>
-                Health Score
+                {t("health_score_title")}
               </Text>
             </View>
           </View>
@@ -84,11 +86,11 @@ function EmptyHealthScore({ onUpload, summaryTitle }: { onUpload: () => void, su
 
         {/* Right col */}
         <View style={styles.rightCol}>
-          <View style={styles.titleRow}>
-            <Text style={styles.overallTitle}>{summaryTitle || 'Overall Summary'}</Text>
+          <View style={[styles.titleRow, { flexDirection: rowDirection }]}>
+            <Text style={[styles.overallTitle, { textAlign }]}>{summaryTitle || t("overall_summary")}</Text>
             <Ionicons name="sparkles" size={14} color="#60A5FA" />
           </View>
-          <Text style={styles.overallSub}>Upload your first report to get a personalized health summary.</Text>
+          <Text style={[styles.overallSub, { textAlign }]}>{t("home_empty_sub")}</Text>
         </View>
       </View>
     </Card>
@@ -109,6 +111,7 @@ function FilledHealthScore({
   onAttentionPress,
 }: Omit<Props, "hasReports">) {
   const { width } = useWindowDimensions();
+  const { t, rowDirection, textAlign } = useLang();
   const SIZE = Math.min(width * 0.38, 152);
   const STROKE = SIZE * 0.07;
   const RADIUS = (SIZE - STROKE) / 2;
@@ -118,10 +121,12 @@ function FilledHealthScore({
   const scoreColor =
     score >= 80 ? "#16a34a" : score >= 60 ? Colors.warning : Colors.danger;
 
+  const displayLabel = label === 'Good' ? t("good") : label === 'Fair' ? t("fair") : label === 'Poor' ? t("poor") : label;
+
   return (
     <Card style={styles.card}>
       {/* ── Top row ── */}
-      <View style={styles.topRow}>
+      <View style={[styles.topRow, { flexDirection: rowDirection }]}>
         {/* Gauge */}
         <View style={{ width: SIZE, height: SIZE, alignItems: "center", justifyContent: "center" }}>
           <Svg width={SIZE} height={SIZE}>
@@ -145,7 +150,7 @@ function FilledHealthScore({
               </View>
               <Text style={[styles.scoreNum, { fontSize: SIZE * 0.26 }]}>{score}</Text>
               <Text style={[styles.scoreLabel, { color: scoreColor, fontSize: SIZE * 0.095 }]}>
-                {label}
+                {displayLabel}
               </Text>
               <Text style={[styles.scoreOf, { fontSize: SIZE * 0.08 }]}>/100</Text>
             </View>
@@ -154,40 +159,40 @@ function FilledHealthScore({
 
         {/* Right col */}
         <View style={styles.rightCol}>
-          <View style={styles.titleRow}>
-            <Text style={styles.overallTitle}>{summaryTitle || 'Overall Summary'}</Text>
+          <View style={[styles.titleRow, { flexDirection: rowDirection }]}>
+            <Text style={[styles.overallTitle, { textAlign }]}>{summaryTitle || t("overall_summary")}</Text>
             <Ionicons name="sparkles" size={14} color="#60A5FA" />
           </View>
 
           <View style={styles.bulletList}>
             {attentionCount > 0 && (
-              <View style={styles.bulletRow}>
+              <View style={[styles.bulletRow, { flexDirection: rowDirection }]}>
                 <View style={[styles.bulletDot, { backgroundColor: "#F97316" }]} />
-                <Text style={styles.bulletText}>{attentionCount} value{attentionCount !== 1 ? 's' : ''} need attention</Text>
+                <Text style={[styles.bulletText, { textAlign }]}>{`${attentionCount} ${t("health_score_desc")}`}</Text>
               </View>
             )}
             {reportsAnalyzed > 0 && attentionCount === 0 && (
-              <View style={styles.bulletRow}>
+              <View style={[styles.bulletRow, { flexDirection: rowDirection }]}>
                 <View style={[styles.bulletDot, { backgroundColor: "#16a34a" }]} />
-                <Text style={styles.bulletText}>All values are normal</Text>
+                <Text style={[styles.bulletText, { textAlign }]}>{t("all_values_normal")}</Text>
               </View>
             )}
             {attentionCount > 0 && (
-              <View style={styles.bulletRow}>
+              <View style={[styles.bulletRow, { flexDirection: rowDirection }]}>
                 <View style={[styles.bulletDot, { backgroundColor: "#16a34a" }]} />
-                <Text style={styles.bulletText}>All other values are normal</Text>
+                <Text style={[styles.bulletText, { textAlign }]}>{t("all_other_normal")}</Text>
               </View>
             )}
             {reportsAnalyzed > 0 && (
-              <View style={styles.bulletRow}>
+              <View style={[styles.bulletRow, { flexDirection: rowDirection }]}>
                 <View style={[styles.bulletDot, { backgroundColor: "#2563EB" }]} />
-                <Text style={styles.bulletText}>Based on {reportsAnalyzed} report{reportsAnalyzed !== 1 ? 's' : ''}</Text>
+                <Text style={[styles.bulletText, { textAlign }]}>{`${t("based_on_reports")} (${reportsAnalyzed})`}</Text>
               </View>
             )}
           </View>
 
           <Pressable onPress={onAttentionPress} style={styles.viewDetailsBtn}>
-            <Text style={styles.viewDetailsText}>View Details</Text>
+            <Text style={styles.viewDetailsText}>{t("view_details")}</Text>
           </Pressable>
         </View>
       </View>

@@ -16,6 +16,7 @@ import { Colors, Radius } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import { CountryProvider, currentAppCountryCode } from "@/context/CountryContext";
 import { LanguageProvider } from "@/context/Languagecontext";
+import { AccessibilityProvider } from "@/context/AccessibilityContext";
 import { useAuth } from "@/context/AuthContext";
 import { SecurityWrapper } from "@/components/SecurityWrapper";
 
@@ -164,7 +165,7 @@ export default function RootLayout() {
 
   let isWebLocked = false;
   if (Platform.OS === 'web' && isMounted) {
-    const allowedWebPaths = ['/privacy', '/terms', '/cookies', '/contact', '/support', '/accountanddata'];
+    const allowedWebPaths = ['/privacy', '/terms', '/cookies', '/contact', '/support', '/accountanddata', '/about', '/app-lock', '/linked-accounts', '/privacy-security', '/consent-center', '/data-export', '/health-preferences', '/accessibility'];
     const isAllowed = pathname && allowedWebPaths.some(p =>
       pathname === p || pathname === `${p}/` || pathname?.startsWith(`${p}?`)
     );
@@ -215,7 +216,8 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <CountryProvider>
           <LanguageProvider>
-          <UsageProvider>
+            <AccessibilityProvider>
+              <UsageProvider>
             <AuthProvider>
               <ShareIntentListener />
               <SecurityWrapper>
@@ -381,6 +383,38 @@ export default function RootLayout() {
                       name="help-support"
                       options={{ headerShown: false }}
                     />
+                    <Stack.Screen
+                      name="about"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="app-lock"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="linked-accounts"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="privacy-security"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="consent-center"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="data-export"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="health-preferences"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="accessibility"
+                      options={{ headerShown: false }}
+                    />
                   </Stack>
                   <PaywallModal />
                   {isWebLocked && (
@@ -428,6 +462,7 @@ export default function RootLayout() {
               </SecurityWrapper>
             </AuthProvider>
           </UsageProvider>
+          </AccessibilityProvider>
         </LanguageProvider>
       </CountryProvider>
     </SafeAreaProvider>

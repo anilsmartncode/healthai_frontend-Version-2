@@ -18,7 +18,7 @@ import { useLang } from "@/context/Languagecontext";
 export default function PlaceDetailsScreen() {
   const { id, category } = useLocalSearchParams<{ id: string; category: string }>();
   const router = useRouter();
-  const { t } = useLang();
+  const { t, rowDirection, textAlign, isRTL } = useLang();
 
   const place = getCachedPlace(id || "");
 
@@ -62,9 +62,9 @@ export default function PlaceDetailsScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       {/* ── Header ── */}
-      <View style={styles.header}>
+      <View style={[styles.header, { flexDirection: rowDirection }]}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={Colors.text} />
+          <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={24} color={Colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>
           {isHospital ? t("hospitals") : t("pharmacies")}
@@ -103,7 +103,7 @@ export default function PlaceDetailsScreen() {
                   { color: place.openNow ? "#16A34A" : "#6B7280" },
                 ]}
               >
-                {place.openNow ? "Open 24/7" : "Closed"}
+                {place.openNow ? t("open_24_hours") : t("closed_currently")}
               </Text>
             </View>
           </View>
@@ -121,46 +121,46 @@ export default function PlaceDetailsScreen() {
             </Text>
           </View>
 
-          <Text style={styles.sectionTitle}>About</Text>
-          <Text style={styles.descriptionText}>
+          <Text style={[styles.sectionTitle, { textAlign }]}>{t("about")}</Text>
+          <Text style={[styles.descriptionText, { textAlign }]}>
             {place.name} is a premier {isHospital ? "medical facility" : "pharmacy"}{" "}
             providing comprehensive healthcare services to the local community.
           </Text>
 
           {/* ── Contact Details ── */}
           <View style={styles.contactCard}>
-            <View style={styles.contactRow}>
+            <View style={[styles.contactRow, { flexDirection: rowDirection }]}>
               <View style={styles.iconCircle}>
                 <Ionicons name="location" size={20} color={Colors.primary} />
               </View>
               <View style={styles.contactTextWrap}>
-                <Text style={styles.contactLabel}>Address</Text>
-                <Text style={styles.contactValue}>{place.address}</Text>
+                <Text style={[styles.contactLabel, { textAlign }]}>{t("address")}</Text>
+                <Text style={[styles.contactValue, { textAlign }]}>{place.address}</Text>
               </View>
             </View>
 
             <View style={styles.contactDivider} />
 
-            <View style={styles.contactRow}>
+            <View style={[styles.contactRow, { flexDirection: rowDirection }]}>
               <View style={styles.iconCircle}>
                 <Ionicons name="call" size={20} color={Colors.primary} />
               </View>
               <View style={styles.contactTextWrap}>
-                <Text style={styles.contactLabel}>Phone</Text>
-                <Text style={styles.contactValue}>{place.phone}</Text>
+                <Text style={[styles.contactLabel, { textAlign }]}>{t("phone_label")}</Text>
+                <Text style={[styles.contactValue, { textAlign }]}>{place.phone}</Text>
               </View>
             </View>
 
             <View style={styles.contactDivider} />
 
-            <View style={styles.contactRow}>
+            <View style={[styles.contactRow, { flexDirection: rowDirection }]}>
               <View style={styles.iconCircle}>
                 <Ionicons name="time" size={20} color={Colors.primary} />
               </View>
               <View style={styles.contactTextWrap}>
-                <Text style={styles.contactLabel}>Hours</Text>
-                <Text style={styles.contactValue}>
-                  {place.openNow ? "Open 24 hours" : "Closed currently"}
+                <Text style={[styles.contactLabel, { textAlign }]}>{t("hours_label")}</Text>
+                <Text style={[styles.contactValue, { textAlign }]}>
+                  {place.openNow ? t("open_24_hours") : t("closed_currently")}
                 </Text>
               </View>
             </View>
@@ -169,13 +169,13 @@ export default function PlaceDetailsScreen() {
       </ScrollView>
 
       {/* ── Bottom Action Buttons ── */}
-      <View style={styles.bottomActions}>
+      <View style={[styles.bottomActions, { flexDirection: rowDirection }]}>
         <Pressable
           onPress={handleCall}
           style={[styles.actionBtn, styles.actionBtnOutline]}
         >
           <Ionicons name="call" size={20} color={Colors.primary} />
-          <Text style={styles.actionOutlineText}>Call Now</Text>
+          <Text style={styles.actionOutlineText}>{t("call_now")}</Text>
         </Pressable>
 
         <Pressable
@@ -183,7 +183,7 @@ export default function PlaceDetailsScreen() {
           style={[styles.actionBtn, styles.actionBtnSolid]}
         >
           <Ionicons name="navigate" size={20} color="#FFFFFF" />
-          <Text style={styles.actionSolidText}>Directions</Text>
+          <Text style={styles.actionSolidText}>{t("get_directions")}</Text>
         </Pressable>
       </View>
     </SafeAreaView>

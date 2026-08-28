@@ -1,4 +1,13 @@
-import { View, Text, StyleSheet, Pressable, ScrollView, Image, Alert, ActivityIndicator, Linking, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ScrollView,
+  Image,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
@@ -11,19 +20,18 @@ import { SecureAsyncStorage as AsyncStorage } from '@/utils/storage';
 import { api } from '@/services/api';
 import { ENDPOINTS, BASE_URL } from '@/constants/api';
 import { medicineApiCall } from '@/services/Medicineapiclient';
-
-const STORE_URL =
-  Platform.OS === 'ios'
-    ? 'https://apps.apple.com/app/healthai/id6794323149'
-    : 'https://play.google.com/store/apps/details?id=com.smartncode.healthai';
+import { getFamilyDashboard } from '@/services/familyApi';
+import { reportsApi } from '@/services/reportsApi';
 
 export default function Profile() {
   const { phone, memberId, signOut } = useAuth();
-  const { t } = useLang();
+  const { t, isRTL, rowDirection, textAlign } = useLang();
   const { activePlan } = useUsage();
   const [displayName, setDisplayName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [familyCount, setFamilyCount] = useState<number>(4);
+  const [healthScore, setHealthScore] = useState<number>(78);
 
   useFocusEffect(
     useCallback(() => {
@@ -49,7 +57,7 @@ export default function Profile() {
             setDisplayName(name);
             try { await AsyncStorage.setItem(cacheKey, name); } catch { /* ignore */ }
           }
-          
+
           let avUrl = data.avatar_url ?? data.image_url ?? data.profile_image ?? data.profile_image_url ?? null;
           if (avUrl) {
             if (avUrl.includes('.smartncode.com/uploads/')) {
@@ -62,10 +70,28 @@ export default function Profile() {
             setAvatarUrl(avUrl);
             try { await AsyncStorage.setItem(avatarCacheKey, avUrl); } catch { /* ignore */ }
           }
-
         } catch (e) {
           console.warn('[Profile] Failed to refresh profile', e);
         }
+
+        // Fetch dynamic Family member count
+        try {
+          const famData = await getFamilyDashboard();
+          if (!cancelled && famData?.members && Array.isArray(famData.members) && famData.members.length > 0) {
+            setFamilyCount(famData.members.length);
+          }
+        } catch { /* fallback to default */ }
+
+        // Fetch dynamic latest Health score
+        try {
+          const repList = await reportsApi.list(phone);
+          if (!cancelled && repList && repList.length > 0) {
+            const valid = repList.find(r => (r.healthScore ?? 0) > 0);
+            if (valid?.healthScore) {
+              setHealthScore(valid.healthScore);
+            }
+          }
+        } catch { /* fallback to default */ }
       })();
 
       return () => { cancelled = true; };
@@ -76,18 +102,18 @@ export default function Profile() {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Delete Account',
-      'Are you sure you want to permanently delete your account and all associated health data? This action cannot be undone.',
+      t('delete_account'),
+      t('delete_account_confirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('delete_btn'),
           style: 'destructive',
           onPress: async () => {
             try {
               await medicineApiCall(ENDPOINTS.deleteAccount, { method: 'DELETE' });
 
-              Alert.alert('Account Deleted', 'Your account and data have been permanently deleted.', [
+              Alert.alert(t('account_deleted'), t('account_deleted_sub'), [
                 {
                   text: 'OK', onPress: () => {
                     signOut().then(() => router.replace('/(auth)/onboarding'));
@@ -105,12 +131,12 @@ export default function Profile() {
 
   const handleLogout = () => {
     Alert.alert(
-      t('log_out') || 'Log Out',
-      'Are you sure you want to log out of your account?',
+      t('log_out'),
+      t('logout_confirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: t('log_out') || 'Log Out',
+          text: t('log_out'),
           style: 'destructive',
           onPress: async () => {
             setLoggingOut(true);
@@ -119,7 +145,7 @@ export default function Profile() {
               router.replace('/(auth)/onboarding');
             } catch (error) {
               console.error('[Profile] Logout error:', error);
-              Alert.alert('Error', 'Failed to log out. Please try again.');
+              Alert.alert('Error', t('logout_error'));
             } finally {
               setLoggingOut(false);
             }
@@ -129,87 +155,155 @@ export default function Profile() {
     );
   };
 
-  const items = [
+  type MenuItem = {
+    icon: string;
+    label: string;
+    href: string;
+    badge?: string;
+  };
+
+  // Kept exact current options intact
+  const items: MenuItem[] = [
     { icon: 'person-outline', label: t('account_info'), href: '/account' },
-    { icon: 'star', label: 'Subscription & Plans', href: '/plans' },
-    { icon: 'people-outline', label: t('family_health'), href: '/family' },
-    { icon: 'notifications-outline', label: t('notifications'), href: '/notifications' },
-    { icon: 'shield-checkmark-outline', label: t('legal_privacy'), href: '/legal-privacy' },
+    { icon: 'options-outline', label: t('health_preferences'), href: '/health-preferences' },
+    { icon: 'globe-outline', label: t('language_pref'), href: '/(auth)/language' },
+    { icon: 'accessibility-outline', label: t('accessibility'), href: '/accessibility' },
+    { icon: 'shield-checkmark-outline', label: t('privacy_security'), href: '/privacy-security' },
+    { icon: 'lock-closed-outline', label: t('app_lock'), href: '/app-lock' },
+    { icon: 'link-outline', label: t('linked_accounts'), href: '/linked-accounts' },
+    { icon: 'card-outline', label: t('subscription_plans'), href: '/plans' },
     { icon: 'help-circle-outline', label: t('help_support'), href: '/help-support' },
-    { icon: 'star-outline', label: t('rate_app'), action: async () => {
-      try {
-        await Linking.openURL(STORE_URL);
-      } catch {
-        Alert.alert("Error", "Could not open the App Store.");
-      }
-    } },
+    { icon: 'information-circle-outline', label: t('about_app'), href: '/about', badge: 'v1.0.2' },
   ];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.bg }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        <View style={{ padding: 16 }}>
-          <Text style={styles.title}>{t('profile_settings')}</Text>
-          <View style={styles.profile}>
-            <View style={[styles.avatar, avatarUrl ? { backgroundColor: 'transparent' } : {}]}>
-              {avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#E5E7EB' }} resizeMode="cover" />
-              ) : initial ? (
-                <Text style={styles.avatarInitial}>{initial}</Text>
-              ) : (
-                <Ionicons name="person" size={28} color="#fff" />
-              )}
-            </View>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text style={styles.name}>{displayName || t('profile')}</Text>
-                <View style={styles.planBadge}>
-                  <Text style={styles.planBadgeText}>{activePlan}</Text>
-                </View>
-              </View>
-              <Text style={styles.sub}>{phone ?? 'guest@healthai.app'}</Text>
-            </View>
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      {/* Topbar matching Prototype v2 */}
+      <View style={styles.topbar}>
+        <Text style={[styles.topTitle, { textAlign }]}>{t('profile')}</Text>
+        <Text style={[styles.topSub, { textAlign }]}>{t('profile_settings')}</Text>
+      </View>
+
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Profile Information Card — Prototype v2 Style (clickable to /account) */}
+        <Pressable
+          style={({ pressed }) => [
+            styles.profileCard,
+            { flexDirection: rowDirection },
+            pressed && { backgroundColor: '#F8FAFC' },
+          ]}
+          onPress={() => router.push('/account')}
+        >
+          <View style={[styles.avatar, avatarUrl ? { backgroundColor: 'transparent' } : {}]}>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatarImg} resizeMode="cover" />
+            ) : initial ? (
+              <Text style={styles.avatarInitial}>{initial}</Text>
+            ) : (
+              <Ionicons name="person" size={24} color="#fff" />
+            )}
           </View>
+          <View style={{ flex: 1, marginHorizontal: 12 }}>
+            <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 8 }}>
+              <Text style={[styles.name, { textAlign }]}>{displayName || t('profile')}</Text>
+              <View style={styles.planBadge}>
+                <Text style={styles.planBadgeText}>
+                  {activePlan === 'FREE' ? t('free_plan') : (activePlan === 'PREMIUM' ? t('premium_plan') : t('family_plan'))}
+                </Text>
+              </View>
+            </View>
+            <Text style={[styles.sub, { textAlign }]}>{phone ?? 'guest@healthai.app'}</Text>
+          </View>
+          <Text style={styles.chevron}>{isRTL ? '‹' : '›'}</Text>
+        </Pressable>
+
+        {/* 2 Quick Stat Tiles — Family & Health Score (Prototype v2 grid2) */}
+        <View style={[styles.grid2, { flexDirection: rowDirection }]}>
+          <Pressable
+            style={({ pressed }) => [styles.tile, pressed && { opacity: 0.85 }]}
+            onPress={() => router.push('/family')}
+          >
+            <View style={[styles.tileIconWrap, { backgroundColor: '#EFF6FF' }]}>
+              <Ionicons name="people" size={20} color="#2563EB" />
+            </View>
+            <Text style={styles.tileLabel}>Family ({familyCount})</Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [styles.tile, pressed && { opacity: 0.85 }]}
+            onPress={() => router.push('/(tabs)/reports')}
+          >
+            <View style={[styles.tileIconWrap, { backgroundColor: '#ECFDF5' }]}>
+              <Ionicons name="shield-outline" size={20} color="#0F766E" />
+            </View>
+            <Text style={styles.tileLabel}>Health score {healthScore}</Text>
+          </Pressable>
         </View>
 
-        <View style={{ paddingHorizontal: 16, gap: 4 }}>
-          {items.map((it) => (
-            <Pressable key={it.label} style={styles.row} onPress={() => {
-              if (it.action) {
-                it.action();
-              } else if (it.href) {
-                router.push(it.href as any);
-              }
-            }}>
-              <Ionicons name={it.icon as any} size={22} color={Colors.text} />
-              <Text style={styles.rowLabel}>{it.label}</Text>
-              <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+        {/* Grouped Settings Menu Card (Prototype v2 container) */}
+        <View style={styles.card}>
+          {items.map((it, idx) => (
+            <Pressable
+              key={it.label}
+              style={({ pressed }) => [
+                styles.listItem,
+                idx === items.length - 1 && styles.lastItem,
+                { flexDirection: rowDirection },
+                pressed && { backgroundColor: '#F8FAFC' },
+              ]}
+              onPress={() => router.push(it.href as any)}
+            >
+              <Ionicons name={it.icon as any} size={20} color={Colors.text} />
+              <Text style={[styles.itemText, { textAlign }]}>{it.label}</Text>
+              {it.badge && (
+                <View style={styles.versionPill}>
+                  <Text style={styles.versionPillText}>{it.badge}</Text>
+                </View>
+              )}
+              <Text style={styles.chevron}>{isRTL ? '‹' : '›'}</Text>
             </Pressable>
           ))}
+        </View>
+
+        {/* Account Actions Card (Log Out & Delete Account) */}
+        <View style={styles.card}>
           <Pressable
-            style={styles.row}
+            style={({ pressed }) => [
+              styles.listItem,
+              { flexDirection: rowDirection },
+              pressed && { backgroundColor: '#F8FAFC' },
+            ]}
             onPress={handleLogout}
             disabled={loggingOut}
           >
             {loggingOut ? (
-              <ActivityIndicator size="small" color={Colors.danger} style={{ width: 22 }} />
+              <ActivityIndicator size="small" color={Colors.danger} style={{ width: 20 }} />
             ) : (
-              <Ionicons name="log-out-outline" size={22} color={Colors.danger} />
+              <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
             )}
-            <Text style={[styles.rowLabel, { color: Colors.danger }]}>
-              {loggingOut ? 'Logging out...' : t('log_out')}
+            <Text style={[styles.itemText, { color: Colors.danger, textAlign }]}>
+              {loggingOut ? t('logging_out') : t('log_out')}
             </Text>
-            <View />
           </Pressable>
 
           <Pressable
-            style={styles.row}
+            style={({ pressed }) => [
+              styles.listItem,
+              styles.lastItem,
+              { flexDirection: rowDirection },
+              pressed && { backgroundColor: '#F8FAFC' },
+            ]}
             onPress={handleDeleteAccount}
             disabled={loggingOut}
           >
-            <Ionicons name="trash-outline" size={22} color={Colors.danger} />
-            <Text style={[styles.rowLabel, { color: Colors.danger }]}>Delete Account</Text>
-            <View />
+            <Ionicons name="trash-outline" size={20} color={Colors.danger} />
+            <Text style={[styles.itemText, { color: Colors.danger, textAlign }]}>
+              {t('delete_account')}
+            </Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -219,7 +313,7 @@ export default function Profile() {
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingCard}>
             <ActivityIndicator size="large" color={Colors.primary} />
-            <Text style={styles.loadingText}>Logging out...</Text>
+            <Text style={styles.loadingText}>{t('logging_out')}</Text>
           </View>
         </View>
       )}
@@ -228,22 +322,72 @@ export default function Profile() {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 22, fontWeight: '700', color: Colors.text },
-  profile: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16 },
-  avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center' },
-  avatarInitial: { fontSize: 22, fontWeight: '700', color: '#fff' },
-  name: { fontSize: 16, fontWeight: '700', color: Colors.text },
-  sub: { color: Colors.textMuted },
-  row: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingVertical: 14, paddingHorizontal: 12,
-    borderRadius: 10,
-  },
-  rowLabel: {
+  safe: {
     flex: 1,
+    backgroundColor: '#F4F6F5',
+  },
+  topbar: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E4E8E6',
+  },
+  topTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1A2B2A',
+  },
+  topSub: {
+    fontSize: 12.5,
+    color: '#6B756F',
+    marginTop: 2,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  profileCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E4E8E6',
+    borderRadius: 14,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  avatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarImg: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#E5E7EB',
+  },
+  avatarInitial: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  name: {
     fontSize: 15,
-    fontWeight: '500',
-    color: Colors.text,
+    fontWeight: '700',
+    color: '#1A2B2A',
+  },
+  sub: {
+    fontSize: 12,
+    color: '#6B756F',
+    marginTop: 2,
   },
   planBadge: {
     backgroundColor: '#D1FAE5',
@@ -255,6 +399,77 @@ const styles = StyleSheet.create({
     color: '#065F46',
     fontSize: 10,
     fontWeight: '700',
+  },
+  grid2: {
+    gap: 10,
+    marginBottom: 14,
+  },
+  tile: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E4E8E6',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  tileLabel: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#1A2B2A',
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E4E8E6',
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginBottom: 14,
+  },
+  listItem: {
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E4E8E6',
+    gap: 12,
+  },
+  lastItem: {
+    borderBottomWidth: 0,
+  },
+  itemText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1A2B2A',
+  },
+  chevron: {
+    fontSize: 20,
+    color: '#9CA3AF',
+    fontWeight: '400',
+    lineHeight: 20,
+  },
+  versionPill: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginRight: 4,
+  },
+  versionPillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.textMuted,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,

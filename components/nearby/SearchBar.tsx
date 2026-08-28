@@ -2,6 +2,7 @@ import React from "react";
 import { View, TextInput, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Radius } from "@/constants/Colors";
+import { useLang } from "@/context/Languagecontext";
 
 interface SearchBarProps {
   searchQuery: string;
@@ -10,14 +11,16 @@ interface SearchBarProps {
 }
 
 export default function SearchBar({ searchQuery, setSearchQuery, onClear }: SearchBarProps) {
+  const { t, textAlign, rowDirection } = useLang();
+
   return (
     <View style={styles.searchContainer}>
-      <View style={styles.searchBar}>
+      <View style={[styles.searchBar, { flexDirection: rowDirection }]}>
         <Ionicons name="search" size={18} color={Colors.primary} />
         <TextInput
-          placeholder="Search by name or street..."
+          placeholder={t("search_nearby_placeholder")}
           placeholderTextColor="#94A3B8"
-          style={styles.searchInput}
+          style={[styles.searchInput, { textAlign }]}
           value={searchQuery}
           onChangeText={setSearchQuery}
           returnKeyType="search"

@@ -23,6 +23,7 @@ import { firebaseLoginApi } from "@/services/authapi/apiService";
 import { signInWithGoogle } from "@/utils/googleAuth";
 import { signInWithApple } from "@/utils/appleAuth";
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { getLocalizedAuthError } from "@/utils/errorLocalization";
 // Lazy-load Firebase Auth so the page still opens in Expo Go
 function getAuth() {
   const mod = require('@react-native-firebase/auth');
@@ -180,7 +181,7 @@ function MockAccountPicker({
           {/* Footer */}
           <View style={{ borderTopWidth: 1, borderTopColor: "#F0F0F0", padding: rs(14), alignItems: "center" }}>
             <Text style={{ fontSize: ms(11), color: "#b0bec5", fontWeight: "500" }}>
-              🟢 Mock picker — replace with real {brandName} SDK
+              🟢 Mock picker — replace with real Apple SDK
             </Text>
           </View>
         </View>
@@ -191,7 +192,7 @@ function MockAccountPicker({
 
 // ── Main Component ────────────────────────────────────
 export default function SignUp() {
-  const { t } = useLang();
+  const { t, isRTL, rowDirection, textAlign } = useLang();
   const { signIn } = useAuth();
   const { rs, vs, ms } = useScalers();
 
@@ -225,13 +226,13 @@ export default function SignUp() {
   const validate = (): boolean => {
     const next: typeof errors = {};
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-      next.email = "Enter a valid email address";
+      next.email = t("err_invalid_email");
     if (!password || password.length < 8)
-      next.password = "Password must be at least 8 characters";
+      next.password = t("err_pw_min_length");
     if (!agreedToTerms)
-      next.terms = "You must agree to the Terms & Conditions to continue";
+      next.terms = t("err_terms_required");
     if (!agreedToDPDP)
-      next.dpdp = "You must consent to health data processing to use this app";
+      next.dpdp = t("err_consent_required");
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -257,17 +258,11 @@ export default function SignUp() {
         // 4. Navigate to email verification screen
         router.replace({ pathname: "/(auth)/email-verify", params: { email } });
       } else {
-        setErrors({ email: data?.message || "Signup failed on backend" });
+        setErrors({ email: getLocalizedAuthError(data?.message, "err_network", t) });
       }
       
     } catch (error: any) {
-      if (error.code === 'auth/email-already-in-use') {
-        setErrors({ email: 'That email address is already in use!' });
-      } else if (error.code === 'auth/invalid-email') {
-        setErrors({ email: 'That email address is invalid!' });
-      } else {
-        setErrors({ email: error.message || "Network error. Check connection." });
-      }
+      setErrors({ email: getLocalizedAuthError(error, "err_network", t) });
     } finally {
       setLoading(false);
     }
@@ -288,13 +283,13 @@ export default function SignUp() {
           await signIn(data.token, data.email || result.user?.email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
           router.replace("/(auth)/PersonOnboardingScreen");
         } else {
-          setErrors({ email: data?.message || "Google Sign-Up failed on backend" });
+          setErrors({ email: getLocalizedAuthError(data?.message, "err_network", t) });
         }
       } else if (!result.success && result.error !== 'Sign-in cancelled') {
-        setErrors({ email: result.error });
+        setErrors({ email: getLocalizedAuthError(result.error, "err_generic", t) });
       }
     } catch (error: any) {
-      setErrors({ email: error.message || "Google Sign-Up failed" });
+      setErrors({ email: getLocalizedAuthError(error, "err_generic", t) });
     } finally {
       setLoading(false);
     }
@@ -317,11 +312,11 @@ export default function SignUp() {
         await signIn(data.token, data.email || result.user.email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
         router.replace("/(auth)/PersonOnboardingScreen");
       } else {
-        setErrors({ email: data?.message || "Failed to sign in via backend" });
+        setErrors({ email: getLocalizedAuthError(data?.message, "err_network", t) });
       }
     } catch (error: any) {
       console.error("Apple sign-in error:", error);
-      setErrors({ email: "Apple sign-in failed. Please try again." });
+      setErrors({ email: getLocalizedAuthError(error, "err_generic", t) });
     } finally {
       setLoading(false);
     }
@@ -368,11 +363,11 @@ export default function SignUp() {
         {/* Hero header */}
         <View style={styles.hero}>
           <Pressable style={styles.backBtn} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={18} color="#fff" />
+            <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={18} color="#fff" />
           </Pressable>
           <View style={{ height: 8 }} />
-          <Text style={styles.title}>Sign Up</Text>
-          <Text style={styles.sub}>Create your account to get started</Text>
+          <Text style={[styles.title, { textAlign }]}>{t("sign_up")}</Text>
+          <Text style={[styles.sub, { textAlign }]}>{t("enter_phone_get_started")}</Text>
 
           <View style={styles.illustrationWrap}>
             <View style={styles.clipboardOuter}>
@@ -393,7 +388,7 @@ export default function SignUp() {
         <View style={styles.form}>
 
           {/* ── "Sign up with" label ── */}
-          <Text style={styles.sectionLabel}>Sign up with</Text>
+          <Text style={[styles.sectionLabel, { textAlign }]}>{t("sign_in_with")}</Text>
 
           {/* ── 3-column social row ── */}
           <View style={styles.socialRow}>
@@ -434,7 +429,7 @@ export default function SignUp() {
               onPress={() => router.push("/(auth)/Phonesignup")}
             >
               <Ionicons name="phone-portrait-outline" size={20} color="#2D9C8E" />
-              <Text style={[styles.socialText, { color: "#2D9C8E" }]}>Phone OTP</Text>
+              <Text style={[styles.socialText, { color: "#2D9C8E" }]}>{t("phone_otp")}</Text>
             </Pressable>
 
           </View>
@@ -442,17 +437,17 @@ export default function SignUp() {
           {/* ── Divider ── */}
           <View style={styles.orRow}>
             <View style={styles.orLine} />
-            <Text style={styles.orText}>or sign up with</Text>
+            <Text style={styles.orText}>{t("or_continue")}</Text>
             <View style={styles.orLine} />
           </View>
 
           {/* ── Email Address ── */}
           <View>
-            <View style={[styles.inputRow, !!errors.email && styles.inputError, focusedField === "email" && styles.inputFocused]}>
+            <View style={[styles.inputRow, { flexDirection: rowDirection }, !!errors.email && styles.inputError, focusedField === "email" && styles.inputFocused]}>
               <Ionicons name="mail-outline" size={18} color={focusedField === "email" ? "#2D9C8E" : "#9BB5B5"} />
               <TextInput
-                style={styles.inputField}
-                placeholder="Enter your email address"
+                style={[styles.inputField, { textAlign }]}
+                placeholder={t("enter_email")}
                 placeholderTextColor="#B0CCCC"
                 value={email}
                 onChangeText={(v) => { setEmail(v); clearError("email"); }}
@@ -473,11 +468,11 @@ export default function SignUp() {
 
           {/* ── Password ── */}
           <View>
-            <View style={[styles.inputRow, !!errors.password && styles.inputError, focusedField === "password" && styles.inputFocused]}>
+            <View style={[styles.inputRow, { flexDirection: rowDirection }, !!errors.password && styles.inputError, focusedField === "password" && styles.inputFocused]}>
               <Ionicons name="lock-closed-outline" size={18} color={focusedField === "password" ? "#2D9C8E" : "#9BB5B5"} />
               <TextInput
-                style={styles.inputField}
-                placeholder="Create a password"
+                style={[styles.inputField, { textAlign }]}
+                placeholder={t("enter_password")}
                 placeholderTextColor="#B0CCCC"
                 value={password}
                 onChangeText={(v) => { setPassword(v); clearError("password"); }}
@@ -601,15 +596,15 @@ export default function SignUp() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.btnText}>Create Account</Text>
+              <Text style={styles.btnText}>{t("sign_up")}</Text>
             )}
           </Pressable>
 
           {/* ── Already have account ── */}
-          <View style={styles.loginRow}>
-            <Text style={styles.loginText}>Already have an account? </Text>
+          <View style={[styles.loginRow, { flexDirection: rowDirection }]}>
+            <Text style={styles.loginText}>{t("have_account")} </Text>
             <Pressable onPress={() => router.push("/(auth)/login")}>
-              <Text style={styles.loginLink}>Login</Text>
+              <Text style={styles.loginLink}>{t("login")}</Text>
             </Pressable>
           </View>
 

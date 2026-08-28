@@ -5,6 +5,7 @@ import { router } from "expo-router";
 import { Colors, Radius } from "@/constants/Colors";
 import { Card } from "@/components/ui/Card";
 import { useLang } from "@/context/Languagecontext";
+import { useCountry } from "@/context/CountryContext";
 import { reportsApi, type ReportListItem, type AnalyzeResult } from "@/services/reportsApi";
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
 
 export function HealthMetricsSection({ reports, phone }: Props) {
   const { t } = useLang();
+  const { country } = useCountry();
   const [loading, setLoading] = useState(false);
   const [latestDetail, setLatestDetail] = useState<AnalyzeResult | null>(null);
 
@@ -53,7 +55,7 @@ export function HealthMetricsSection({ reports, phone }: Props) {
       color: "#EF4444",
       bgColor: "#FEF2F2",
       defaultVal: "--",
-      defaultUnit: "mg/dL",
+      defaultUnit: country?.glucoseUnit || "mg/dL",
       extracted: findValue(["glucose", "hba1c", "sugar", "fbs", "ppbs"]),
     },
     {

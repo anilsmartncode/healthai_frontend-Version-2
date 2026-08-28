@@ -15,7 +15,7 @@ interface PlaceCardProps {
 }
 
 export default function PlaceCard({ item, activeTab, onCall, onDirections }: PlaceCardProps) {
-  const { t } = useLang();
+  const { t, rowDirection, textAlign } = useLang();
   const router = useRouter();
 
   const handleViewDetails = () => {
@@ -28,7 +28,7 @@ export default function PlaceCard({ item, activeTab, onCall, onDirections }: Pla
 
   return (
     <Card style={styles.placeCard}>
-      <View style={styles.placeTop}>
+      <View style={[styles.placeTop, { flexDirection: rowDirection }]}>
         <View
           style={[
             styles.placeIconWrap,
@@ -50,15 +50,15 @@ export default function PlaceCard({ item, activeTab, onCall, onDirections }: Pla
         </View>
 
         <View style={styles.placeInfo}>
-          <Text style={styles.placeName} numberOfLines={1}>
+          <Text style={[styles.placeName, { textAlign }]} numberOfLines={1}>
             {item.name}
           </Text>
-          <Text style={styles.placeAddress} numberOfLines={2}>
+          <Text style={[styles.placeAddress, { textAlign }]} numberOfLines={2}>
             {item.address}
           </Text>
           
-          <View style={styles.metaRow}>
-            <View style={styles.ratingRow}>
+          <View style={[styles.metaRow, { flexDirection: rowDirection }]}>
+            <View style={[styles.ratingRow, { flexDirection: rowDirection }]}>
               <Ionicons name="star" size={13} color="#F59E0B" />
               <Text style={styles.ratingText}>
                 {item.rating} ({item.reviews})
@@ -84,7 +84,7 @@ export default function PlaceCard({ item, activeTab, onCall, onDirections }: Pla
                 { color: item.openNow ? "#16A34A" : "#6B7280" },
               ]}
             >
-              {item.openNow ? "Open" : "Closed"}
+              {item.openNow ? t("open_status") : t("closed_status")}
             </Text>
           </View>
           <Pressable onPress={() => onCall(item.phone)} style={styles.iconBtn}>
@@ -93,12 +93,12 @@ export default function PlaceCard({ item, activeTab, onCall, onDirections }: Pla
         </View>
       </View>
 
-      <View style={styles.placeActions}>
+      <View style={[styles.placeActions, { flexDirection: rowDirection }]}>
         <Pressable
           onPress={handleViewDetails}
           style={[styles.actionBtn, styles.actionBtnOutline]}
         >
-          <Text style={styles.actionOutlineText}>View Details</Text>
+          <Text style={styles.actionOutlineText}>{t("view_details")}</Text>
         </Pressable>
 
         <Pressable

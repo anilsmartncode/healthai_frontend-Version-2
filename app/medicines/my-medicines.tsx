@@ -29,21 +29,27 @@ import {
   removeSavedMedicine,
   type Medicine,
 } from '@/services/medicineTabApi';
+import { useLang } from '@/context/Languagecontext';
 
 // ─── EMPTY STATE ─────────────────────────────────────────────────────────────
 function EmptyState() {
+  const { t, textAlign, rowDirection } = useLang();
+
   return (
     <View style={styles.emptyWrap}>
       <View style={styles.emptyIcon}>
         <Ionicons name="bookmark-outline" size={36} color={Colors.primary} />
       </View>
-      <Text style={styles.emptyTitle}>No medicines saved yet</Text>
-      <Text style={styles.emptySub}>
-        Scan a medicine or browse the catalogue and tap Save to add it here.
+      <Text style={[styles.emptyTitle, { textAlign }]}>{t("no_medicines_saved")}</Text>
+      <Text style={[styles.emptySub, { textAlign }]}>
+        {t("save_med_hint")}
       </Text>
-      <Pressable style={styles.browseBtn} onPress={() => router.push('/medicines/browse')}>
+      <Pressable
+        style={[styles.browseBtn, { flexDirection: rowDirection }]}
+        onPress={() => router.push('/medicines/browse')}
+      >
         <Ionicons name="search-outline" size={16} color="#fff" />
-        <Text style={styles.browseBtnText}>Browse Medicines</Text>
+        <Text style={styles.browseBtnText}>{t("browse")}</Text>
       </Pressable>
     </View>
   );
@@ -61,6 +67,7 @@ function MedicineCard({
   onReminder: () => void;
   onInteraction: () => void;
 }) {
+  const { t, rowDirection, textAlign } = useLang();
   const rxColor = med.prescriptionType === 'Prescription' ? '#B91C1C' : '#065F46';
   const rxBg = med.prescriptionType === 'Prescription' ? '#FEE2E2' : '#D1FAE5';
 
@@ -76,13 +83,13 @@ function MedicineCard({
         }
         style={({ pressed }) => pressed && { opacity: 0.7 }}
       >
-        <View style={styles.cardTop}>
+        <View style={[styles.cardTop, { flexDirection: rowDirection }]}>
           <View style={styles.cardIcon}>
             <Ionicons name="medical-outline" size={22} color={Colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.medName}>{med.name}</Text>
-            <Text style={styles.medSub}>{med.type} · {med.category}</Text>
+            <Text style={[styles.medName, { textAlign }]}>{med.name}</Text>
+            <Text style={[styles.medSub, { textAlign }]}>{med.type} · {med.category}</Text>
           </View>
           <View style={[styles.rxPill, { backgroundColor: rxBg }]}>
             <Text style={[styles.rxText, { color: rxColor }]}>{med.prescriptionType}</Text>
@@ -91,14 +98,14 @@ function MedicineCard({
 
         {/* Uses */}
         {med.uses ? (
-          <Text style={styles.medUses} numberOfLines={2}>{med.uses}</Text>
+          <Text style={[styles.medUses, { textAlign }]} numberOfLines={2}>{med.uses}</Text>
         ) : null}
 
         {/* Side effects */}
         {med.sideEffects && med.sideEffects.length > 0 && (
-          <View style={styles.sideRow}>
+          <View style={[styles.sideRow, { flexDirection: rowDirection }]}>
             <Ionicons name="warning-outline" size={12} color="#EA580C" />
-            <Text style={styles.sideText} numberOfLines={1}>
+            <Text style={[styles.sideText, { textAlign }]} numberOfLines={1}>
               {med.sideEffects.slice(0, 2).join(', ')}
             </Text>
           </View>
@@ -106,14 +113,14 @@ function MedicineCard({
       </Pressable>
 
       {/* Action buttons */}
-      <View style={styles.cardActions}>
+      <View style={[styles.cardActions, { flexDirection: rowDirection }]}>
         <Pressable style={styles.actionBtn} onPress={onReminder}>
           <Ionicons name="alarm-outline" size={14} color={Colors.primary} />
-          <Text style={styles.actionBtnText}>Set Reminder</Text>
+          <Text style={styles.actionBtnText}>{t("set_reminder")}</Text>
         </Pressable>
         <Pressable style={styles.actionBtn} onPress={onInteraction}>
           <Ionicons name="git-compare-outline" size={14} color={Colors.primary} />
-          <Text style={styles.actionBtnText}>Check Interaction</Text>
+          <Text style={styles.actionBtnText}>{t("check_interactions")}</Text>
         </Pressable>
         <Pressable
           style={[styles.actionBtn, styles.removeBtn]}
@@ -128,6 +135,7 @@ function MedicineCard({
 
 // ─── MAIN SCREEN ─────────────────────────────────────────────────────────────
 export default function MyMedicinesScreen() {
+  const { t, rowDirection, textAlign, isRTL } = useLang();
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -144,23 +152,20 @@ export default function MyMedicinesScreen() {
 
   const handleRemove = (med: Medicine) => {
     Alert.alert(
-      'Remove Medicine',
-      `Remove ${med.name} from My Medicines?`,
+      t('remove_from_history'),
+      `${t('remove_recent_confirm')} (${med.name})`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Remove',
+          text: t('remove_btn'),
           style: 'destructive',
           onPress: async () => {
             const result = await removeSavedMedicine(med.id);
             if (result.success) {
               setMedicines((prev) => prev.filter((m) => m.id !== med.id));
             } else {
-              // Don't remove it from local state if the backend delete
-              // failed — leaving it in the list keeps the UI honest about
-              // what's actually still saved server-side.
               Alert.alert(
-                'Remove Failed',
+                t('err_network'),
                 'Could not remove this medicine. Please check your connection and try again.',
               );
             }
@@ -184,11 +189,11 @@ export default function MyMedicinesScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { flexDirection: rowDirection }]}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-          <Ionicons name="chevron-back" size={22} color="#0F172A" />
+          <Ionicons name={isRTL ? "chevron-forward" : "chevron-back"} size={22} color="#0F172A" />
         </Pressable>
-        <Text style={styles.headerTitle}>My Medicines</Text>
+        <Text style={styles.headerTitle}>{t("saved_medicines")}</Text>
         <Pressable onPress={() => router.push('/medicines/browse')} hitSlop={8}>
           <Ionicons name="add" size={26} color={Colors.primary} />
         </Pressable>
@@ -202,7 +207,7 @@ export default function MyMedicinesScreen() {
         <EmptyState />
       ) : (
         <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-          <Text style={styles.countLabel}>{medicines.length} medicine{medicines.length !== 1 ? 's' : ''} saved</Text>
+          <Text style={[styles.countLabel, { textAlign }]}>{medicines.length} medicine{medicines.length !== 1 ? 's' : ''} saved</Text>
           {medicines.map((med, idx) => (
             <MedicineCard
               key={`${med.id}_${idx}`}

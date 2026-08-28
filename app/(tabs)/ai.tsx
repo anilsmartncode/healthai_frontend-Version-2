@@ -14,6 +14,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/context/AuthContext';
 import { SecureAsyncStorage as AsyncStorage } from '@/utils/storage';
+import { useLang } from '@/context/Languagecontext';
 
 const C = {
   primary: '#2563EB',
@@ -35,16 +36,17 @@ function formatName(raw: string): string {
     .join(' ');
 }
 
-function getGreeting(): string {
+function getGreeting(t: (k: any) => string): string {
   const hour = new Date().getHours();
-  if (hour < 12) return 'Good Morning';
-  if (hour < 17) return 'Good Afternoon';
-  return 'Good Evening';
+  if (hour < 12) return t("good_morning");
+  if (hour < 17) return t("good_afternoon");
+  return t("good_evening");
 }
 
 export default function AIHomeScreen() {
   const insets = useSafeAreaInsets();
   const { phone } = useAuth();
+  const { t, isRTL, textAlign, rowDirection } = useLang();
   const [userName, setUserName] = useState(formatName(phone ?? 'Rahul'));
   const [input, setInput] = useState('');
   const [inputHeight, setInputHeight] = useState(36);
@@ -82,7 +84,7 @@ export default function AIHomeScreen() {
             {/* Brand Header */}
             <View style={styles.brandRow}>
               <Text style={styles.brandName}>HealthAI</Text>
-              <Text style={styles.brandSub}>Your AI Health Companion</Text>
+              <Text style={styles.brandSub}>{t("onboard_title")}</Text>
               <Pressable
                 style={styles.historyBtn}
                 onPress={() => router.push('/ai-history')}
@@ -108,8 +110,8 @@ export default function AIHomeScreen() {
               </View>
 
               {/* Greeting & Subtitle */}
-              <Text style={styles.greeting}>{getGreeting()}, {userName} 👋</Text>
-              <Text style={styles.subtitle}>How can I help you today?</Text>
+              <Text style={[styles.greeting, { textAlign }]}>{getGreeting(t)} {userName} 👋</Text>
+              <Text style={[styles.subtitle, { textAlign }]}>{t("ai_how_can_help")}</Text>
             </View>
 
             {/* Dynamic Bottom Input Bar matching ai-chat.tsx */}
@@ -122,7 +124,7 @@ export default function AIHomeScreen() {
                 },
               ]}
             >
-              <View style={styles.inputWrap}>
+              <View style={[styles.inputWrap, { flexDirection: rowDirection }]}>
                 <Pressable
                   style={styles.innerPlusBtn}
                   onPress={() => router.push('/upload')}
@@ -134,9 +136,9 @@ export default function AIHomeScreen() {
                 <TextInput
                   style={[
                     styles.input,
-                    { height: Math.min(Math.max(36, inputHeight), 76) },
+                    { height: Math.min(Math.max(36, inputHeight), 76), textAlign },
                   ]}
-                  placeholder="Ask anything about your health..."
+                  placeholder={t("ai_placeholder")}
                   placeholderTextColor={C.textMuted}
                   value={input}
                   onChangeText={setInput}
@@ -170,8 +172,8 @@ export default function AIHomeScreen() {
                   )}
                 </Pressable>
               </View>
-              <Text style={styles.disclaimerText}>
-                Your health matters. Use these insights as a guide and reach out to a healthcare professional when needed.
+              <Text style={[styles.disclaimerText, { textAlign }]}>
+                {t("ai_medical_disclaimer")}
               </Text>
             </View>
           </View>

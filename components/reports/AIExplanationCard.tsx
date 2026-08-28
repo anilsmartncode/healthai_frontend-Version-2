@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Radius, Spacing } from "@/constants/Colors";
 import type { ApiSummary, MedicalTerm } from "@/types/Report/reportype";
+import { useLang } from "@/context/Languagecontext";
 
 interface Props {
   text?: string;
@@ -19,8 +20,9 @@ function SectionHeader({
   label: string;
   color?: string;
 }) {
+  const { rowDirection } = useLang();
   return (
-    <View style={sh.row}>
+    <View style={[sh.row, { flexDirection: rowDirection }]}>
       <Ionicons name={icon} size={15} color={color ?? Colors.primary} />
       <Text style={[sh.label, color ? { color } : undefined]}>{label}</Text>
     </View>
@@ -50,21 +52,23 @@ function TagRow({ items, color, bg }: { items: string[]; color?: string; bg?: st
 }
 
 function Bullet({ text, color }: { text: string; color?: string }) {
+  const { rowDirection, textAlign } = useLang();
   return (
-    <View style={bul.row}>
+    <View style={[bul.row, { flexDirection: rowDirection }]}>
       <View style={[bul.dot, { backgroundColor: color ?? Colors.primary }]} />
-      <Text style={bul.text}>{text}</Text>
+      <Text style={[bul.text, { textAlign }]}>{text}</Text>
     </View>
   );
 }
 
 function StepRow({ index, text }: { index: number; text: string }) {
+  const { rowDirection, textAlign } = useLang();
   return (
-    <View style={sr.row}>
+    <View style={[sr.row, { flexDirection: rowDirection }]}>
       <View style={sr.circle}>
         <Text style={sr.num}>{index + 1}</Text>
       </View>
-      <Text style={sr.text}>{text}</Text>
+      <Text style={[sr.text, { textAlign }]}>{text}</Text>
     </View>
   );
 }
@@ -82,10 +86,11 @@ function CollapseBlock({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const { rowDirection } = useLang();
   return (
     <View style={cb.wrap}>
       <Pressable
-        style={({ pressed }) => [cb.header, pressed && { opacity: 0.7 }]}
+        style={({ pressed }) => [cb.header, { flexDirection: rowDirection }, pressed && { opacity: 0.7 }]}
         onPress={() => setOpen((o) => !o)}
       >
         <SectionHeader icon={icon} label={label} color={iconColor} />
@@ -103,6 +108,7 @@ function CollapseBlock({
 // ─── Main ──────────────────────────────────────────────────────────────────────
 
 export function AIExplanationCard({ text }: Props) {
+  const { t, rowDirection, textAlign } = useLang();
   let p: ApiSummary | null = null;
   if (text) {
     try {
@@ -116,8 +122,8 @@ export function AIExplanationCard({ text }: Props) {
   if (!p) {
     return (
       <View style={styles.card}>
-        <SectionHeader icon="sparkles" label="AI Summary" />
-        <Text style={styles.body}>{text ?? "No summary available."}</Text>
+        <SectionHeader icon="sparkles" label={t("ai_summary")} />
+        <Text style={[styles.body, { textAlign }]}>{text ?? "No summary available."}</Text>
       </View>
     );
   }
@@ -138,8 +144,8 @@ export function AIExplanationCard({ text }: Props) {
 
   return (
     <View style={styles.card}>
-      <View style={styles.aiHeader}>
-        <Text style={styles.cardTitle}>AI Summary</Text>
+      <View style={[styles.aiHeader, { flexDirection: rowDirection }]}>
+        <Text style={styles.cardTitle}>{t("ai_summary")}</Text>
         <View style={styles.aiBadge}>
           <Ionicons name="sparkles" size={12} color="#fff" />
           <Text style={styles.aiBadgeText}>HealthAI</Text>
@@ -148,24 +154,24 @@ export function AIExplanationCard({ text }: Props) {
 
       {/* ── Emergency banner ── */}
       {p.is_emergency && p.emergency_warning ? (
-        <View style={styles.emergencyBanner}>
+        <View style={[styles.emergencyBanner, { flexDirection: rowDirection }]}>
           <Ionicons name="alert-circle" size={18} color="#fff" />
-          <Text style={styles.emergencyText}>{p.emergency_warning}</Text>
+          <Text style={[styles.emergencyText, { textAlign }]}>{p.emergency_warning}</Text>
         </View>
       ) : null}
 
       {/* ── Overview ── */}
       {p.overall_health ? (
-        <Text style={styles.body}>{p.overall_health}</Text>
+        <Text style={[styles.body, { textAlign }]}>{p.overall_health}</Text>
       ) : null}
       {p.ai_summary ? (
-        <Text style={[styles.body, p.overall_health ? { marginTop: 6 } : undefined]}>
+        <Text style={[styles.body, { textAlign }, p.overall_health ? { marginTop: 6 } : undefined]}>
           {p.ai_summary}
         </Text>
       ) : null}
 
       {p.condition_severity ? (
-        <View style={styles.severityPill}>
+        <View style={[styles.severityPill, { flexDirection: rowDirection }]}>
           <Ionicons
             name="pulse"
             size={12}
@@ -193,8 +199,8 @@ export function AIExplanationCard({ text }: Props) {
       {p.patient_friendly_explanation ? (
         <>
           <Divider />
-          <SectionHeader icon="people-outline" label="In Simple Words" />
-          <Text style={[styles.body, { marginTop: 8 }]}>{p.patient_friendly_explanation}</Text>
+          <SectionHeader icon="people-outline" label={t("in_simple_words")} />
+          <Text style={[styles.body, { textAlign, marginTop: 8 }]}>{p.patient_friendly_explanation}</Text>
         </>
       ) : null}
 
@@ -204,7 +210,7 @@ export function AIExplanationCard({ text }: Props) {
           <Divider />
           {p.abnormal_findings?.length ? (
             <>
-              <SectionHeader icon="warning-outline" label="Abnormal Findings" color={Colors.danger} />
+              <SectionHeader icon="warning-outline" label={t("abnormal_findings")} color={Colors.danger} />
               <View style={styles.bulletBlock}>
                 {p.abnormal_findings.map((item, i) => (
                   <Bullet key={i} text={item} color={Colors.danger} />
@@ -214,7 +220,7 @@ export function AIExplanationCard({ text }: Props) {
           ) : null}
           {p.important_risks?.length ? (
             <View style={p.abnormal_findings?.length ? { marginTop: 14 } : undefined}>
-              <SectionHeader icon="shield-outline" label="Important Risks" color={Colors.warning} />
+              <SectionHeader icon="shield-outline" label={t("important_risks")} color={Colors.warning} />
               <View style={styles.bulletBlock}>
                 {p.important_risks.map((item, i) => (
                   <Bullet key={i} text={item} color={Colors.warning} />
@@ -229,7 +235,7 @@ export function AIExplanationCard({ text }: Props) {
       {p.what_patient_should_do_next?.length ? (
         <>
           <Divider />
-          <SectionHeader icon="checkmark-circle-outline" label="What To Do Next" color={Colors.success} />
+          <SectionHeader icon="checkmark-circle-outline" label={t("what_to_do_next")} color={Colors.success} />
           <View style={styles.stepBlock}>
             {p.what_patient_should_do_next.map((s, i) => (
               <StepRow key={i} index={i} text={s} />
@@ -242,7 +248,7 @@ export function AIExplanationCard({ text }: Props) {
       {p.symptoms_patient_may_feel?.length ? (
         <>
           <Divider />
-          <SectionHeader icon="pulse-outline" label="Symptoms You May Feel" />
+          <SectionHeader icon="pulse-outline" label={t("symptoms_you_may_feel")} />
           <TagRow items={p.symptoms_patient_may_feel} />
         </>
       ) : null}
@@ -251,19 +257,19 @@ export function AIExplanationCard({ text }: Props) {
       {(p.doctor_consultation_needed || p.next_tests_recommended?.length || p.questions_to_ask_doctor?.length) ? (
         <>
           <Divider />
-          <SectionHeader icon="medical-outline" label="Doctor & Follow-up" color="#D97706" />
+          <SectionHeader icon="medical-outline" label={t("doctor_followup")} color="#D97706" />
           {p.doctor_consultation_needed ? (
-            <Text style={[styles.body, { marginTop: 8 }]}>{p.doctor_consultation_needed}</Text>
+            <Text style={[styles.body, { textAlign, marginTop: 8 }]}>{p.doctor_consultation_needed}</Text>
           ) : null}
           {p.next_tests_recommended?.length ? (
             <>
-              <Text style={styles.subLabel}>Follow-Up Tests</Text>
+              <Text style={[styles.subLabel, { textAlign }]}>Follow-Up Tests</Text>
               <TagRow items={p.next_tests_recommended} />
             </>
           ) : null}
           {p.questions_to_ask_doctor?.length ? (
             <>
-              <Text style={styles.subLabel}>Questions for Your Doctor</Text>
+              <Text style={[styles.subLabel, { textAlign }]}>Questions for Your Doctor</Text>
               <View style={styles.bulletBlock}>
                 {p.questions_to_ask_doctor.map((q, i) => (
                   <Bullet key={i} text={q} />
@@ -278,40 +284,40 @@ export function AIExplanationCard({ text }: Props) {
       {hasDiet ? (
         <>
           <Divider />
-          <CollapseBlock icon="nutrition-outline" label="Diet & Nutrition">
+          <CollapseBlock icon="nutrition-outline" label={t("diet_nutrition")}>
             {p.recommended_diet?.length ? (
               <>
-                <Text style={styles.subLabel}>Recommended</Text>
+                <Text style={[styles.subLabel, { textAlign }]}>Recommended</Text>
                 <TagRow items={p.recommended_diet} color={Colors.success} bg="#F0FDF4" />
               </>
             ) : null}
             {p.foods_to_avoid?.length ? (
               <>
-                <Text style={styles.subLabel}>Avoid</Text>
+                <Text style={[styles.subLabel, { textAlign }]}>Avoid</Text>
                 <TagRow items={p.foods_to_avoid} color={Colors.danger} bg="#FEF2F2" />
               </>
             ) : null}
             {p.recommended_fruits?.length ? (
               <>
-                <Text style={styles.subLabel}>Fruits</Text>
+                <Text style={[styles.subLabel, { textAlign }]}>Fruits</Text>
                 <TagRow items={p.recommended_fruits} />
               </>
             ) : null}
             {p.recommended_juices?.length ? (
               <>
-                <Text style={styles.subLabel}>Juices</Text>
+                <Text style={[styles.subLabel, { textAlign }]}>Juices</Text>
                 <TagRow items={p.recommended_juices} />
               </>
             ) : null}
             {p.recommended_leafy_vegetables?.length ? (
               <>
-                <Text style={styles.subLabel}>Vegetables</Text>
+                <Text style={[styles.subLabel, { textAlign }]}>Vegetables</Text>
                 <TagRow items={p.recommended_leafy_vegetables} />
               </>
             ) : null}
             {p.protein_recommendations?.length ? (
               <>
-                <Text style={styles.subLabel}>Protein</Text>
+                <Text style={[styles.subLabel, { textAlign }]}>Protein</Text>
                 <TagRow items={p.protein_recommendations} />
               </>
             ) : null}
@@ -323,15 +329,15 @@ export function AIExplanationCard({ text }: Props) {
       {hasLifestyle ? (
         <>
           <Divider />
-          <CollapseBlock icon="fitness-outline" label="Lifestyle & Wellness">
+          <CollapseBlock icon="fitness-outline" label={t("lifestyle_wellness")}>
             {p.exercise_recommendations?.length ? (
               <>
-                <Text style={styles.subLabel}>Exercise</Text>
+                <Text style={[styles.subLabel, { textAlign }]}>Exercise</Text>
                 <TagRow items={p.exercise_recommendations} />
               </>
             ) : null}
             {p.water_intake ? (
-              <View style={styles.waterRow}>
+              <View style={[styles.waterRow, { flexDirection: rowDirection }]}>
                 <Ionicons name="water-outline" size={14} color={Colors.info} />
                 <Text style={[styles.body, { color: Colors.info, fontWeight: "600", marginTop: 0 }]}>
                   {p.water_intake}
@@ -340,7 +346,7 @@ export function AIExplanationCard({ text }: Props) {
             ) : null}
             {p.sleep_recommendations?.length ? (
               <>
-                <Text style={styles.subLabel}>Sleep</Text>
+                <Text style={[styles.subLabel, { textAlign }]}>Sleep</Text>
                 <View style={styles.bulletBlock}>
                   {p.sleep_recommendations.map((s, i) => (
                     <Bullet key={i} text={s} />
@@ -350,7 +356,7 @@ export function AIExplanationCard({ text }: Props) {
             ) : null}
             {p.lifestyle_changes?.length ? (
               <>
-                <Text style={styles.subLabel}>Changes to Make</Text>
+                <Text style={[styles.subLabel, { textAlign }]}>Changes to Make</Text>
                 <View style={styles.bulletBlock}>
                   {p.lifestyle_changes.map((s, i) => (
                     <Bullet key={i} text={s} />
@@ -366,7 +372,7 @@ export function AIExplanationCard({ text }: Props) {
       {p.precautions?.length ? (
         <>
           <Divider />
-          <CollapseBlock icon="alert-circle-outline" label="Precautions" iconColor={Colors.warning}>
+          <CollapseBlock icon="alert-circle-outline" label={t("precautions")} iconColor={Colors.warning}>
             <View style={styles.bulletBlock}>
               {p.precautions.map((s, i) => (
                 <Bullet key={i} text={s} color={Colors.warning} />
@@ -380,11 +386,11 @@ export function AIExplanationCard({ text }: Props) {
       {p.medical_terms_translated?.length ? (
         <>
           <Divider />
-          <CollapseBlock icon="book-outline" label="Medical Terms Explained">
+          <CollapseBlock icon="book-outline" label={t("medical_terms_explained")}>
             {p.medical_terms_translated.map((t: MedicalTerm, i: number) => (
               <View key={i} style={styles.termRow}>
-                <Text style={styles.termName}>{t.term}</Text>
-                <Text style={styles.termMeaning}>{t.simple_meaning}</Text>
+                <Text style={[styles.termName, { textAlign }]}>{t.term}</Text>
+                <Text style={[styles.termMeaning, { textAlign }]}>{t.simple_meaning}</Text>
               </View>
             ))}
           </CollapseBlock>
