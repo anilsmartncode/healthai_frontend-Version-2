@@ -1,5 +1,5 @@
 /**
- * app/health-tools.tsx — Health Tools Menu Grid
+ * app/health-tools.tsx — Health Tools Menu Grid (Mockup Redesign)
  */
 
 import React from 'react';
@@ -21,34 +21,26 @@ const TOOLS = [
   {
     id: 'bmi',
     label: 'BMI calculator',
-    icon: 'scale-outline' as const,
+    emoji: '⚖️',
     route: '/health-tools/bmi',
-    iconColor: '#0F766E',
-    bgColor: '#F0FDFA',
   },
   {
     id: 'calorie',
     label: 'Calorie tracker',
-    icon: 'restaurant-outline' as const,
+    emoji: '🍽️',
     route: '/health-tools/calorie',
-    iconColor: '#EA580C',
-    bgColor: '#FFF7ED',
   },
   {
     id: 'drug',
     label: 'Drug checker',
-    icon: 'medical-outline' as const,
+    emoji: '💊',
     route: '/medicines/check-interactions', // existing page path
-    iconColor: '#E11D48',
-    bgColor: '#FFE4E6',
   },
   {
     id: 'tips',
     label: 'Health tips',
-    icon: 'bulb-outline' as const,
+    emoji: '💡',
     route: '/health-tools/tips',
-    iconColor: '#D97706',
-    bgColor: '#FEF3C7',
   },
 ];
 
@@ -58,10 +50,9 @@ export default function HealthToolsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={10}>
-          <Ionicons name="arrow-back" size={20} color={C.text} />
+          <Ionicons name="arrow-back" size={16} color={C.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Health tools</Text>
-        <View style={{ width: 36 }} />
       </View>
 
       {/* Grid of Tools */}
@@ -73,9 +64,7 @@ export default function HealthToolsScreen() {
               style={styles.card}
               onPress={() => router.push(tool.route as any)}
             >
-              <View style={[styles.iconWrap, { backgroundColor: tool.bgColor }]}>
-                <Ionicons name={tool.icon} size={28} color={tool.iconColor} />
-              </View>
+              <Text style={styles.emojiText}>{tool.emoji}</Text>
               <Text style={styles.label}>{tool.label}</Text>
             </Pressable>
           ))}
@@ -88,27 +77,29 @@ export default function HealthToolsScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F8FAFC' },
   
-  // Header
+  // Header (Back button circular, title inline)
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 14,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: '#F1F5F9',
+    gap: 12,
   },
   backBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '800',
     color: '#0F172A',
   },
@@ -126,30 +117,21 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '48%',
-    height: 140,
+    height: 100,
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 4,
-    elevation: 1,
+    gap: 8,
   },
-  iconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+  emojiText: {
+    fontSize: 24,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#0F172A',
   },
 });

@@ -1,13 +1,13 @@
 /**
  * app/(tabs)/ai.tsx — HealthAI Chat Home (Screen 1 Redesigned)
- * Grid-based hub matching the mockup with quick actions, recent conversations, and bottom input
+ * Highly compact, mobile-first dashboard matching the mockup layout and sizing
  */
 
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, Pressable,
   TextInput, Platform, KeyboardAvoidingView, ScrollView,
-  TouchableWithoutFeedback, Keyboard, FlatList, ActivityIndicator,
+  TouchableWithoutFeedback, Keyboard, ActivityIndicator, Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
@@ -15,22 +15,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/context/AuthContext';
 import { SecureAsyncStorage as AsyncStorage } from '@/utils/storage';
 import { listChatSessions, ChatSessionSummary } from '@/services/aiService';
+import { reportsApi } from '@/services/reportsApi';
 
 const C = {
-  primary: '#0D7B5F', // Deep emerald green matching mockups
-  primaryBg: '#E6F4EA',
+  primary: '#0D7B5F', // Deep emerald green
+  primaryBg: '#E6F4EA', // Light green badge/banner bg
   text: '#0F172A',
   textMuted: '#64748B',
   border: '#E2E8F0',
-  bg: '#F8FAFC', // Soft light gray backdrop
+  bg: '#F8FAFC',
   cardBg: '#FFFFFF',
-  success: '#137333',
-  warning: '#B45309',
-  critical: '#C5221F',
 };
 
 function formatName(raw: string): string {
-  if (!raw || /^[+\d\s\-()]{7,}$/.test(raw.trim())) return 'Rahul';
+  if (!raw || /^[+\d\s\-()]{7,}$/.test(raw.trim())) return 'Arjun';
   const local = raw.includes('@') ? raw.split('@')[0] : raw;
   return local
     .split(/[._\-\s]+/)
@@ -41,19 +39,18 @@ function formatName(raw: string): string {
 export default function AIHomeScreen() {
   const insets = useSafeAreaInsets();
   const { phone } = useAuth();
-  const [userName, setUserName] = useState('Rahul');
+  const [userName, setUserName] = useState('Arjun');
   const [input, setInput] = useState('');
   const [recentChats, setRecentChats] = useState<ChatSessionSummary[]>([]);
   const [recentLoading, setRecentLoading] = useState(false);
-  const [healthStatus, setHealthStatus] = useState<'Normal' | 'Watch' | 'Critical'>('Normal');
-  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+  const [loadingLatestReport, setLoadingLatestReport] = useState(false);
 
   // Load User Profile Name
   useEffect(() => {
     const cacheKey = `healthai_profile_name_${phone ?? 'guest'}`;
     AsyncStorage.getItem(cacheKey).then(name => {
       if (name && name.trim()) setUserName(name.trim());
-      else setUserName(formatName(phone ?? 'Rahul'));
+      else setUserName(formatName(phone ?? 'Arjun'));
     });
   }, [phone]);
 
@@ -85,113 +82,142 @@ export default function AIHomeScreen() {
     setInput('');
   };
 
-  const getStatusColor = (status: typeof healthStatus) => {
-    switch (status) {
-      case 'Normal':
-        return { bg: '#E6F4EA', text: '#137333' };
-      case 'Watch':
-        return { bg: '#FEF3C7', text: '#B45309' };
-      case 'Critical':
-        return { bg: '#FCE8E6', text: '#C5221F' };
+  // Discuss Latest Report Handler
+  const handleUnderstandReports = async () => {
+    if (loadingLatestReport) return;
+    setLoadingLatestReport(true);
+    try {
+      const list = await reportsApi.list(phone);
+      const labReports = list.filter(r => r.reportType?.toUpperCase() !== 'PRESCRIPTION');
+
+      if (labReports.length === 0) {
+        setLoadingLatestReport(false);
+        Alert.alert(
+          "No Reports Found",
+          "You haven't uploaded any medical lab reports yet. Please upload a report first to start discussing it with the AI.",
+          [
+            { text: "Upload Report", onPress: () => router.push('/upload') },
+            { text: "Cancel", style: "cancel" }
+          ]
+        );
+        return;
+      }
+
+      const latest = labReports[0];
+      const fullReport = await reportsApi.getById(latest.id, phone);
+
+      if (!fullReport) {
+        throw new Error("Could not retrieve report details.");
+      }
+
+      const abnormal = (fullReport.values || []).filter(v => v.status === 'high' || v.status === 'low');
+      let parsedSummary: any = null;
+      try {
+        parsedSummary = fullReport.summary ? JSON.parse(fullReport.summary) : null;
+      } catch { }
+
+      const prefillMsg = `My ${fullReport.reportType || 'report'} shows ${abnormal.length} abnormal value${abnormal.length !== 1 ? 's' : ''}${parsedSummary?.condition_severity ? ` and overall status is ${parsedSummary.condition_severity}` : ''}. What does this mean and what should I do?`;
+
+      router.push({
+        pathname: '/ai-chat',
+        params: {
+          prefill: prefillMsg,
+          context: fullReport.summary ?? '',
+          newSession: Date.now().toString(),
+        }
+      });
+
+    } catch (err) {
+      console.warn('[AIHomeScreen] Failed to load latest report context', err);
+      Alert.alert("Error", "Failed to retrieve your latest report. Please try again.");
+    } finally {
+      setLoadingLatestReport(false);
     }
   };
 
-  const currentStatusColors = getStatusColor(healthStatus);
+  // Medicines Chat Prefill Handler
+  const handleMedicinesInfo = () => {
+    router.push({
+      pathname: '/ai-chat',
+      params: {
+        prefill: "Hi! I have some questions about my medicines. Can you help me understand their usages, correct dosages, side effects, or interactions?",
+        newSession: Date.now().toString(),
+      }
+    });
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
       >
-        <TouchableWithoutFeedback onPress={() => { Keyboard.dismiss(); setStatusMenuOpen(false); }}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.mainContainer}>
             
-            {/* Header: Title and Status Dropdown */}
+            {/* Header */}
             <View style={styles.header}>
               <View>
-                <Text style={styles.headerTitle}>AI Assistant ✨</Text>
+                <View style={styles.titleRow}>
+                  <Text style={styles.headerTitle}>AI Assistant</Text>
+                  <Text style={styles.sparkleEmoji}>✨</Text>
+                </View>
                 <Text style={styles.headerSubtitle}>Your intelligent health companion</Text>
-              </View>
-              
-              <View style={styles.statusDropdownContainer}>
-                <Pressable
-                  style={[styles.statusBadge, { backgroundColor: currentStatusColors.bg }]}
-                  onPress={() => setStatusMenuOpen(!statusMenuOpen)}
-                >
-                  <Text style={[styles.statusBadgeText, { color: currentStatusColors.text }]}>
-                    {healthStatus}
-                  </Text>
-                  <Ionicons name="chevron-down" size={12} color={currentStatusColors.text} style={{ marginLeft: 4 }} />
-                </Pressable>
-                
-                {statusMenuOpen && (
-                  <View style={styles.statusMenu}>
-                    {(['Normal', 'Watch', 'Critical'] as const).map(status => {
-                      const colors = getStatusColor(status);
-                      return (
-                        <Pressable
-                          key={status}
-                          style={styles.statusMenuItem}
-                          onPress={() => {
-                            setHealthStatus(status);
-                            setStatusMenuOpen(false);
-                          }}
-                        >
-                          <View style={[styles.statusMenuDot, { backgroundColor: colors.text }]} />
-                          <Text style={styles.statusMenuText}>{status}</Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                )}
               </View>
             </View>
 
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <ScrollView 
+              style={{ flex: 1 }}
+              contentContainerStyle={styles.scrollContent} 
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
               
-              {/* Hello Welcome Banner Card */}
+              {/* Welcome Card Banner */}
               <View style={styles.welcomeCard}>
                 <Text style={styles.welcomeTitle}>Hello, {userName} 👋</Text>
                 <Text style={styles.welcomeSubtitle}>How can I help with your health today?</Text>
               </View>
 
-              {/* 2x2 Quick Actions Grid */}
+              {/* 2x2 Grid Layout */}
               <View style={styles.grid}>
                 {/* 1. Understand Reports */}
-                <Pressable style={styles.gridCard} onPress={() => router.push('/upload')}>
-                  <View style={[styles.iconContainer, { backgroundColor: '#F3E8FF' }]}>
-                    <Ionicons name="document-text" size={24} color="#7C3AED" />
-                  </View>
-                  <Text style={styles.gridCardLabel}>Understand reports</Text>
+                <Pressable 
+                  style={styles.gridCard} 
+                  onPress={handleUnderstandReports}
+                  disabled={loadingLatestReport}
+                >
+                  {loadingLatestReport ? (
+                    <ActivityIndicator size="small" color={C.primary} style={styles.spinner} />
+                  ) : (
+                    <Text style={styles.cardEmoji}>📄</Text>
+                  )}
+                  <Text style={styles.gridCardLabel}>
+                    {loadingLatestReport ? 'Loading latest...' : 'Understand reports'}
+                  </Text>
                 </Pressable>
 
                 {/* 2. Medicines Info */}
-                <Pressable style={styles.gridCard} onPress={() => router.push('/(tabs)/medicines')}>
-                  <View style={[styles.iconContainer, { backgroundColor: '#FFE4E6' }]}>
-                    <Ionicons name="medical" size={24} color="#E11D48" />
-                  </View>
+                <Pressable style={styles.gridCard} onPress={handleMedicinesInfo}>
+                  <Text style={styles.cardEmoji}>💊</Text>
                   <Text style={styles.gridCardLabel}>Medicines info</Text>
                 </Pressable>
 
                 {/* 3. Symptom Checker */}
                 <Pressable style={styles.gridCard} onPress={() => router.push('/symptom-checker')}>
-                  <View style={[styles.iconContainer, { backgroundColor: '#E0F2FE' }]}>
-                    <Ionicons name="heart" size={24} color="#0284C7" />
-                  </View>
+                  <Text style={styles.cardEmoji}>🖤</Text>
                   <Text style={styles.gridCardLabel}>Symptom checker</Text>
                 </Pressable>
 
                 {/* 4. Health Tools */}
                 <Pressable style={styles.gridCard} onPress={() => router.push('/health-tools')}>
-                  <View style={[styles.iconContainer, { backgroundColor: '#FEF3C7' }]}>
-                    <Ionicons name="apps" size={24} color="#D97706" />
-                  </View>
+                  <Text style={styles.cardEmoji}>🧮</Text>
                   <Text style={styles.gridCardLabel}>Health tools</Text>
                 </Pressable>
               </View>
 
-              {/* Recent Conversations Section */}
+              {/* Recent Conversations */}
               <View style={styles.recentSection}>
                 <View style={styles.recentHeader}>
                   <Text style={styles.recentTitle}>Recent conversations</Text>
@@ -214,7 +240,7 @@ export default function AIHomeScreen() {
                           onPress={() => router.push({ pathname: '/(tabs)/ai-chat', params: { sessionId: item.id } })}
                         >
                           <View style={styles.chatIconBg}>
-                            <Ionicons name="chatbubble-ellipses-outline" size={18} color="#0D7B5F" />
+                            <Ionicons name="chatbubble-ellipses-outline" size={16} color="#0D7B5F" />
                           </View>
                           <View style={{ flex: 1 }}>
                             <Text style={styles.recentItemText} numberOfLines={1}>
@@ -228,14 +254,14 @@ export default function AIHomeScreen() {
                       </React.Fragment>
                     ))
                   ) : (
-                    // Fallback preview items as seen in the mockup when no history exists
+                    // Fallback preview items
                     <>
                       <Pressable
                         style={styles.recentItem}
                         onPress={() => goToChat("Explain my blood test report")}
                       >
                         <View style={styles.chatIconBg}>
-                          <Ionicons name="chatbubble-ellipses-outline" size={18} color="#0D7B5F" />
+                          <Ionicons name="chatbubble" size={16} color="#0D7B5F" />
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={styles.recentItemText} numberOfLines={1}>
@@ -252,7 +278,7 @@ export default function AIHomeScreen() {
                         onPress={() => goToChat("Best exercises for back pain")}
                       >
                         <View style={styles.chatIconBg}>
-                          <Ionicons name="chatbubble-ellipses-outline" size={18} color="#0D7B5F" />
+                          <Ionicons name="chatbubble" size={16} color="#0D7B5F" />
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={styles.recentItemText} numberOfLines={1}>
@@ -314,7 +340,7 @@ export default function AIHomeScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#FFFFFF' },
   mainContainer: { flex: 1, backgroundColor: '#F8FAFC' },
-  scrollContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 100 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 },
 
   // Header Styles
   header: {
@@ -322,208 +348,155 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     color: '#0F172A',
     letterSpacing: -0.3,
+  },
+  sparkleEmoji: {
+    fontSize: 18,
+    marginLeft: 6,
   },
   headerSubtitle: {
     fontSize: 12,
     color: '#64748B',
     marginTop: 1,
   },
-  statusDropdownContainer: {
-    position: 'relative',
-    zIndex: 50,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  statusBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  statusMenu: {
-    position: 'absolute',
-    top: 36,
-    right: 0,
-    width: 110,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    paddingVertical: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  statusMenuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  statusMenuDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 8,
-  },
-  statusMenuText: {
-    fontSize: 12,
-    color: '#0F172A',
-    fontWeight: '600',
-  },
 
   // Welcome Card
   welcomeCard: {
-    backgroundColor: '#E6F4EA', // soft light green matching mockup
-    borderRadius: 18,
-    padding: 20,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(13, 123, 95, 0.1)',
+    backgroundColor: '#E6F4EA',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 16,
   },
   welcomeTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '800',
-    color: '#0D7B5F',
-    marginBottom: 4,
+    color: '#0F172A',
+    marginBottom: 3,
   },
   welcomeSubtitle: {
-    fontSize: 14,
-    color: '#3B8873',
+    fontSize: 12,
+    color: '#475569',
     fontWeight: '500',
   },
 
-  // 2x2 Grid Layout
+  // Grid Layout (Left-aligned, short height, raw emojis)
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 24,
-    gap: 12,
+    marginBottom: 20,
+    gap: 10,
   },
   gridCard: {
     width: '48%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    gap: 12,
+    borderRadius: 14,
+    padding: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
+    minHeight: 80,
     justifyContent: 'center',
+    gap: 6,
+  },
+  cardEmoji: {
+    fontSize: 22,
+  },
+  spinner: {
+    height: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   gridCardLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: '#0F172A',
-    lineHeight: 18,
+    marginTop: 2,
   },
 
   // Recent Section
   recentSection: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   recentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   recentTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '800',
     color: '#0F172A',
   },
   viewAllBtn: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: '#0D7B5F',
   },
   recentCardContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    paddingVertical: 4,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 1,
+    paddingVertical: 2,
   },
   recentItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     gap: 12,
   },
   chatIconBg: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#E6F4EA',
     alignItems: 'center',
     justifyContent: 'center',
   },
   recentItemText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: '#0F172A',
   },
   recentItemDate: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#64748B',
-    marginTop: 2,
+    marginTop: 1,
     fontWeight: '500',
   },
   divider: {
     height: 1,
     backgroundColor: '#F1F5F9',
-    marginHorizontal: 16,
+    marginHorizontal: 14,
   },
   loadingContainer: {
-    paddingVertical: 24,
+    paddingVertical: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   // Bottom Input Bar
   bottomBarContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     backgroundColor: '#F8FAFC',
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 8,
   },
   inputWrap: {
     flexDirection: 'row',
@@ -531,26 +504,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    height: 48,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 44,
   },
   input: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     color: '#0F172A',
     padding: 0,
   },
   sendBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 24,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
