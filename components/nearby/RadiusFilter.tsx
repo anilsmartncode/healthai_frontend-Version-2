@@ -39,12 +39,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 6,
   },
   radiusLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
-    color: Colors.text,
+    color: Colors.textMuted,
   },
   radiusPills: {
     flexDirection: "row",
@@ -52,22 +52,22 @@ const styles = StyleSheet.create({
   },
   radiusPill: {
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: Colors.border,
   },
   radiusPillActive: {
-    backgroundColor: "#EEF2FF",
-    borderColor: "#C7D2FE",
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   radiusPillText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
     color: Colors.textMuted,
   },
   radiusPillTextActive: {
-    color: "#4F46E5",
+    color: "#FFFFFF",
   },
 });
