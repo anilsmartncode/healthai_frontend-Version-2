@@ -29,7 +29,7 @@ const ACTIONS: {
   {
     emoji: "📅",
     label: "Book visit",
-    route: "/doctors",
+    route: "/appointments",
   },
   {
     emoji: "🆘",
