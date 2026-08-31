@@ -2,7 +2,7 @@ export const Colors = {
   primary: '#0F766E',
   primaryDark: '#115E59',
   accent: '#14B8A6',
-  bg: '#FFFFFF',
+  bg: '#F4F7F6',
   surface: '#F1F5F9',
   card: '#F8FAFC',
   border: '#E2E8F0',

@@ -1,15 +1,18 @@
 import { View, Text, StyleSheet, Pressable, Dimensions } from "react-native";
 import React from "react";
 import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/Colors";
 
 const SCREEN_W = Dimensions.get("window").width;
 const CONTAINER_PADDING = 16;
-const GAP = 8;
-const ITEM_WIDTH = (SCREEN_W - (CONTAINER_PADDING * 2) - (GAP * 3)) / 4;
+const GAP = 6;
+const ITEM_WIDTH = (SCREEN_W - (CONTAINER_PADDING * 2) - (GAP * 4)) / 5;
 
 const ACTIONS: {
-  emoji: string;
+  emoji?: string;
+  ionicon?: keyof typeof Ionicons.glyphMap;
+  iconColor?: string;
   label: string;
   route: string;
 }[] = [
@@ -24,8 +27,8 @@ const ACTIONS: {
     route: "/medicines",
   },
   {
-    emoji: "👨‍⚕️",
-    label: "Add Doctor",
+    emoji: "📅",
+    label: "Book visit",
     route: "/doctors",
   },
   {
@@ -44,12 +47,24 @@ const ACTIONS: {
     route: "/timeline",
   },
   {
+    emoji: "💉",
+    label: "Vaccines",
+    route: "/medicines/browse",
+  },
+  {
+    ionicon: "sync-circle-outline",
+    iconColor: "#0D7B5F",
+    label: "Interactions",
+    route: "/medicines/check-interactions",
+  },
+  {
     emoji: "🗃️",
     label: "Vault",
     route: "/vault",
   },
   {
-    emoji: "👨‍👩‍👧‍👦",
+    ionicon: "people",
+    iconColor: "#FF9500",
     label: "Family",
     route: "/family",
   },
@@ -74,9 +89,18 @@ export function QuickActions() {
             }}
           >
             <View style={styles.iconWrap}>
-              <Text style={styles.emojiText}>{a.emoji}</Text>
+              {a.ionicon ? (
+                <Ionicons name={a.ionicon} size={22} color={a.iconColor || Colors.primary} />
+              ) : (
+                <Text style={styles.emojiText}>{a.emoji}</Text>
+              )}
             </View>
-            <Text style={styles.label} numberOfLines={2}>
+            <Text
+              style={styles.label}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+            >
               {a.label}
             </Text>
           </Pressable>
@@ -101,7 +125,7 @@ const styles = StyleSheet.create({
     gap: GAP,
   },
   listItem: {
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 2,
@@ -110,7 +134,7 @@ const styles = StyleSheet.create({
     gap: 4,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    minHeight: 76,
+    minHeight: 74,
   },
   pressed: {
     opacity: 0.7,
@@ -126,10 +150,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   label: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "600",
     color: Colors.text,
     textAlign: "center",
-    lineHeight: 14,
+    lineHeight: 13,
+    letterSpacing: -0.2,
   },
 });
