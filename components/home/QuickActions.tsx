@@ -49,7 +49,7 @@ const ACTIONS: {
   {
     emoji: "💉",
     label: "Vaccines",
-    route: "/medicines/browse",
+    route: "/vaccines",
   },
   {
     ionicon: "sync-circle-outline",
