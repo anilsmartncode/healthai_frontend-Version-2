@@ -55,11 +55,6 @@ export default function AppointmentsScreen() {
             <Text style={styles.subtitle}>Manage your bookings</Text>
           </View>
         </View>
-
-        <View style={styles.normalPill}>
-          <Text style={styles.normalPillText}>Normal</Text>
-          <Ionicons name="chevron-down" size={14} color="#0D7B5F" />
-        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>

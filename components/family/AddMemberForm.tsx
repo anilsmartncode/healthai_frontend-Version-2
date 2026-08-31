@@ -39,6 +39,8 @@ const RELATIONSHIPS = [
 
 const GENDERS = ['Male', 'Female', 'Other'] as const;
 
+const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
 const STEPS = [
   { n: 1, label: 'Basic Info' },
   { n: 2, label: 'Permissions' },
@@ -85,6 +87,7 @@ export interface AddMemberFormData {
   phone: string;
   date_of_birth: string;
   gender?: string;
+  blood_group?: string;
   channel: string;
 }
 
@@ -108,6 +111,7 @@ export function AddMemberForm({ step, onStepChange, onInvite }: Props) {
   const [phone, setPhone] = useState('');
   const [dob, setDob] = useState<Date | null>(null);
   const [gender, setGender] = useState<(typeof GENDERS)[number]>('Male');
+  const [bloodGroup, setBloodGroup] = useState<string | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [consent, setConsent] = useState(false);
   const [dobOpen, setDobOpen] = useState(false);
@@ -157,6 +161,7 @@ export function AddMemberForm({ step, onStepChange, onInvite }: Props) {
       phone: phone.trim(),
       date_of_birth,
       gender,
+      blood_group: bloodGroup || undefined,
     };
     setSaved(data);
     onStepChange(2);
@@ -311,6 +316,16 @@ export function AddMemberForm({ step, onStepChange, onInvite }: Props) {
                 </Pressable>
               );
             })}
+          </View>
+
+          <View style={[styles.fieldBlock, { marginTop: 12 }]}>
+            <DropdownField
+              label="Blood Group"
+              value={bloodGroup}
+              options={BLOOD_GROUPS}
+              onChange={setBloodGroup}
+              placeholder="Select blood group"
+            />
           </View>
 
           <Pressable style={styles.checkboxRow} onPress={() => setConsent(!consent)}>

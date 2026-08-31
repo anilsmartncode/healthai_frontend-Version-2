@@ -6,8 +6,8 @@ import { Colors } from "@/constants/Colors";
 
 const SCREEN_W = Dimensions.get("window").width;
 const CONTAINER_PADDING = 16;
-const GAP = 6;
-const ITEM_WIDTH = (SCREEN_W - (CONTAINER_PADDING * 2) - (GAP * 4)) / 5;
+const GAP = 4;
+const ITEM_WIDTH = (SCREEN_W - (CONTAINER_PADDING * 2) - (GAP * 5)) / 6;
 
 const ACTIONS: {
   emoji?: string;
@@ -17,7 +17,8 @@ const ACTIONS: {
   route: string;
 }[] = [
   {
-    emoji: "🤖",
+    ionicon: "chatbubbles-outline",
+    iconColor: "#0D7B5F",
     label: "Ask AI",
     route: "/ai",
   },
@@ -68,6 +69,17 @@ const ACTIONS: {
     label: "Family",
     route: "/family",
   },
+  {
+    emoji: "👨‍⚕️",
+    label: "Add doctor",
+    route: "/doctors",
+  },
+  {
+    ionicon: "arrow-up",
+    iconColor: "#0F172A",
+    label: "Upload prescription",
+    route: "/medicines",
+  },
 ];
 
 export function QuickActions() {
@@ -90,16 +102,16 @@ export function QuickActions() {
           >
             <View style={styles.iconWrap}>
               {a.ionicon ? (
-                <Ionicons name={a.ionicon} size={22} color={a.iconColor || Colors.primary} />
+                <Ionicons name={a.ionicon} size={19} color={a.iconColor || Colors.primary} />
               ) : (
                 <Text style={styles.emojiText}>{a.emoji}</Text>
               )}
             </View>
             <Text
               style={styles.label}
-              numberOfLines={1}
+              numberOfLines={2}
               adjustsFontSizeToFit
-              minimumFontScale={0.75}
+              minimumFontScale={0.7}
             >
               {a.label}
             </Text>
@@ -112,7 +124,7 @@ export function QuickActions() {
 
 const styles = StyleSheet.create({
   wrapper: {
-    gap: 12,
+    gap: 10,
   },
   heading: {
     fontSize: 16,
@@ -126,35 +138,35 @@ const styles = StyleSheet.create({
   },
   listItem: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    paddingVertical: 10,
+    borderRadius: 10,
+    paddingVertical: 6,
     paddingHorizontal: 2,
     alignItems: "center",
-    justifyContent: "flex-start",
-    gap: 4,
+    justifyContent: "center",
+    gap: 2,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    minHeight: 74,
+    minHeight: 64,
   },
   pressed: {
     opacity: 0.7,
     transform: [{ scale: 0.96 }],
   },
   iconWrap: {
-    width: 28,
-    height: 28,
+    width: 24,
+    height: 24,
     justifyContent: "center",
     alignItems: "center",
   },
   emojiText: {
-    fontSize: 20,
+    fontSize: 17,
   },
   label: {
-    fontSize: 9,
+    fontSize: 8.5,
     fontWeight: "600",
     color: Colors.text,
     textAlign: "center",
-    lineHeight: 13,
+    lineHeight: 11,
     letterSpacing: -0.2,
   },
 });

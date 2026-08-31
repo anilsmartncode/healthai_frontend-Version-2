@@ -12,7 +12,7 @@ import { generateInviteLink } from '@/services/familyApi';
 
 export default function ShareInviteScreen() {
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ relationship?: string; full_name?: string; date_of_birth?: string }>();
+  const params = useLocalSearchParams<{ relationship?: string; full_name?: string; date_of_birth?: string; blood_group?: string }>();
 
   const [inviteUrl,  setInviteUrl]  = useState('');
   const [inviteCode, setInviteCode] = useState('');
@@ -25,6 +25,7 @@ export default function ShareInviteScreen() {
       relationship:  params.relationship  ?? 'Family',
       full_name:     params.full_name     ?? '',
       date_of_birth: params.date_of_birth ?? '',
+      blood_group:   params.blood_group,
     }).then((r) => {
       setInviteUrl(r.invite_url);
       setInviteCode(r.invite_code);
