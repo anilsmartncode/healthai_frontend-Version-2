@@ -229,7 +229,7 @@ export function HealthScoreCard({
 }
 
 const styles = StyleSheet.create({
-  card: { gap: 0, padding: 16, backgroundColor: "#F4FFFA", borderColor: "#D1FAE5" },
+  card: { gap: 0, padding: 16, backgroundColor: "#E4F5EB", borderColor: "#A7F3D0", borderRadius: 16 },
 
   topRow: { flexDirection: "row", alignItems: "center", gap: 12 },
 
