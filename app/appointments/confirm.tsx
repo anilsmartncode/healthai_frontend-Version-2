@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
-import { getDoctorById, addAppointment } from '@/services/AppointmentsStore';
+import { getDoctorById, addAppointment, getUserProfileName } from '@/services/AppointmentsStore';
 
 export default function ConfirmAppointmentScreen() {
   const { doctorId, timeSlot } = useLocalSearchParams<{ doctorId: string; timeSlot: string }>();
@@ -21,9 +21,18 @@ export default function ConfirmAppointmentScreen() {
   const doctor = getDoctorById(doctorId || '');
   const slot = timeSlot || '10:30 AM';
 
+  const [userName, setUserName] = useState<string>('Anil Kumar');
   const [sendReminder, setSendReminder] = useState(true);
   const [addCalendar, setAddCalendar] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    getUserProfileName().then((name) => {
+      if (name && name.trim()) setUserName(name.trim());
+    });
+  }, []);
+
+  const upiId = `${userName.toLowerCase().replace(/\s+/g, '')}@upi`;
 
   const handlePayAndConfirm = async () => {
     if (submitting) return;
@@ -39,8 +48,8 @@ export default function ConfirmAppointmentScreen() {
         timeSlot: `${slot} – 11:00 AM`,
         consultationType: 'OPD',
         fee: doctor.consultationFee,
-        patientName: 'Arjun Kumar (You)',
-        paymentMethod: 'UPI — arjun@upi',
+        patientName: `${userName} (You)`,
+        paymentMethod: `UPI — ${upiId}`,
         status: 'Confirmed',
       });
 
@@ -99,14 +108,14 @@ export default function ConfirmAppointmentScreen() {
         {/* ── Patient Field ── */}
         <Text style={styles.fieldLabel}>Patient</Text>
         <View style={styles.dropdownCard}>
-          <Text style={styles.dropdownValue}>Arjun Kumar (You)</Text>
+          <Text style={styles.dropdownValue}>{userName} (You)</Text>
           <Ionicons name="chevron-down" size={16} color={Colors.textMuted} />
         </View>
 
         {/* ── Payment Method Field ── */}
         <Text style={styles.fieldLabel}>Payment method</Text>
         <View style={styles.dropdownCard}>
-          <Text style={styles.dropdownValue}>UPI — arjun@upi</Text>
+          <Text style={styles.dropdownValue}>UPI — {upiId}</Text>
           <Ionicons name="chevron-down" size={16} color={Colors.textMuted} />
         </View>
 

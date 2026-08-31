@@ -89,8 +89,8 @@ export const INITIAL_APPOINTMENTS: AppointmentBooking[] = [
     timeSlot: '10:30 - 11:00 AM',
     consultationType: 'OPD',
     fee: 500,
-    patientName: 'Arjun Kumar (You)',
-    paymentMethod: 'UPI — arjun@upi',
+    patientName: 'Anil Kumar (You)',
+    paymentMethod: 'UPI — anil@upi',
     status: 'Confirmed',
     createdAt: new Date().toISOString(),
   },
@@ -104,14 +104,26 @@ export const INITIAL_APPOINTMENTS: AppointmentBooking[] = [
     timeSlot: '4:00 PM',
     consultationType: 'Follow-up',
     fee: 700,
-    patientName: 'Arjun Kumar (You)',
-    paymentMethod: 'UPI — arjun@upi',
+    patientName: 'Anil Kumar (You)',
+    paymentMethod: 'UPI — anil@upi',
     status: 'Pending',
     createdAt: new Date().toISOString(),
   },
 ];
 
 const STORAGE_KEY = 'healthai_user_appointments';
+
+export async function getUserProfileName(): Promise<string> {
+  try {
+    const name = await AsyncStorage.getItem('healthai_current_user_name');
+    if (name && name.trim()) return name.trim();
+    const guestName = await AsyncStorage.getItem('healthai_profile_name_guest');
+    if (guestName && guestName.trim()) return guestName.trim();
+  } catch (e) {
+    /* ignore */
+  }
+  return 'Anil Kumar';
+}
 
 export async function getAppointments(): Promise<AppointmentBooking[]> {
   try {
