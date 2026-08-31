@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   rowBody: { flex: 1, gap: 3 },
-  rowTitle: { fontSize: 14, fontWeight: '700', color: Colors.text },
+  rowTitle: { fontSize: 13, fontWeight: '600', color: Colors.text },
   rowPreview: { fontSize: 12, color: Colors.textMuted },
   rowMeta: { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
   deleteBtn: { padding: 4 },

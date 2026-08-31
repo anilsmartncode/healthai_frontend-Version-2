@@ -123,8 +123,8 @@ const reportStyles = StyleSheet.create({
     gap: 2,
   },
   name: {
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "600",
     color: Colors.text,
   },
   metaRow: {

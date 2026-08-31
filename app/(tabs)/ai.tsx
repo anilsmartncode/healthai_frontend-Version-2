@@ -23,7 +23,7 @@ const C = {
   text: '#0F172A',
   textMuted: '#64748B',
   border: '#E2E8F0',
-  bg: '#F8FAFC',
+  bg: Colors.bg,
   cardBg: '#FFFFFF',
 };
 
@@ -338,8 +338,8 @@ export default function AIHomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
-  mainContainer: { flex: 1, backgroundColor: '#F8FAFC' },
+  safe: { flex: 1, backgroundColor: Colors.bg },
+  mainContainer: { flex: 1, backgroundColor: Colors.bg },
   scrollContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 },
 
   // Header Styles
@@ -470,7 +470,7 @@ const styles = StyleSheet.create({
   },
   recentItemText: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#0F172A',
   },
   recentItemDate: {
@@ -492,7 +492,7 @@ const styles = StyleSheet.create({
 
   // Bottom Input Bar
   bottomBarContainer: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.bg,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
     paddingHorizontal: 16,

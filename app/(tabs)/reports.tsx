@@ -546,7 +546,7 @@ export default function ReportsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F8FAFC' },
+  safe: { flex: 1, backgroundColor: Colors.bg },
   listContent: { paddingHorizontal: 16, paddingBottom: 24 },
 
   header: {
@@ -682,7 +682,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   reportInfo: { flex: 1, minWidth: 0 },
-  reportTitle: { fontSize: 14, fontWeight: '500', color: Colors.text },
+  reportTitle: { fontSize: 13, fontWeight: '600', color: Colors.text },
   reportMeta: { marginTop: 2, fontSize: 11, color: Colors.textMuted },
   statusPill: {
     borderRadius: Radius.pill,
