@@ -68,7 +68,7 @@ async function openReportFile(
 }
 
 function statusLabel(status: LabValue['status'], t: (k: any) => string) {
-  if (status === 'high') return { label: t('abnormal'), bg: '#FEE2E2', color: '#DC2626' };
+  if (status === 'high' || status === 'abnormal') return { label: t('abnormal'), bg: '#FEE2E2', color: '#DC2626' };
   if (status === 'low') return { label: t('borderline'), bg: '#FEF3C7', color: '#D97706' };
   return { label: t('normal'), bg: '#DCFCE7', color: '#15803D' };
 }
@@ -187,7 +187,7 @@ export default function ReportDetailScreen() {
 
   const values: LabValue[] = report.values ?? [];
   const normalValues = values.filter((v) => v.status === 'normal');
-  const abnormalValues = values.filter((v) => v.status === 'high' || v.status === 'low');
+  const abnormalValues = values.filter((v) => v.status === 'high' || v.status === 'low' || v.status === 'abnormal');
   const overallNormal = abnormalValues.length === 0 && (report.status === 'good' || values.length > 0);
 
   const aiText =
@@ -293,6 +293,35 @@ export default function ReportDetailScreen() {
 
         {tab === 'Summary' && (
           <>
+            {/* ── User's Question & AI Answer (Scenario 2 Unified Query) ── */}
+            {report?.userQuestionAnswer?.question ? (
+              <View style={styles.userQACard}>
+                <View style={styles.qaHeader}>
+                  <View style={styles.qaBadge}>
+                    <Ionicons name="chatbubble-ellipses" size={13} color="#0F6E56" />
+                    <Text style={styles.qaBadgeText}>YOUR QUESTION & AI ANSWER</Text>
+                  </View>
+                </View>
+                <View style={styles.userQuestionBox}>
+                  <Text style={styles.userQuestionLabel}>Q:</Text>
+                  <Text style={styles.userQuestionText}>"{report.userQuestionAnswer.question}"</Text>
+                </View>
+                <View style={styles.qaDivider} />
+                <View style={styles.aiAnswerBox}>
+                  <View style={styles.aiAnswerTitleRow}>
+                    <Ionicons name="sparkles" size={13} color="#0F6E56" />
+                    <Text style={styles.aiAnswerTitle}>AI Clinical Assessment</Text>
+                  </View>
+                  <Text style={styles.aiAnswerText}>
+                    {report.userQuestionAnswer.answer ||
+                      (abnormalValues.length > 0
+                        ? `Based on your report, we analyzed the parameters relating to your inquiry. Please review the findings below.`
+                        : `Your query has been recorded. Most parameters in this report are in the normal range.`)}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+
             {/* AI Summary */}
             <View style={styles.card}>
               <View style={[styles.aiHeader, { flexDirection: rowDirection }]}>
@@ -774,4 +803,84 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalBtnSaveText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+
+  // ── User Question & AI Answer Card ──
+  userQACard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#C6E7DE',
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#0F6E56',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+  },
+  qaHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  qaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(15, 110, 86, 0.08)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  qaBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#0F6E56',
+    letterSpacing: 0.5,
+  },
+  userQuestionBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    paddingVertical: 4,
+  },
+  userQuestionLabel: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F6E56',
+  },
+  userQuestionText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1A2B2A',
+    lineHeight: 20,
+    fontStyle: 'italic',
+  },
+  qaDivider: {
+    height: 1,
+    backgroundColor: '#E4E8E6',
+    marginVertical: 10,
+  },
+  aiAnswerBox: {
+    gap: 6,
+  },
+  aiAnswerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  aiAnswerTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F6E56',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  aiAnswerText: {
+    fontSize: 13.5,
+    fontWeight: '500',
+    color: '#2C3E3A',
+    lineHeight: 20,
+  },
 });

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Platform,
   Keyboard,
   TouchableWithoutFeedback,
+  FlatList,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { router } from "expo-router";
@@ -24,6 +25,7 @@ import { signInWithGoogle } from "@/utils/googleAuth";
 import { signInWithApple } from "@/utils/appleAuth";
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { getLocalizedAuthError } from "@/utils/errorLocalization";
+import { COUNTRIES, CountryConfig } from "@/constants/countries";
 // Lazy-load Firebase Auth so the page still opens in Expo Go
 function getAuth() {
   const mod = require('@react-native-firebase/auth');
@@ -193,29 +195,53 @@ function MockAccountPicker({
 // ── Main Component ────────────────────────────────────
 export default function SignUp() {
   const { t, isRTL, rowDirection, textAlign } = useLang();
-  const { signIn } = useAuth();
+  const { signIn, signInAsGuestSession } = useAuth();
   const { rs, vs, ms } = useScalers();
 
+  // ── Segment: "phone" | "email" ──
+  const [activeTab, setActiveTab] = useState<"phone" | "email">("phone");
+  const [step, setStep] = useState<"input" | "otp">("input");
+
+  // Email form state
   const [email, setEmail]           = useState("");
   const [password, setPassword]     = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  // Phone form state
+  const [phone, setPhone]           = useState("");
+  const [country, setCountry]       = useState<CountryConfig>(COUNTRIES[0]);
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [otp, setOtp]               = useState("");
+  const [confirm, setConfirm]       = useState<any>(null);
+  const [resendTimer, setResendTimer] = useState(60);
+
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [agreedToDPDP, setAgreedToDPDP] = useState(false);
+  const [agreedToDPDP, setAgreedToDPDP]   = useState(false);
   const [loading, setLoading]       = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const [errors, setErrors] = useState<{
     email?: string;
     password?: string;
+    phone?: string;
+    otp?: string;
     terms?: string;
     dpdp?: string;
   }>({});
 
-  // 🟢 MOCK — account picker state (remove when using real SDK)
-  const [accountPicker, setAccountPicker] = useState<"google" | "apple" | null>(null);
-
   const clearError = (field: string) =>
     setErrors((prev) => ({ ...prev, [field]: undefined }));
+
+  const fullNumber = `${country.dial}${phone}`;
+
+  // Timer countdown
+  useEffect(() => {
+    let interval: any;
+    if (step === "otp" && resendTimer > 0) {
+      interval = setInterval(() => setResendTimer((p) => p - 1), 1000);
+    }
+    return () => clearInterval(interval);
+  }, [step, resendTimer]);
 
   const pwChecks = {
     length:    password.length >= 8,
@@ -223,7 +249,71 @@ export default function SignUp() {
     numOrSym:  /[0-9!@#$%^&*]/.test(password),
   };
 
-  const validate = (): boolean => {
+  const validateConsent = (): boolean => {
+    const next: typeof errors = {};
+    if (!agreedToTerms)
+      next.terms = t("err_terms_required");
+    if (!agreedToDPDP)
+      next.dpdp = t("err_consent_required");
+    setErrors((p) => ({ ...p, ...next }));
+    return Object.keys(next).length === 0;
+  };
+
+  // ── Phone: Send OTP for Signup ──
+  const handlePhoneSignUp = async () => {
+    const rawDigits = phone.replace(/\D/g, "");
+    if (!phone.trim() || rawDigits.length < 7) {
+      setErrors((p) => ({ ...p, phone: t("err_invalid_phone") }));
+      return;
+    }
+    if (!validateConsent()) return;
+
+    try {
+      setLoading(true);
+      setErrors({});
+      await getAuth().signInWithPhoneNumber(fullNumber);
+      router.push({
+        pathname: "/(auth)/otp-verify",
+        params: {
+          phone: fullNumber,
+          flag: country.flag,
+          mode: "signup",
+        },
+      });
+    } catch (e: any) {
+      setErrors({ phone: getLocalizedAuthError(e, "err_failed_send_otp", t) });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Phone: Verify OTP for Signup ──
+  const handleVerifyOtp = async () => {
+    if (otp.trim().length < 6) {
+      setErrors({ otp: t("err_enter_code") });
+      return;
+    }
+    try {
+      setLoading(true);
+      setErrors({});
+      const userCredential = await confirm.confirm(otp.trim());
+      const idToken = await userCredential.user.getIdToken();
+      const data = await firebaseLoginApi(idToken);
+      if (data?.token) {
+        await signIn(data.token, fullNumber, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
+        router.replace("/(auth)/PersonOnboardingScreen");
+      } else {
+        setErrors({ otp: getLocalizedAuthError(data?.message, "err_network", t) });
+      }
+    } catch (e: any) {
+      setErrors({ otp: getLocalizedAuthError(e, "err_invalid_or_expired_code", t) });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Email/Password Sign Up ──
+  const handleEmailSignUp = async () => {
     const next: typeof errors = {};
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       next.email = t("err_invalid_email");
@@ -234,33 +324,20 @@ export default function SignUp() {
     if (!agreedToDPDP)
       next.dpdp = t("err_consent_required");
     setErrors(next);
-    return Object.keys(next).length === 0;
-  };
+    if (Object.keys(next).length > 0) return;
 
-  // ── Email/Password Sign Up ─────────────────────────
-
-  const handleCreateAccount = async () => {
-    if (!validate()) return;
     try {
       setLoading(true);
-      
-      // 1. Create User with Firebase
       const userCredential = await getAuth().createUserWithEmailAndPassword(email, password);
-      
-      // 2. Send email verification link
       await userCredential.user.sendEmailVerification();
-      
-      // 3. Get the ID token and register with backend
       const idToken = await userCredential.user.getIdToken();
       const data = await firebaseLoginApi(idToken);
       if (data?.token) {
         await signIn(data.token, email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
-        // 4. Navigate to email verification screen
         router.replace({ pathname: "/(auth)/email-verify", params: { email } });
       } else {
         setErrors({ email: getLocalizedAuthError(data?.message, "err_network", t) });
       }
-      
     } catch (error: any) {
       setErrors({ email: getLocalizedAuthError(error, "err_network", t) });
     } finally {
@@ -268,16 +345,13 @@ export default function SignUp() {
     }
   };
 
-  // ── Google Sign Up ─────────────────────────────────
-
+  // ── Google Sign Up ──
   const handleGoogleSignUp = async () => {
     Keyboard.dismiss();
     try {
       setLoading(true);
       const result = await signInWithGoogle();
       if (result.success && result.idToken) {
-        // Exchange token with backend using googleLoginApi 
-        // (Assuming backend uses googleLoginApi for both login and signup for Google)
         const data = await firebaseLoginApi(result.idToken);
         if (data?.token) {
           await signIn(data.token, data.email || result.user?.email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
@@ -295,18 +369,17 @@ export default function SignUp() {
     }
   };
 
+  // ── Apple Sign Up ──
   const handleAppleSignUp = async () => {
     Keyboard.dismiss();
     try {
       setLoading(true);
       setErrors({});
       const result = await signInWithApple();
-      
       if (!result) {
         setLoading(false);
-        return; // user cancelled
+        return;
       }
-      
       const data = await firebaseLoginApi(result.idToken);
       if (data?.token) {
         await signIn(data.token, data.email || result.user.email, data.member_id ?? data.user_id ?? null, data.refresh_token ?? null);
@@ -322,20 +395,23 @@ export default function SignUp() {
     }
   };
 
-  // 🟢 MOCK — called when user picks an account from the fake picker
-  // 🔴 REAL: this whole function goes away — the SDK gives you the token directly
-  const handleMockAccountSelect = async (selectedEmail: string) => {
-    setAccountPicker(null);
-    const isGoogle = selectedEmail.includes("gmail") || selectedEmail.includes("googlemail");
+  // ── Guest Sign Up ──
+  const handleGuestSignUp = async () => {
+    Keyboard.dismiss();
     try {
       setLoading(true);
-      await new Promise((r) => setTimeout(r, 900));          // fake network delay
-      const mockToken = isGoogle ? "mock-token-google" : "mock-token-apple";
-      console.log("[MOCK] Account selected →", selectedEmail, "token →", mockToken);
-      await signIn(mockToken, selectedEmail);
-      router.replace("/(auth)/PersonOnboardingScreen");
+      setErrors({});
+      const { signInAsGuest } = await import('@/utils/guestAuth');
+      const result = await signInAsGuest();
+      if (result.success) {
+        await signInAsGuestSession(result.idToken, result.uid);
+        router.replace('/(tabs)/home');
+      } else {
+        setErrors({ email: getLocalizedAuthError(result.error, 'err_generic', t) });
+      }
     } catch (error: any) {
-      setErrors({ email: error.message || "Sign-Up failed" });
+      console.warn('[SignUp] Guest sign in failed:', error);
+      setErrors({ email: getLocalizedAuthError(error, 'err_generic', t) });
     } finally {
       setLoading(false);
     }
@@ -344,273 +420,429 @@ export default function SignUp() {
   const styles = makeStyles(rs, vs, ms);
 
   return (
-    <>
-      {/* 🟢 MOCK — remove MockAccountPicker when using real SDK */}
-      <MockAccountPicker
-        visible={accountPicker !== null}
-        type={accountPicker}
-        onSelect={handleMockAccountSelect}
-        onClose={() => setAccountPicker(null)}
-      />
+    <View style={styles.container}>
+      {/* ── Topbar matching Prototype v2 ── */}
+      <View style={styles.topbar}>
+        <View style={[styles.backrow, { flexDirection: rowDirection }]}>
+          <Pressable
+            style={styles.iconbtn}
+            onPress={() => {
+              if (step === "otp") {
+                setStep("input");
+              } else {
+                router.back();
+              }
+            }}
+            hitSlop={10}
+          >
+            <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={18} color="#1A2B2A" />
+          </Pressable>
+          <Text style={[styles.topbarTitle, { textAlign }]}>
+            {step === "otp" ? (t("verify_otp") || "Verify OTP") : t("sign_up")}
+          </Text>
+        </View>
+      </View>
 
       <KeyboardAwareScrollView
-        style={styles.container}
-        contentContainerStyle={{ flexGrow: 1 }}
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
         enableOnAndroid={true}
         extraScrollHeight={Platform.OS === 'ios' ? 20 : 100}
       >
-        {/* Hero header */}
-        <View style={styles.hero}>
-          <Pressable style={styles.backBtn} onPress={() => router.back()}>
-            <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={18} color="#fff" />
-          </Pressable>
-          <View style={{ height: 8 }} />
-          <Text style={[styles.title, { textAlign }]}>{t("sign_up")}</Text>
-          <Text style={[styles.sub, { textAlign }]}>{t("enter_phone_get_started")}</Text>
-
-          <View style={styles.illustrationWrap}>
-            <View style={styles.clipboardOuter}>
-              <View style={styles.clipboardClip} />
-              <View style={styles.clipboardBody}>
-                <Ionicons name="person-outline" size={18} color="#2D9C8E" />
-                <View style={styles.clipLine} />
-                <View style={[styles.clipLine, { width: "60%" }]} />
-                <View style={[styles.clipLine, { width: "80%" }]} />
-              </View>
-            </View>
-            <View style={styles.shieldWrap}>
-              <Ionicons name="shield-checkmark" size={26} color="#2D9C8E" />
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.form}>
-
-          {/* ── "Sign up with" label ── */}
-          <Text style={[styles.sectionLabel, { textAlign }]}>{t("sign_in_with")}</Text>
-
-          {/* ── 3-column social row ── */}
-          <View style={styles.socialRow}>
-
-            {/* Google */}
-            <Pressable
-              style={({ pressed }) => [styles.socialBtn, pressed && { opacity: 0.82 }]}
-              onPress={handleGoogleSignUp}
-              disabled={loading}
-            >
-              <GoogleIcon />
-              <Text style={styles.socialText}>Google</Text>
-            </Pressable>
-
-            {/* Apple */}
-            {Platform.OS === 'ios' ? (
-              <AppleAuthentication.AppleAuthenticationButton
-                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
-                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
-                cornerRadius={rs(14)}
-                style={{ flex: 1, height: '100%', minHeight: vs(72) }}
-                onPress={handleAppleSignUp}
-              />
-            ) : (
+        {/* ── Main Signup Form with Segment Switch (Prototype v2 style) ── */}
+        {/* ── Segment Toggle: Phone | Email ── */}
+            <View style={styles.segment}>
               <Pressable
-                style={({ pressed }) => [styles.socialBtn, pressed && { opacity: 0.82 }]}
-                disabled={loading}
-                onPress={handleAppleSignUp}
+                style={[styles.segOpt, activeTab === "phone" && styles.segOptActive]}
+                onPress={() => { setActiveTab("phone"); setErrors({}); }}
               >
-                <Ionicons name="logo-apple" size={20} color="#1a2e35" />
-                <Text style={styles.socialText}>Apple</Text>
+                <Text style={[styles.segOptText, activeTab === "phone" && styles.segOptTextActive]}>
+                  Phone
+                </Text>
               </Pressable>
-            )}
-
-            {/* Phone OTP */}
-            <Pressable
-              style={styles.socialBtn}
-              onPress={() => router.push("/(auth)/Phonesignup")}
-            >
-              <Ionicons name="phone-portrait-outline" size={20} color="#2D9C8E" />
-              <Text style={[styles.socialText, { color: "#2D9C8E" }]}>{t("phone_otp")}</Text>
-            </Pressable>
-
-          </View>
-
-          {/* ── Divider ── */}
-          <View style={styles.orRow}>
-            <View style={styles.orLine} />
-            <Text style={styles.orText}>{t("or_continue")}</Text>
-            <View style={styles.orLine} />
-          </View>
-
-          {/* ── Email Address ── */}
-          <View>
-            <View style={[styles.inputRow, { flexDirection: rowDirection }, !!errors.email && styles.inputError, focusedField === "email" && styles.inputFocused]}>
-              <Ionicons name="mail-outline" size={18} color={focusedField === "email" ? "#2D9C8E" : "#9BB5B5"} />
-              <TextInput
-                style={[styles.inputField, { textAlign }]}
-                placeholder={t("enter_email")}
-                placeholderTextColor="#B0CCCC"
-                value={email}
-                onChangeText={(v) => { setEmail(v); clearError("email"); }}
-                onFocus={() => setFocusedField("email")}
-                onBlur={() => setFocusedField(null)}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-            {!!errors.email && (
-              <View style={styles.errorRow}>
-                <Ionicons name="alert-circle-outline" size={13} color="#EF4444" />
-                <Text style={styles.errorText}>{errors.email}</Text>
-              </View>
-            )}
-          </View>
-
-          {/* ── Password ── */}
-          <View>
-            <View style={[styles.inputRow, { flexDirection: rowDirection }, !!errors.password && styles.inputError, focusedField === "password" && styles.inputFocused]}>
-              <Ionicons name="lock-closed-outline" size={18} color={focusedField === "password" ? "#2D9C8E" : "#9BB5B5"} />
-              <TextInput
-                style={[styles.inputField, { textAlign }]}
-                placeholder={t("enter_password")}
-                placeholderTextColor="#B0CCCC"
-                value={password}
-                onChangeText={(v) => { setPassword(v); clearError("password"); }}
-                onFocus={() => setFocusedField("password")}
-                onBlur={() => setFocusedField(null)}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-              />
-              <Pressable onPress={() => setShowPassword((p) => !p)}>
-                <Ionicons
-                  name={showPassword ? "eye-off-outline" : "eye-outline"}
-                  size={18}
-                  color="#9BB5B5"
-                />
+              <Pressable
+                style={[styles.segOpt, activeTab === "email" && styles.segOptActive]}
+                onPress={() => { setActiveTab("email"); setErrors({}); }}
+              >
+                <Text style={[styles.segOptText, activeTab === "email" && styles.segOptTextActive]}>
+                  Email
+                </Text>
               </Pressable>
             </View>
-            {!!errors.password && (
-              <View style={styles.errorRow}>
-                <Ionicons name="alert-circle-outline" size={13} color="#EF4444" />
-                <Text style={styles.errorText}>{errors.password}</Text>
+
+            {activeTab === "phone" ? (
+              /* ── 1. Phone Signup Tab ── */
+              <View style={{ gap: vs(14) }}>
+                <View style={styles.fieldWrap}>
+                  <Text style={[styles.fieldLabel, { textAlign }]}>{t("mobile_number")}</Text>
+                  <View style={[
+                    styles.inputRow,
+                    { flexDirection: rowDirection },
+                    !!errors.phone && styles.inputError,
+                    focusedField === "phone" && styles.inputFocused,
+                  ]}>
+                    <Pressable
+                      style={styles.dialPickerBtn}
+                      onPress={() => setPickerVisible(true)}
+                    >
+                      <Text style={styles.flagText}>{country.flag}</Text>
+                      <Text style={styles.dialText}>{country.dial}</Text>
+                      <Ionicons name="chevron-down" size={ms(12)} color="#6B756F" />
+                    </Pressable>
+                    <View style={styles.dialDivider} />
+
+                    <TextInput
+                      style={[styles.inputField, { textAlign }]}
+                      placeholder="98765 43210"
+                      placeholderTextColor="#A0ABA7"
+                      value={phone}
+                      onChangeText={(v) => { setPhone(v.replace(/\D/g, "")); clearError("phone"); }}
+                      onFocus={() => setFocusedField("phone")}
+                      onBlur={() => setFocusedField(null)}
+                      keyboardType="phone-pad"
+                      maxLength={14}
+                    />
+                  </View>
+                  {!!errors.phone && (
+                    <View style={styles.errorRow}>
+                      <Ionicons name="alert-circle-outline" size={ms(13)} color="#A32D2D" />
+                      <Text style={styles.errorText}>{errors.phone}</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Terms checkbox */}
+                <Pressable
+                  style={styles.checkboxRow}
+                  onPress={() => { setAgreedToTerms((v) => !v); clearError("terms"); }}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: agreedToTerms }}
+                >
+                  <View style={[styles.checkbox, agreedToTerms && styles.checkboxChecked, !!errors.terms && styles.checkboxError]}>
+                    {agreedToTerms && <Ionicons name="checkmark" size={12} color="#fff" />}
+                  </View>
+                  <Text style={styles.checkboxLabel}>
+                    I agree to the{" "}
+                    <Text style={styles.termsLink} onPress={() => router.push("/(auth)/terms")}>
+                      Terms & Conditions
+                    </Text>{" "}
+                    and{" "}
+                    <Text style={styles.termsLink} onPress={() => router.push("/privacy")}>
+                      Privacy Policy
+                    </Text>
+                    .
+                  </Text>
+                </Pressable>
+                {!!errors.terms && (
+                  <View style={styles.errorRow}>
+                    <Ionicons name="alert-circle-outline" size={13} color="#A32D2D" />
+                    <Text style={styles.errorText}>{errors.terms}</Text>
+                  </View>
+                )}
+
+                {/* DPDP Consent checkbox */}
+                <Pressable
+                  style={[styles.checkboxRow, { marginTop: 4 }]}
+                  onPress={() => { setAgreedToDPDP((v) => !v); clearError("dpdp"); }}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: agreedToDPDP }}
+                >
+                  <View style={[styles.checkbox, agreedToDPDP && styles.checkboxChecked, !!errors.dpdp && styles.checkboxError]}>
+                    {agreedToDPDP && <Ionicons name="checkmark" size={12} color="#fff" />}
+                  </View>
+                  <Text style={styles.checkboxLabel}>
+                    I explicitly consent to HealthAI storing and processing my personal and health data for the purpose of generating medical insights using AI, as detailed in the Privacy Policy.
+                  </Text>
+                </Pressable>
+                {!!errors.dpdp && (
+                  <View style={styles.errorRow}>
+                    <Ionicons name="alert-circle-outline" size={13} color="#A32D2D" />
+                    <Text style={styles.errorText}>{errors.dpdp}</Text>
+                  </View>
+                )}
+
+                {/* Send OTP Button */}
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.btnPrimary,
+                    pressed && !loading && { opacity: 0.88 },
+                    loading && styles.btnDisabled,
+                  ]}
+                  onPress={handlePhoneSignUp}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.btnText}>{t("send_otp")}</Text>
+                  )}
+                </Pressable>
               </View>
-            )}
-
-            {/* Password strength hints */}
-            {password.length > 0 && (
-              <View style={styles.pwHints}>
-                <View style={styles.pwHintRow}>
-                  <Ionicons
-                    name={pwChecks.length ? "checkmark-circle" : "ellipse-outline"}
-                    size={14}
-                    color={pwChecks.length ? "#2D9C8E" : "#B0CCCC"}
-                  />
-                  <Text style={[styles.pwHintText, pwChecks.length && styles.pwHintDone]}>
-                    At least 8 characters
-                  </Text>
-                </View>
-                <View style={styles.pwHintRow}>
-                  <Ionicons
-                    name={pwChecks.uppercase ? "checkmark-circle" : "ellipse-outline"}
-                    size={14}
-                    color={pwChecks.uppercase ? "#2D9C8E" : "#B0CCCC"}
-                  />
-                  <Text style={[styles.pwHintText, pwChecks.uppercase && styles.pwHintDone]}>
-                    One uppercase letter
-                  </Text>
-                </View>
-                <View style={styles.pwHintRow}>
-                  <Ionicons
-                    name={pwChecks.numOrSym ? "checkmark-circle" : "ellipse-outline"}
-                    size={14}
-                    color={pwChecks.numOrSym ? "#2D9C8E" : "#B0CCCC"}
-                  />
-                  <Text style={[styles.pwHintText, pwChecks.numOrSym && styles.pwHintDone]}>
-                    One number or special character
-                  </Text>
-                </View>
-              </View>
-            )}
-          </View>
-
-          {/* ── Terms checkbox ── */}
-          <Pressable
-            style={styles.checkboxRow}
-            onPress={() => { setAgreedToTerms((v) => !v); clearError("terms"); }}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: agreedToTerms }}
-          >
-            <View style={[styles.checkbox, agreedToTerms && styles.checkboxChecked, !!errors.terms && styles.checkboxError]}>
-              {agreedToTerms && <Ionicons name="checkmark" size={12} color="#fff" />}
-            </View>
-            <Text style={styles.checkboxLabel}>
-              I agree to the{" "}
-              <Text style={styles.termsLink} onPress={() => router.push("/(auth)/terms")}>
-                Terms &amp; Conditions
-              </Text>{" "}
-              and{" "}
-              <Text style={styles.termsLink} onPress={() => router.push("/privacy")}>
-                Privacy Policy
-              </Text>
-              .
-            </Text>
-          </Pressable>
-          {!!errors.terms && (
-            <View style={styles.errorRow}>
-              <Ionicons name="alert-circle-outline" size={13} color="#EF4444" />
-              <Text style={styles.errorText}>{errors.terms}</Text>
-            </View>
-          )}
-
-          {/* ── DPDP Consent checkbox ── */}
-          <Pressable
-            style={[styles.checkboxRow, { marginTop: 4 }]}
-            onPress={() => { setAgreedToDPDP((v) => !v); clearError("dpdp"); }}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: agreedToDPDP }}
-          >
-            <View style={[styles.checkbox, agreedToDPDP && styles.checkboxChecked, !!errors.dpdp && styles.checkboxError]}>
-              {agreedToDPDP && <Ionicons name="checkmark" size={12} color="#fff" />}
-            </View>
-            <Text style={styles.checkboxLabel}>
-              I explicitly consent to HealthAI storing and processing my personal and health data for the purpose of generating medical insights using AI, as detailed in the Privacy Policy.
-            </Text>
-          </Pressable>
-          {!!errors.dpdp && (
-            <View style={styles.errorRow}>
-              <Ionicons name="alert-circle-outline" size={13} color="#EF4444" />
-              <Text style={styles.errorText}>{errors.dpdp}</Text>
-            </View>
-          )}
-
-          {/* ── Create Account button ── */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.btnPrimary,
-              pressed && !loading && { opacity: 0.88 },
-              loading && styles.btnDisabled,
-            ]}
-            onPress={handleCreateAccount}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.btnText}>{t("sign_up")}</Text>
+              /* ── 2. Email Signup Tab ── */
+              <View style={{ gap: vs(14) }}>
+                {/* Email Address */}
+                <View style={styles.fieldWrap}>
+                  <Text style={[styles.fieldLabel, { textAlign }]}>{t("email_address")}</Text>
+                  <View style={[
+                    styles.inputRow,
+                    { flexDirection: rowDirection },
+                    !!errors.email && styles.inputError,
+                    focusedField === "email" && styles.inputFocused,
+                  ]}>
+                    <Ionicons name="mail-outline" size={18} color={focusedField === "email" ? "#0F6E56" : "#8A9995"} />
+                    <TextInput
+                      style={[styles.inputField, { textAlign }]}
+                      placeholder={t("enter_email")}
+                      placeholderTextColor="#A0ABA7"
+                      value={email}
+                      onChangeText={(v) => { setEmail(v); clearError("email"); }}
+                      onFocus={() => setFocusedField("email")}
+                      onBlur={() => setFocusedField(null)}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                  </View>
+                  {!!errors.email && (
+                    <View style={styles.errorRow}>
+                      <Ionicons name="alert-circle-outline" size={13} color="#A32D2D" />
+                      <Text style={styles.errorText}>{errors.email}</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Password */}
+                <View style={styles.fieldWrap}>
+                  <Text style={[styles.fieldLabel, { textAlign }]}>{t("password")}</Text>
+                  <View style={[
+                    styles.inputRow,
+                    { flexDirection: rowDirection },
+                    !!errors.password && styles.inputError,
+                    focusedField === "password" && styles.inputFocused,
+                  ]}>
+                    <Ionicons name="lock-closed-outline" size={18} color={focusedField === "password" ? "#0F6E56" : "#8A9995"} />
+                    <TextInput
+                      style={[styles.inputField, { textAlign }]}
+                      placeholder={t("enter_password")}
+                      placeholderTextColor="#A0ABA7"
+                      value={password}
+                      onChangeText={(v) => { setPassword(v); clearError("password"); }}
+                      onFocus={() => setFocusedField("password")}
+                      onBlur={() => setFocusedField(null)}
+                      secureTextEntry={!showPassword}
+                      autoCapitalize="none"
+                    />
+                    <Pressable onPress={() => setShowPassword((p) => !p)}>
+                      <Ionicons
+                        name={showPassword ? "eye-off-outline" : "eye-outline"}
+                        size={18}
+                        color="#8A9995"
+                      />
+                    </Pressable>
+                  </View>
+                  {!!errors.password && (
+                    <View style={styles.errorRow}>
+                      <Ionicons name="alert-circle-outline" size={13} color="#A32D2D" />
+                      <Text style={styles.errorText}>{errors.password}</Text>
+                    </View>
+                  )}
+
+                  {/* Password strength hints */}
+                  {password.length > 0 && (
+                    <View style={styles.pwHints}>
+                      <View style={styles.pwHintRow}>
+                        <Ionicons
+                          name={pwChecks.length ? "checkmark-circle" : "ellipse-outline"}
+                          size={14}
+                          color={pwChecks.length ? "#0F6E56" : "#A0ABA7"}
+                        />
+                        <Text style={[styles.pwHintText, pwChecks.length && styles.pwHintDone]}>
+                          At least 8 characters
+                        </Text>
+                      </View>
+                      <View style={styles.pwHintRow}>
+                        <Ionicons
+                          name={pwChecks.uppercase ? "checkmark-circle" : "ellipse-outline"}
+                          size={14}
+                          color={pwChecks.uppercase ? "#0F6E56" : "#A0ABA7"}
+                        />
+                        <Text style={[styles.pwHintText, pwChecks.uppercase && styles.pwHintDone]}>
+                          At least one uppercase letter
+                        </Text>
+                      </View>
+                      <View style={styles.pwHintRow}>
+                        <Ionicons
+                          name={pwChecks.numOrSym ? "checkmark-circle" : "ellipse-outline"}
+                          size={14}
+                          color={pwChecks.numOrSym ? "#0F6E56" : "#A0ABA7"}
+                        />
+                        <Text style={[styles.pwHintText, pwChecks.numOrSym && styles.pwHintDone]}>
+                          At least one number or symbol
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+
+                {/* Terms checkbox */}
+                <Pressable
+                  style={styles.checkboxRow}
+                  onPress={() => { setAgreedToTerms((v) => !v); clearError("terms"); }}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: agreedToTerms }}
+                >
+                  <View style={[styles.checkbox, agreedToTerms && styles.checkboxChecked, !!errors.terms && styles.checkboxError]}>
+                    {agreedToTerms && <Ionicons name="checkmark" size={12} color="#fff" />}
+                  </View>
+                  <Text style={styles.checkboxLabel}>
+                    I agree to the{" "}
+                    <Text style={styles.termsLink} onPress={() => router.push("/(auth)/terms")}>
+                      Terms & Conditions
+                    </Text>{" "}
+                    and{" "}
+                    <Text style={styles.termsLink} onPress={() => router.push("/privacy")}>
+                      Privacy Policy
+                    </Text>
+                    .
+                  </Text>
+                </Pressable>
+                {!!errors.terms && (
+                  <View style={styles.errorRow}>
+                    <Ionicons name="alert-circle-outline" size={13} color="#A32D2D" />
+                    <Text style={styles.errorText}>{errors.terms}</Text>
+                  </View>
+                )}
+
+                {/* DPDP Consent checkbox */}
+                <Pressable
+                  style={[styles.checkboxRow, { marginTop: 4 }]}
+                  onPress={() => { setAgreedToDPDP((v) => !v); clearError("dpdp"); }}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: agreedToDPDP }}
+                >
+                  <View style={[styles.checkbox, agreedToDPDP && styles.checkboxChecked, !!errors.dpdp && styles.checkboxError]}>
+                    {agreedToDPDP && <Ionicons name="checkmark" size={12} color="#fff" />}
+                  </View>
+                  <Text style={styles.checkboxLabel}>
+                    I explicitly consent to HealthAI storing and processing my personal and health data for the purpose of generating medical insights using AI, as detailed in the Privacy Policy.
+                  </Text>
+                </Pressable>
+                {!!errors.dpdp && (
+                  <View style={styles.errorRow}>
+                    <Ionicons name="alert-circle-outline" size={13} color="#A32D2D" />
+                    <Text style={styles.errorText}>{errors.dpdp}</Text>
+                  </View>
+                )}
+
+                {/* Create Account Button */}
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.btnPrimary,
+                    pressed && !loading && { opacity: 0.88 },
+                    loading && styles.btnDisabled,
+                  ]}
+                  onPress={handleEmailSignUp}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.btnText}>{t("sign_up")}</Text>
+                  )}
+                </Pressable>
+              </View>
             )}
-          </Pressable>
 
-          {/* ── Already have account ── */}
-          <View style={[styles.loginRow, { flexDirection: rowDirection }]}>
-            <Text style={styles.loginText}>{t("have_account")} </Text>
-            <Pressable onPress={() => router.push("/(auth)/login")}>
-              <Text style={styles.loginLink}>{t("login")}</Text>
-            </Pressable>
-          </View>
+            {/* ── Divider ── */}
+            <View style={styles.orRow}>
+              <View style={styles.orLine} />
+              <Text style={styles.orText}>{t("or_continue")}</Text>
+              <View style={styles.orLine} />
+            </View>
 
-        </View>
+            {/* ── Social & Guest Buttons Stacked One by One ── */}
+            <View style={styles.socialStack}>
+              <Pressable
+                style={({ pressed }) => [styles.socialBtnStacked, pressed && { opacity: 0.85 }]}
+                onPress={handleGoogleSignUp}
+                disabled={loading}
+              >
+                <GoogleIcon />
+                <Text style={styles.socialBtnTextStacked}>{t("google_signin") || "Continue with Google"}</Text>
+              </Pressable>
+
+              {Platform.OS === 'ios' ? (
+                <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
+                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE_OUTLINE}
+                  cornerRadius={rs(12)}
+                  style={{ width: '100%', height: vs(48) }}
+                  onPress={handleAppleSignUp}
+                />
+              ) : (
+                <Pressable
+                  style={({ pressed }) => [styles.socialBtnStacked, pressed && { opacity: 0.85 }]}
+                  disabled={loading}
+                  onPress={handleAppleSignUp}
+                >
+                  <Ionicons name="logo-apple" size={20} color="#1A2B2A" />
+                  <Text style={styles.socialBtnTextStacked}>{t("apple_signin") || "Continue with Apple"}</Text>
+                </Pressable>
+              )}
+
+              <Pressable
+                style={({ pressed }) => [styles.socialBtnStacked, pressed && { opacity: 0.85 }]}
+                onPress={handleGuestSignUp}
+                disabled={loading}
+              >
+                <Ionicons name="person-circle-outline" size={20} color="#0F6E56" />
+                <Text style={styles.socialBtnTextStacked}>{t("guest_signin") || "Continue as guest"}</Text>
+              </Pressable>
+            </View>
+
+            {/* ── Already have account ── */}
+            <View style={[styles.loginRow, { flexDirection: rowDirection }]}>
+              <Text style={styles.loginText}>{t("have_account")} </Text>
+              <Pressable onPress={() => router.push("/(auth)/login")}>
+                <Text style={styles.loginLink}>{t("login")}</Text>
+              </Pressable>
+            </View>
       </KeyboardAwareScrollView>
-    </>
+
+      {/* Country Picker Modal */}
+      <Modal
+        visible={pickerVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setPickerVisible(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setPickerVisible(false)} />
+        <View style={styles.modalSheet}>
+          <View style={styles.sheetHandle} />
+          <Text style={styles.modalTitle}>Select Country</Text>
+          <FlatList
+            data={COUNTRIES}
+            keyExtractor={(item) => item.code}
+            renderItem={({ item }) => (
+              <Pressable
+                style={styles.countryRow}
+                onPress={() => {
+                  setCountry(item);
+                  setPickerVisible(false);
+                }}
+              >
+                <Text style={{ fontSize: ms(20) }}>{item.flag}</Text>
+                <Text style={styles.countryName}>{item.name}</Text>
+                <Text style={styles.countryDial}>{item.dial}</Text>
+              </Pressable>
+            )}
+          />
+        </View>
+      </Modal>
+    </View>
   );
 }
 
@@ -620,147 +852,117 @@ const makeStyles = (
   ms: (n: number, f?: number) => number
 ) =>
   StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F4F9F9" },
+  container: { flex: 1, backgroundColor: "#F4F6F5" },
 
-  hero: {
+  topbar: {
+    backgroundColor: "#FFFFFF",
     paddingHorizontal: rs(18),
-    paddingTop: vs(46),
-    paddingBottom: vs(18),
-    backgroundColor: "#0F172A",
-    borderBottomLeftRadius: rs(22),
-    borderBottomRightRadius: rs(22),
+    paddingTop: Platform.OS === 'ios' ? vs(54) : vs(24),
+    paddingBottom: vs(12),
+    borderBottomWidth: 1,
+    borderBottomColor: "#E4E8E6",
   },
-  backBtn: {
-    width: rs(32),
-    height: rs(32),
-    borderRadius: rs(10),
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  title: { fontSize: ms(22), fontWeight: "800", color: "#fff", marginBottom: vs(2) },
-  sub: { fontSize: ms(12), color: "rgba(255,255,255,0.6)", fontWeight: "500" },
-  illustrationWrap: {
-    position: "absolute",
-    right: rs(16),
-    top: vs(40),
+  backrow: {
     flexDirection: "row",
-    alignItems: "flex-end",
-    gap: rs(4),
-  },
-  clipboardOuter: { alignItems: "center" },
-  clipboardClip: {
-    width: rs(22),
-    height: vs(8),
-    backgroundColor: "#2D9C8E",
-    borderRadius: rs(3),
-    marginBottom: -3,
-    zIndex: 1,
-  },
-  clipboardBody: {
-    width: rs(56),
-    backgroundColor: "#fff",
-    borderRadius: rs(8),
-    padding: rs(8),
     alignItems: "center",
-    gap: vs(4),
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    gap: rs(12),
   },
-  clipLine: {
-    width: "100%",
-    height: vs(4),
-    backgroundColor: "#E2E8F0",
-    borderRadius: rs(2),
-  },
-  shieldWrap: {
-    width: rs(32),
-    height: rs(32),
-    borderRadius: rs(16),
-    backgroundColor: "rgba(45,156,142,0.2)",
+  iconbtn: {
+    width: rs(34),
+    height: rs(34),
+    borderRadius: rs(17),
+    borderWidth: 1,
+    borderColor: "#E4E8E6",
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
     justifyContent: "center",
-    alignItems: "center",
+  },
+  topbarTitle: {
+    fontSize: ms(19),
+    fontWeight: "700",
+    color: "#1A2B2A",
+  },
+
+  scroll: { flex: 1 },
+  content: {
+    paddingHorizontal: rs(18),
+    paddingTop: vs(20),
+    paddingBottom: vs(40),
+    gap: vs(16),
+  },
+
+  headerBlock: {
     marginBottom: vs(4),
   },
-
-  form: {
-    flex: 1,
-    paddingHorizontal: rs(16),
-    paddingTop: vs(20),
-    paddingBottom: vs(20),
-    gap: vs(12),
-  },
-
-  sectionLabel: {
-    fontSize: ms(14),
+  welcomeTitle: {
+    fontSize: ms(22),
     fontWeight: "700",
-    color: "#1a2e35",
-    textAlign: "center",
-    marginBottom: vs(2),
+    color: "#1A2B2A",
+    marginBottom: vs(4),
+  },
+  welcomeSub: {
+    fontSize: ms(13),
+    color: "#6B756F",
+    lineHeight: ms(19),
   },
 
-  socialRow: {
-    flexDirection: "row",
-    gap: rs(8),
+  socialStack: {
+    gap: vs(10),
+    marginTop: vs(2),
   },
-  socialBtn: {
-    flex: 1,
-    flexDirection: "column",
+  socialBtnStacked: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: vs(6),
-    backgroundColor: "#fff",
+    gap: rs(10),
+    backgroundColor: "#FFFFFF",
     borderWidth: 1.5,
-    borderColor: "#E2ECEC",
-    borderRadius: rs(14),
-    paddingVertical: vs(14),
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    borderColor: "#0F6E56",
+    borderRadius: rs(12),
+    paddingVertical: vs(13),
+    paddingHorizontal: rs(16),
   },
-  socialText: { fontSize: ms(12), fontWeight: "700", color: "#1a2e35" },
+  socialBtnTextStacked: {
+    fontSize: ms(14),
+    fontWeight: "700",
+    color: "#0F6E56",
+  },
 
   orRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: rs(8),
+    gap: rs(10),
     marginVertical: vs(2),
   },
-  orLine: { flex: 1, height: 1, backgroundColor: "#E2ECEC" },
-  orText: { fontSize: ms(11), color: "#9BB5B5", fontWeight: "600" },
+  orLine: { flex: 1, height: 1, backgroundColor: "#E4E8E6" },
+  orText: { fontSize: ms(11.5), color: "#6B756F", fontWeight: "500" },
 
+  fieldWrap: { gap: vs(5) },
+  fieldLabel: {
+    fontSize: ms(12.5),
+    fontWeight: "600",
+    color: "#6B756F",
+  },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1.5,
-    borderColor: "#E2ECEC",
-    borderRadius: rs(14),
+    borderColor: "#E4E8E6",
+    borderRadius: rs(10),
     paddingHorizontal: rs(14),
-    paddingVertical: vs(13),
+    paddingVertical: vs(12),
     gap: rs(10),
-    shadowColor: "#2D9C8E",
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
   },
-  inputError: { borderColor: "#EF4444" },
+  inputError: { borderColor: "#A32D2D" },
   inputFocused: {
-    borderColor: "#2D9C8E",
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 2,
+    borderColor: "#0F6E56",
   },
   inputField: {
     flex: 1,
     fontSize: ms(14),
     fontWeight: "500",
-    color: "#1a2e35",
+    color: "#1A2B2A",
     paddingVertical: 0,
   },
 
@@ -768,14 +970,23 @@ const makeStyles = (
     flexDirection: "row",
     alignItems: "center",
     gap: rs(4),
-    marginTop: vs(3),
+    marginTop: vs(2),
   },
-  errorText: { fontSize: ms(11), color: "#EF4444", fontWeight: "500", flex: 1 },
+  errorText: { fontSize: ms(11.5), color: "#A32D2D", fontWeight: "500", flex: 1 },
+
+  usePhoneRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: rs(3),
+    marginTop: vs(4),
+  },
+  usePhoneText: { fontSize: ms(12), fontWeight: "600", color: "#0F6E56" },
 
   pwHints: { marginTop: vs(6), gap: vs(3) },
   pwHintRow: { flexDirection: "row", alignItems: "center", gap: rs(6) },
-  pwHintText: { fontSize: ms(11), color: "#9BB5B5", fontWeight: "500" },
-  pwHintDone: { color: "#2D9C8E" },
+  pwHintText: { fontSize: ms(11), color: "#8A9995", fontWeight: "500" },
+  pwHintDone: { color: "#0F6E56" },
 
   checkboxRow: { flexDirection: "row", alignItems: "flex-start", gap: rs(10) },
   checkbox: {
@@ -791,38 +1002,162 @@ const makeStyles = (
     flexShrink: 0,
   },
   checkboxChecked: {
-    backgroundColor: "#2D9C8E",
-    borderColor: "#2D9C8E",
+    backgroundColor: "#0F6E56",
+    borderColor: "#0F6E56",
   },
-  checkboxError: { borderColor: "#EF4444" },
+  checkboxError: { borderColor: "#A32D2D" },
   checkboxLabel: {
     flex: 1,
     fontSize: ms(12),
-    color: "#6B8F8F",
+    color: "#6B756F",
     lineHeight: ms(17),
     fontWeight: "500",
   },
-  termsLink: { color: "#2D9C8E", fontWeight: "700" },
+  termsLink: { color: "#0F6E56", fontWeight: "700" },
 
   btnPrimary: {
-    backgroundColor: "#2D9C8E",
-    borderRadius: rs(14),
+    backgroundColor: "#0F6E56",
+    borderRadius: rs(12),
     paddingVertical: vs(14),
     alignItems: "center",
-    shadowColor: "#2D9C8E",
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    marginTop: vs(6),
+    shadowColor: "#0F6E56",
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  btnText: { color: "#fff", fontSize: ms(15), fontWeight: "800", letterSpacing: 0.2 },
-  btnDisabled: { backgroundColor: "#A8D5CF", elevation: 0, shadowOpacity: 0 },
+  btnText: { color: "#FFFFFF", fontSize: ms(15), fontWeight: "700" },
+  btnDisabled: { backgroundColor: "#8AB5AA", elevation: 0, shadowOpacity: 0 },
+
+  segment: {
+    flexDirection: "row",
+    backgroundColor: "#EBEFEF",
+    borderRadius: rs(10),
+    padding: rs(3),
+    marginBottom: vs(6),
+  },
+  segOpt: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: vs(9),
+    borderRadius: rs(8),
+  },
+  segOptActive: {
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  segOptText: {
+    fontSize: ms(13),
+    fontWeight: "600",
+    color: "#6B756F",
+  },
+  segOptTextActive: {
+    color: "#085041",
+    fontWeight: "700",
+  },
+
+  dialPickerBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(4),
+    paddingRight: rs(8),
+  },
+  dialDivider: {
+    width: 1,
+    height: vs(18),
+    backgroundColor: "#E4E8E6",
+    marginRight: rs(4),
+  },
+  flagText: { fontSize: ms(18) },
+  dialText: { fontSize: ms(13), fontWeight: "700", color: "#1A2B2A" },
+
+  otpInputField: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1.5,
+    borderColor: "#0F6E56",
+    borderRadius: rs(10),
+    fontSize: ms(24),
+    fontWeight: "700",
+    color: "#1A2B2A",
+    textAlign: "center",
+    paddingVertical: vs(12),
+    letterSpacing: rs(8),
+  },
+  otpMetaRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: vs(2),
+  },
+  resendTimerText: {
+    fontSize: ms(12),
+    color: "#6B756F",
+    fontWeight: "500",
+  },
+  linkText: {
+    fontSize: ms(12),
+    color: "#0F6E56",
+    fontWeight: "700",
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(10,20,18,0.45)",
+  },
+  modalSheet: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: rs(20),
+    borderTopRightRadius: rs(20),
+    paddingHorizontal: rs(18),
+    paddingTop: vs(14),
+    paddingBottom: vs(34),
+    maxHeight: "70%",
+  },
+  sheetHandle: {
+    width: rs(36),
+    height: vs(4),
+    backgroundColor: "#E4E8E6",
+    borderRadius: rs(4),
+    alignSelf: "center",
+    marginBottom: vs(12),
+  },
+  modalTitle: {
+    fontSize: ms(16),
+    fontWeight: "700",
+    color: "#1A2B2A",
+    marginBottom: vs(12),
+    textAlign: "center",
+  },
+  countryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: vs(12),
+    borderBottomWidth: 1,
+    borderBottomColor: "#E4E8E6",
+    gap: rs(12),
+  },
+  countryName: {
+    flex: 1,
+    fontSize: ms(14),
+    fontWeight: "500",
+    color: "#1A2B2A",
+  },
+  countryDial: {
+    fontSize: ms(13),
+    fontWeight: "700",
+    color: "#0F6E56",
+  },
 
   loginRow: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    paddingBottom: vs(4),
+    marginTop: vs(6),
   },
-  loginText: { fontSize: ms(13), color: "#9BB5B5", fontWeight: "500" },
-  loginLink: { fontSize: ms(13), color: "#2D9C8E", fontWeight: "700" },
+  loginText: { fontSize: ms(13), color: "#6B756F", fontWeight: "500" },
+  loginLink: { fontSize: ms(13), color: "#0F6E56", fontWeight: "700" },
 });

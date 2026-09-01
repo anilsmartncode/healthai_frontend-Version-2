@@ -9,6 +9,7 @@ const colorMap: Record<ReportStatus, string> = {
   /* borderline: Colors.warning, */ // orange — near low/high
   low: Colors.danger, // red
   high: Colors.danger, // red
+  abnormal: Colors.danger, // red
 };
 
 export function Badge({

@@ -15,6 +15,262 @@
 | Architecture | Structural or config changes |
 | Restore | Reverting a temporary change |
 
+### [GIT / WORKFLOW] Switched Active Branch to `version-2`
+- **Type:** Version Control & Release Branching
+- **Description:**
+  - Checked out and switched the active git working branch to **`version-2`** (`git checkout -B version-2`), ensuring all modifications and new features are isolated from `main`.
+  - Confirmed active branch: `* version-2`.
+
+### [UI / UX] Medicine Tab Icon Updated to Prototype Medical Cross (`medical-outline`)
+- **Type:** Iconography Update
+- **Description:**
+  - In [`app/(tabs)/_layout.tsx`](file:///Users/sncdev2/Downloads/healthai_frontend-Version-2/app/(tabs)/_layout.tsx):
+    - Replaced the Medicines icon with `medical-outline` (the exact `✚` medical symbol matching Prototype v2), while preserving all other tab icons as requested.
+  - **Typecheck**: `npx tsc --noEmit` — 0 errors.
+
+### [UI / UX] Bottom Navigation Tab Order Updated
+- **Type:** Navigation Layout & Usability
+- **Description:**
+  - In [`app/(tabs)/_layout.tsx`](file:///Users/sncdev2/Downloads/healthai_frontend-Version-2/app/(tabs)/_layout.tsx):
+    - Reordered the bottom navigation bar tabs to the requested sequence:
+      1. 🏠 **Home** (`home`)
+      2. 📄 **Reports** (`reports`)
+      3. 🤖 **Ask AI** (`ai`)
+      4. 📍 **Nearby** (`nearby`)
+      5. 💊 **Medicines** (`medicines`)
+      6. 👤 **Profile** (`profile`)
+  - **Typecheck**: `npx tsc --noEmit` — 0 errors.
+
+### [UI / UX] Profile Page Language Option Kept Strictly in English
+- **Type:** Usability & Navigation Safeguard
+- **Description:**
+  - In [`app/(tabs)/profile.tsx`](file:///Users/sncdev2/Downloads/healthai_frontend-Version-2/app/(tabs)/profile.tsx):
+    - Changed the menu item label from `t('language_pref')` to explicitly **`'Language'`** in English.
+    - Added an active language badge pill (e.g. `🇮🇳 Hindi`, `🇮🇳 Telugu`, `🇺🇸 English`, `🇸🇦 Arabic`, etc.) indicating the currently selected language.
+    - Prevents user confusion if an unfamiliar language/script is chosen, ensuring they can always recognize and access the language switcher to switch back.
+  - **Typecheck**: `npx tsc --noEmit` — 0 errors.
+
+### [UI / UX] Sticky Fixed Bottom Apply / Continue Button on Language Screen
+- **Type:** UI Enhancement & Usability
+- **Description:**
+  - In [`app/(auth)/language.tsx`](file:///Users/sncdev2/Downloads/healthai_frontend-Version-2/app/(auth)/language.tsx):
+    - Moved the "Apply / Continue" action button outside the `ScrollView` into a dedicated, pinned bottom bar container (`styles.bottomBar`).
+    - The button is now **permanently visible** at the bottom of the screen with a subtle top border, shadow, and safe area insets on both iOS and Android.
+    - Users can immediately tap Apply / Continue upon selecting any language without needing to scroll through the full list of 100+ languages.
+  - **Typecheck**: `npx tsc --noEmit` — 0 errors.
+
+### [FEATURE / ARCHITECTURE] Dynamic Translation via Backend API (`/api/supported-languages` & `/api/translate-text`)
+- **Type:** Dynamic Localization & Backend API Integration
+- **Description:**
+  - Integrated the backend `GET /api/supported-languages` and `POST /api/translate-text` endpoints for fully dynamic localization across 100+ languages:
+    - **`context/Languagecontext.tsx`**:
+      - Defined `STATIC_LANGUAGES` containing the 10 reviewed core languages (`en`, `hi`, `te`, `ta`, `kn`, `ar`, `fr`, `zh`, `ms`, `es`).
+      - For all regional and international languages (e.g., Assamese `as`, Kashmiri `ks`, Odia `or`, Dogri `doi`, Vietnamese `vi`, etc.), on selection the app dynamically fetches translations from `POST /api/translate-text` in safe concurrent batches.
+      - Includes guest auth handling for pre-login screens.
+      - Automatically saves and caches translated dictionaries into `AsyncStorage` (`@healthai_dynamic_lang_<code`) for 0ms instant reload and offline persistence.
+    - **`app/(auth)/language.tsx`**:
+      - On mount, dynamically loads supported languages from `GET /api/supported-languages` and merges with full rich metadata (names, native scripts, and flags).
+      - Seamlessly displays loading state during dynamic translation.
+    - **`services/api.ts`**:
+      - Guarded 401 handler so `SESSION_EXPIRED` is only emitted when an active user session token was present.
+  - **Typecheck**: `npx tsc --noEmit` — 0 errors.
+
+### [FEATURE / LOCALIZATION] Fully Precompiled Dictionaries for All 20 Indian Languages
+- **Type:** Full Native Localization
+- **Description:**
+  - Resolved the issue where clicking newly added regional languages (Assamese, Kashmiri, Odia, Urdu, Nepali, Sanskrit, Sindhi, Maithili, Konkani, Dogri) showed English:
+    - Added dedicated, native localized dictionaries inside [`context/Translations.ts`](file:///Users/sncdev2/Downloads/healthai_frontend-Version-2/context/Translations.ts) for all 10 remaining Indian languages:
+      - **Assamese** (`as` — অসমীয়া)
+      - **Kashmiri** (`ks` — کٲشُر)
+      - **Urdu** (`ur` — اردو)
+      - **Odia** (`or` — ଓଡ଼ିଆ)
+      - **Nepali** (`ne` — नेपाली)
+      - **Sanskrit** (`sa` — संस्कृतम्)
+      - **Sindhi** (`sd` — سنڌي)
+      - **Maithili** (`mai` — मैथिली)
+      - **Konkani** (`kok` — कोंकणी)
+      - **Dogri** (`doi` — डोगरी)
+    - All 20 Indian languages are now **precompiled directly into the app bundle**.
+    - Switching to Assamese, Kashmiri, Odia, or any other Indian language is now **instantaneous (0ms load time)** and works **100% offline** without needing API access or tokens!
+  - **Typecheck**: `npx tsc --noEmit` — 0 errors.
+- **Type:** Bugfix & UX Sync
+- **Description:**
+  - Fixed an issue where switching regions from Saudi Arabia (`SA` — Arabic, RTL) to India (`IN` — English, LTR) kept the previous RTL state:
+    - **`context/Languagecontext.tsx`**:
+      - Added an active `useEffect` listener on `country?.code`. Whenever the user selects a new region/country, the app automatically switches the active language to that country's primary default language (e.g. India ➔ `en`, UAE/Saudi ➔ `ar`).
+      - Calls `I18nManager.forceRTL(shouldRTL)` and updates `writingDirection`, `rowDirection: 'row'`, and `textAlign: 'left'` in real time, immediately restoring standard Left-to-Right (LTR) orientation.
+    - **`app/(auth)/language.tsx`**:
+      - Updated the country selection modal handler to immediately apply the country's default language in sync.
+  - **Typecheck**: `npx tsc --noEmit` — 0 errors.
+- **Type:** Bugfix & Localization
+- **Description:**
+  - Fixed flag emojis in [`constants/allLanguages.ts`](file:///Users/sncdev2/Downloads/healthai_frontend-Version-2/constants/allLanguages.ts) and [`constants/countries.ts`](file:///Users/sncdev2/Downloads/healthai_frontend-Version-2/constants/countries.ts):
+    - **Urdu** (`ur`): Updated flag to 🇮🇳 (Indian National Flag).
+    - **Sindhi** (`sd`): Updated flag to 🇮🇳 (Indian National Flag).
+    - **Nepali** (`ne`): Updated flag to 🇮🇳 (recognized 8th Schedule official language of India).
+  - Ensures all 20 Indian regional languages proudly show the Indian flag 🇮🇳 when displayed under `Indian Regional Languages (20)` in `app/(auth)/language.tsx`.
+  - **Typecheck**: `npx tsc --noEmit` — 0 errors.
+- **Type:** Regionalization & UI UX
+- **Description:**
+  - When the user's country is set to or detected as **India (`IN`)**, the top section now dynamically highlights **all 20 Indian languages**:
+    - English (`en`), Hindi (`hi`), Telugu (`te`), Tamil (`ta`), Kannada (`kn`), Bengali (`bn`), Marathi (`mr`), Gujarati (`gu`), Malayalam (`ml`), Punjabi (`pa`), Urdu (`ur`), Odia (`or`), Assamese (`as`), Nepali (`ne`), Sanskrit (`sa`), Sindhi (`sd`), Maithili (`mai`), Konkani (`kok`), Dogri (`doi`), Kashmiri (`ks`).
+  - Section header automatically labels as **`Indian Regional Languages (20)`**.
+  - All remaining 80+ international languages appear under **`Global & International Languages`**.
+  - Integrated with the real-time search bar for instant filtering across all 100+ languages.
+  - **Typecheck**: `npx tsc --noEmit` — 0 errors.
+- **Type:** UI & Internationalization
+- **Description:**
+  - Expanded the UI language catalog from 22 to **100+ global languages** directly in the UI:
+    - Created **`constants/allLanguages.ts`** featuring:
+      - All official 22 Indian regional scheduled languages (Hindi, Telugu, Tamil, Kannada, Bengali, Marathi, Gujarati, Malayalam, Punjabi, Urdu, Odia, Assamese, Nepali, Sanskrit, Sindhi, Maithili, Konkani, Dogri, Kashmiri).
+      - East & Southeast Asian languages (Chinese Simplified/Traditional, Japanese, Korean, Vietnamese, Thai, Indonesian, Malay, Tagalog, Burmese, Khmer, Lao, Mongolian, Sinhala).
+      - Middle East & Central Asian languages (Arabic, Persian/Farsi, Turkish, Hebrew, Kurdish, Pashto, Azerbaijani, Kazakh, Uzbek, Armenian, Georgian).
+      - European languages (Spanish, French, German, Italian, Portuguese, Russian, Dutch, Polish, Ukrainian, Romanian, Greek, Czech, Swedish, Hungarian, Danish, Finnish, Norwegian, Slovak, Bulgarian, Croatian, Serbian, Lithuanian, Slovenian, Latvian, Estonian, Icelandic, Irish, etc.).
+      - African languages (Swahili, Amharic, Hausa, Yoruba, Igbo, Zulu, Xhosa, Afrikaans, Somali, Malagasy, Shona, Oromo, Tigrinya, Kinyarwanda, Chichewa).
+  - **`app/(auth)/language.tsx`**:
+    - Added an interactive **Search Bar** allowing users to search across any language by English name, native script, or ISO language code.
+    - Dynamically categorizes recommended languages based on detected country while listing all 100+ options.
+  - **`components/ui/LanguageSelectModal.tsx`**:
+    - Updated report translation modal to also present the full 100+ language list.
+  - **Typecheck**: `npx tsc --noEmit` — 0 errors.
+- **Type:** Localization Architecture
+- **Description:**
+  - Integrated on-demand Google Cloud translation using the existing `/api/translate-text` endpoint for all 180+ global languages:
+  - **`context/Languagecontext.tsx`**:
+    - When a user selects any language that isn't precompiled into the app:
+      1. Checks `@healthai_dynamic_lang_<code>` in `AsyncStorage` first.
+      2. If not cached, bundles all UI string values into a single batch HTTP request to `POST /api/translate-text`.
+      3. Automatically maps the translated values back to `TranslationKeys` and saves to `AsyncStorage`.
+      4. Tracks `isTranslatingLang` state during the 1-second batch request.
+    - Updated `t(key)` function to check:
+      - 1. Static precompiled dictionary.
+      - 2. Cached dynamic dictionary.
+      - 3. Fallback to English dictionary.
+    - Added RTL support for Arabic, Urdu, Farsi, and Hebrew (`isRTLLang`).
+  - **`app/(auth)/language.tsx`**:
+    - Connected `isTranslatingLang` to the Apply / Continue button to display a sleek activity spinner: `"Applying language..."`.
+  - **Typecheck**: `npx tsc --noEmit` — 0 errors.
+- **Type:** Localization & Regional Expansion
+- **Description:**
+  - Expanded app language support from 10 to **22 fully integrated languages**, covering both comprehensive Indian regional diversity and top global markets:
+    - **Indian Regional (10)**: English (`en`), Hindi (`hi`), Telugu (`te`), Tamil (`ta`), Kannada (`kn`), Bengali (`bn`), Marathi (`mr`), Gujarati (`gu`), Malayalam (`ml`), Punjabi (`pa`).
+    - **Global / International (12)**: Spanish (`es`), French (`fr`), German (`de`), Japanese (`ja`), Portuguese (`pt`), Italian (`it`), Korean (`ko`), Chinese (`zh`), Russian (`ru`), Arabic (`ar`), Malay (`ms`), Indonesian (`id`).
+  - **`context/Translations.ts`**:
+    - Expanded `LangCode` type union with all 22 codes.
+    - Added localized dictionaries for all new languages with full fallback to `enTranslations`.
+  - **`app/(auth)/language.tsx`**:
+    - Updated `ALL_LANGUAGES` list with native script labels and official flag emojis.
+    - Linked with `useCountry()` auto-recommendations (e.g. Indian regional languages dynamically recommended when in India).
+  - **`constants/countries.ts`**:
+    - Updated India's `supportedLanguages` to include all top regional languages.
+  - **`app/health-preferences.tsx`**:
+    - Updated languages list to match all 22 choices.
+  - **Typecheck**: `npx tsc --noEmit` — 0 errors.
+- **Type:** Architecture & UI Feature
+- **Description:**
+  - Implemented **Scenario 2 (Unified Analysis)** connecting user questions entered in `ChatInputBar` directly with document upload and displaying the AI's answer prominently on the **Analysis Screen**:
+  - **`types/Report/reportype.ts`**:
+    - Defined `UserQuestionAnswer` interface:
+      ```ts
+      export interface UserQuestionAnswer {
+        question: string;
+        answer: string;
+        relevant_biomarkers?: string[];
+      }
+      ```
+    - Added `user_question_answer?: UserQuestionAnswer` to `ApiAnalyzeResponse`.
+  - **`services/reportsApi.ts`**:
+    - Added `userQuestionAnswer?: UserQuestionAnswer` to `AnalyzeResult`.
+    - Updated `apiToAnalyzeResult()` to extract and persist `user_question_answer` from backend response and storage.
+  - **`app/upload.tsx`**:
+    - When user uploads a file with pre-filled question text, automatically appends `formData.append('user_query', prefillText.trim())`.
+    - Passes `userQuestionAnswer` payload to `/analysis` route params.
+  - **`app/analysis.tsx` (Full Analysis Screen)**:
+    - Added dedicated **"YOUR QUESTION & AI ANSWER"** clinical card right at the top above the health score overview.
+    - Displays user question `Q: "..."` and AI clinical assessment text.
+  - **`app/report-detail.tsx` (Report Details Screen)**:
+    - Added identical **"YOUR QUESTION & AI ANSWER"** card in the Summary tab so past queries remain permanently viewable when reopening stored reports.
+  - **Typecheck**: `npx tsc --noEmit` — 0 errors.
+- **Type:** Architecture & UI Parity
+- **Description:** 
+  - **`app/(auth)/otp-verify.tsx`**:
+    - Created the dedicated **"Verify OTP"** screen faithfully matching Prototype v2 (`scr-otp`).
+    - **Header & Navigation**:
+      - Minimal topbar with back icon button `(←)` and `"Verify OTP"` title.
+      - Dynamic subtitle with phone and flag: `"Enter the 6-digit code sent to 🇮🇳 +91 98765 43210"`.
+    - **6 Individual Square Digit Boxes**:
+      - `[ 4 ] [ 2 ] [ 9 ] [ 1 ] [ 7 ] [ 3 ]`
+      - Auto-advance on input, auto-backspace navigation, and multi-digit paste support.
+      - Focused/filled green tint highlight (`#0F6E56`) and error state (`#A32D2D`).
+    - **Actions & Feedback**:
+      - Resend OTP countdown timer (`00:28`) with `"Resend now"` active trigger when timer reaches 0.
+      - `"Change number"` link routing back to phone entry.
+      - Full-width solid teal **"Verify"** button (`#0F6E56`).
+      - Security guarantee banner: `"🔒 We keep your data secure. Encrypted and 100% private."`
+    - **Integrated Route Handlers**:
+      - [`app/(auth)/login.tsx`](file:///Users/sncdev2/Downloads/healthai_frontend-Version-2/app/(auth)/login.tsx): "Send OTP" navigates cleanly to `/otp-verify` with `mode: 'login'`.
+      - [`app/(auth)/signup.tsx`](file:///Users/sncdev2/Downloads/healthai_frontend-Version-2/app/(auth)/signup.tsx): "Send OTP" navigates cleanly to `/otp-verify` with `mode: 'signup'`.
+      - On successful verification: `login` routes to `/(tabs)/home`, and `signup` routes to `/(auth)/PersonOnboardingScreen`.
+  - **Typecheck**: `npx tsc --noEmit` — 0 errors.
+
+### [REFACTOR / CLEANUP] Removal of Redundant `Phonelogin.tsx` & `Phonesignup.tsx`
+- **Type:** Architecture & Code Reduction
+- **Description:** 
+  - Since [`app/(auth)/login.tsx`](file:///Users/sncdev2/Downloads/healthai_frontend-Version-2/app/(auth)/login.tsx) and [`app/(auth)/signup.tsx`](file:///Users/sncdev2/Downloads/healthai_frontend-Version-2/app/(auth)/signup.tsx) now natively contain the **Prototype v2 Phone / Email Segment Switch** with full SMS OTP generation, country selector, and in-place OTP verification, the standalone `Phonelogin.tsx` and `Phonesignup.tsx` were completely redundant.
+  - **Deleted**:
+    - `app/(auth)/Phonelogin.tsx`
+    - `app/(auth)/Phonesignup.tsx`
+  - **Rerouted**:
+    - [`app/(auth)/onboarding.tsx`](file:///Users/sncdev2/Downloads/healthai_frontend-Version-2/app/(auth)/onboarding.tsx): "Already have an account? Login" now routes directly to `/(auth)/login`.
+    - [`app/(auth)/first-run-consent.tsx`](file:///Users/sncdev2/Downloads/healthai_frontend-Version-2/app/(auth)/first-run-consent.tsx): Proceeds directly to `/(auth)/signup`.
+  - **Typecheck**: `npx tsc --noEmit` — 0 errors.
+
+### [FEATURE / UI] Contact Support Screen (Prototype v2 Parity — scr-contactsupport)
+- **Type:** Feature / Screen & Service Integration
+- **Description:** Implemented the complete "Contact Support" screen strictly matching Prototype v2 (`scr-contactsupport`), excluding live chat and helpline per requirements:
+  - **`app/contact.tsx`**: Screen strictly adhering to Prototype v2:
+    - Minimal clean topbar with circular back button and title (`t('contact_support_title')`).
+    - Direct "Email us" reach-out tile opening native mail client (`support@smartncode.com`).
+    - Category selector pills (*General, Billing, Reports, App Bug*).
+    - Multi-line "Describe your issue" textarea with character tracking and validation.
+    - Attachment picker with `expo-image-picker` supporting photo library selection, preview thumbnail, and removal.
+    - "Submit ticket" button generating unique ticket IDs (e.g., `#SP-2291`) with instant confirmation alert.
+    - "Recent tickets" list displaying past tickets with status badges (`Resolved`, `In Progress`, `Open`), timestamps, and cached history.
+  - **`services/supportApi.ts`**: Dedicated service with local persistence (`AsyncStorage` `@healthai_support_tickets`) and backend sync (`POST /api/api/support/tickets` and `GET /api/api/support/tickets`).
+  - **`constants/api.ts`**: Registered `supportTickets` and `supportTicketDetails` endpoint URLs.
+  - **`app/help-support.tsx`**: Completely redesigned to match Prototype v2 (`scr-helpsupport`) layout:
+    - Minimal topbar with circular back button and title (`t('help_support')`).
+    - Prominent `💬 Contact support` CTA button (`#0F6E56`, 12px radius) navigating directly to `/contact`.
+    - Single unified Card container with smooth animated Accordion items for all 4 official FAQs (Security, AI accuracy, Family access, Subscription cancellation) matching Prototype v2.
+  - **`app/(auth)/first-run-consent.tsx`**: Implemented the "Before you continue" screen matching Prototype v2 (`scr-firstrunconsent`):
+    - Topbar with title and subtitle explaining legal privacy requirements.
+    - Two required consent cards (Health data processing & AI report analysis) with `[Required]` neutral badges.
+    - Two optional consent toggle cards (Anonymized clinical research & Marketing tips) with active teal toggles.
+    - Regulatory disclaimer callout box informing users about consent management in profile.
+    - "Agree and continue" CTA button persisting consents locally and syncing with backend via `services/consentApi.ts`.
+    - Clickable footer links for Terms and Privacy Policy.
+  - **`app/blood-group-contacts.tsx`**: New full-page screen allowing users to view, add, call, and delete verified emergency contacts with their blood group:
+    - Topbar with back button, localized title ("My blood group contacts"), and user blood group badge.
+    - Information banner outlining the emergency network.
+    - "+ Add contact" CTA opening a modal sheet to enter Full Name, Mobile Number, and optional Relationship.
+    - Contact card list showing initial avatar, name, number, relationship, quick-call action button (`tel:`), and delete action.
+    - Empty state when no contacts are yet added (zero mock data).
+  - **`app/account.tsx`**: Added a dedicated card right below the Blood Group selector labeled **"My blood group contacts"** (with arrow chevron removed).
+  - **`services/bloodGroupContactsApi.ts`**: Implemented `getBloodGroupContacts()` (GET), `saveBloodGroupContact()` (POST), and `deleteBloodGroupContact()` (DELETE) with local persistence (`@healthai_blood_group_contacts`) and background backend API synchronization.
+  - **`components/ui/ChatInputBar.tsx`**: Enhanced the "Paste from Clipboard / WhatsApp" upload option:
+    - Added direct detection of clipboard images (e.g. copied lab report screenshots or photos), converting them to attachments.
+    - Added support for clipboard file URIs and links (PDF, DOC, DOCX, JPG, PNG).
+    - Added support for copying medical lab report text / doctor prescriptions directly from WhatsApp, SMS, or browser, instantly populating the input and generating digital patient record PDFs for AI analysis.
+    - Full localized feedback alerts on successful paste and when clipboard is empty.
+    - Added floating "📋 Paste" callout bubble appearing directly above the input bar whenever the user taps/presses anywhere inside the input bar if there is content on their clipboard.
+  - **`app/(tabs)/ai-chat.tsx`**: Added the same floating "📋 Paste" callout bubble above the conversation input bar on tap/focus with full support for copied lab PDF reports, images, and text.
+  - **`context/Translations.ts`**: Added localized keys (`paste_report_or_chat`, `paste_callout`, `paste_report_sub`, `paste_clipboard_empty`, `paste_clipboard_empty_sub`, `paste_success_image`, `paste_success_document`, `paste_success_text`) across all 10 languages (`en`, `hi`, `te`, `ta`, `kn`, `ar`, `fr`, `zh`, `ms`, `es`).
+  - **`utils/guestAuth.ts`**: Implemented `signInAsGuest()` using Firebase Anonymous Authentication (`auth().signInAnonymously()`) returning the anonymous Firebase `idToken` and `uid`.
+  - **`context/AuthContext.tsx`**: Added `isGuest` state, persisted `@is_guest` flag, implemented `signInAsGuestSession(idToken, uid)` supporting both backend token exchange and local session fallback, and cleared guest flags on sign out.
+  - **`app/(auth)/login.tsx` & `app/(auth)/Phonelogin.tsx`**: Added a stylized **"🧭 Continue as Guest"** CTA pill button allowing immediate login without credentials.
+  - **`app/(auth)/onboarding.tsx`**: Added a **"Explore as Guest"** link beneath the login button to allow users to bypass onboarding directly into the app.
+  - **`app/(tabs)/profile.tsx`**: Configured "Guest User" badge and a prominent **"Sync & Save Your Health Data"** callout banner prompting guest users to create or sign into an account to permanently sync their medical reports.
+
 ---
 
 ## 2026-08-28

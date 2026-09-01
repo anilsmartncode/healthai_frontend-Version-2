@@ -182,7 +182,7 @@ export default function Onboarding() {
           <Text style={styles.loginText}>{t("have_account")} </Text>
           <Pressable onPress={() => {
             stopAutoSlide();
-            router.push("/(auth)/Phonelogin");
+            router.push("/(auth)/login");
           }}>
             <Text style={styles.loginLink}>{t("login")}</Text>
           </Pressable>

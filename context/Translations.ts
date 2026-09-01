@@ -1,4 +1,9 @@
-export type LangCode = 'en' | 'hi' | 'te' | 'ta' | 'kn' | 'ar' | 'fr' | 'zh' | 'ms' | 'es';
+export type LangCode =
+  | 'en' | 'hi' | 'te' | 'ta' | 'kn' | 'ar' | 'fr' | 'zh' | 'ms' | 'es'
+  | 'bn' | 'mr' | 'gu' | 'ml' | 'pa'
+  | 'ur' | 'or' | 'as' | 'ne' | 'sa' | 'sd' | 'mai' | 'kok' | 'doi' | 'ks'
+  | 'de' | 'ja' | 'pt' | 'it' | 'ko' | 'ru' | 'id'
+  | (string & {});
 
 export type TranslationKeys = {
   // Onboarding
@@ -499,6 +504,59 @@ export type TranslationKeys = {
   ill_choose_later: string;
   unlimited_reports: string;
   unlimited_family_members: string;
+  paste_report_or_chat: string;
+  paste_callout: string;
+  paste_report_sub: string;
+  paste_clipboard_empty: string;
+  paste_clipboard_empty_sub: string;
+  paste_success_image: string;
+  paste_success_document: string;
+  paste_success_text: string;
+  first_run_consent_title: string;
+  first_run_consent_sub: string;
+  process_health_data: string;
+  process_health_data_sub: string;
+  required_badge: string;
+  marketing_tips: string;
+  marketing_tips_sub: string;
+  first_run_disclaimer: string;
+  agree_and_continue: string;
+  by_continuing_agree: string;
+  blood_group_contacts: string;
+  blood_group_contacts_sub: string;
+  add_blood_contact: string;
+  contact_name: string;
+  contact_number: string;
+  relationship_optional: string;
+  save_contact: string;
+  delete_contact: string;
+  delete_contact_confirm: string;
+  contact_saved_success: string;
+  no_blood_contacts_yet: string;
+  no_blood_contacts_sub: string;
+  contact_support_title: string;
+  email_us: string;
+  email_us_sub: string;
+  ticket_category: string;
+  describe_issue: string;
+  describe_issue_placeholder: string;
+  attach_screenshot: string;
+  add_attachment: string;
+  submit_ticket: string;
+  recent_tickets: string;
+  faq_title: string;
+  faq_q1: string;
+  faq_a1: string;
+  faq_q2: string;
+  faq_a2: string;
+  faq_q3: string;
+  faq_a3: string;
+  faq_q4: string;
+  faq_a4: string;
+  continue_as_guest: string;
+  explore_as_guest: string;
+  guest_mode_banner: string;
+  guest_user: string;
 };
 
 const authTranslationsEn = {
@@ -518,6 +576,7 @@ const authTranslationsEn = {
   sign_up: 'Sign Up',
   phone_otp: 'Phone OTP',
   apple_signin: 'Continue with Apple',
+  guest_signin: 'Continue as Guest',
   verify_number: 'Verify Number 📲',
   enter_phone_get_started: 'Enter your phone number to get started.',
   send_code_info: "We'll send a one-time verification code to confirm your number.",
@@ -2829,7 +2888,7 @@ const homeTranslationsMs = {
   unlimited_family_members: 'Ahli Keluarga Tanpa Had',
 };
 
-const enTranslations: TranslationKeys = {
+export const enTranslations: TranslationKeys = {
   ...authTranslationsEn,
   ...homeTranslationsEn,
     onboard_title: 'Your AI Health Companion',
@@ -3049,9 +3108,62 @@ const enTranslations: TranslationKeys = {
     no_places_found: 'No medical stores or hospitals found nearby.',
     location_required: 'GPS location permission is required to find nearby services.',
     appointments: 'Appointments',
+    paste_report_or_chat: 'Paste from Clipboard / WhatsApp',
+    paste_callout: 'Paste',
+    paste_report_sub: 'Paste copied lab text, report image, or PDF',
+    paste_clipboard_empty: 'Clipboard is empty',
+    paste_clipboard_empty_sub: 'Copy report text, an image, or a document from WhatsApp or your browser, then tap Paste here.',
+    paste_success_image: 'Image attached from clipboard',
+    paste_success_document: 'Document attached from clipboard',
+    paste_success_text: 'Report text pasted',
+    first_run_consent_title: 'Before You Continue',
+    first_run_consent_sub: 'To provide personalized AI insights and securely process your medical reports, we need your consent on how your health data is handled.',
+    process_health_data: 'Health Data Processing',
+    process_health_data_sub: 'Allow HealthAI to store, encrypt, and manage your uploaded medical records and lab values.',
+    required_badge: 'Required',
+    marketing_tips: 'Health Tips & Updates',
+    marketing_tips_sub: 'Receive personalized wellness articles, preventive health reminders, and platform updates.',
+    first_run_disclaimer: 'You can change these preferences at any time in your Account Settings. All medical data is end-to-end encrypted.',
+    agree_and_continue: 'Agree and Continue',
+    by_continuing_agree: 'By continuing you agree to our',
+    blood_group_contacts: 'My blood group contacts',
+    blood_group_contacts_sub: 'Emergency contacts who share your blood group',
+    add_blood_contact: 'Add Contact',
+    contact_name: 'Full Name',
+    contact_number: 'Mobile Number',
+    relationship_optional: 'Relationship (Optional)',
+    save_contact: 'Save Contact',
+    delete_contact: 'Delete Contact',
+    delete_contact_confirm: 'Are you sure you want to remove this contact?',
+    contact_saved_success: 'Contact saved successfully',
+    no_blood_contacts_yet: 'No blood group contacts added',
+    no_blood_contacts_sub: 'Add emergency contacts who share your blood group for quick reach-out.',
+    contact_support_title: 'Contact Support',
+    email_us: 'Email Us',
+    email_us_sub: 'Direct reach-out to support@smartncode.com',
+    ticket_category: 'Issue Category',
+    describe_issue: 'Describe Your Issue',
+    describe_issue_placeholder: 'Provide details about the issue or question you have...',
+    attach_screenshot: 'Attach Screenshot (Optional)',
+    add_attachment: 'Add Attachment',
+    submit_ticket: 'Submit Ticket',
+    recent_tickets: 'Recent Tickets',
+    faq_title: 'Frequently Asked Questions',
+    faq_q1: 'Is my health data secure and private?',
+    faq_a1: 'Yes. All your medical documents and health metrics are protected using industry-grade end-to-end encryption. Your information is strictly confidential and never shared without your permission.',
+    faq_q2: 'How accurate is the AI report analysis?',
+    faq_a2: 'Our AI provides clinical-grade explanations based on established medical references. However, it is designed for educational guidance and does not replace professional medical diagnosis or doctor consultation.',
+    faq_q3: 'Can my family members see my reports?',
+    faq_a3: 'Only members you explicitly invite to your Family Dashboard can view shared health metrics. You retain full control over who has access to individual reports.',
+    faq_q4: 'How do I cancel or modify my subscription?',
+    faq_a4: 'You can manage or cancel your subscription at any time under Profile > Subscription Plans or through your App Store / Google Play account settings.',
+    continue_as_guest: 'Continue as Guest',
+    explore_as_guest: 'Explore as Guest',
+    guest_mode_banner: 'You are currently exploring in Guest Mode.',
+    guest_user: 'Guest User',
 };
 
-export const translations: Record<LangCode, TranslationKeys> = {
+export const translations: Record<string, TranslationKeys | (Partial<TranslationKeys> & Record<string, string>)> = {
   en: enTranslations,
 
   hi: {
@@ -3274,6 +3386,14 @@ export const translations: Record<LangCode, TranslationKeys> = {
     no_places_found: 'पास में कोई चिकित्सा स्टोर या अस्पताल नहीं मिला।',
     location_required: 'पास की सेवाओं को खोजने के लिए GPS स्थान अनुमति की आवश्यकता है।',
     appointments: 'नियुक्तियां',
+    paste_report_or_chat: 'क्लिपबोर्ड / व्हाट्सएप से पेस्ट करें',
+    paste_report_sub: 'कॉपी किया गया लैब टेक्स्ट, इमेज या पीडीएफ पेस्ट करें',
+    paste_clipboard_empty: 'क्लिपबोर्ड खाली है',
+    paste_clipboard_empty_sub: 'व्हाट्सएप या ब्राउज़र से रिपोर्ट टेक्स्ट, छवि या दस्तावेज़ कॉपी करें और यहाँ पेस्ट करें।',
+    paste_success_image: 'क्लिपबोर्ड से छवि संलग्न की गई',
+    paste_success_document: 'क्लिपबोर्ड से दस्तावेज़ संलग्न किया गया',
+    paste_success_text: 'रिपोर्ट टेक्स्ट पेस्ट किया गया',
+
   },
 
   te: {
@@ -3496,6 +3616,14 @@ export const translations: Record<LangCode, TranslationKeys> = {
     no_places_found: 'దగ్గరలో మందుల దుకాణాలు లేదా ఆసుపత్రులు ఏవీ కనుగొనబడలేదు.',
     location_required: 'దగ్గరి సేవలను కనుగొనడానికి GPS స్థాన అనుమతి అవసరం.',
     appointments: 'అపాయింట్‌మెంట్‌లు',
+    paste_report_or_chat: 'క్లిప్‌బోర్డ్ / వాట్సాప్ నుండి పేస్ట్ చేయండి',
+    paste_report_sub: 'కాపీ చేసిన ల్యాబ్ టెక్స్ట్, నివేదిక చిత్రం లేదా పిడిఎఫ్ పేస్ట్ చేయండి',
+    paste_clipboard_empty: 'క్లిప్‌బోర్డ్ ఖాళీగా ఉంది',
+    paste_clipboard_empty_sub: 'వాట్సాప్ లేదా బ్రౌజర్ నుండి రిపోర్ట్ టెక్స్ట్, చిత్రం లేదా పత్రాన్ని కాపీ చేసి ఇక్కడ పేస్ట్ చేయండి.',
+    paste_success_image: 'క్లిప్‌బోర్డ్ నుండి చిత్రం జోడించబడింది',
+    paste_success_document: 'క్లిప్‌బోర్డ్ నుండి పత్రం జోడించబడింది',
+    paste_success_text: 'రిపోర్ట్ టెక్స్ట్ పేస్ట్ చేయబడింది',
+
   },
 
   ta: {
@@ -3718,6 +3846,14 @@ export const translations: Record<LangCode, TranslationKeys> = {
     no_places_found: 'அருகில் மருந்தகங்களோ மருத்துவமனைகளோ எதுவும் காணப்படவில்லை.',
     location_required: 'அருகிலுள்ள சேவைகளைக் கண்டறிய GPS இருப்பிட அனுமதி தேவை.',
     appointments: 'சந்திப்புகள்',
+    paste_report_or_chat: 'கிளிப்போர்டு / வாட்ஸ்அப்பில் இருந்து ஒட்டவும்',
+    paste_report_sub: 'நகலெடுக்கப்பட்ட ஆய்வக உரை, அறிக்கை படம் அல்லது PDF ஐ ஒட்டவும்',
+    paste_clipboard_empty: 'கிளிப்போர்டு காலியாக உள்ளது',
+    paste_clipboard_empty_sub: 'வாட்ஸ்அப் அல்லது உலாவியில் இருந்து அறிக்கை உரை, படம் அல்லது ஆவணத்தை நகலெடுத்து இங்கே ஒட்டவும்.',
+    paste_success_image: 'கிளிப்போர்டில் இருந்து படம் இணைக்கப்பட்டது',
+    paste_success_document: 'கிளிப்போர்டில் இருந்து ஆவணம் இணைக்கப்பட்டது',
+    paste_success_text: 'அறிக்கை உரை ஒட்டப்பட்டது',
+
   },
 
   kn: {
@@ -3940,6 +4076,14 @@ export const translations: Record<LangCode, TranslationKeys> = {
     no_places_found: 'ಹತ್ತಿರದಲ್ಲಿ ಯಾವುದೇ ದವಾಖಾನೆಗಳು ಅಥವಾ ಆಸ್ಪತ್ರೆಗಳು ಕಂಡುಬಂದಿಲ್ಲ.',
     location_required: 'ಹತ್ತಿರದ ಸೇವೆಗಳನ್ನು ಹುಡುಕಲು GPS ಸ್ಥಳ ಅನುಮತಿ ಅಗತ್ಯವಿದೆ.',
     appointments: 'ನೇಮಕಾತಿಗಳು',
+    paste_report_or_chat: 'ಕ್ಲಿಪ್‌ಬೋರ್ಡ್ / ವಾಟ್ಸಾಪ್‌ನಿಂದ ಅಂಟಿಸಿ',
+    paste_report_sub: 'ನಕಲಿಸಿದ ಲ್ಯಾಬ್ ಪಠ್ಯ, ವರದಿ ಚಿತ್ರ ಅಥವಾ PDF ಅನ್ನು ಅಂಟಿಸಿ',
+    paste_clipboard_empty: 'ಕ್ಲಿಪ್‌ಬೋರ್ಡ್ ಖಾಲಿಯಾಗಿದೆ',
+    paste_clipboard_empty_sub: 'ವಾಟ್ಸಾಪ್ ಅಥವಾ ಬ್ರೌಸರ್‌ನಿಂದ ವರದಿ ಪಠ್ಯ, ಚಿತ್ರ ಅಥವಾ ಡಾಕ್ಯುಮೆಂಟ್ ನಕಲಿಸಿ ಇಲ್ಲಿ ಅಂಟಿಸಿ.',
+    paste_success_image: 'ಕ್ಲಿಪ್‌ಬೋರ್ಡ್‌ನಿಂದ ಚಿತ್ರ ಲಗತ್ತಿಸಲಾಗಿದೆ',
+    paste_success_document: 'ಕ್ಲಿಪ್‌ಬೋರ್ಡ್‌ನಿಂದ ಡಾಕ್ಯುಮೆಂಟ್ ಲಗತ್ತಿಸಲಾಗಿದೆ',
+    paste_success_text: 'ವರದಿ ಪಠ್ಯವನ್ನು ಅಂಟಿಸಲಾಗಿದೆ',
+
   },
 
   ar: {
@@ -4162,6 +4306,14 @@ export const translations: Record<LangCode, TranslationKeys> = {
     no_places_found: 'لم يتم العثور على صيدليات أو مستشفيات قريبة.',
     location_required: 'مطلوب إذن الموقع الجغرافي (GPS) للعثور على الخدمات القريبة.',
     appointments: 'المواعيد',
+    paste_report_or_chat: 'لصق من الحافظة / واتساب',
+    paste_report_sub: 'لصق نص التقرير أو صورة أو مستند PDF منسوخ',
+    paste_clipboard_empty: 'الحافظة فارغة',
+    paste_clipboard_empty_sub: 'انسخ نص التقرير أو صورة أو مستند من واتساب ثم الصقه هنا.',
+    paste_success_image: 'تم إرفاق الصورة من الحافظة',
+    paste_success_document: 'تم إرفاق المستند من الحافظة',
+    paste_success_text: 'تم لصق نص التقرير',
+
   },
 
   fr: {
@@ -4384,6 +4536,14 @@ export const translations: Record<LangCode, TranslationKeys> = {
     no_places_found: 'Aucun établissement trouvé à proximité.',
     location_required: 'L’autorisation GPS est requise pour trouver les établissements proches.',
     appointments: 'Rendez-vous',
+    paste_report_or_chat: 'Coller depuis le presse-papiers / WhatsApp',
+    paste_report_sub: 'Coller le texte du rapport, une image ou un PDF',
+    paste_clipboard_empty: 'Le presse-papiers est vide',
+    paste_clipboard_empty_sub: 'Copiez le texte, une image ou un document depuis WhatsApp ou un navigateur et collez-le ici.',
+    paste_success_image: 'Image jointe depuis le presse-papiers',
+    paste_success_document: 'Document joint depuis le presse-papiers',
+    paste_success_text: 'Texte du rapport collé',
+
   },
 
   zh: {
@@ -4607,6 +4767,14 @@ export const translations: Record<LangCode, TranslationKeys> = {
       no_places_found: '周边暂无药房或医院。',
       location_required: '需要 GPS 定位权限以查找周边服务。',
       appointments: '预约',
+    paste_report_or_chat: '从剪贴板 / WhatsApp 粘贴',
+    paste_report_sub: '粘贴复制的化验文本、报告图片或PDF文件',
+    paste_clipboard_empty: '剪贴板为空',
+    paste_clipboard_empty_sub: '从 WhatsApp 或网页复制报告文本、图片或文件，然后在此处点击粘贴。',
+    paste_success_image: '已从剪贴板附加图片',
+    paste_success_document: '已从剪贴板附加文件',
+    paste_success_text: '已粘贴报告文本',
+
     },
   },
 
@@ -4831,6 +4999,14 @@ export const translations: Record<LangCode, TranslationKeys> = {
       no_places_found: 'Tiada farmasi atau hospital ditemui berdekatan.',
       location_required: 'Kebenaran lokasi GPS diperlukan.',
       appointments: 'Temujanji',
+    paste_report_or_chat: 'Tampal dari Papan Keratan / WhatsApp',
+    paste_report_sub: 'Tampal teks laporan makmal, imej atau PDF yang disalin',
+    paste_clipboard_empty: 'Papan keratan kosong',
+    paste_clipboard_empty_sub: 'Salin teks laporan, imej atau dokumen dari WhatsApp atau pelayar dan tampal di sini.',
+    paste_success_image: 'Imej dilampirkan dari papan keratan',
+    paste_success_document: 'Dokumen dilampirkan dari papan keratan',
+    paste_success_text: 'Teks laporan telah ditampal',
+
     },
   },
 
@@ -4960,5 +5136,26 @@ export const translations: Record<LangCode, TranslationKeys> = {
       download_data: 'Descargar mis datos',
       privacy_disclaimer: 'Tus datos de salud están encriptados y nunca se venden ni se usan para publicidad.',
       export_sub: 'Exporta una copia estructurada de tus informes, medicamentos, citas y línea de tiempo.',
+    paste_report_or_chat: 'Pegar desde el portapapeles / WhatsApp',
+    paste_report_sub: 'Pegar texto copiado del informe, imagen o PDF',
+    paste_clipboard_empty: 'El portapapeles está vacío',
+    paste_clipboard_empty_sub: 'Copie texto de informe, imagen o documento desde WhatsApp o su navegador y péguelo aquí.',
+    paste_success_image: 'Imagen adjunta desde el portapapeles',
+    paste_success_document: 'Documento adjunto desde el portapapeles',
+    paste_success_text: 'Texto del informe pegado',
   },
+
 };
+
+export const STATIC_LANGUAGES = new Set<string>([
+  'en',
+  'hi',
+  'te',
+  'ta',
+  'kn',
+  'ar',
+  'fr',
+  'zh',
+  'ms',
+  'es',
+]);

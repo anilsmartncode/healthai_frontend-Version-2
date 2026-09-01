@@ -156,20 +156,30 @@ export function useAI(initialPrefill?: string, prefillContext?: string, openSess
     await saveChatSession(sessionId, msgs, phone);
   }, [CONVO_KEY, CURRENT_SESSION_KEY, sessionId, phone]);
 
-  const send = useCallback(async (overrideText?: string) => {
+  const send = useCallback(async (overrideText?: string, userMsgOverrides?: Partial<ChatMessage>, customAiReply?: ChatMessage) => {
     const question = (overrideText ?? input).trim();
-    if (!question || loading) return;
+    if (!question && !userMsgOverrides?.attachment) return;
+    if (loading) return;
 
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
       text: question,
       time: new Date().toISOString(),
+      ...userMsgOverrides,
     };
 
     const updatedWithUser = [...messagesRef.current, userMsg];
     setMessages(updatedWithUser);
     setInput('');
+
+    if (customAiReply) {
+      const finalMsgs = [...updatedWithUser, customAiReply];
+      setMessages(finalMsgs);
+      await persistConversation(finalMsgs);
+      return;
+    }
+
     setLoading(true);
 
     try {

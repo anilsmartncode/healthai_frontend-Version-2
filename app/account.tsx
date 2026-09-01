@@ -564,6 +564,24 @@ export default function Account() {
             </Pressable>
           </View>
 
+          {/* Dedicated Row: My Blood Group Contacts (without arrow) */}
+          <Pressable
+            style={[styles.bloodContactsCard, { flexDirection: rowDirection }]}
+            onPress={() => router.push({ pathname: '/blood-group-contacts', params: { bloodGroup } })}
+          >
+            <View style={styles.bloodContactsIconWrap}>
+              <Ionicons name="water" size={18} color="#DC2626" />
+            </View>
+            <View style={{ flex: 1, paddingHorizontal: 4 }}>
+              <Text style={[styles.bloodContactsTitle, { textAlign }]}>
+                {t('blood_group_contacts')}
+              </Text>
+              <Text style={[styles.bloodContactsSub, { textAlign }]}>
+                {t('blood_group_contacts_sub')}
+              </Text>
+            </View>
+          </Pressable>
+
           {/* 7. Grid 2: Height & Weight */}
           <View style={[styles.grid2, { flexDirection: rowDirection }]}>
             <View style={{ flex: 1 }}>
@@ -965,5 +983,43 @@ const styles = StyleSheet.create({
   modalOptionTextSelected: {
     color: Colors.primary,
     fontWeight: '700',
+  },
+  bloodContactsCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E4E8E6',
+    borderRadius: 14,
+    padding: 14,
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 10,
+    marginBottom: 12,
+  },
+  bloodContactsIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bloodContactsTitle: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#1A2B2A',
+  },
+  bloodContactsSub: {
+    fontSize: 11.5,
+    color: '#6B756F',
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  bloodContactsArrowWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E1F5EE',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

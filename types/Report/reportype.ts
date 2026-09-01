@@ -83,6 +83,12 @@ export interface ApiSummary {
   detected_medicines?: DetectedMedicine[];
 }
 
+export interface UserQuestionAnswer {
+  question: string;
+  answer: string;
+  relevant_biomarkers?: string[];
+}
+
 export interface ApiAnalyzeResponse {
   success: boolean;
   report_id: number;
@@ -91,6 +97,7 @@ export interface ApiAnalyzeResponse {
   summary?: ApiSummary | string;
   data: ApiLabValue[];
   prescription?: ApiPrescription;
+  user_question_answer?: UserQuestionAnswer;
 }
 
 export interface ApiPrescriptionMedicine {
@@ -127,7 +134,7 @@ export interface LabValue {
   name: string;
   value: string;
   range: string;
-  status: 'normal' | 'high' | 'low';
+  status: 'normal' | 'high' | 'low' | 'abnormal';
   possibleDisease?: string;
   simpleMeaning?: string;
   symptoms?: string[];

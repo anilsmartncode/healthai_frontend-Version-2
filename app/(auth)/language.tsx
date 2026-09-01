@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   FlatList,
   TextInput,
   Alert,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -19,49 +21,95 @@ import { useCountry } from '@/context/CountryContext';
 import { COUNTRIES, CountryConfig } from '@/constants/countries';
 import type { LangCode } from '@/context/Translations';
 import { useAuth } from '@/context/AuthContext';
-
-interface LanguageItem {
-  code: LangCode;
-  name: string;
-  native: string;
-  flag: string;
-  reviewed: boolean;
-}
-
-const ALL_LANGUAGES: LanguageItem[] = [
-  { code: 'en', name: 'English', native: 'English', flag: '🇬🇧', reviewed: true },
-  { code: 'es', name: 'Spanish', native: 'Español', flag: '🇪🇸', reviewed: true },
-  { code: 'hi', name: 'Hindi', native: 'हिन्दी', flag: '🇮🇳', reviewed: true },
-  { code: 'te', name: 'Telugu', native: 'తెలుగు', flag: '🇮🇳', reviewed: true },
-  { code: 'ta', name: 'Tamil', native: 'தமிழ்', flag: '🇮🇳', reviewed: true },
-  { code: 'kn', name: 'Kannada', native: 'ಕನ್ನಡ', flag: '🇮🇳', reviewed: true },
-  { code: 'ar', name: 'Arabic', native: 'العربية', flag: '🇸🇦', reviewed: true },
-  { code: 'fr', name: 'French', native: 'Français', flag: '🇨🇦', reviewed: true },
-  { code: 'zh', name: 'Chinese', native: '中文 (简体)', flag: '🇸🇬', reviewed: true },
-  { code: 'ms', name: 'Malay', native: 'Bahasa Melayu', flag: '🇸🇬', reviewed: true },
-];
+import { ALL_LANGUAGES, type LanguageItem } from '@/constants/allLanguages';
+import { api } from '@/services/api';
+import { ENDPOINTS } from '@/constants/api';
 
 export default function LanguageScreen() {
-  const { lang, setLang, t, isRTL, rowDirection, textAlign } = useLang();
+  const { lang, setLang, t, isRTL, rowDirection, textAlign, isTranslatingLang } = useLang();
   const { country, setCountryCode, isAutoDetected } = useCountry();
   const { token } = useAuth();
 
   const [countryPickerVisible, setCountryPickerVisible] = useState(false);
   const [searchCountry, setSearchCountry] = useState('');
+  const [searchLang, setSearchLang] = useState('');
   const [saving, setSaving] = useState(false);
+  const [availableLanguages, setAvailableLanguages] = useState<LanguageItem[]>(ALL_LANGUAGES);
+
+  // Fetch supported languages from backend API on mount
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const res = await api.request<any>(ENDPOINTS.supportedLanguagesPath);
+        const rawList = res?.languages ?? res?.data ?? res?.supported_languages ?? res ?? [];
+        if (Array.isArray(rawList) && rawList.length > 0 && isMounted) {
+          const merged: LanguageItem[] = [];
+          const seen = new Set<string>();
+
+          rawList.forEach((item: any) => {
+            const code = typeof item === 'string' ? item.toLowerCase() : String(item?.code || item?.lang || '').toLowerCase();
+            if (!code || seen.has(code)) return;
+            seen.add(code);
+            const found = ALL_LANGUAGES.find((l) => l.code.toLowerCase() === code);
+            if (found) {
+              merged.push(found);
+            } else {
+              merged.push({
+                code: code as LangCode,
+                name: typeof item === 'object' && item?.name ? item.name : code.toUpperCase(),
+                native: typeof item === 'object' && item?.native ? item.native : code.toUpperCase(),
+                flag: '🌐',
+                reviewed: false,
+              });
+            }
+          });
+
+          // Append remaining global languages
+          ALL_LANGUAGES.forEach((item) => {
+            if (!seen.has(item.code.toLowerCase())) {
+              seen.add(item.code.toLowerCase());
+              merged.push(item);
+            }
+          });
+
+          setAvailableLanguages(merged);
+        }
+      } catch (err) {
+        console.log('[LanguageScreen] Using default ALL_LANGUAGES:', err);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Country-based recommended languages
   const recommendedCodes = useMemo(() => {
     return new Set((country.supportedLanguages || []).map((l) => l.code));
   }, [country]);
 
+  // Filter languages based on user search query
+  const filteredAllLanguages = useMemo(() => {
+    const q = searchLang.toLowerCase().trim();
+    if (!q) return availableLanguages;
+    return availableLanguages.filter(
+      (l) =>
+        l.name.toLowerCase().includes(q) ||
+        l.native.toLowerCase().includes(q) ||
+        l.code.toLowerCase().includes(q)
+    );
+  }, [availableLanguages, searchLang]);
+
   const recommendedList = useMemo(() => {
-    return ALL_LANGUAGES.filter((l) => recommendedCodes.has(l.code));
-  }, [recommendedCodes]);
+    if (searchLang.trim()) return [];
+    return availableLanguages.filter((l) => recommendedCodes.has(l.code));
+  }, [availableLanguages, recommendedCodes, searchLang]);
 
   const otherList = useMemo(() => {
-    return ALL_LANGUAGES.filter((l) => !recommendedCodes.has(l.code));
-  }, [recommendedCodes]);
+    if (searchLang.trim()) return filteredAllLanguages;
+    return availableLanguages.filter((l) => !recommendedCodes.has(l.code));
+  }, [availableLanguages, recommendedCodes, filteredAllLanguages, searchLang]);
 
   // Filter countries for modal
   const filteredCountries = useMemo(() => {
@@ -90,7 +138,7 @@ export default function LanguageScreen() {
           },
         ]);
       } else {
-        router.push('/(auth)/Phonesignup');
+        router.push('/(auth)/first-run-consent');
       }
     } catch (err: any) {
       Alert.alert('Error', err?.message || 'Failed to save language');
@@ -146,7 +194,7 @@ export default function LanguageScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       {/* ── Topbar matching Prototype v2 (scr-languageregion) ── */}
       <View style={styles.topbar}>
         <View style={[styles.backrow, { flexDirection: rowDirection }]}>
@@ -205,16 +253,38 @@ export default function LanguageScreen() {
           </View>
         </Pressable>
 
+        {/* ── Search Bar for 100+ Global Languages ── */}
+        <View style={[styles.searchBox, { flexDirection: rowDirection }]}>
+          <Ionicons name="search" size={17} color="#64748B" style={{ marginRight: 8 }} />
+          <TextInput
+            style={[styles.searchInput, { textAlign }]}
+            placeholder="Search all 100+ languages"
+            placeholderTextColor="#94A3B8"
+            value={searchLang}
+            onChangeText={setSearchLang}
+            autoCapitalize="none"
+            autoCorrect={false}
+            clearButtonMode="while-editing"
+          />
+          {searchLang.length > 0 && (
+            <Pressable onPress={() => setSearchLang('')} hitSlop={8}>
+              <Ionicons name="close-circle" size={18} color="#94A3B8" />
+            </Pressable>
+          )}
+        </View>
+
         {/* ── Subtitle ── */}
         <Text style={[styles.subText, { textAlign }]}>
           HealthAI provides medically reviewed localization across clinical terms, dosages, and reports.
         </Text>
 
-        {/* ── Section 1: Recommended for Current Country ── */}
+        {/* ── Section 1: Recommended / Regional Languages ── */}
         {recommendedList.length > 0 && (
           <View>
             <Text style={[styles.sectionLabel, { textAlign }]}>
-              Recommended languages for {country.name}
+              {country.code === 'IN'
+                ? `Indian Regional Languages (${recommendedList.length})`
+                : `Recommended for ${country.name} (${recommendedList.length})`}
             </Text>
             <View style={styles.cardList}>
               {recommendedList.map((item, idx) =>
@@ -224,11 +294,13 @@ export default function LanguageScreen() {
           </View>
         )}
 
-        {/* ── Section 2: Other Available Languages ── */}
+        {/* ── Section 2: Global & Other Languages ── */}
         {otherList.length > 0 && (
           <View style={{ marginTop: 6 }}>
             <Text style={[styles.sectionLabel, { textAlign }]}>
-              All Other Languages
+              {searchLang.trim()
+                ? `Matching Languages (${otherList.length})`
+                : `Global & International Languages (${otherList.length})`}
             </Text>
             <View style={styles.cardList}>
               {otherList.map((item, idx) =>
@@ -237,22 +309,36 @@ export default function LanguageScreen() {
             </View>
           </View>
         )}
+      </ScrollView>
 
-        {/* ── Bottom Action Button ── */}
+      {/* ── Fixed Sticky Bottom Action Container ── */}
+      <View style={styles.bottomBar}>
         <Pressable
           style={({ pressed }) => [
             styles.btn,
             pressed && { opacity: 0.85 },
-            saving && styles.btnDisabled,
+            (saving || isTranslatingLang) && styles.btnDisabled,
           ]}
           onPress={handleApply}
-          disabled={saving}
+          disabled={saving || isTranslatingLang}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={token ? t('save_changes') || 'Save changes' : t('continue') || 'Continue'}
         >
-          <Text style={styles.btnText}>
-            {token ? t('save_changes') || 'Save changes' : t('continue') || 'Continue'}
-          </Text>
+          {saving || isTranslatingLang ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <ActivityIndicator size="small" color="#fff" />
+              <Text style={styles.btnText}>
+                {isTranslatingLang ? 'Applying language...' : t('continue')}
+              </Text>
+            </View>
+          ) : (
+            <Text style={styles.btnText}>
+              {token ? t('save_changes') || 'Save changes' : t('continue') || 'Continue'}
+            </Text>
+          )}
         </Pressable>
-      </ScrollView>
+      </View>
 
       {/* ── Country Picker Modal ── */}
       <Modal
@@ -298,8 +384,11 @@ export default function LanguageScreen() {
                     styles.countryItem,
                     isSelected && styles.countryItemSelected,
                   ]}
-                  onPress={() => {
-                    setCountryCode(item.code);
+                  onPress={async () => {
+                    await setCountryCode(item.code);
+                    if (item.defaultLanguage) {
+                      await setLang(item.defaultLanguage as LangCode);
+                    }
                     setCountryPickerVisible(false);
                     setSearchCountry('');
                   }}
@@ -352,7 +441,29 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     gap: 12,
-    paddingBottom: 40,
+    paddingBottom: 16,
+  },
+
+  // ── Search Bar ──
+  searchBox: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: Platform.OS === 'ios' ? 10 : 6,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#0F172A',
+    paddingVertical: 0,
   },
 
   // ── Auto-detected Country Bar (Formal & Clean) ──
@@ -511,14 +622,26 @@ const styles = StyleSheet.create({
     borderColor: '#0F766E',
   },
 
-  // ── Bottom Action Button ──
+  // ── Bottom Action Button & Container ──
+  bottomBar: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 8 : 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 8,
+  },
   btn: {
     backgroundColor: '#0F766E',
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 6,
   },
   btnDisabled: {
     opacity: 0.65,

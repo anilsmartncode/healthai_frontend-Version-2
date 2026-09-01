@@ -232,6 +232,7 @@ export default function RootLayout() {
                     <Stack.Screen name="privacy" options={{ headerShown: false }} />
                     <Stack.Screen name="terms" options={{ headerShown: false }} />
                     <Stack.Screen name="contact" options={{ headerShown: false }} />
+                    <Stack.Screen name="blood-group-contacts" options={{ headerShown: false }} />
                     <Stack.Screen name="cookies" options={{ headerShown: false }} />
                     <Stack.Screen name="support" options={{ headerShown: false }} />
                     <Stack.Screen name="accountanddata" options={{ headerShown: false }} />

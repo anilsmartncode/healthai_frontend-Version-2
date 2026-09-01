@@ -15,7 +15,7 @@ export default function AllValuesScreen() {
   const values: LabValue[] = params.values ? JSON.parse(params.values) : [];
 
   const normalCount    = values.filter(v => v.status === 'normal').length;
-  const abnormalCount  = values.filter(v => v.status === 'high' || v.status === 'low').length;
+  const abnormalCount  = values.filter(v => v.status === 'high' || v.status === 'low' || v.status === 'abnormal').length;
   const hasAbnormal    = abnormalCount > 0;
 
   return (

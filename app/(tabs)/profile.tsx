@@ -22,10 +22,11 @@ import { ENDPOINTS, BASE_URL } from '@/constants/api';
 import { medicineApiCall } from '@/services/Medicineapiclient';
 import { getFamilyDashboard } from '@/services/familyApi';
 import { reportsApi } from '@/services/reportsApi';
+import { ALL_LANGUAGES } from '@/constants/allLanguages';
 
 export default function Profile() {
-  const { phone, memberId, signOut } = useAuth();
-  const { t, isRTL, rowDirection, textAlign } = useLang();
+  const { phone, memberId, signOut, isGuest } = useAuth();
+  const { lang, t, isRTL, rowDirection, textAlign } = useLang();
   const { activePlan } = useUsage();
   const [displayName, setDisplayName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -162,11 +163,14 @@ export default function Profile() {
     badge?: string;
   };
 
-  // Kept exact current options intact
+  const currentLang = ALL_LANGUAGES.find((l) => l.code === lang);
+  const langBadge = currentLang ? `${currentLang.flag} ${currentLang.name}` : undefined;
+
+  // Kept exact current options intact, with Language explicitly in English
   const items: MenuItem[] = [
     { icon: 'person-outline', label: t('account_info'), href: '/account' },
     { icon: 'options-outline', label: t('health_preferences'), href: '/health-preferences' },
-    { icon: 'globe-outline', label: t('language_pref'), href: '/(auth)/language' },
+    { icon: 'globe-outline', label: 'Languages', href: '/(auth)/language', badge: langBadge },
     { icon: 'accessibility-outline', label: t('accessibility'), href: '/accessibility' },
     { icon: 'shield-checkmark-outline', label: t('privacy_security'), href: '/privacy-security' },
     { icon: 'lock-closed-outline', label: t('app_lock'), href: '/app-lock' },
@@ -209,17 +213,40 @@ export default function Profile() {
           </View>
           <View style={{ flex: 1, marginHorizontal: 12 }}>
             <View style={{ flexDirection: rowDirection, alignItems: 'center', gap: 8 }}>
-              <Text style={[styles.name, { textAlign }]}>{displayName || t('profile')}</Text>
+              <Text style={[styles.name, { textAlign }]}>
+                {isGuest ? t('guest_user') : (displayName || t('profile'))}
+              </Text>
               <View style={styles.planBadge}>
                 <Text style={styles.planBadgeText}>
-                  {activePlan === 'FREE' ? t('free_plan') : (activePlan === 'PREMIUM' ? t('premium_plan') : t('family_plan'))}
+                  {isGuest ? 'Guest Mode' : (activePlan === 'FREE' ? t('free_plan') : (activePlan === 'PREMIUM' ? t('premium_plan') : t('family_plan')))}
                 </Text>
               </View>
             </View>
-            <Text style={[styles.sub, { textAlign }]}>{phone ?? 'guest@healthai.app'}</Text>
+            <Text style={[styles.sub, { textAlign }]}>
+              {isGuest ? 'Temporary local account' : (phone ?? 'guest@healthai.app')}
+            </Text>
           </View>
           <Text style={styles.chevron}>{isRTL ? '‹' : '›'}</Text>
         </Pressable>
+
+        {/* Guest Mode Upgrade Callout */}
+        {isGuest && (
+          <View style={styles.guestBanner}>
+            <View style={styles.guestBannerIcon}>
+              <Ionicons name="cloud-upload-outline" size={20} color="#0F766E" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.guestBannerTitle}>Sync & Save Your Health Data</Text>
+              <Text style={styles.guestBannerSub}>Create or sign in to an account to backup your reports permanently.</Text>
+            </View>
+            <Pressable
+              style={styles.guestBannerBtn}
+              onPress={() => router.push('/(auth)/login')}
+            >
+              <Text style={styles.guestBannerBtnText}>Sign In</Text>
+            </Pressable>
+          </View>
+        )}
 
         {/* 2 Quick Stat Tiles — Family & Health Score (Prototype v2 grid2) */}
         <View style={[styles.grid2, { flexDirection: rowDirection }]}>
@@ -494,5 +521,46 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: Colors.text,
+  },
+  guestBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1.5,
+    borderColor: '#99F6E4',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 16,
+    gap: 12,
+  },
+  guestBannerIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#CCFBF1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  guestBannerTitle: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#0F766E',
+    marginBottom: 2,
+  },
+  guestBannerSub: {
+    fontSize: 11.5,
+    color: '#64748B',
+    lineHeight: 16,
+  },
+  guestBannerBtn: {
+    backgroundColor: '#0F766E',
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  guestBannerBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

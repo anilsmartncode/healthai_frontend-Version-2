@@ -149,6 +149,14 @@ export const ENDPOINTS = {
 
 
 
+  // ── Support Tickets
+  supportTickets: `${BASE_URL}/api/api/support/tickets`,
+  supportTicketDetails: (id: string) => `${BASE_URL}/api/api/support/tickets/${id}`,
+
+  // ── Blood Group Contacts
+  bloodGroupContacts: `${BASE_URL}/api/api/user/blood-group-contacts`,
+  bloodGroupContactDetails: (id: string) => `${BASE_URL}/api/api/user/blood-group-contacts/${id}`,
+
   // ── Translations
   supportedLanguagesPath: '/api/supported-languages',
   translateTextPath: '/api/translate-text',

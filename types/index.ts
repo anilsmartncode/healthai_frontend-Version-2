@@ -1,4 +1,4 @@
-export type ReportStatus = 'good' | 'attention' | 'low' | 'high' | 'normal';
+export type ReportStatus = 'good' | 'attention' | 'low' | 'high' | 'normal' | 'abnormal';
 
 export interface Report {
   id: string;
@@ -41,4 +41,13 @@ export interface ChatMessage {
   role: 'user' | 'ai';
   text: string;
   time: string;
+  attachment?: {
+    name: string;
+    mimeType: string;
+    uri?: string;
+    size?: number;
+  };
+  reportId?: string;
+  healthScore?: number;
+  abnormalCount?: number;
 }

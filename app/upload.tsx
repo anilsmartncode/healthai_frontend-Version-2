@@ -367,6 +367,9 @@ function validatePickedFile(name: string): boolean {
         formData.append('file', { uri: targetFile.uri, name: targetFile.name, type: targetFile.mimeType } as any);
         if (memberId) formData.append('member_id', memberId);
         if (context) formData.append('document_type', context);
+        if (prefillText && String(prefillText).trim()) {
+          formData.append('user_query', String(prefillText).trim());
+        }
 
         const result = await reportsApi.analyze(formData, targetFile.name, {
           size: targetFile.size,
@@ -431,6 +434,9 @@ function validatePickedFile(name: string): boolean {
               values: JSON.stringify(Array.isArray(result.values) ? result.values : []),
               detectedMedicines: JSON.stringify(Array.isArray(result.detectedMedicines) ? result.detectedMedicines : []),
               narrative: '',
+              userQuestionAnswer: result.userQuestionAnswer
+                ? JSON.stringify(result.userQuestionAnswer)
+                : (prefillText ? JSON.stringify({ question: prefillText, answer: '' }) : undefined),
             },
           });
         }

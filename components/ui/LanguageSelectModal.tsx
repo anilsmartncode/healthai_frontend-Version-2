@@ -13,29 +13,23 @@ import { Colors, Radius } from '@/constants/Colors';
 import { api } from '@/services/api';
 import { ENDPOINTS } from '@/constants/api';
 
+import { ALL_LANGUAGES } from '@/constants/allLanguages';
+
 interface Props {
   visible: boolean;
   onClose: () => void;
   onSelect: (langCode: string, langName: string) => void;
 }
 
-const DEFAULT_LANGUAGES = [
-  { code: 'en', name: 'English' },
-  { code: 'hi', name: 'Hindi (हिन्दी)' },
-  { code: 'te', name: 'Telugu (తెలుగు)' },
-  { code: 'ta', name: 'Tamil (தமிழ்)' },
-  { code: 'kn', name: 'Kannada (ಕನ್ನಡ)' },
-];
+const DEFAULT_LANGUAGES = ALL_LANGUAGES.map((l) => ({
+  code: l.code,
+  name: `${l.name} (${l.native})`,
+}));
 
 function getLanguageName(code: string): string {
-  const map: Record<string, string> = {
-    en: 'English',
-    hi: 'Hindi (हिन्दी)',
-    te: 'Telugu (తెలుగు)',
-    ta: 'Tamil (தமிழ்)',
-    kn: 'Kannada (ಕನ್ನಡ)',
-  };
-  return map[code.toLowerCase()] ?? code.toUpperCase();
+  const found = ALL_LANGUAGES.find((l) => l.code.toLowerCase() === code.toLowerCase());
+  if (found) return `${found.name} (${found.native})`;
+  return code.toUpperCase();
 }
 
 export function LanguageSelectModal({ visible, onClose, onSelect }: Props) {

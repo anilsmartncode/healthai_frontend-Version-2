@@ -41,13 +41,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(`Server returned non-JSON response (status ${res.status}): ${snippet}`);
   }
 
-  // Session expired — sign out and redirect to login
+  // Session expired — sign out and redirect to login if user had a token
   if (res.status === 401) {
+    const hadToken = !!token;
     await storage.remove('token');
     await storage.remove('refresh_token');
     await storage.remove('phone');
     await storage.remove('member_id');
-    DeviceEventEmitter.emit('SESSION_EXPIRED');
+    if (hadToken) {
+      DeviceEventEmitter.emit('SESSION_EXPIRED');
+    }
     throw new Error('SESSION_EXPIRED');
   }
 

@@ -75,9 +75,17 @@ function categorizeParam(name: string): string {
   return 'Other Parameters';
 }
 
+function isAbnormalStatus(status?: string): boolean {
+  if (!status) return false;
+  const s = String(status).trim().toLowerCase();
+  return s === 'high' || s === 'low' || s === 'abnormal';
+}
+
 function statusStyle(status: string) {
-  if (status === 'high') return { label: 'High', color: '#DC2626' };
-  if (status === 'low') return { label: 'Low', color: '#D97706' };
+  const s = String(status || '').trim().toLowerCase();
+  if (s === 'high') return { label: 'High', color: '#DC2626' };
+  if (s === 'low') return { label: 'Low', color: '#D97706' };
+  if (s === 'abnormal') return { label: 'Abnormal', color: '#DC2626' };
   return { label: 'Normal', color: '#16A34A' };
 }
 
@@ -115,8 +123,29 @@ function ResultRow({
           {!!value.simpleMeaning && (
             <Text style={styles.expandText}>{value.simpleMeaning}</Text>
           )}
-          {!!value.possibleDisease && (
-            <Text style={styles.expandMeta}>Note: {value.possibleDisease}</Text>
+          {!!value.possibleDisease && value.possibleDisease !== 'N/A' && (
+            <View style={styles.expandMetaWrap}>
+              <Text style={styles.expandMetaLabel}>Possible Condition: </Text>
+              <Text style={styles.expandMetaVal}>{value.possibleDisease}</Text>
+            </View>
+          )}
+          {!!value.symptoms?.length && (
+            <View style={styles.symptomsWrap}>
+              <Text style={styles.symptomsTitle}>Symptoms to watch for:</Text>
+              <View style={styles.symptomsTags}>
+                {value.symptoms.map((s, i) => (
+                  <View key={i} style={styles.symptomPill}>
+                    <Text style={styles.symptomText}>{s}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+          {!!value.doctorAdvice && (
+            <View style={styles.adviceBox}>
+              <Ionicons name="medical-outline" size={14} color="#0369A1" />
+              <Text style={styles.adviceText}>{value.doctorAdvice}</Text>
+            </View>
           )}
           {!value.simpleMeaning && !value.possibleDisease && (
             <Text style={styles.expandText}>
@@ -215,7 +244,21 @@ export default function AnalysisScreen() {
     detectedMedicines?: string;
     narrative?: string;
     reportType?: string;
+    userQuestionAnswer?: string;
   }>();
+
+  const userQA = useMemo(() => {
+    if (!params.userQuestionAnswer) return null;
+    try {
+      const parsed = JSON.parse(params.userQuestionAnswer);
+      if (parsed?.question && (parsed?.answer || parsed?.answer === '')) {
+        return parsed;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, [params.userQuestionAnswer]);
 
   const values: LabValue[] = useMemo(() => {
     if (!params.values) return [];
@@ -229,7 +272,7 @@ export default function AnalysisScreen() {
 
   const usableValues = useMemo(() => values.filter(isUsableValue), [values]);
 
-  const abnormal = usableValues.filter((v) => v.status === 'high' || v.status === 'low');
+  const abnormal = usableValues.filter((v) => isAbnormalStatus(v.status));
 
   const detectedMedicines: DetectedMedicine[] = useMemo(() => {
     if (!params.detectedMedicines) return [];
@@ -251,6 +294,93 @@ export default function AnalysisScreen() {
     }
   }
 
+  // Merge rich details from values (e.g. Diet, Lifestyle, Exercise, Doctor Advice) into summary for AIExplanationCard
+  const enrichedSummary: ApiSummary | null = useMemo(() => {
+    if (!parsedSummary && !rawSummarySource && usableValues.length === 0) return null;
+    const base: ApiSummary = parsedSummary ? { ...parsedSummary } : {};
+
+    const collectUnique = (field: keyof LabValue): string[] => {
+      const set = new Set<string>();
+      // Prioritize abnormal findings first, then normal findings
+      const sorted = [...usableValues].sort(
+        (a, b) => (isAbnormalStatus(b.status) ? 1 : 0) - (isAbnormalStatus(a.status) ? 1 : 0)
+      );
+      sorted.forEach((v) => {
+        const val = v[field];
+        if (Array.isArray(val)) {
+          val.forEach((item) => {
+            if (item && typeof item === 'string' && item.trim()) {
+              set.add(item.trim());
+            }
+          });
+        }
+      });
+      return Array.from(set);
+    };
+
+    if (!base.recommended_diet?.length) {
+      const diet = collectUnique('recommendedFoods');
+      if (diet.length) base.recommended_diet = diet;
+    }
+    if (!base.foods_to_avoid?.length) {
+      const avoid = collectUnique('foodsToAvoid');
+      if (avoid.length) base.foods_to_avoid = avoid;
+    }
+    if (!base.recommended_fruits?.length) {
+      const fruits = collectUnique('recommendedFruits');
+      if (fruits.length) base.recommended_fruits = fruits;
+    }
+    if (!base.recommended_juices?.length) {
+      const juices = collectUnique('recommendedJuices');
+      if (juices.length) base.recommended_juices = juices;
+    }
+    if (!base.recommended_leafy_vegetables?.length) {
+      const veg = collectUnique('recommendedVegetables');
+      if (veg.length) base.recommended_leafy_vegetables = veg;
+    }
+    if (!base.protein_recommendations?.length) {
+      const protein = collectUnique('proteinSuggestions');
+      if (protein.length) base.protein_recommendations = protein;
+    }
+    if (!base.exercise_recommendations?.length) {
+      const exercise = collectUnique('exercise');
+      if (exercise.length) base.exercise_recommendations = exercise;
+    }
+    if (!base.sleep_recommendations?.length) {
+      const sleep = collectUnique('sleepTips');
+      if (sleep.length) base.sleep_recommendations = sleep;
+    }
+    if (!base.lifestyle_changes?.length) {
+      const lifestyle = collectUnique('lifestyleTips');
+      if (lifestyle.length) base.lifestyle_changes = lifestyle;
+    }
+    if (!base.precautions?.length) {
+      const precautions = collectUnique('precautions');
+      if (precautions.length) base.precautions = precautions;
+    }
+    if (!base.symptoms_patient_may_feel?.length) {
+      const symptoms = collectUnique('symptoms');
+      if (symptoms.length) base.symptoms_patient_may_feel = symptoms;
+    }
+    if (!base.water_intake) {
+      const firstWater = usableValues.find((v) => v.waterIntake)?.waterIntake;
+      if (firstWater) base.water_intake = firstWater;
+    }
+    if (!base.doctor_consultation_needed) {
+      const abnormalWithDoc = usableValues.find((v) => isAbnormalStatus(v.status) && v.doctorAdvice);
+      if (abnormalWithDoc?.doctorAdvice) {
+        base.doctor_consultation_needed = abnormalWithDoc.doctorAdvice;
+      }
+    }
+
+    return base;
+  }, [parsedSummary, rawSummarySource, usableValues]);
+
+  const summaryToRender = useMemo(() => {
+    if (enrichedSummary) return JSON.stringify(enrichedSummary);
+    return rawSummarySource;
+  }, [enrichedSummary, rawSummarySource]);
+
   const isUnanalyzable = usableValues.length === 0 && detectedMedicines.length === 0;
 
   const grouped = useMemo(() => {
@@ -258,7 +388,7 @@ export default function AnalysisScreen() {
       const map = new Map<string, LabValue[]>();
       const order = ['Abnormal', 'Normal'];
       usableValues.forEach((v) => {
-        const key = v.status === 'high' || v.status === 'low' ? 'Abnormal' : 'Normal';
+        const key = isAbnormalStatus(v.status) ? 'Abnormal' : 'Normal';
         if (!map.has(key)) map.set(key, []);
         map.get(key)!.push(v);
       });
@@ -432,7 +562,7 @@ export default function AnalysisScreen() {
           <td>${escapeHtml(v.name)}</td>
           <td>${escapeHtml(v.value)}</td>
           <td>${escapeHtml(v.range)}</td>
-          <td style="color:${v.status === 'high' ? '#DC2626' : v.status === 'low' ? '#D97706' : '#16A34A'};
+          <td style="color:${isAbnormalStatus(v.status) ? '#DC2626' : '#16A34A'};
                      font-weight:700; text-transform:capitalize;">${escapeHtml(v.status)}</td>
         </tr>
       `,
@@ -545,6 +675,38 @@ export default function AnalysisScreen() {
           </Text>
         ) : null}
 
+        {/* ── User's Question & AI Answer Card (Scenario 2 Unified Query) ── */}
+        {userQA && userQA.question ? (
+          <View style={styles.userQACard}>
+            <View style={styles.qaHeader}>
+              <View style={styles.qaHeaderLeft}>
+                <Ionicons name="chatbubble-ellipses" size={16} color="#0F6E56" />
+                <Text style={styles.qaBadgeText}>YOUR QUESTION & AI ANSWER</Text>
+              </View>
+            </View>
+
+            <View style={styles.userQuestionBox}>
+              <Text style={styles.userQuestionLabel}>Q:</Text>
+              <Text style={styles.userQuestionText}>"{userQA.question}"</Text>
+            </View>
+
+            <View style={styles.qaDivider} />
+
+            <View style={styles.aiAnswerBox}>
+              <View style={styles.aiAnswerIconRow}>
+                <Ionicons name="sparkles" size={15} color="#0F6E56" />
+                <Text style={styles.aiAnswerTitle}>AI Clinical Assessment:</Text>
+              </View>
+              <Text style={styles.aiAnswerText}>
+                {userQA.answer ||
+                  (usableValues.length > 0
+                    ? `Based on the extracted lab parameters, we have analyzed this report regarding your inquiry. Please review the abnormal and normal parameters below.`
+                    : `Your query has been recorded. Review the extracted report data below.`)}
+              </Text>
+            </View>
+          </View>
+        ) : null}
+
         {/* Health score overview (previous Report Analysis) */}
         {!isUnanalyzable && (
           <AnalysisSummaryCard
@@ -571,7 +733,7 @@ export default function AnalysisScreen() {
                 </Text>
               </View>
             ) : null}
-            {rawSummarySource ? <AIExplanationCard text={rawSummarySource} /> : null}
+            {summaryToRender ? <AIExplanationCard text={summaryToRender} /> : null}
           </View>
         ) : null}
 
@@ -872,6 +1034,31 @@ const styles = StyleSheet.create({
     marginLeft: 14,
   },
 
+  expandMetaWrap: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginTop: 2 },
+  expandMetaLabel: { fontSize: 12, fontWeight: '700', color: Colors.danger },
+  expandMetaVal: { fontSize: 12, color: Colors.text, fontWeight: '500' },
+  symptomsWrap: { gap: 4, marginTop: 4 },
+  symptomsTitle: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase' },
+  symptomsTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  symptomPill: {
+    backgroundColor: '#FEE2E2',
+    borderRadius: Radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  symptomText: { fontSize: 11, fontWeight: '600', color: Colors.danger },
+  adviceBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    backgroundColor: '#F0F9FF',
+    borderRadius: 8,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    marginTop: 2,
+  },
+  adviceText: { fontSize: 11, color: '#0369A1', lineHeight: 16, flex: 1 },
   expandBox: {
     paddingHorizontal: 14,
     paddingBottom: 12,
@@ -1002,5 +1189,86 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '700',
+  },
+
+  // ── User Question & AI Answer Card ──
+  userQACard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#C6E7DE',
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#0F6E56',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  qaHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  qaHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(15, 110, 86, 0.08)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  qaBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#0F6E56',
+    letterSpacing: 0.5,
+  },
+  userQuestionBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    paddingVertical: 4,
+  },
+  userQuestionLabel: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F6E56',
+  },
+  userQuestionText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1A2B2A',
+    lineHeight: 20,
+    fontStyle: 'italic',
+  },
+  qaDivider: {
+    height: 1,
+    backgroundColor: '#E4E8E6',
+    marginVertical: 10,
+  },
+  aiAnswerBox: {
+    gap: 6,
+  },
+  aiAnswerIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  aiAnswerTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F6E56',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  aiAnswerText: {
+    fontSize: 13.5,
+    fontWeight: '500',
+    color: '#2C3E3A',
+    lineHeight: 20,
   },
 });

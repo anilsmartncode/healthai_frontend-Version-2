@@ -78,14 +78,16 @@ function CollapseBlock({
   icon,
   label,
   iconColor,
+  defaultOpen = true,
   children,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   iconColor?: string;
+  defaultOpen?: boolean;
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const { rowDirection } = useLang();
   return (
     <View style={cb.wrap}>
@@ -157,6 +159,18 @@ export function AIExplanationCard({ text }: Props) {
         <View style={[styles.emergencyBanner, { flexDirection: rowDirection }]}>
           <Ionicons name="alert-circle" size={18} color="#fff" />
           <Text style={[styles.emergencyText, { textAlign }]}>{p.emergency_warning}</Text>
+        </View>
+      ) : null}
+
+      {/* ── Report Description ── */}
+      {p.report_description ? (
+        <View style={[styles.descBox, { flexDirection: rowDirection }]}>
+          <Ionicons name="document-text-outline" size={15} color={Colors.primary} />
+          <Text style={[styles.descText, { textAlign }]}>
+            {typeof p.report_description === 'string'
+              ? p.report_description
+              : p.report_description.what_this_report_is || p.report_description.what_was_checked || ''}
+          </Text>
         </View>
       ) : null}
 
@@ -417,6 +431,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 10,
+  },
+  descBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#F0FDFA',
+    borderRadius: Radius.md,
+    padding: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#CCFBF1',
+  },
+  descText: {
+    fontSize: 13,
+    color: '#0F766E',
+    fontWeight: '600',
+    lineHeight: 18,
+    flex: 1,
   },
   cardTitle: { fontSize: 16, fontWeight: '700', color: Colors.text },
   aiBadge: {

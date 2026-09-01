@@ -27,6 +27,7 @@ import type {
   DetectedMedicine,
   ReportCategory,
   ApiPrescription,
+  UserQuestionAnswer,
 } from '@/types/Report/reportype';
 import { mapApiLabValues, deriveCategory } from '@/types/Report/reportype';
 
@@ -109,6 +110,8 @@ export interface AnalyzeResult {
   abnormalCount: number;
   detectedMedicines: DetectedMedicine[]; // ← NEW
   prescription?: ApiPrescription;
+  userQuestionAnswer?: UserQuestionAnswer; // ← NEW: Answer to user's question asked during upload
+  date?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -640,6 +643,7 @@ function apiToAnalyzeResult(result: any): AnalyzeResult {
     abnormalCount,
     detectedMedicines: extractDetectedMedicines(raw.summary),
     prescription: raw.prescription,
+    userQuestionAnswer: raw.user_question_answer || raw.userQuestionAnswer || (raw.summary && typeof raw.summary === 'object' ? raw.summary.user_question_answer : undefined),
   };
 }
 

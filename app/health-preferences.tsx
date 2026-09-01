@@ -32,10 +32,22 @@ const LANGUAGES: { code: LangCode; name: string; nativeName: string }[] = [
   { code: 'te', name: 'Telugu', nativeName: 'తెలుగు' },
   { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்' },
   { code: 'kn', name: 'Kannada', nativeName: 'ಕನ್ನಡ' },
+  { code: 'bn', name: 'Bengali', nativeName: 'বাংলা' },
+  { code: 'mr', name: 'Marathi', nativeName: 'मराठी' },
+  { code: 'gu', name: 'Gujarati', nativeName: 'ગુજરાતી' },
+  { code: 'ml', name: 'Malayalam', nativeName: 'മലയാളം' },
+  { code: 'pa', name: 'Punjabi', nativeName: 'ਪੰਜਾਬੀ' },
   { code: 'ar', name: 'Arabic', nativeName: 'العربية' },
   { code: 'fr', name: 'French', nativeName: 'Français' },
+  { code: 'de', name: 'German', nativeName: 'Deutsch' },
+  { code: 'ja', name: 'Japanese', nativeName: '日本語' },
+  { code: 'pt', name: 'Portuguese', nativeName: 'Português' },
+  { code: 'it', name: 'Italian', nativeName: 'Italiano' },
+  { code: 'ko', name: 'Korean', nativeName: '한국어' },
   { code: 'zh', name: 'Chinese', nativeName: '中文' },
+  { code: 'ru', name: 'Russian', nativeName: 'Русский' },
   { code: 'ms', name: 'Malay', nativeName: 'Bahasa Melayu' },
+  { code: 'id', name: 'Indonesian', nativeName: 'Bahasa Indonesia' },
 ];
 
 export default function HealthPreferencesScreen() {

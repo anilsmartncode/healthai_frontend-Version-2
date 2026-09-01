@@ -6,7 +6,7 @@ import * as TaskManager from 'expo-task-manager';
 import { medicineApiCall } from '@/services/Medicineapiclient';
 import { ENDPOINTS } from '@/constants/api';
 import { getTodaysReminders } from '@/services/medicineTabApi';
-import type { Reminder } from '@/types';
+import type { Reminder } from '@/services/medicineTabApi';
 
 // Determine if we are running inside the Expo Go app.
 // expo-notifications native code was removed from Expo Go in SDK 53+
@@ -369,7 +369,7 @@ export async function syncLocalRemindersWithBackend() {
     
     // 3. Re-schedule only the active ones
     for (const r of activeReminders) {
-      if (r.enabled !== false) {
+      if (r.isActive !== false) {
         const nextDate = parseTimeStringToNextDate(r.time);
         await scheduleReminderNotification(
           r.id,

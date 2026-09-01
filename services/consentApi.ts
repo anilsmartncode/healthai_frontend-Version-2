@@ -10,17 +10,21 @@ import { medicineApiCall } from './Medicineapiclient';
 import { BASE_URL } from '@/constants/api';
 
 export interface UserConsents {
+  process_health_data?: boolean; // Base health data processing
   ai_analysis: boolean;          // AI processing of lab reports
   share_family: boolean;         // Visibility in Family Care Hub
   share_doctors: boolean;        // Sharing summary with confirmed doctors
   anonymized_research: boolean;  // Opt-in clinical research
+  marketing_tips?: boolean;      // Marketing & product tips
 }
 
 const DEFAULT_CONSENTS: UserConsents = {
+  process_health_data: true,
   ai_analysis: true,
   share_family: true,
   share_doctors: true,
   anonymized_research: false,
+  marketing_tips: false,
 };
 
 const STORAGE_KEY = '@healthai_user_consents';
@@ -50,10 +54,12 @@ export async function getConsents(): Promise<UserConsents> {
       const data = res?.data ?? res?.consents ?? res;
       if (data && typeof data === 'object') {
         const merged: UserConsents = {
+          process_health_data: data.process_health_data ?? localConsents.process_health_data ?? true,
           ai_analysis: data.ai_analysis ?? localConsents.ai_analysis,
           share_family: data.share_family ?? localConsents.share_family,
           share_doctors: data.share_doctors ?? localConsents.share_doctors,
           anonymized_research: data.anonymized_research ?? localConsents.anonymized_research,
+          marketing_tips: data.marketing_tips ?? localConsents.marketing_tips ?? false,
         };
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
         return merged;

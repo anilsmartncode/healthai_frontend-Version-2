@@ -136,7 +136,7 @@ export default function AIHomeScreen() {
                 <TextInput
                   style={[
                     styles.input,
-                    { height: Math.min(Math.max(36, inputHeight), 76), textAlign },
+                    { height: Math.min(Math.max(36, inputHeight), 120), textAlign },
                   ]}
                   placeholder={t("ai_placeholder")}
                   placeholderTextColor={C.textMuted}
@@ -149,8 +149,8 @@ export default function AIHomeScreen() {
                   onSubmitEditing={() => goToChat(input)}
                   returnKeyType="send"
                   multiline
-                  scrollEnabled={inputHeight >= 76}
-                  maxLength={1000}
+                  scrollEnabled={inputHeight >= 120}
+                  maxLength={15000}
                 />
 
                 <Pressable
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 6,
     minHeight: 48,
-    maxHeight: 88,
+    maxHeight: 140,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -366,5 +366,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
 });
-
 

@@ -13,7 +13,9 @@ interface AuthState {
   refreshToken: string | null;
   phone: string | null;
   memberId: number | null;      // logged-in user's numeric ID (sent to analyze-report)
-  signIn: (token: string, phone: string, memberId?: number | null, refreshToken?: string | null) => Promise<void>;
+  isGuest: boolean;
+  signIn: (token: string, phone: string, memberId?: number | null, refreshToken?: string | null, isGuest?: boolean) => Promise<void>;
+  signInAsGuestSession: (idToken?: string, uid?: string) => Promise<void>;
   signOut: () => Promise<void>;
   // Calls POST /api/auth/refresh-token with the stored refresh_token and
   // persists the new access token. Returns the new token, or null if the
@@ -30,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [phone, setPhone] = useState<string | null>(null);
   const [memberId, setMemberId] = useState<number | null>(null);
+  const [isGuest, setIsGuest] = useState<boolean>(false);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -38,10 +41,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const rt = await storage.get<string>('refresh_token');
       const p = await storage.get<string>('phone');
       const m = await storage.get<number>('member_id');
+      const g = await storage.get<boolean>('is_guest');
       setToken(t);
       setRefreshToken(rt);
       setPhone(p);
       setMemberId(m ?? null);
+      setIsGuest(!!g);
       setReady(true);
 
       // If user is already logged in, ensure backend has the latest FCM token
@@ -72,13 +77,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signIn = async (t: string, p: string, mId?: number | null, rt?: string | null) => {
+  const signIn = async (t: string, p: string, mId?: number | null, rt?: string | null, guestMode?: boolean) => {
+    const isG = !!guestMode;
     await storage.set('token', t);
     await storage.set('phone', p);
+    await storage.set('is_guest', isG);
     if (mId != null) await storage.set('member_id', mId);
     if (rt) await storage.set('refresh_token', rt);
     setToken(t);
     setPhone(p);
+    setIsGuest(isG);
     if (mId != null) setMemberId(mId);
     if (rt) setRefreshToken(rt);
 
@@ -86,10 +94,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await NotificationCenter.init(p);
 
     // After setting auth tokens, register this device for push notifications
-    await registerPushToken();
+    if (!isG) {
+      await registerPushToken();
+    }
+  };
+
+  const signInAsGuestSession = async (idToken?: string, uid?: string) => {
+    let tokenToUse = idToken || `guest_${Date.now()}`;
+    let phoneOrIdentifier = uid ? `guest_${uid.slice(-6)}` : 'guest_user';
+    let memberIdToUse: number | null = null;
+    let refreshTokenToUse: string | null = null;
+
+    if (idToken) {
+      try {
+        const { firebaseLoginApi } = await import('@/services/authapi/apiService');
+        const data = await firebaseLoginApi(idToken);
+        if (data?.token) {
+          tokenToUse = data.token;
+          if (data.phone || data.email) phoneOrIdentifier = data.phone || data.email;
+          if (data.member_id || data.user_id) memberIdToUse = data.member_id || data.user_id;
+          if (data.refresh_token) refreshTokenToUse = data.refresh_token;
+        }
+      } catch (err) {
+        console.log('[AuthContext] Guest backend exchange fallback to local session:', err);
+      }
+    }
+
+    await signIn(tokenToUse, phoneOrIdentifier, memberIdToUse, refreshTokenToUse, true);
   };
 
   const signOut = async () => {
+    // Clear isGuest flag
+    setIsGuest(false);
+    await storage.remove('is_guest');
     // 🔴 REAL — best-effort server-side logout (invalidates the refresh token
     // server-side). Deliberately doesn't block or throw on failure: if the
     // network is down or the token's already expired, the user still needs
@@ -175,7 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ token, refreshToken, phone, memberId, signIn, signOut, refreshSession, ready }}>
+    <AuthContext.Provider value={{ token, refreshToken, phone, memberId, isGuest, signIn, signInAsGuestSession, signOut, refreshSession, ready }}>
       {children}
     </AuthContext.Provider>
   );

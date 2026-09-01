@@ -10,11 +10,13 @@ import {
   Alert,
   Keyboard,
   Dimensions,
+  Vibration,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useGlobalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import * as Clipboard from 'expo-clipboard';
 import { Colors, Radius } from '@/constants/Colors';
 import { useLang } from '@/context/Languagecontext';
 
@@ -49,8 +51,22 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
   const [attachedFile, setAttachedFile] = useState<any>(null);
   const [showMenu, setShowMenu] = useState(false);
   const [autoDirection, setAutoDirection] = useState<'up' | 'down'>('up');
+  const [showPasteBubble, setShowPasteBubble] = useState(false);
 
   const containerRef = useRef<View>(null);
+
+  // Check if clipboard contains something to paste when input is focused or pressed
+  const checkClipboardForBubble = async () => {
+    try {
+      const hasImg = await Clipboard.hasImageAsync();
+      const hasStr = await Clipboard.hasStringAsync();
+      if (hasImg || hasStr) {
+        setShowPasteBubble(true);
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   const params = useGlobalSearchParams();
 
@@ -146,8 +162,6 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
       });
 
       if (scannedImages && scannedImages.length > 0) {
-        // We'll just take the first scanned page as an image for now,
-        // or if it returns multiple we can pass it, but our backend currently accepts a single file per request.
         const uri = scannedImages[0];
         setAttachedFile({ uri, name: 'scanned_document.jpg', mimeType: 'image/jpeg', size: 0 });
       }
@@ -155,6 +169,66 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
       Alert.alert('Scanner Error', 'Failed to start the document scanner.');
     }
   };
+
+  const pasteClipboard = async () => {
+    setShowMenu(false);
+    setShowPasteBubble(false);
+    try {
+      // 1. Check if an image is on the clipboard (e.g. copied from WhatsApp, browser, or gallery)
+      const hasImg = await Clipboard.hasImageAsync();
+      if (hasImg) {
+        const img = await Clipboard.getImageAsync({ format: 'jpeg' });
+        if (img && img.data) {
+          setAttachedFile({
+            uri: `data:image/jpeg;base64,${img.data}`,
+            name: `pasted_image_${Date.now().toString().slice(-4)}.jpg`,
+            mimeType: 'image/jpeg',
+            size: Math.round(img.data.length * 0.75),
+          });
+          Alert.alert('Pasted', t('paste_success_image'));
+          return;
+        }
+      }
+
+      // 2. Check for copied text, URLs, file paths, or lab report values
+      const text = await Clipboard.getStringAsync();
+      if (text && text.trim().length > 0) {
+        const trimmed = text.trim();
+        const lower = trimmed.toLowerCase();
+
+        // Check if the copied string is a file URI or download link
+        const isFileUri =
+          trimmed.startsWith('file://') ||
+          trimmed.startsWith('content://') ||
+          ALLOWED_EXTENSIONS.some(ext => lower.endsWith('.' + ext));
+
+        if (isFileUri && (trimmed.startsWith('file://') || trimmed.startsWith('content://') || trimmed.startsWith('http'))) {
+          const rawName = trimmed.split('/').pop()?.split('?')[0] || 'pasted_document.pdf';
+          const cleanName = decodeURIComponent(rawName);
+          const isPdf = cleanName.toLowerCase().endsWith('.pdf');
+          setAttachedFile({
+            uri: trimmed,
+            name: cleanName,
+            mimeType: isPdf ? 'application/pdf' : 'image/jpeg',
+            size: 0,
+          });
+          Alert.alert('Pasted', t('paste_success_document'));
+          return;
+        }
+
+        // It is plain or structured report text
+        setInput(prev => (prev ? `${prev}\n${trimmed}` : trimmed));
+        Alert.alert('Pasted', t('paste_success_text'));
+      } else {
+        Alert.alert(t('paste_clipboard_empty'), t('paste_clipboard_empty_sub'));
+      }
+    } catch (e) {
+      console.warn('Clipboard read error:', e);
+      Alert.alert(t('paste_clipboard_empty'), t('paste_clipboard_empty_sub'));
+    }
+  };
+
+
 
   const handleSend = () => {
     if (!input.trim() && !attachedFile) return;
@@ -191,7 +265,10 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
 
   return (
     <View style={styles.container}>
-      <View ref={containerRef} style={[styles.inputWrap, { zIndex: showMenu ? 50 : 1 }]}>
+      <View
+        ref={containerRef}
+        style={[styles.inputWrap, { zIndex: showMenu ? 50 : 1 }]}
+      >
 
         {/* Giant invisible backdrop to catch outside taps without a Modal */}
         {showMenu && (
@@ -207,6 +284,15 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
             styles.inlineMenuContainer,
             autoDirection === 'down' ? styles.menuDrop : styles.menuUp
           ]}>
+            <Pressable style={styles.menuItem} onPress={pasteClipboard}>
+              <View style={[styles.menuIconWrap, { backgroundColor: '#ECFDF5' }]}>
+                <Ionicons name="clipboard-outline" size={16} color="#059669" />
+              </View>
+              <View style={styles.menuTextContent}>
+                <Text style={styles.menuItemText}>{t('paste_report_or_chat')}</Text>
+              </View>
+            </Pressable>
+
             <Pressable style={styles.menuItem} onPress={scanDoc}>
               <View style={[styles.menuIconWrap, { backgroundColor: '#F3E8FF' }]}>
                 <Ionicons name="scan-outline" size={16} color="#9333EA" />
@@ -265,8 +351,38 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
           </View>
         )}
 
+        {/* Floating "Paste" Callout Bubble above the input bar */}
+        {showPasteBubble && (
+          <>
+            <Pressable
+              style={styles.giantBackdrop}
+              onPress={() => setShowPasteBubble(false)}
+            />
+            <View style={styles.pasteBubbleContainer}>
+              <Pressable
+                style={styles.pasteBubbleBtn}
+                onPress={pasteClipboard}
+                hitSlop={6}
+              >
+                <Ionicons name="clipboard" size={15} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.pasteBubbleText}>{t('paste_callout') || 'Paste'}</Text>
+              </Pressable>
+              <View style={styles.pasteBubbleArrow} />
+            </View>
+          </>
+        )}
+
         <View style={[styles.inputRow, { flexDirection: rowDirection }]}>
-          <Pressable style={styles.innerPlusBtn} onPress={handlePlusPress} hitSlop={8}>
+          <Pressable
+            style={styles.innerPlusBtn}
+            onPress={handlePlusPress}
+            onLongPress={pasteClipboard}
+            delayLongPress={250}
+            hitSlop={8}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Attach or long press to paste from WhatsApp"
+          >
             <Ionicons name="add" size={24} color={showMenu ? Colors.primary : Colors.textMuted} />
           </Pressable>
 
@@ -275,8 +391,34 @@ export function ChatInputBar({ context }: ChatInputBarProps = {}) {
               styles.input,
               { height: Math.min(Math.max(36, inputHeight), 76), textAlign }
             ]}
-            value={input}
-            onChangeText={setInput}
+            onFocus={() => {
+              checkClipboardForBubble();
+            }}
+            onPressIn={() => {
+              checkClipboardForBubble();
+            }}
+            onChangeText={(text) => {
+              const trimmed = text.trim();
+              const lower = trimmed.toLowerCase();
+              const isFileUri =
+                (trimmed.startsWith('file://') || trimmed.startsWith('content://') || trimmed.startsWith('http')) &&
+                ALLOWED_EXTENSIONS.some(ext => lower.endsWith('.' + ext));
+
+              if (isFileUri) {
+                const rawName = trimmed.split('/').pop()?.split('?')[0] || 'document.pdf';
+                const cleanName = decodeURIComponent(rawName);
+                const isPdf = cleanName.toLowerCase().endsWith('.pdf');
+                setAttachedFile({
+                  uri: trimmed,
+                  name: cleanName,
+                  mimeType: isPdf ? 'application/pdf' : 'image/jpeg',
+                  size: 0,
+                });
+                setInput('');
+                return;
+              }
+              setInput(text);
+            }}
             onContentSizeChange={(e) => {
               const h = e.nativeEvent.contentSize.height;
               if (h > 0) setInputHeight(h);
@@ -461,5 +603,45 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: Colors.text,
+  },
+  pasteBubbleContainer: {
+    position: 'absolute',
+    bottom: '100%',
+    left: 48,
+    marginBottom: 8,
+    zIndex: 100,
+    alignItems: 'center',
+  },
+  pasteBubbleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0F172A',
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  pasteBubbleText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  pasteBubbleArrow: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderBottomWidth: 0,
+    borderTopWidth: 6,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: '#0F172A',
+    marginTop: -1,
   },
 });
