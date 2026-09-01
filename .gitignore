@@ -33,3 +33,8 @@ homescreen (5).jpeg
 *.ipa
 *.apk
 *.aab
+TASKLOG.md
+walkthrough.md
+read_pdf.py
+refactor.js
+scratch_en_keys.json
