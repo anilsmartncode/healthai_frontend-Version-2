@@ -123,8 +123,8 @@ const reportStyles = StyleSheet.create({
     gap: 2,
   },
   name: {
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "600",
     color: Colors.text,
   },
   metaRow: {
@@ -281,12 +281,17 @@ const styles = StyleSheet.create({
   viewAllBtn: { flexShrink: 0 },
   viewAll: { fontSize: 13, color: Colors.primary, fontWeight: "600" },
   listContainer: {
-    backgroundColor: Colors.card,
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: "#E2E8F0",
     overflow: "hidden",
     width: "100%",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
   },
   divider: {
     height: 1,

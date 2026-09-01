@@ -269,12 +269,16 @@ export async function searchMemberByPhone(
 
 /** POST /api/api/family/member/add-dependent */
 export async function addDependentDirectly(payload: {
-  relationship: string; full_name: string; phone: string; date_of_birth: string;
+  relationship: string; full_name: string; phone: string; date_of_birth: string; blood_group?: string;
 }): Promise<{ success: boolean; member_id: string; message: string }> {
   // 🔴 REAL
+  const backendPayload = {
+    ...payload,
+    blood_group: payload.blood_group || null,
+  };
   const raw = await medicineApiCall<any>(ENDPOINTS.familyMemberAdd, {
     method: 'POST',
-    body: payload,
+    body: backendPayload,
   });
   return (raw?.data ?? raw) as { success: boolean; member_id: string; message: string };
 
@@ -291,7 +295,7 @@ export async function addDependentDirectly(payload: {
 /** POST /api/api/family/invite/send */
 export async function sendInvite(payload: {
   relationship: string; full_name: string;
-  channel: InviteChannel; phone?: string; email?: string; date_of_birth: string;
+  channel: InviteChannel; phone?: string; email?: string; date_of_birth: string; blood_group?: string;
 }): Promise<{ success: boolean; invite_id: string; expires_at: string; message: string }> {
   // 🔴 REAL
   const backendPayload = {
@@ -300,6 +304,7 @@ export async function sendInvite(payload: {
     invitee_phone: payload.phone || null,
     invitee_email: payload.email || null,
     date_of_birth: payload.date_of_birth,
+    blood_group: payload.blood_group || null,
     invite_type: payload.channel,
     channel: payload.channel // send both for backwards compatibility
   };
@@ -323,7 +328,7 @@ export async function sendInvite(payload: {
 
 /** POST /api/api/family/invite/generate-link */
 export async function generateInviteLink(payload: {
-  relationship: string; full_name: string; date_of_birth: string;
+  relationship: string; full_name: string; date_of_birth: string; blood_group?: string;
 }): Promise<{ invite_id: string; invite_code: string; invite_url: string; expires_at: string }> {
   // 🔴 REAL
   const backendPayload = {
@@ -332,6 +337,7 @@ export async function generateInviteLink(payload: {
     invitee_phone: null,
     invitee_email: null,
     date_of_birth: payload.date_of_birth,
+    blood_group: payload.blood_group || null,
     invite_type: 'link'
   };
 

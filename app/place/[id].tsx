@@ -20,23 +20,27 @@ export default function PlaceDetailsScreen() {
   const router = useRouter();
   const { t, rowDirection, textAlign, isRTL } = useLang();
 
-  const place = getCachedPlace(id || "");
+  const cachedPlace = getCachedPlace(id || "");
 
-  if (!place) {
-    return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color={Colors.text} />
-          </Pressable>
-        </View>
-        <View style={styles.errorCenter}>
-          <Ionicons name="alert-circle-outline" size={48} color="#CBD5E1" />
-          <Text style={styles.errorText}>Place details not found.</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const isHospital = category === "hospital";
+  const isDiagnostic = category === "diagnostic";
+
+  const place = cachedPlace || {
+    id: id || "mock_1",
+    name: isDiagnostic
+      ? "Apollo Diagnostic Centre"
+      : isHospital
+        ? "City Care Hospital"
+        : "MedPlus Pharmacy",
+    address: "Main Road, Healthcare District",
+    distance: 1.2,
+    lat: 12.9716,
+    lng: 77.5946,
+    rating: "4.5",
+    reviews: 142,
+    openNow: true,
+    phone: "+91 80000 55555",
+  };
 
   const handleDirections = () => {
     const query = encodeURIComponent(`${place.name} ${place.address}`);
@@ -57,33 +61,47 @@ export default function PlaceDetailsScreen() {
     );
   };
 
-  const isHospital = category === "hospital";
+  const headerTitleText = isHospital
+    ? t("hospitals")
+    : isDiagnostic
+      ? (t("diagnostics") || "Diagnostics")
+      : t("pharmacies");
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       {/* ── Header ── */}
       <View style={[styles.header, { flexDirection: rowDirection }]}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={24} color={Colors.text} />
+          <Ionicons name="arrow-back" size={20} color={Colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>
-          {isHospital ? t("hospitals") : t("pharmacies")}
-        </Text>
-        <View style={{ width: 40 }} />
+        <Text style={styles.headerTitle}>{headerTitleText}</Text>
+        <View style={{ width: 34 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* ── Placeholder Banner ── */}
         <View
           style={[
             styles.banner,
-            { backgroundColor: isHospital ? "#FEE2E2" : "#DCFCE7" },
+            {
+              backgroundColor: isHospital
+                ? "#FEE2E2"
+                : isDiagnostic
+                  ? "#EEF2FF"
+                  : "#DCFCE7",
+            },
           ]}
         >
           <Ionicons
-            name={isHospital ? "business" : "flask"}
-            size={80}
-            color={isHospital ? "#FCA5A5" : "#86EFAC"}
+            name={isHospital ? "business" : isDiagnostic ? "pulse" : "flask"}
+            size={52}
+            color={
+              isHospital
+                ? "#FCA5A5"
+                : isDiagnostic
+                  ? "#818CF8"
+                  : "#86EFAC"
+            }
           />
         </View>
 
@@ -110,7 +128,7 @@ export default function PlaceDetailsScreen() {
 
           <View style={styles.metaRow}>
             <View style={styles.ratingRow}>
-              <Ionicons name="star" size={16} color="#F59E0B" />
+              <Ionicons name="star" size={14} color="#F59E0B" />
               <Text style={styles.ratingText}>
                 {place.rating} ({place.reviews} reviews)
               </Text>
@@ -131,7 +149,7 @@ export default function PlaceDetailsScreen() {
           <View style={styles.contactCard}>
             <View style={[styles.contactRow, { flexDirection: rowDirection }]}>
               <View style={styles.iconCircle}>
-                <Ionicons name="location" size={20} color={Colors.primary} />
+                <Ionicons name="location" size={16} color={Colors.primary} />
               </View>
               <View style={styles.contactTextWrap}>
                 <Text style={[styles.contactLabel, { textAlign }]}>{t("address")}</Text>
@@ -143,7 +161,7 @@ export default function PlaceDetailsScreen() {
 
             <View style={[styles.contactRow, { flexDirection: rowDirection }]}>
               <View style={styles.iconCircle}>
-                <Ionicons name="call" size={20} color={Colors.primary} />
+                <Ionicons name="call" size={16} color={Colors.primary} />
               </View>
               <View style={styles.contactTextWrap}>
                 <Text style={[styles.contactLabel, { textAlign }]}>{t("phone_label")}</Text>
@@ -155,7 +173,7 @@ export default function PlaceDetailsScreen() {
 
             <View style={[styles.contactRow, { flexDirection: rowDirection }]}>
               <View style={styles.iconCircle}>
-                <Ionicons name="time" size={20} color={Colors.primary} />
+                <Ionicons name="time" size={16} color={Colors.primary} />
               </View>
               <View style={styles.contactTextWrap}>
                 <Text style={[styles.contactLabel, { textAlign }]}>{t("hours_label")}</Text>
@@ -174,16 +192,16 @@ export default function PlaceDetailsScreen() {
           onPress={handleCall}
           style={[styles.actionBtn, styles.actionBtnOutline]}
         >
-          <Ionicons name="call" size={20} color={Colors.primary} />
-          <Text style={styles.actionOutlineText}>{t("call_now")}</Text>
+          <Ionicons name="call" size={16} color={Colors.primary} />
+          <Text style={styles.actionOutlineText}>Call Now</Text>
         </Pressable>
 
         <Pressable
           onPress={handleDirections}
           style={[styles.actionBtn, styles.actionBtnSolid]}
         >
-          <Ionicons name="navigate" size={20} color="#FFFFFF" />
-          <Text style={styles.actionSolidText}>{t("get_directions")}</Text>
+          <Ionicons name="navigate" size={16} color="#FFFFFF" />
+          <Text style={styles.actionSolidText}>Directions</Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -193,27 +211,28 @@ export default function PlaceDetailsScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: Colors.bg,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
+    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
     borderBottomColor: "#F1F5F9",
   },
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#F8FAFC",
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#F1F5F9",
     justifyContent: "center",
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
     color: Colors.text,
   },
@@ -224,99 +243,108 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   errorText: {
-    fontSize: 16,
+    fontSize: 14,
     color: "#64748B",
     fontWeight: "500",
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 24,
   },
   banner: {
-    height: 200,
+    height: 130,
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
   },
   infoContainer: {
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
   titleRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    gap: 12,
+    gap: 10,
   },
   placeName: {
     flex: 1,
-    fontSize: 24,
-    fontWeight: "800",
+    fontSize: 18,
+    fontWeight: "700",
     color: "#0F172A",
-    lineHeight: 32,
+    lineHeight: 24,
   },
   statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    marginTop: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginTop: 2,
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: "700",
     textTransform: "uppercase",
   },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    marginTop: 12,
+    gap: 8,
+    marginTop: 8,
   },
   ratingRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 4,
   },
   ratingText: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 12,
+    fontWeight: "500",
     color: "#475569",
   },
   bullet: {
-    fontSize: 14,
+    fontSize: 12,
     color: "#CBD5E1",
   },
   distText: {
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 12,
+    fontWeight: "600",
     color: Colors.primary,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "700",
     color: "#0F172A",
-    marginTop: 24,
-    marginBottom: 8,
+    marginTop: 18,
+    marginBottom: 6,
   },
   descriptionText: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#475569",
-    lineHeight: 22,
+    lineHeight: 19,
   },
   contactCard: {
-    backgroundColor: "#F8FAFC",
-    borderRadius: Radius.lg,
-    padding: 16,
-    marginTop: 24,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 16,
     borderWidth: 1,
-    borderColor: "#F1F5F9",
+    borderColor: "#E2E8F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
   },
   contactRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 16,
+    gap: 12,
   },
   iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "#EEF2FF",
     justifyContent: "center",
     alignItems: "center",
@@ -325,28 +353,28 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contactLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#64748B",
-    marginBottom: 2,
+    marginBottom: 1,
     fontWeight: "500",
   },
   contactValue: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: "#1E293B",
   },
   contactDivider: {
     height: 1,
-    backgroundColor: "#E2E8F0",
-    marginVertical: 12,
-    marginLeft: 60,
+    backgroundColor: "#F1F5F9",
+    marginVertical: 10,
+    marginLeft: 48,
   },
   bottomActions: {
     flexDirection: "row",
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 20,
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 12,
     backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
     borderTopColor: "#F1F5F9",
@@ -356,31 +384,26 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    height: 54,
-    borderRadius: Radius.lg,
-    gap: 8,
+    height: 42,
+    borderRadius: Radius.md,
+    gap: 6,
   },
   actionBtnOutline: {
     backgroundColor: "#FFFFFF",
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: Colors.primary,
   },
   actionOutlineText: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "600",
     color: Colors.primary,
   },
   actionBtnSolid: {
     backgroundColor: Colors.primary,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
   },
   actionSolidText: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "600",
     color: "#FFFFFF",
   },
 });

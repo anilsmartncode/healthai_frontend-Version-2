@@ -107,7 +107,7 @@ export default function NearbyScreen() {
         
         mapped = dummyDiagnostics.map((d, index) => {
           const dist = calculateDistance(lat, lng, d.lat, d.lng);
-          return {
+          const placeObj = {
             id: `diagnostic_${index}`,
             name: d.name,
             address: d.address,
@@ -119,6 +119,8 @@ export default function NearbyScreen() {
             openNow: Math.random() > 0.2,
             phone: "+91 80000 55555",
           };
+          cachePlace(placeObj);
+          return placeObj;
         });
       } else {
         // Always fetch max radius (10km) to allow local filtering
@@ -454,27 +456,28 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 20,
+    marginTop: 4,
+    marginBottom: 10,
   },
   title: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: "800",
     color: Colors.text,
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: Colors.textMuted,
-    marginTop: 4,
+    marginTop: 1,
   },
   warningBanner: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FEF3C7",
-    paddingVertical: 8,
+    paddingVertical: 6,
     paddingHorizontal: 16,
     gap: 8,
+    marginBottom: 6,
   },
   warningText: {
     fontSize: 11,
@@ -485,21 +488,24 @@ const styles = StyleSheet.create({
   toggleContainer: {
     flexDirection: "row",
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingBottom: 8,
     gap: 8,
   },
   toggleBtn: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 7,
     borderRadius: Radius.md,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   toggleBtnActive: {
     backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   toggleText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: Colors.textMuted,
   },

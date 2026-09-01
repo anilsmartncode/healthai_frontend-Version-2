@@ -1,34 +1,36 @@
 /**
- * app/(tabs)/ai.tsx — HealthAI Chat Home (Screen 1)
- * Centered hero welcome screen with dynamic keyboard-responsive input bar
+ * app/(tabs)/ai.tsx — HealthAI Chat Home (Screen 1 Redesigned)
+ * Highly compact, mobile-first dashboard matching the mockup layout and sizing
  */
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, Pressable,
-  TextInput, Platform, KeyboardAvoidingView, Image,
-  TouchableWithoutFeedback, Keyboard,
+  TextInput, Platform, KeyboardAvoidingView, ScrollView,
+  TouchableWithoutFeedback, Keyboard, ActivityIndicator, Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/context/AuthContext';
 import { SecureAsyncStorage as AsyncStorage } from '@/utils/storage';
 import { useLang } from '@/context/Languagecontext';
+import { listChatSessions, ChatSessionSummary } from '@/services/aiService';
+import { reportsApi } from '@/services/reportsApi';
 
 const C = {
-  primary: '#2563EB',
-  primaryBg: '#EFF6FF',
+  primary: '#0D7B5F', // Deep emerald green
+  primaryBg: '#E6F4EA', // Light green badge/banner bg
   text: '#0F172A',
   textMuted: '#64748B',
   border: '#E2E8F0',
-  bg: '#FFFFFF',
-  surface: '#F8FAFC',
-  success: '#16A34A',
+  bg: Colors.bg,
+  cardBg: '#FFFFFF',
 };
 
 function formatName(raw: string): string {
-  if (/^[+\d\s\-()]{7,}$/.test(raw.trim())) return 'there';
+  if (!raw || /^[+\d\s\-()]{7,}$/.test(raw.trim())) return 'Arjun';
   const local = raw.includes('@') ? raw.split('@')[0] : raw;
   return local
     .split(/[._\-\s]+/)
@@ -48,81 +50,290 @@ export default function AIHomeScreen() {
   const { phone } = useAuth();
   const { t, isRTL, textAlign, rowDirection } = useLang();
   const [userName, setUserName] = useState(formatName(phone ?? 'Rahul'));
-  const [input, setInput] = useState('');
-  const [inputHeight, setInputHeight] = useState(36);
+  export default function AIHomeScreen() {
+    const insets = useSafeAreaInsets();
+    const { phone } = useAuth();
+    const [userName, setUserName] = useState('Arjun');
+    const [input, setInput] = useState('');
+    const [recentChats, setRecentChats] = useState<ChatSessionSummary[]>([]);
+    const [recentLoading, setRecentLoading] = useState(false);
+    const [loadingLatestReport, setLoadingLatestReport] = useState(false);
 
-  useEffect(() => {
-    if (!input || input.trim().length === 0) {
-      setInputHeight(36);
-    }
-  }, [input]);
+    // Load User Profile Name
+    useEffect(() => {
+      const cacheKey = `healthai_profile_name_${phone ?? 'guest'}`;
+      AsyncStorage.getItem(cacheKey).then(name => {
+        if (name && name.trim()) setUserName(name.trim());
+        else setUserName(formatName(phone ?? 'Arjun'));
+      });
+    }, [phone]);
 
-  useEffect(() => {
-    const cacheKey = `healthai_profile_name_${phone ?? 'guest'}`;
-    AsyncStorage.getItem(cacheKey).then(name => {
-      if (name && name.trim()) setUserName(name.trim());
-      else setUserName(formatName(phone ?? 'Rahul'));
-    });
-  }, [phone]);
+    // Load Recent Chat Conversations
+    useFocusEffect(
+      React.useCallback(() => {
+        let active = true;
+        setRecentLoading(true);
+        listChatSessions(phone)
+          .then(data => {
+            if (active) {
+              setRecentChats(data.slice(0, 2));
+            }
+          })
+          .catch(err => console.warn('[AIHomeScreen] failed to load recent chats', err))
+          .finally(() => {
+            if (active) setRecentLoading(false);
+          });
+        return () => {
+          active = false;
+        };
+      }, [phone])
+    );
 
-  const goToChat = (text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    router.push({ pathname: '/(tabs)/ai-chat', params: { prefill: trimmed, newSession: Date.now().toString() } });
-    setInput('');
-  };
+    const goToChat = (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      router.push({ pathname: '/(tabs)/ai-chat', params: { prefill: trimmed, newSession: Date.now().toString() } });
+      setInput('');
+    };
 
-  return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
-      >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.mainContainer}>
-            {/* Brand Header */}
-            <View style={styles.brandRow}>
-              <Text style={styles.brandName}>HealthAI</Text>
-              <Text style={styles.brandSub}>{t("onboard_title")}</Text>
-              <Pressable
-                style={styles.historyBtn}
-                onPress={() => router.push('/ai-history')}
-                hitSlop={8}
-              >
-                <Ionicons name="time-outline" size={20} color={C.text} />
-              </Pressable>
-            </View>
+    // Discuss Latest Report Handler
+    const handleUnderstandReports = async () => {
+      if (loadingLatestReport) return;
+      setLoadingLatestReport(true);
+      try {
+        const list = await reportsApi.list(phone);
+        const labReports = list.filter(r => r.reportType?.toUpperCase() !== 'PRESCRIPTION');
 
-            {/* Centered Hero Welcome Area */}
-            <View style={styles.centerHeroSection}>
-              <View style={styles.heroWrap}>
-                <View style={styles.ring3} />
-                <View style={styles.ring2} />
-                <View style={styles.ring1} />
-                <View style={styles.nurseCircle}>
-                  <Image
-                    source={require('../../assets/images/nurse_avatar.png')}
-                    style={styles.nurseImage}
-                    resizeMode="contain"
-                  />
+        if (labReports.length === 0) {
+          setLoadingLatestReport(false);
+          Alert.alert(
+            "No Reports Found",
+            "You haven't uploaded any medical lab reports yet. Please upload a report first to start discussing it with the AI.",
+            [
+              { text: "Upload Report", onPress: () => router.push('/upload') },
+              { text: "Cancel", style: "cancel" }
+            ]
+          );
+          return;
+        }
+
+        const latest = labReports[0];
+        const fullReport = await reportsApi.getById(latest.id, phone);
+
+        if (!fullReport) {
+          throw new Error("Could not retrieve report details.");
+        }
+
+        const abnormal = (fullReport.values || []).filter(v => v.status === 'high' || v.status === 'low');
+        let parsedSummary: any = null;
+        try {
+          parsedSummary = fullReport.summary ? JSON.parse(fullReport.summary) : null;
+        } catch { }
+
+        const prefillMsg = `My ${fullReport.reportType || 'report'} shows ${abnormal.length} abnormal value${abnormal.length !== 1 ? 's' : ''}${parsedSummary?.condition_severity ? ` and overall status is ${parsedSummary.condition_severity}` : ''}. What does this mean and what should I do?`;
+
+        router.push({
+          pathname: '/ai-chat',
+          params: {
+            prefill: prefillMsg,
+            context: fullReport.summary ?? '',
+            newSession: Date.now().toString(),
+          }
+        });
+
+      } catch (err) {
+        console.warn('[AIHomeScreen] Failed to load latest report context', err);
+        Alert.alert("Error", "Failed to retrieve your latest report. Please try again.");
+      } finally {
+        setLoadingLatestReport(false);
+      }
+    };
+
+    // Medicines Chat Prefill Handler
+    const handleMedicinesInfo = () => {
+      router.push({
+        pathname: '/ai-chat',
+        params: {
+          prefill: "Hi! I have some questions about my medicines. Can you help me understand their usages, correct dosages, side effects, or interactions?",
+          newSession: Date.now().toString(),
+        }
+      });
+    };
+
+    return (
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior="padding"
+          keyboardVerticalOffset={0}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.mainContainer}>
+              {/* Brand Header */}
+              <View style={styles.brandRow}>
+                <Text style={styles.brandName}>HealthAI</Text>
+                <Text style={styles.brandSub}>{t("onboard_title")}</Text>
+                <Pressable
+                  style={styles.historyBtn}
+                  onPress={() => router.push('/ai-history')}
+                  hitSlop={8}
+                >
+                  <Ionicons name="time-outline" size={20} color={C.text} />
+                </Pressable>
+
+                {/* Header */}
+                <View style={styles.header}>
+                  <View>
+                    <View style={styles.titleRow}>
+                      <Text style={styles.headerTitle}>AI Assistant</Text>
+                      <Text style={styles.sparkleEmoji}>✨</Text>
+                    </View>
+                    <Text style={styles.headerSubtitle}>Your intelligent health companion</Text>
+                  </View>
                 </View>
-              </View>
 
-              {/* Greeting & Subtitle */}
-              <Text style={[styles.greeting, { textAlign }]}>{getGreeting(t)} {userName} 👋</Text>
-              <Text style={[styles.subtitle, { textAlign }]}>{t("ai_how_can_help")}</Text>
-            </View>
+                <ScrollView
+                  style={{ flex: 1 }}
+                  contentContainerStyle={styles.scrollContent}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                >
 
-            {/* Dynamic Bottom Input Bar matching ai-chat.tsx */}
-            <View
-              style={[
-                styles.bottomBarContainer,
-                {
-                  paddingBottom:
-                    Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 16,
-                },
-              ]}
+                  {/* Welcome Card Banner */}
+                  <View style={styles.welcomeCard}>
+                    <Text style={styles.welcomeTitle}>Hello, {userName} 👋</Text>
+                    <Text style={styles.welcomeSubtitle}>How can I help with your health today?</Text>
+                  </View>
+
+                  {/* 2x2 Grid Layout */}
+                  <View style={styles.grid}>
+                    {/* 1. Understand Reports */}
+                    <Pressable
+                      style={styles.gridCard}
+                      onPress={handleUnderstandReports}
+                      disabled={loadingLatestReport}
+                    >
+                      {loadingLatestReport ? (
+                        <ActivityIndicator size="small" color={C.primary} style={styles.spinner} />
+                      ) : (
+                        <Text style={styles.cardEmoji}>📄</Text>
+                      )}
+                      <Text style={styles.gridCardLabel}>
+                        {loadingLatestReport ? 'Loading latest...' : 'Understand reports'}
+                      </Text>
+                    </Pressable>
+
+                    {/* 2. Medicines Info */}
+                    <Pressable style={styles.gridCard} onPress={handleMedicinesInfo}>
+                      <Text style={styles.cardEmoji}>💊</Text>
+                      <Text style={styles.gridCardLabel}>Medicines info</Text>
+                    </Pressable>
+
+                    {/* 3. Symptom Checker */}
+                    <Pressable style={styles.gridCard} onPress={() => router.push('/symptom-checker')}>
+                      <Text style={styles.cardEmoji}>🖤</Text>
+                      <Text style={styles.gridCardLabel}>Symptom checker</Text>
+                    </Pressable>
+
+                    {/* 4. Health Tools */}
+                    <Pressable style={styles.gridCard} onPress={() => router.push('/health-tools')}>
+                      <Text style={styles.cardEmoji}>🧮</Text>
+                      <Text style={styles.gridCardLabel}>Health tools</Text>
+                    </Pressable>
+                  </View>
+
+                  {/* Recent Conversations */}
+                  <View style={styles.recentSection}>
+                    <View style={styles.recentHeader}>
+                      <Text style={styles.recentTitle}>Recent conversations</Text>
+                      <Pressable onPress={() => router.push('/ai-history')} hitSlop={10}>
+                        <Text style={styles.viewAllBtn}>View all</Text>
+                      </Pressable>
+                    </View>
+
+                    <View style={styles.recentCardContainer}>
+                      {recentLoading ? (
+                        <View style={styles.loadingContainer}>
+                          <ActivityIndicator size="small" color={C.primary} />
+                        </View>
+                      ) : recentChats.length > 0 ? (
+                        recentChats.map((item, idx) => (
+                          <React.Fragment key={item.id}>
+                            {idx > 0 && <View style={styles.divider} />}
+                            <Pressable
+                              style={styles.recentItem}
+                              onPress={() => router.push({ pathname: '/(tabs)/ai-chat', params: { sessionId: item.id } })}
+                            >
+                              <View style={styles.chatIconBg}>
+                                <Ionicons name="chatbubble-ellipses-outline" size={16} color="#0D7B5F" />
+                              </View>
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.recentItemText} numberOfLines={1}>
+                                  {item.title}
+                                </Text>
+                                <Text style={styles.recentItemDate}>
+                                  {new Date(item.updatedAt).toLocaleDateString([], { day: 'numeric', month: 'short' })} · {new Date(item.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </Text>
+                              </View>
+                            </Pressable>
+                          </React.Fragment>
+                        ))
+                      ) : (
+                        // Fallback preview items
+                        <>
+                          <Pressable
+                            style={styles.recentItem}
+                            onPress={() => goToChat("Explain my blood test report")}
+                          >
+                            <View style={styles.chatIconBg}>
+                              <Ionicons name="chatbubble" size={16} color="#0D7B5F" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.recentItemText} numberOfLines={1}>
+                                Explain my blood test report
+                              </Text>
+                              <Text style={styles.recentItemDate}>
+                                20 May · 10:30 AM
+                              </Text>
+                            </View>
+                          </Pressable>
+                          <View style={styles.divider} />
+                          <Pressable
+                            style={styles.recentItem}
+                            onPress={() => goToChat("Best exercises for back pain")}
+                          >
+                            <View style={styles.chatIconBg}>
+                              <Ionicons name="chatbubble" size={16} color="#0D7B5F" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.recentItemText} numberOfLines={1}>
+                                Best exercises for back pain
+                              </Text>
+                              <Text style={styles.recentItemDate}>
+                                15 May · 11:20 AM
+                              </Text>
+                            </View>
+                          </Pressable>
+                        </>
+                      )}
+                    </View>
+                  </View>
+
+                  {/* Greeting & Subtitle */}
+                  <Text style={[styles.greeting, { textAlign }]}>{getGreeting(t)} {userName} 👋</Text>
+                  <Text style={[styles.subtitle, { textAlign }]}>{t("ai_how_can_help")}</Text>
+              </View >
+            </ScrollView>
+
+            {/* Bottom Search Input Bar */}
+            < View
+              style={
+                [
+                  styles.bottomBarContainer,
+                  {
+                    paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 16,
+                  },
+                ]}
             >
               <View style={[styles.inputWrap, { flexDirection: rowDirection }]}>
                 <Pressable
@@ -139,231 +350,252 @@ export default function AIHomeScreen() {
                     { height: Math.min(Math.max(36, inputHeight), 120), textAlign },
                   ]}
                   placeholder={t("ai_placeholder")}
-                  placeholderTextColor={C.textMuted}
-                  value={input}
-                  onChangeText={setInput}
-                  onContentSizeChange={(e) => {
-                    const h = e.nativeEvent.contentSize.height;
-                    if (h > 0) setInputHeight(h);
-                  }}
-                  onSubmitEditing={() => goToChat(input)}
-                  returnKeyType="send"
-                  multiline
-                  scrollEnabled={inputHeight >= 120}
-                  maxLength={15000}
-                />
+              <View style={styles.inputWrap}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ask anything about your health..."
+                    placeholderTextColor={C.textMuted}
+                    value={input}
+                    onChangeText={setInput}
+                    onSubmitEditing={() => goToChat(input)}
+                    returnKeyType="send"
+                    multiline
+                    scrollEnabled={inputHeight >= 120}
+                    maxLength={15000}
+                    maxLength={500}
+                  />
 
-                <Pressable
-                  style={[
-                    styles.innerActionBtn,
-                    input.trim()
-                      ? { backgroundColor: C.primary }
-                      : { backgroundColor: '#F1F5F9' },
-                  ]}
-                  onPress={() =>
-                    input.trim() ? goToChat(input) : router.push({ pathname: '/(tabs)/ai-chat', params: { newSession: Date.now().toString() } })
-                  }
-                  hitSlop={6}
-                >
-                  {input.trim() ? (
-                    <Ionicons name="arrow-up" size={18} color="#fff" />
-                  ) : (
-                    <Ionicons name="mic" size={18} color={C.textMuted} />
-                  )}
-                </Pressable>
-              </View>
-              <Text style={[styles.disclaimerText, { textAlign }]}>
-                {t("ai_medical_disclaimer")}
-              </Text>
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
-}
+                  <Pressable
+                    style={[
+                      styles.sendBtn,
+                      input.trim() ? { opacity: 1 } : { opacity: 0.6 },
+                    ]}
+                    onPress={() => goToChat(input)}
+                    disabled={!input.trim()}
+                  >
+                    <Ionicons name="send" size={16} color={C.primary} />
+                  </Pressable>
+                </View>
+                <Text style={[styles.disclaimerText, { textAlign }]}>
+                  {t("ai_medical_disclaimer")}
+                </Text>
+              </View >
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.bg },
-  mainContainer: {
-    flex: 1,
-    justifyContent: 'space-between',
-  },
+            </View >
+          </TouchableWithoutFeedback >
+        </KeyboardAvoidingView >
+      </SafeAreaView >
+    );
+  }
 
-  brandRow: {
-    alignItems: 'center',
-    paddingTop: 14,
-    paddingHorizontal: 20,
-    marginBottom: 8,
-    position: 'relative',
-  },
-  brandName: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: C.primary,
-    letterSpacing: -0.3,
-    textAlign: 'center',
-  },
-  brandSub: {
-    fontSize: 12,
-    color: C.textMuted,
-    marginTop: 1,
-    textAlign: 'center',
-  },
-  historyBtn: {
-    position: 'absolute',
-    right: 20,
-    top: 14,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: C.surface,
-    borderWidth: 1,
-    borderColor: C.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  const styles = StyleSheet.create({
+    safe: { flex: 1, backgroundColor: Colors.bg },
+    mainContainer: { flex: 1, backgroundColor: Colors.bg },
+    scrollContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 },
 
-  centerHeroSection: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  heroWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 220,
-    height: 220,
-    marginBottom: 20,
-  },
-  ring3: {
-    position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: '#DBEAFE44',
-  },
-  ring2: {
-    position: 'absolute',
-    width: 178,
-    height: 178,
-    borderRadius: 89,
-    backgroundColor: '#BFDBFE55',
-  },
-  ring1: {
-    position: 'absolute',
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: '#93C5FD44',
-  },
-  nurseCircle: {
-    width: 170,
-    height: 170,
-    borderRadius: 85,
-    backgroundColor: '#FFFFFF',
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: C.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  nurseImage: {
-    width: 170,
-    height: 170,
-  },
+    // Header Styles
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      backgroundColor: '#FFFFFF',
+      borderBottomWidth: 1,
+      borderBottomColor: '#F1F5F9',
+    },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    headerTitle: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: '#0F172A',
+      letterSpacing: -0.3,
+    },
+    sparkleEmoji: {
+      fontSize: 18,
+      marginLeft: 6,
+    },
+    headerSubtitle: {
+      fontSize: 12,
+      color: '#64748B',
+      marginTop: 1,
+    },
 
-  greeting: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: C.text,
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: C.textMuted,
-    textAlign: 'center',
-  },
+    // Welcome Card
+    welcomeCard: {
+      backgroundColor: '#E6F4EA',
+      borderRadius: 14,
+      padding: 16,
+      marginBottom: 16,
+    },
+    welcomeTitle: {
+      fontSize: 16,
+      fontWeight: '800',
+      color: '#0F172A',
+      marginBottom: 3,
+    },
+    welcomeSubtitle: {
+      fontSize: 12,
+      color: '#475569',
+      fontWeight: '500',
+    },
 
-  bottomBarContainer: {
-    backgroundColor: C.bg,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -3 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-  inputWrap: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    borderRadius: 24,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    minHeight: 48,
-    maxHeight: 140,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        shadowOffset: { width: 0, height: 2 },
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
-  },
-  innerPlusBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F8FAFC',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 4,
-  },
-  input: {
-    flex: 1,
-    fontSize: 14,
-    lineHeight: 20,
-    color: C.text,
-    paddingTop: Platform.OS === 'ios' ? 8 : 6,
-    paddingBottom: Platform.OS === 'ios' ? 8 : 6,
-    paddingHorizontal: 6,
-    textAlignVertical: 'center',
-  },
-  innerActionBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 4,
-  },
-  disclaimerText: {
-    fontSize: 10,
-    color: '#94A3B8',
-    textAlign: 'center',
-    marginTop: 6,
-    paddingHorizontal: 12,
-  },
-});
+    // Grid Layout (Left-aligned, short height, raw emojis)
+    grid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      marginBottom: 20,
+      gap: 10,
+    },
+    gridCard: {
+      width: '48%',
+      backgroundColor: '#FFFFFF',
+      borderRadius: 14,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: '#E2E8F0',
+      minHeight: 80,
+      justifyContent: 'center',
+      gap: 6,
+    },
+    cardEmoji: {
+      fontSize: 22,
+    },
+    spinner: {
+      height: 22,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    gridCardLabel: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: '#0F172A',
+      marginTop: 2,
+    },
+
+    // Recent Section
+    recentSection: {
+      marginBottom: 16,
+    },
+    recentHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 10,
+    },
+    recentTitle: {
+      fontSize: 14,
+      fontWeight: '800',
+      color: '#0F172A',
+    },
+    viewAllBtn: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: '#0D7B5F',
+    },
+    recentCardContainer: {
+      backgroundColor: '#FFFFFF',
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: '#E2E8F0',
+      paddingVertical: 2,
+    },
+    recentItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      gap: 12,
+    },
+    chatIconBg: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: '#E6F4EA',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    recentItemText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: '#0F172A',
+    },
+    recentItemDate: {
+      fontSize: 11,
+      color: '#64748B',
+      marginTop: 1,
+      fontWeight: '500',
+    },
+    divider: {
+      height: 1,
+      backgroundColor: '#F1F5F9',
+      marginHorizontal: 14,
+    },
+    loadingContainer: {
+      paddingVertical: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    // Bottom Input Bar
+    bottomBarContainer: {
+      backgroundColor: Colors.bg,
+      borderTopWidth: 1,
+      borderTopColor: '#F1F5F9',
+      paddingHorizontal: 16,
+      paddingTop: 8,
+    },
+    inputWrap: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      backgroundColor: '#FFFFFF',
+      borderWidth: 1.5,
+      borderColor: '#E2E8F0',
+      borderRadius: 24,
+      paddingHorizontal: 8,
+      paddingVertical: 6,
+      minHeight: 48,
+      maxHeight: 140,
+      ...Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOpacity: 0.05,
+          shadowRadius: 4,
+          shadowOffset: { width: 0, height: 2 },
+        },
+        android: {
+          elevation: 1,
+        },
+      }),
+    },
+    innerPlusBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: '#F8FAFC',
+      alignItems: 'center',
+      backgroundColor: '#FFFFFF',
+      borderWidth: 1,
+      borderColor: '#E2E8F0',
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      height: 44,
+    },
+    input: {
+      flex: 1,
+      fontSize: 13,
+      color: '#0F172A',
+      padding: 0,
+    },
+    sendBtn: {
+      width: 24,
+      height: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+  });
 

@@ -44,7 +44,7 @@ export default function PlaceCard({ item, activeTab, onCall, onDirections }: Pla
         >
           <Ionicons
             name={activeTab === "hospital" ? "business" : "flask"}
-            size={22}
+            size={18}
             color={activeTab === "hospital" ? "#EF4444" : "#22C55E"}
           />
         </View>
@@ -56,10 +56,10 @@ export default function PlaceCard({ item, activeTab, onCall, onDirections }: Pla
           <Text style={[styles.placeAddress, { textAlign }]} numberOfLines={2}>
             {item.address}
           </Text>
-          
-          <View style={[styles.metaRow, { flexDirection: rowDirection }]}>
-            <View style={[styles.ratingRow, { flexDirection: rowDirection }]}>
-              <Ionicons name="star" size={13} color="#F59E0B" />
+
+          <View style={styles.metaRow}>
+            <View style={styles.ratingRow}>
+              <Ionicons name="star" size={12} color="#F59E0B" />
               <Text style={styles.ratingText}>
                 {item.rating} ({item.reviews})
               </Text>
@@ -88,7 +88,7 @@ export default function PlaceCard({ item, activeTab, onCall, onDirections }: Pla
             </Text>
           </View>
           <Pressable onPress={() => onCall(item.phone)} style={styles.iconBtn}>
-            <Ionicons name="call" size={18} color={Colors.primary} />
+            <Ionicons name="call" size={15} color={Colors.primary} />
           </Pressable>
         </View>
       </View>
@@ -105,7 +105,7 @@ export default function PlaceCard({ item, activeTab, onCall, onDirections }: Pla
           onPress={() => onDirections(item)}
           style={[styles.actionBtn, styles.actionBtnSolid]}
         >
-          <Ionicons name="navigate" size={16} color="#FFFFFF" />
+          <Ionicons name="navigate" size={14} color="#FFFFFF" />
           <Text style={styles.actionSolidText}>{t("get_directions")}</Text>
         </Pressable>
       </View>
@@ -115,25 +115,25 @@ export default function PlaceCard({ item, activeTab, onCall, onDirections }: Pla
 
 const styles = StyleSheet.create({
   placeCard: {
-    padding: 16,
-    gap: 16,
-    borderRadius: Radius.lg,
+    padding: 12,
+    gap: 10,
+    borderRadius: Radius.md,
     backgroundColor: "#FFFFFF",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
   },
   placeTop: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 12,
+    gap: 10,
   },
   placeIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    width: 38,
+    height: 38,
+    borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
     flexShrink: 0,
@@ -141,80 +141,80 @@ const styles = StyleSheet.create({
   placeInfo: {
     flex: 1,
     minWidth: 0,
-    gap: 4,
+    gap: 2,
   },
   placeName: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 14,
+    fontWeight: "600",
     color: Colors.text,
   },
   placeAddress: {
-    fontSize: 13,
+    fontSize: 12,
     color: Colors.textMuted,
-    lineHeight: 18,
+    lineHeight: 16,
   },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginTop: 4,
+    gap: 6,
+    marginTop: 2,
   },
   ratingRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 3,
   },
   ratingText: {
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 11,
+    fontWeight: "500",
     color: "#64748B",
   },
   bullet: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#CBD5E1",
   },
   distText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
     color: Colors.primary,
   },
   topRightActions: {
     alignItems: "flex-end",
-    gap: 8,
+    gap: 6,
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
   statusText: {
-    fontSize: 10,
-    fontWeight: "800",
+    fontSize: 9,
+    fontWeight: "700",
     textTransform: "uppercase",
   },
   iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: "#F1F5F9",
     justifyContent: "center",
     alignItems: "center",
   },
   placeActions: {
     flexDirection: "row",
-    gap: 12,
+    gap: 8,
     borderTopWidth: 1,
     borderTopColor: "#F1F5F9",
-    paddingTop: 16,
+    paddingTop: 10,
   },
   actionBtn: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    height: 44,
+    height: 36,
     borderRadius: Radius.md,
-    gap: 8,
+    gap: 6,
   },
   actionBtnOutline: {
     backgroundColor: "#FFFFFF",
@@ -222,16 +222,16 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
   },
   actionOutlineText: {
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 12,
+    fontWeight: "600",
     color: Colors.primary,
   },
   actionBtnSolid: {
     backgroundColor: Colors.primary,
   },
   actionSolidText: {
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 12,
+    fontWeight: "600",
     color: "#FFFFFF",
   },
 });

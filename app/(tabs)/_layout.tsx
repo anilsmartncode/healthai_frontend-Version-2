@@ -1,4 +1,5 @@
 import { Tabs } from 'expo-router';
+import { Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { useLang } from '@/context/Languagecontext';
@@ -12,16 +13,31 @@ export default function TabsLayout() {
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textMuted,
         headerShown: false,
-        tabBarLabelStyle: { fontSize: 10 }, // Slightly smaller font so 6 tabs fit
+        tabBarItemStyle: {
+          paddingHorizontal: 0,
+          marginHorizontal: 0,
+        },
+        tabBarLabelStyle: {
+          fontSize: 9,
+          fontWeight: '600',
+        },
+        tabBarStyle: {
+          height: Platform.OS === 'ios' ? 84 : 60,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 6,
+          paddingTop: 6,
+          backgroundColor: '#FFFFFF',
+          borderTopWidth: 1,
+          borderTopColor: '#E2E8F0',
+        },
       }}
     >
       <Tabs.Screen
         name="home"
-        options={{ title: t('nav_home'), tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} /> }}
+        options={{ title: t('nav_home'), tabBarIcon: ({ color }) => <Ionicons name="home-outline" size={20} color={color} /> }}
       />
       <Tabs.Screen
         name="reports"
-        options={{ title: t('nav_reports'), tabBarIcon: ({ color, size }) => <Ionicons name="document-text-outline" size={size} color={color} /> }}
+        options={{ title: t('nav_reports'), tabBarIcon: ({ color }) => <Ionicons name="document-text-outline" size={20} color={color} /> }}
       />
       <Tabs.Screen
         name="ai"
@@ -29,7 +45,7 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="nearby"
-        options={{ title: t('nav_nearby'), tabBarIcon: ({ color, size }) => <Ionicons name="location-outline" size={size} color={color} /> }}
+        options={{ title: t('nav_nearby'), tabBarIcon: ({ color }) => <Ionicons name="location-outline" size={20} color={color} /> }}
       />
       <Tabs.Screen
         name="medicines"
@@ -37,7 +53,7 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="profile"
-        options={{ title: t('nav_profile'), tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} /> }}
+        options={{ title: t('nav_profile'), tabBarIcon: ({ color }) => <Ionicons name="person-outline" size={20} color={color} /> }}
       />
       <Tabs.Screen
         name="ai-chat"

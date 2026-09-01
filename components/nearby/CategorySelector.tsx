@@ -21,7 +21,7 @@ export default function CategorySelector({ activeTab, onTabChange }: CategorySel
         >
           <Ionicons
             name="business"
-            size={16}
+            size={14}
             color={activeTab === "hospital" ? "#FFFFFF" : Colors.textMuted}
           />
           <Text style={[styles.catText, activeTab === "hospital" && styles.catTextActive]}>
@@ -35,7 +35,7 @@ export default function CategorySelector({ activeTab, onTabChange }: CategorySel
         >
           <Ionicons
             name="flask"
-            size={16}
+            size={14}
             color={activeTab === "pharmacy" ? "#FFFFFF" : Colors.textMuted}
           />
           <Text style={[styles.catText, activeTab === "pharmacy" && styles.catTextActive]}>
@@ -49,7 +49,7 @@ export default function CategorySelector({ activeTab, onTabChange }: CategorySel
         >
           <Ionicons
             name="pulse"
-            size={16}
+            size={14}
             color={activeTab === "diagnostic" ? "#FFFFFF" : Colors.textMuted}
           />
           <Text style={[styles.catText, activeTab === "diagnostic" && styles.catTextActive]}>
@@ -63,7 +63,7 @@ export default function CategorySelector({ activeTab, onTabChange }: CategorySel
 
 const styles = StyleSheet.create({
   categoriesOuter: {
-    paddingVertical: 10,
+    paddingVertical: 6,
     borderBottomWidth: 1,
     borderColor: Colors.border,
   },
@@ -77,10 +77,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F1F5F9",
+    backgroundColor: "#FFFFFF",
     borderRadius: Radius.md,
-    paddingHorizontal: 6,
-    paddingVertical: 10,
+    paddingHorizontal: 4,
+    paddingVertical: 7,
     gap: 4,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
   },
   catText: {
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
     color: Colors.textMuted,
   },
   catTextActive: {

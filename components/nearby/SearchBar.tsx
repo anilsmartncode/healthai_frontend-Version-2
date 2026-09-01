@@ -15,8 +15,8 @@ export default function SearchBar({ searchQuery, setSearchQuery, onClear }: Sear
 
   return (
     <View style={styles.searchContainer}>
-      <View style={[styles.searchBar, { flexDirection: rowDirection }]}>
-        <Ionicons name="search" size={18} color={Colors.primary} />
+      <View style={styles.searchBar}>
+        <Ionicons name="search" size={16} color={Colors.primary} />
         <TextInput
           placeholder={t("search_nearby_placeholder")}
           placeholderTextColor="#94A3B8"
@@ -27,7 +27,7 @@ export default function SearchBar({ searchQuery, setSearchQuery, onClear }: Sear
         />
         {searchQuery.length > 0 && (
           <Pressable onPress={onClear}>
-            <Ionicons name="close-circle" size={18} color="#94A3B8" />
+            <Ionicons name="close-circle" size={16} color="#94A3B8" />
           </Pressable>
         )}
       </View>
@@ -38,23 +38,23 @@ export default function SearchBar({ searchQuery, setSearchQuery, onClear }: Sear
 const styles = StyleSheet.create({
   searchContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 4,
   },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F1F5F9",
+    backgroundColor: "#FFFFFF",
     borderRadius: Radius.md,
-    paddingHorizontal: 12,
-    height: 44,
-    gap: 8,
+    paddingHorizontal: 10,
+    height: 38,
+    gap: 6,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: Colors.border,
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     color: Colors.text,
-    paddingVertical: 8,
+    paddingVertical: 4,
   },
 });
