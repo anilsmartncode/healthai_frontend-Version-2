@@ -10,91 +10,82 @@ const CONTAINER_PADDING = 16;
 const GAP = 4;
 const ITEM_WIDTH = (SCREEN_W - (CONTAINER_PADDING * 2) - (GAP * 5)) / 6;
 
-const ACTIONS: {
+type ActionItem = {
   emoji?: string;
   ionicon?: keyof typeof Ionicons.glyphMap;
   iconColor?: string;
   label: string;
   route: string;
-}[] = [
+};
+
+export function QuickActions() {
+  const { t } = useLang();
+
+  const actions: ActionItem[] = [
     {
       ionicon: "chatbubbles-outline",
       iconColor: "#0D7B5F",
-      label: "Ask AI",
+      label: t("ask_ai") || "Ask AI",
       route: "/ai",
     },
     {
       emoji: "💊",
-      label: "Meds",
+      label: t("action_meds") || "Meds",
       route: "/medicines",
     },
     {
       emoji: "📅",
-      label: "Book visit",
+      label: (t as any)("action_book_visit") || "Book visit",
       route: "/appointments",
     },
     {
       emoji: "🆘",
-      label: "SOS",
+      label: t("action_sos") || "SOS",
       route: "/family/emergency",
     },
     {
       emoji: "🖤",
-      label: "Vitals",
+      label: t("action_vitals") || "Vitals",
       route: "/vitals",
     },
     {
       emoji: "⏱️",
-      label: "Timeline",
+      label: t("action_timeline") || "Timeline",
       route: "/timeline",
     },
     {
       emoji: "💉",
-      label: "Vaccines",
+      label: (t as any)("action_vaccines") || "Vaccines",
       route: "/vaccines",
     },
     {
       ionicon: "sync-circle-outline",
       iconColor: "#0D7B5F",
-      label: "Interactions",
+      label: (t as any)("action_interactions") || "Interactions",
       route: "/medicines/check-interactions",
     },
     {
       emoji: "🗃️",
-      label: "Vault",
+      label: t("action_vault") || "Vault",
       route: "/vault",
     },
     {
       ionicon: "people",
       iconColor: "#FF9500",
-      label: "Family",
+      label: t("action_family") || "Family",
       route: "/family",
     },
     {
       emoji: "👨‍⚕️",
-      label: "Add doctor",
+      label: t("action_add_doctor") || "Add doctor",
       route: "/doctors",
     },
     {
       ionicon: "arrow-up",
       iconColor: "#0F172A",
-      label: "Upload prescription",
+      label: (t as any)("action_upload_prescription") || "Upload prescription",
       route: "/medicines",
     },
-  ];
-
-export function QuickActions() {
-  const { t } = useLang();
-
-  const actions = [
-    { emoji: "🤖", label: t("ask_ai"), route: "/ai" },
-    { emoji: "💊", label: t("action_meds"), route: "/medicines" },
-    { emoji: "👨‍⚕️", label: t("action_add_doctor"), route: "/doctors" },
-    { emoji: "🆘", label: t("action_sos"), route: "/family/emergency" },
-    { emoji: "🖤", label: t("action_vitals"), route: "/vitals" },
-    { emoji: "⏱️", label: t("action_timeline"), route: "/timeline" },
-    { emoji: "🗃️", label: t("action_vault"), route: "/vault" },
-    { emoji: "👨‍👩‍👧‍👦", label: t("action_family"), route: "/family" },
   ];
 
   return (
